@@ -1,19 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
 import {
-  OrganizationRelationship,
   organizationId,
   userId,
-  type OrganizationRelationship as OrganizationRelationshipValue,
 } from "@kontave/organizations-domain";
-import type { WorkspacePortfolioEntry } from "@kontave/workspace-context-application";
+import {
+  WorkspaceRelationship,
+  type WorkspacePortfolioEntry,
+  type WorkspaceRelationship as WorkspaceRelationshipValue,
+} from "@kontave/workspace-context-application";
 import { toAccessibleOrganizationDto } from "../organization-access-dto";
 
 const actor = userId("user-1");
 
 function entry(
-  relationship: OrganizationRelationshipValue,
+  relationship: WorkspaceRelationshipValue,
 ): WorkspacePortfolioEntry {
   const id = organizationId(relationship);
   return {
@@ -23,7 +25,7 @@ function entry(
     relationship,
     accessPath: {
       kind:
-        relationship === OrganizationRelationship.Delegated
+        relationship === WorkspaceRelationship.Delegated
           ? OrganizationAccessPathKind.DelegatedOrganization
           : OrganizationAccessPathKind.DirectMembership,
       actorUserId: actor,
@@ -38,9 +40,9 @@ function entry(
 test("native organization access DTO preserves every explicit relationship", () => {
   assert.deepEqual(
     [
-      OrganizationRelationship.Personal,
-      OrganizationRelationship.Member,
-      OrganizationRelationship.Delegated,
+      WorkspaceRelationship.Personal,
+      WorkspaceRelationship.Member,
+      WorkspaceRelationship.Delegated,
     ].map(
       (relationship) =>
         toAccessibleOrganizationDto(entry(relationship)).relationship,

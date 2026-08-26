@@ -8,7 +8,7 @@ Accepted.
 
 Web, Desktop and Mobile use the same operational records in the `public.shared_*` tables. New client architecture must not create parallel company, employee, payroll, inventory, sales, purchasing, accounting or document tables merely to obtain cleaner names or identifiers.
 
-Global cross-client concepts remain in their owning public tables: `organizations`, `organization_*`, `profiles`, `user_preferences`, authentication, billing and platform status. These are shared global capabilities, not tenant-specific operational copies.
+Global cross-client concepts remain in their owning public tables: `organizations`, `organization_*`, `profiles`, `user_preferences`, authentication, billing and portal monitoring. These are shared global capabilities, not tenant-specific operational copies.
 
 Packages may expose modern domain models and translate legacy column names inside persistence adapters. Schema cleanup and column renaming require an explicit cutover migration; they do not justify dual writes or a second source of truth.
 

@@ -61,7 +61,7 @@ importers:
         version: link:packages/billing/supabase
       '@kontave/client-contracts':
         specifier: workspace:*
-        version: link:packages/client/contracts
+        version: link:packages/kernel/contracts
       '@kontave/companies-application':
         specifier: workspace:*
         version: link:packages/companies/application
@@ -74,6 +74,18 @@ importers:
       '@kontave/companies-supabase':
         specifier: workspace:*
         version: link:packages/companies/supabase
+      '@kontave/delegated-access-application':
+        specifier: workspace:*
+        version: link:packages/delegated-access/application
+      '@kontave/delegated-access-contracts':
+        specifier: workspace:*
+        version: link:packages/delegated-access/contracts
+      '@kontave/delegated-access-domain':
+        specifier: workspace:*
+        version: link:packages/delegated-access/domain
+      '@kontave/delegated-access-supabase':
+        specifier: workspace:*
+        version: link:packages/delegated-access/supabase
       '@kontave/documents-application':
         specifier: workspace:*
         version: link:packages/documents/application
@@ -134,18 +146,6 @@ importers:
       '@kontave/operation-context-supabase':
         specifier: workspace:*
         version: link:packages/operation-context/supabase
-      '@kontave/organization-delegations-application':
-        specifier: workspace:*
-        version: link:packages/organization-delegations/application
-      '@kontave/organization-delegations-contracts':
-        specifier: workspace:*
-        version: link:packages/organization-delegations/contracts
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:packages/organization-delegations/domain
-      '@kontave/organization-delegations-supabase':
-        specifier: workspace:*
-        version: link:packages/organization-delegations/supabase
       '@kontave/organizations-application':
         specifier: workspace:*
         version: link:packages/organizations/application
@@ -164,24 +164,24 @@ importers:
       '@kontave/payments-supabase':
         specifier: workspace:*
         version: link:packages/payments/supabase
-      '@kontave/platform-status-application':
+      '@kontave/portal-monitoring-application':
         specifier: workspace:*
-        version: link:packages/platform-status/application
-      '@kontave/platform-status-domain':
+        version: link:packages/portal-monitoring/application
+      '@kontave/portal-monitoring-domain':
         specifier: workspace:*
-        version: link:packages/platform-status/domain
-      '@kontave/platform-status-supabase':
+        version: link:packages/portal-monitoring/domain
+      '@kontave/portal-monitoring-supabase':
         specifier: workspace:*
-        version: link:packages/platform-status/supabase
+        version: link:packages/portal-monitoring/supabase
       '@kontave/preferences-application':
         specifier: workspace:*
-        version: link:packages/preferences/application
+        version: link:packages/experience/preferences/application
       '@kontave/preferences-domain':
         specifier: workspace:*
-        version: link:packages/preferences/domain
+        version: link:packages/experience/preferences/domain
       '@kontave/preferences-supabase':
         specifier: workspace:*
-        version: link:packages/preferences/supabase
+        version: link:packages/experience/preferences/supabase
       '@kontave/pricing-application':
         specifier: workspace:*
         version: link:packages/pricing/application
@@ -191,12 +191,6 @@ importers:
       '@kontave/pricing-supabase':
         specifier: workspace:*
         version: link:packages/pricing/supabase
-      '@kontave/product-insights-application':
-        specifier: workspace:*
-        version: link:packages/product-insights/application
-      '@kontave/product-insights-supabase':
-        specifier: workspace:*
-        version: link:packages/product-insights/supabase
       '@kontave/products-application':
         specifier: workspace:*
         version: link:packages/products/application
@@ -245,9 +239,15 @@ importers:
       '@kontave/taxation-venezuela':
         specifier: workspace:*
         version: link:packages/taxation/venezuela
+      '@kontave/unit-economics-application':
+        specifier: workspace:*
+        version: link:packages/unit-economics/application
+      '@kontave/unit-economics-supabase':
+        specifier: workspace:*
+        version: link:packages/unit-economics/supabase
       '@kontave/workspace-context-application':
         specifier: workspace:*
-        version: link:packages/workspace-context/application
+        version: link:packages/kernel/workspace
       '@serwist/next':
         specifier: ^9.5.7
         version: 9.5.7(next@16.1.6(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -359,46 +359,49 @@ importers:
         version: link:../../packages/ui/brand-assets
       '@kontave/client-connectivity-application':
         specifier: workspace:*
-        version: link:../../packages/client-connectivity/application
+        version: link:../../packages/platform/connectivity/application
       '@kontave/client-connectivity-contracts':
         specifier: workspace:*
-        version: link:../../packages/client-connectivity/contracts
+        version: link:../../packages/platform/connectivity/contracts
       '@kontave/client-contracts':
         specifier: workspace:*
-        version: link:../../packages/client/contracts
+        version: link:../../packages/kernel/contracts
       '@kontave/client-feedback-application':
         specifier: workspace:*
-        version: link:../../packages/client-feedback/application
+        version: link:../../packages/experience/feedback/application
       '@kontave/client-interaction-application':
         specifier: workspace:*
-        version: link:../../packages/client-interaction/application
+        version: link:../../packages/experience/interaction/application
       '@kontave/client-remote':
         specifier: workspace:*
-        version: link:../../packages/client/remote
+        version: link:../../packages/kernel/remote
       '@kontave/client-runtime':
         specifier: workspace:*
-        version: link:../../packages/client/runtime
+        version: link:../../packages/kernel/runtime
       '@kontave/client-updates-application':
         specifier: workspace:*
-        version: link:../../packages/client-updates/application
+        version: link:../../packages/platform/updates/application
       '@kontave/client-updates-contracts':
         specifier: workspace:*
-        version: link:../../packages/client-updates/contracts
+        version: link:../../packages/platform/updates/contracts
       '@kontave/client-updates-electron':
         specifier: workspace:*
-        version: link:../../packages/client-updates/electron
+        version: link:../../packages/platform/updates/electron
+      '@kontave/delegated-access-domain':
+        specifier: workspace:*
+        version: link:../../packages/delegated-access/domain
       '@kontave/design-tokens':
         specifier: workspace:*
         version: link:../../packages/ui/design-tokens
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../../packages/devices/contracts
+        version: link:../../packages/platform/devices/contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../../packages/devices/core
+        version: link:../../packages/platform/devices/core
       '@kontave/devices-node':
         specifier: workspace:*
-        version: link:../../packages/devices/node
+        version: link:../../packages/platform/devices/node
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:../../packages/modules/application
@@ -410,31 +413,28 @@ importers:
         version: link:../../packages/monetary/domain
       '@kontave/navigation-domain':
         specifier: workspace:*
-        version: link:../../packages/navigation/domain
+        version: link:../../packages/experience/navigation/domain
       '@kontave/operation-context-application':
         specifier: workspace:*
         version: link:../../packages/operation-context/application
       '@kontave/operation-context-domain':
         specifier: workspace:*
         version: link:../../packages/operation-context/domain
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../../packages/organization-delegations/domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../packages/organizations/domain
       '@kontave/settings-application':
         specifier: workspace:*
-        version: link:../../packages/settings/application
+        version: link:../../packages/experience/settings/application
       '@kontave/settings-contracts':
         specifier: workspace:*
-        version: link:../../packages/settings/contracts
+        version: link:../../packages/experience/settings/contracts
       '@kontave/ui-dom':
         specifier: workspace:*
         version: link:../../packages/ui/dom
       '@kontave/workspace-context-application':
         specifier: workspace:*
-        version: link:../../packages/workspace-context/application
+        version: link:../../packages/kernel/workspace
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -483,19 +483,19 @@ importers:
     dependencies:
       '@kontave/client-updates-application':
         specifier: workspace:*
-        version: link:../../packages/client-updates/application
+        version: link:../../packages/platform/updates/application
       '@kontave/client-updates-electron':
         specifier: workspace:*
-        version: link:../../packages/client-updates/electron
+        version: link:../../packages/platform/updates/electron
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../../packages/devices/contracts
+        version: link:../../packages/platform/devices/contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../../packages/devices/core
+        version: link:../../packages/platform/devices/core
       '@kontave/devices-node':
         specifier: workspace:*
-        version: link:../../packages/devices/node
+        version: link:../../packages/platform/devices/node
       ws:
         specifier: ^8.18.3
         version: 8.21.3
@@ -538,28 +538,31 @@ importers:
         version: link:../../packages/ui/brand-assets
       '@kontave/client-connectivity-application':
         specifier: workspace:*
-        version: link:../../packages/client-connectivity/application
+        version: link:../../packages/platform/connectivity/application
       '@kontave/client-connectivity-contracts':
         specifier: workspace:*
-        version: link:../../packages/client-connectivity/contracts
+        version: link:../../packages/platform/connectivity/contracts
       '@kontave/client-contracts':
         specifier: workspace:*
-        version: link:../../packages/client/contracts
+        version: link:../../packages/kernel/contracts
       '@kontave/client-feedback-application':
         specifier: workspace:*
-        version: link:../../packages/client-feedback/application
+        version: link:../../packages/experience/feedback/application
       '@kontave/client-interaction-application':
         specifier: workspace:*
-        version: link:../../packages/client-interaction/application
+        version: link:../../packages/experience/interaction/application
       '@kontave/client-remote':
         specifier: workspace:*
-        version: link:../../packages/client/remote
+        version: link:../../packages/kernel/remote
       '@kontave/client-updates-application':
         specifier: workspace:*
-        version: link:../../packages/client-updates/application
+        version: link:../../packages/platform/updates/application
       '@kontave/client-updates-contracts':
         specifier: workspace:*
-        version: link:../../packages/client-updates/contracts
+        version: link:../../packages/platform/updates/contracts
+      '@kontave/delegated-access-domain':
+        specifier: workspace:*
+        version: link:../../packages/delegated-access/domain
       '@kontave/design-tokens':
         specifier: workspace:*
         version: link:../../packages/ui/design-tokens
@@ -571,10 +574,7 @@ importers:
         version: link:../../packages/modules/domain
       '@kontave/navigation-domain':
         specifier: workspace:*
-        version: link:../../packages/navigation/domain
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../../packages/organization-delegations/domain
+        version: link:../../packages/experience/navigation/domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../packages/organizations/domain
@@ -583,7 +583,7 @@ importers:
         version: link:../../packages/ui/native
       '@kontave/workspace-context-application':
         specifier: workspace:*
-        version: link:../../packages/workspace-context/application
+        version: link:../../packages/kernel/workspace
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
@@ -843,177 +843,6 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/client-connectivity/application:
-    dependencies:
-      '@kontave/client-connectivity-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-connectivity/contracts:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-connectivity/testing:
-    dependencies:
-      '@kontave/client-connectivity-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/client-connectivity-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-feedback/application:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-feedback/testing:
-    dependencies:
-      '@kontave/client-feedback-application':
-        specifier: workspace:*
-        version: link:../application
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-interaction/application:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-interaction/testing:
-    dependencies:
-      '@kontave/client-interaction-application':
-        specifier: workspace:*
-        version: link:../application
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-updates/application:
-    dependencies:
-      '@kontave/client-updates-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-updates/contracts:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-updates/electron:
-    dependencies:
-      '@kontave/client-updates-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/client-updates-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      electron-updater:
-        specifier: ^6.8.9
-        version: 6.8.9
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client-updates/testing:
-    dependencies:
-      '@kontave/client-updates-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/client-updates-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client/contracts:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client/remote:
-    dependencies:
-      '@kontave/client-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/client/runtime:
-    dependencies:
-      '@kontave/client-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
   packages/companies/application:
     dependencies:
       '@kontave/companies-domain':
@@ -1087,17 +916,33 @@ importers:
         specifier: ^5
         version: 5.9.3
 
-  packages/devices/contracts:
+  packages/delegated-access/application:
+    dependencies:
+      '@kontave/delegated-access-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/delegated-access/contracts:
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/devices/core:
+  packages/delegated-access/domain:
     dependencies:
-      '@kontave/device-contracts':
+      '@kontave/organizations-domain':
         specifier: workspace:*
-        version: link:../contracts
+        version: link:../../organizations/domain
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -1106,39 +951,51 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/devices/node:
+  packages/delegated-access/supabase:
     dependencies:
-      '@kontave/device-contracts':
+      '@kontave/delegated-access-application':
         specifier: workspace:*
-        version: link:../contracts
-      '@kontave/devices-core':
+        version: link:../application
+      '@kontave/delegated-access-domain':
         specifier: workspace:*
-        version: link:../core
-      serialport:
-        specifier: ^13.0.0
-        version: 13.0.0
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
       typescript:
-        specifier: ^5.9.2
+        specifier: ^5
         version: 5.9.3
 
-  packages/devices/testing:
+  packages/delegated-access/testing:
     dependencies:
-      '@kontave/device-contracts':
+      '@kontave/delegated-access-application':
         specifier: workspace:*
-        version: link:../contracts
-      '@kontave/devices-core':
+        version: link:../application
+      '@kontave/delegated-access-domain':
         specifier: workspace:*
-        version: link:../core
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/workspace-context-application':
+        specifier: workspace:*
+        version: link:../../kernel/workspace
     devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
-        specifier: ^5.9.2
+        specifier: ^5
         version: 5.9.3
 
   packages/documents/application:
@@ -1277,6 +1134,189 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/experience/feedback/application:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/feedback/testing:
+    dependencies:
+      '@kontave/client-feedback-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/interaction/application:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/interaction/testing:
+    dependencies:
+      '@kontave/client-interaction-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/navigation/domain:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/preferences/application:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+      '@kontave/preferences-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/preferences/domain:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/preferences/supabase:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+      '@kontave/preferences-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/preferences-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/preferences/testing:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+      '@kontave/preferences-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/preferences-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/settings/application:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../../access-control/domain
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../../modules/domain
+      '@kontave/navigation-domain':
+        specifier: workspace:*
+        version: link:../../navigation/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+      '@kontave/settings-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/settings/contracts:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../../access-control/domain
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../../modules/domain
+      '@kontave/navigation-domain':
+        specifier: workspace:*
+        version: link:../../navigation/domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/experience/settings/testing:
+    dependencies:
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../../modules/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../../organizations/domain
+      '@kontave/settings-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/settings-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/fiscal/domain:
     dependencies:
       '@kontave/companies-domain':
@@ -1409,6 +1449,78 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/kernel/contracts:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/kernel/remote:
+    dependencies:
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/kernel/runtime:
+    dependencies:
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/kernel/workspace:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../access-control/domain
+      '@kontave/companies-application':
+        specifier: workspace:*
+        version: link:../../companies/application
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/delegated-access-application':
+        specifier: workspace:*
+        version: link:../../delegated-access/application
+      '@kontave/delegated-access-domain':
+        specifier: workspace:*
+        version: link:../../delegated-access/domain
+      '@kontave/modules-application':
+        specifier: workspace:*
+        version: link:../../modules/application
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../modules/domain
+      '@kontave/organizations-application':
+        specifier: workspace:*
+        version: link:../../organizations/application
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/modules/application:
     dependencies:
       '@kontave/modules-domain':
@@ -1537,66 +1649,6 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/navigation/domain:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/observability/application:
-    dependencies:
-      '@kontave/observability-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/observability/contracts:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/observability/supabase:
-    dependencies:
-      '@kontave/observability-application':
-        specifier: workspace:*
-        version: link:../application
-      '@supabase/supabase-js':
-        specifier: ^2.99.1
-        version: 2.99.1
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/observability/testing:
-    dependencies:
-      '@kontave/observability-application':
-        specifier: workspace:*
-        version: link:../application
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
   packages/operation-context/application:
     dependencies:
       '@kontave/monetary-application':
@@ -1657,93 +1709,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/organization-delegations/application:
-    dependencies:
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-
-  packages/organization-delegations/contracts:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/organization-delegations/domain:
-    dependencies:
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/organization-delegations/supabase:
-    dependencies:
-      '@kontave/organization-delegations-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@supabase/supabase-js':
-        specifier: ^2.99.1
-        version: 2.99.1
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-
-  packages/organization-delegations/testing:
-    dependencies:
-      '@kontave/organization-delegations-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/workspace-context-application':
-        specifier: workspace:*
-        version: link:../../workspace-context/application
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-
   packages/organizations/application:
     dependencies:
       '@kontave/navigation-domain':
         specifier: workspace:*
-        version: link:../../navigation/domain
+        version: link:../../experience/navigation/domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../domain
@@ -1929,9 +1899,206 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/platform-status/application:
+  packages/platform/connectivity/application:
     dependencies:
-      '@kontave/platform-status-domain':
+      '@kontave/client-connectivity-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/connectivity/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/connectivity/testing:
+    dependencies:
+      '@kontave/client-connectivity-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-connectivity-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/devices/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/devices/core:
+    dependencies:
+      '@kontave/device-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/devices/node:
+    dependencies:
+      '@kontave/device-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kontave/devices-core':
+        specifier: workspace:*
+        version: link:../core
+      serialport:
+        specifier: ^13.0.0
+        version: 13.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/devices/testing:
+    dependencies:
+      '@kontave/device-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kontave/devices-core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/observability/application:
+    dependencies:
+      '@kontave/observability-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/observability/contracts:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/observability/supabase:
+    dependencies:
+      '@kontave/observability-application':
+        specifier: workspace:*
+        version: link:../application
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/observability/testing:
+    dependencies:
+      '@kontave/observability-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/updates/application:
+    dependencies:
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/updates/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/updates/electron:
+    dependencies:
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      electron-updater:
+        specifier: ^6.8.9
+        version: 6.8.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform/updates/testing:
+    dependencies:
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/portal-monitoring/application:
+    dependencies:
+      '@kontave/portal-monitoring-domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:
@@ -1942,7 +2109,7 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/platform-status/domain:
+  packages/portal-monitoring/domain:
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -1951,12 +2118,12 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/platform-status/supabase:
+  packages/portal-monitoring/supabase:
     dependencies:
-      '@kontave/platform-status-application':
+      '@kontave/portal-monitoring-application':
         specifier: workspace:*
         version: link:../application
-      '@kontave/platform-status-domain':
+      '@kontave/portal-monitoring-domain':
         specifier: workspace:*
         version: link:../domain
       '@supabase/supabase-js':
@@ -1973,82 +2140,12 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/platform-status/testing:
+  packages/portal-monitoring/testing:
     dependencies:
-      '@kontave/platform-status-application':
+      '@kontave/portal-monitoring-application':
         specifier: workspace:*
         version: link:../application
-      '@kontave/platform-status-domain':
-        specifier: workspace:*
-        version: link:../domain
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/preferences/application:
-    dependencies:
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/preferences-domain':
-        specifier: workspace:*
-        version: link:../domain
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/preferences/domain:
-    dependencies:
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/preferences/supabase:
-    dependencies:
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/preferences-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/preferences-domain':
-        specifier: workspace:*
-        version: link:../domain
-      '@supabase/supabase-js':
-        specifier: ^2.99.1
-        version: 2.99.1
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/preferences/testing:
-    dependencies:
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/preferences-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/preferences-domain':
+      '@kontave/portal-monitoring-domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:
@@ -2143,54 +2240,6 @@ importers:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/product-insights/application:
-    dependencies:
-      '@kontave/companies-domain':
-        specifier: workspace:*
-        version: link:../../companies/domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/products-domain':
-        specifier: workspace:*
-        version: link:../../products/domain
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/product-insights/supabase:
-    dependencies:
-      '@kontave/product-insights-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/products-domain':
-        specifier: workspace:*
-        version: link:../../products/domain
-      '@supabase/supabase-js':
-        specifier: ^2.99.1
-        version: 2.99.1
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/product-insights/testing:
-    dependencies:
-      '@kontave/product-insights-application':
-        specifier: workspace:*
-        version: link:../application
-    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -2630,66 +2679,6 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/settings/application:
-    dependencies:
-      '@kontave/access-control-domain':
-        specifier: workspace:*
-        version: link:../../access-control/domain
-      '@kontave/modules-domain':
-        specifier: workspace:*
-        version: link:../../modules/domain
-      '@kontave/navigation-domain':
-        specifier: workspace:*
-        version: link:../../navigation/domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/settings-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/settings/contracts:
-    dependencies:
-      '@kontave/access-control-domain':
-        specifier: workspace:*
-        version: link:../../access-control/domain
-      '@kontave/modules-domain':
-        specifier: workspace:*
-        version: link:../../modules/domain
-      '@kontave/navigation-domain':
-        specifier: workspace:*
-        version: link:../../navigation/domain
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/settings/testing:
-    dependencies:
-      '@kontave/modules-domain':
-        specifier: workspace:*
-        version: link:../../modules/domain
-      '@kontave/organizations-domain':
-        specifier: workspace:*
-        version: link:../../organizations/domain
-      '@kontave/settings-application':
-        specifier: workspace:*
-        version: link:../application
-      '@kontave/settings-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
   packages/taxation/application:
     dependencies:
       '@kontave/companies-domain':
@@ -2846,10 +2835,10 @@ importers:
     dependencies:
       '@kontave/client-feedback-application':
         specifier: workspace:*
-        version: link:../../client-feedback/application
+        version: link:../../experience/feedback/application
       '@kontave/client-interaction-application':
         specifier: workspace:*
-        version: link:../../client-interaction/application
+        version: link:../../experience/interaction/application
       '@kontave/ui-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -2898,41 +2887,52 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/workspace-context/application:
+  packages/unit-economics/application:
     dependencies:
-      '@kontave/access-control-domain':
-        specifier: workspace:*
-        version: link:../../access-control/domain
-      '@kontave/companies-application':
-        specifier: workspace:*
-        version: link:../../companies/application
       '@kontave/companies-domain':
         specifier: workspace:*
         version: link:../../companies/domain
-      '@kontave/modules-application':
-        specifier: workspace:*
-        version: link:../../modules/application
-      '@kontave/modules-domain':
-        specifier: workspace:*
-        version: link:../../modules/domain
-      '@kontave/organization-delegations-application':
-        specifier: workspace:*
-        version: link:../../organization-delegations/application
-      '@kontave/organization-delegations-domain':
-        specifier: workspace:*
-        version: link:../../organization-delegations/domain
-      '@kontave/organizations-application':
-        specifier: workspace:*
-        version: link:../../organizations/application
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../organizations/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
     devDependencies:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
       typescript:
-        specifier: ^5
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/unit-economics/supabase:
+    dependencies:
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/unit-economics-application':
+        specifier: workspace:*
+        version: link:../application
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/unit-economics/testing:
+    dependencies:
+      '@kontave/unit-economics-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
         version: 5.9.3
 
 packages:

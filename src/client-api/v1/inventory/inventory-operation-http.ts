@@ -12,9 +12,9 @@ import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
 import { organizationId, userId } from "@kontave/organizations-domain";
 import {
-  OrganizationAccessFailure,
+  DelegatedAccessFailure,
   OrganizationAccessPathKind,
-} from "@kontave/organization-delegations-domain";
+} from "@kontave/delegated-access-domain";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import type { ApiErrorCode } from "@kontave/client-contracts";
 import { authenticateClientRequest } from "../auth/auth-context";
@@ -137,7 +137,7 @@ export async function executeInventoryOperationRequest<T>(
     }
     if (
       cause instanceof AuthorizationDenied ||
-      cause instanceof OrganizationAccessFailure
+      cause instanceof DelegatedAccessFailure
     )
       return apiError(
         "INVENTORY_OPERATION_ACCESS_DENIED",

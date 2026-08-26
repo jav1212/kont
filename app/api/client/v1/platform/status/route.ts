@@ -1,8 +1,8 @@
 import { authenticateClientRequest } from "@/src/client-api/v1/auth/auth-context";
 import { apiError, apiSuccess } from "@/src/client-api/v1/http/response";
-import { createPlatformStatusActions } from "@/src/client-api/v1/platform-status/platform-status-actions";
-import { platformStatusErrorResponse } from "@/src/client-api/v1/platform-status/platform-status-http";
-import { toPlatformStatusDto } from "@/src/client-api/v1/platform-status/platform-status-mapper";
+import { createPortalMonitoringActions } from "@/src/client-api/v1/portal-monitoring/portal-monitoring-actions";
+import { portalMonitoringErrorResponse } from "@/src/client-api/v1/portal-monitoring/portal-monitoring-http";
+import { toPortalMonitoringDto } from "@/src/client-api/v1/portal-monitoring/portal-monitoring-mapper";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +19,9 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
     const snapshot =
-      await createPlatformStatusActions().getPlatformStatus.execute();
-    return apiSuccess(toPlatformStatusDto(snapshot), requestId);
+      await createPortalMonitoringActions().getPortalMonitoring.execute();
+    return apiSuccess(toPortalMonitoringDto(snapshot), requestId);
   } catch (cause: unknown) {
-    return platformStatusErrorResponse(cause, requestId);
+    return portalMonitoringErrorResponse(cause, requestId);
   }
 }

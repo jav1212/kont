@@ -1,0 +1,23 @@
+{
+  "name": "@kontave/workspace-context-application",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./coordinator": "./src/workspace-context-coordinator.ts"
+  },
+  "scripts": { "check": "tsc --noEmit", "test": "tsx --test test/*.test.ts" },
+  "dependencies": {
+    "@kontave/access-control-domain": "workspace:*",
+    "@kontave/companies-application": "workspace:*",
+    "@kontave/companies-domain": "workspace:*",
+    "@kontave/delegated-access-application": "workspace:*",
+    "@kontave/delegated-access-domain": "workspace:*",
+    "@kontave/organizations-application": "workspace:*",
+    "@kontave/organizations-domain": "workspace:*",
+    "@kontave/modules-application": "workspace:*",
+    "@kontave/modules-domain": "workspace:*"
+  },
+  "devDependencies": { "tsx": "^4.23.12", "typescript": "^5" }
+}

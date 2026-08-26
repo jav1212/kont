@@ -40,7 +40,7 @@ export default defineConfig({
           "@kontave/monetary-domain",
           "@kontave/operation-context-application",
           "@kontave/operation-context-domain",
-          "@kontave/organization-delegations-domain",
+          "@kontave/delegated-access-domain",
           "@kontave/organizations-domain",
           "@kontave/workspace-context-application",
         ],

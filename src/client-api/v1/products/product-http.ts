@@ -11,15 +11,15 @@ import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
 import { organizationId, userId } from "@kontave/organizations-domain";
 import {
-  OrganizationAccessFailure,
+  DelegatedAccessFailure,
   OrganizationAccessPathKind,
-} from "@kontave/organization-delegations-domain";
+} from "@kontave/delegated-access-domain";
 import { ProductFailure } from "@kontave/products-domain";
 import { InventoryFailure } from "@kontave/inventory-domain";
 import { InventoryDashboardFailure } from "@kontave/inventory-application";
 import { PricingFailure } from "@kontave/pricing-domain";
 import { TaxationFailure } from "@kontave/taxation-domain";
-import { ProductInsightsFailure } from "@kontave/product-insights-application";
+import { UnitEconomicsFailure } from "@kontave/unit-economics-application";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { createCompanyActions } from "../companies/company-actions";
@@ -218,13 +218,13 @@ function productErrorResponse(cause: unknown, requestId: string): Response {
               : 400;
     return apiError(cause.code, cause.message, requestId, status);
   }
-  if (cause instanceof ProductInsightsFailure) {
+  if (cause instanceof UnitEconomicsFailure) {
     const status =
-      cause.code === "PRODUCT_INSIGHTS_NOT_FOUND"
+      cause.code === "UNIT_ECONOMICS_NOT_FOUND"
         ? 404
-        : cause.code === "PRODUCT_INSIGHTS_ACCESS_DENIED"
+        : cause.code === "UNIT_ECONOMICS_ACCESS_DENIED"
           ? 403
-          : cause.code === "PRODUCT_INSIGHTS_UNAVAILABLE"
+          : cause.code === "UNIT_ECONOMICS_UNAVAILABLE"
             ? 503
             : 400;
     return apiError(cause.code, cause.message, requestId, status);
@@ -250,7 +250,7 @@ function productErrorResponse(cause: unknown, requestId: string): Response {
     return apiError("INVENTORY_PROFILE_INVALID", cause.message, requestId, 400);
   if (
     cause instanceof AuthorizationDenied ||
-    cause instanceof OrganizationAccessFailure
+    cause instanceof DelegatedAccessFailure
   )
     return apiError(
       "PRODUCT_ACCESS_DENIED",

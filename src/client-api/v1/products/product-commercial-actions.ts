@@ -8,8 +8,8 @@ import {
   SetProductTaxTreatment,
 } from "@kontave/taxation-application";
 import { createSupabaseProductTaxationRepository } from "@kontave/taxation-supabase";
-import { GetProductUnitEconomics } from "@kontave/product-insights-application";
-import { createSupabaseProductInsightsReader } from "@kontave/product-insights-supabase";
+import { GetProductUnitEconomics } from "@kontave/unit-economics-application";
+import { createSupabaseUnitEconomicsReader } from "@kontave/unit-economics-supabase";
 export function createProductCommercialActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,7 +25,7 @@ export function createProductCommercialActions() {
       url,
       serviceRoleKey: key,
     }),
-    insights = createSupabaseProductInsightsReader({
+    unitEconomics = createSupabaseUnitEconomicsReader({
       url,
       serviceRoleKey: key,
     });
@@ -34,6 +34,6 @@ export function createProductCommercialActions() {
     updatePricing: new UpdateProductSalePricing(pricing),
     getTaxation: new GetResolvedProductTaxation(taxation),
     updateTaxation: new SetProductTaxTreatment(taxation),
-    unitEconomics: new GetProductUnitEconomics(insights),
+    unitEconomics: new GetProductUnitEconomics(unitEconomics),
   };
 }

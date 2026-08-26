@@ -42,7 +42,7 @@ const MODULE_ITEMS: Readonly<Partial<Record<ModuleCode, readonly { readonly titl
   [ModuleCode.Sales]: [{ title: "Ventas", destinations: [["sales.dashboard", "grid-outline"], ["sales.point-of-sale", "storefront-outline"], ["sales.customers", "people-outline"], ["sales.archive", "archive-outline"], ["sales.igtf", "receipt-outline"]] }],
   [ModuleCode.Accounting]: [{ title: "Contabilidad", destinations: [["accounting.dashboard", "grid-outline"], ["accounting.charts", "git-branch-outline"], ["accounting.accounts", "list-outline"], ["accounting.periods", "calendar-outline"], ["accounting.journal", "book-outline"], ["accounting.trial-balance", "scale-outline"], ["accounting.financial-statements", "document-text-outline"]] }],
   [ModuleCode.Documents]: [{ title: "Documentos", destinations: [["documents.dashboard", "grid-outline"], ["documents.files", "folder-open-outline"], ["documents.contracts", "document-text-outline"]] }],
-  [ModuleCode.Tools]: [{ title: "Herramientas", destinations: [["tools.dashboard", "grid-outline"], ["tools.exchange-rates", "cash-outline"], ["tools.seniat-calendar", "calendar-outline"], ["tools.platform-status", "pulse-outline"]] }],
+  [ModuleCode.Tools]: [{ title: "Herramientas", destinations: [["tools.dashboard", "grid-outline"], ["tools.exchange-rates", "cash-outline"], ["tools.seniat-calendar", "calendar-outline"], ["tools.portal-monitoring", "pulse-outline"]] }],
   [ModuleCode.Companies]: [{ title: "Empresas", destinations: [["companies", "business-outline"]] }],
 };
 

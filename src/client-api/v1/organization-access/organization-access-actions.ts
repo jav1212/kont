@@ -1,10 +1,10 @@
 import {
-  AcceptOrganizationDelegation,
-  AssignDelegationMember,
-  ChangeOrganizationDelegationStatus,
-  CreateOrganizationDelegation,
-} from "@kontave/organization-delegations-application";
-import { createOrganizationAccessInfrastructure } from "@kontave/organization-delegations-supabase";
+  AcceptDelegatedAccess,
+  AssignDelegatedAccessMember,
+  ChangeDelegatedAccessStatus,
+  CreateDelegatedAccess,
+} from "@kontave/delegated-access-application";
+import { createDelegatedAccessInfrastructure } from "@kontave/delegated-access-supabase";
 import {
   ListWorkspacePortfolio,
   ResolveWorkspaceAccessPath,
@@ -39,10 +39,10 @@ export function createOrganizationAccessActions() {
         : null;
     },
   };
-  const repository = createOrganizationAccessInfrastructure({
+  const repository = createDelegatedAccessInfrastructure({
     url,
     serviceRoleKey,
-  }).delegations;
+  }).delegatedAccess;
   return {
     portfolio: new ListWorkspacePortfolio(
       directAccess,
@@ -50,9 +50,9 @@ export function createOrganizationAccessActions() {
       organizations,
     ),
     resolvePath: new ResolveWorkspaceAccessPath(directAccess, repository),
-    create: new CreateOrganizationDelegation(repository),
-    accept: new AcceptOrganizationDelegation(repository),
-    assign: new AssignDelegationMember(repository),
-    changeStatus: new ChangeOrganizationDelegationStatus(repository),
+    create: new CreateDelegatedAccess(repository),
+    accept: new AcceptDelegatedAccess(repository),
+    assign: new AssignDelegatedAccessMember(repository),
+    changeStatus: new ChangeDelegatedAccessStatus(repository),
   };
 }

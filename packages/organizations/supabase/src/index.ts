@@ -7,7 +7,7 @@ import type {
 } from "@kontave/organizations-application";
 import {
   OrganizationFailure,
-  OrganizationRelationship,
+  DirectOrganizationRelationship,
   OrganizationRole,
   companyId,
   organizationId,
@@ -87,8 +87,8 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
         const role = mapRole(membership.role);
         return [{
           relationship: organization.legacy_tenant_id === targetUserId
-            ? OrganizationRelationship.Personal
-            : OrganizationRelationship.Member,
+            ? DirectOrganizationRelationship.Personal
+            : DirectOrganizationRelationship.Member,
           organization: {
             id: organizationId(organization.id),
             name: organization.name,

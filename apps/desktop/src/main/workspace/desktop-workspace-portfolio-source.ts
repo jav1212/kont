@@ -4,10 +4,10 @@ import type {
   OrganizationsPort,
 } from "@kontave/client-contracts";
 import {
-  DelegatedScope,
+  DelegatedAccessScope,
   OrganizationAccessPathKind,
-  organizationDelegationId,
-} from "@kontave/organization-delegations-domain";
+  delegatedAccessGrantId,
+} from "@kontave/delegated-access-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
 import type {
   WorkspacePortfolioEntry,
@@ -49,15 +49,15 @@ function toAccessibleOrganization(
       actingOrganizationId: organizationId(dto.accessPath.actingOrganizationId),
       targetOrganizationId: organizationId(dto.accessPath.targetOrganizationId),
       delegationId: dto.accessPath.delegationId
-        ? organizationDelegationId(dto.accessPath.delegationId)
+        ? delegatedAccessGrantId(dto.accessPath.delegationId)
         : null,
       scopes: dto.accessPath.scopes.map(readScope),
     },
   };
 }
 
-function readScope(value: string): DelegatedScope {
-  const scope = Object.values(DelegatedScope).find(
+function readScope(value: string): DelegatedAccessScope {
+  const scope = Object.values(DelegatedAccessScope).find(
     (candidate) => candidate === value,
   );
   if (!scope) throw new Error("El alcance delegado recibido no es válido.");

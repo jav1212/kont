@@ -11,8 +11,8 @@ export enum OrganizationRole { Owner = "owner", Admin = "admin", Accountant = "a
 export enum MembershipStatus { Active = "active", Suspended = "suspended" }
 export type OrganizationMemberStatus = "active" | "invited" | "suspended";
 export interface OrganizationMemberProjection { readonly id:string;readonly kind:"membership"|"invitation";readonly organizationId:OrganizationId;readonly userId:UserId|null;readonly email:string;readonly displayName:string|null;readonly avatarUrl:string|null;readonly roleId:string;readonly roleName:string;readonly status:OrganizationMemberStatus;readonly version:number;readonly joinedAt:string|null;readonly invitedAt:string|null;readonly expiresAt:string|null }
-export const OrganizationRelationship = { Personal: "personal", Member: "member", Delegated: "delegated" } as const;
-export type OrganizationRelationship = typeof OrganizationRelationship[keyof typeof OrganizationRelationship];
+export const DirectOrganizationRelationship = { Personal: "personal", Member: "member" } as const;
+export type DirectOrganizationRelationship = typeof DirectOrganizationRelationship[keyof typeof DirectOrganizationRelationship];
 export type Permission = `${string}.${string}` | "*";
 
 export interface Organization {
@@ -45,7 +45,7 @@ export interface OrganizationCompany {
 export interface OrganizationAccess {
   readonly organization: Organization;
   readonly membership: OrganizationMembership;
-  readonly relationship: Exclude<OrganizationRelationship, "delegated">;
+  readonly relationship: DirectOrganizationRelationship;
 }
 
 export type OrganizationFailureCode =

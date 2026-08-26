@@ -6,7 +6,7 @@ import type { DesktopConnectivityApi } from "./domains/connectivity";
 import type { DesktopDevicesApi } from "./domains/devices";
 import type { DesktopInventoryApi } from "./domains/inventory";
 import type { DesktopNavigationApi } from "./domains/navigation";
-import type { DesktopPlatformStatusApi } from "./domains/platform-status";
+import type { DesktopPortalMonitoringApi } from "./domains/portal-monitoring";
 import type { DesktopProfileApi } from "./domains/profile";
 import type { DesktopPurchasingApi } from "./domains/purchasing";
 import type { DesktopSalesApi } from "./domains/sales";
@@ -23,7 +23,7 @@ export interface KontaveRendererBridge {
   readonly workspace: DesktopWorkspaceApi;
   readonly profile: DesktopProfileApi;
   readonly billing: DesktopBillingApi;
-  readonly platformStatus: DesktopPlatformStatusApi;
+  readonly portalMonitoring: DesktopPortalMonitoringApi;
   readonly navigation: DesktopNavigationApi;
   readonly connectivity: DesktopConnectivityApi;
   readonly settings: DesktopSettingsApi;

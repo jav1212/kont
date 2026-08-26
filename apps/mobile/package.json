@@ -33,7 +33,7 @@
     "@kontave/modules-domain": "workspace:*",
     "@kontave/client-contracts": "workspace:*",
     "@kontave/navigation-domain": "workspace:*",
-    "@kontave/organization-delegations-domain": "workspace:*",
+    "@kontave/delegated-access-domain": "workspace:*",
     "@kontave/organizations-domain": "workspace:*",
     "@kontave/ui-native": "workspace:*",
     "@kontave/workspace-context-application": "workspace:*",

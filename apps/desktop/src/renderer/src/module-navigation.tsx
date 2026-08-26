@@ -152,7 +152,7 @@ const DESKTOP_DESTINATIONS: Readonly<
       icon: <CalendarDays />,
       group: "Calendarios",
     },
-    { id: "tools.platform-status", icon: <Activity />, group: "Monitoreo" },
+    { id: "tools.portal-monitoring", icon: <Activity />, group: "Monitoreo" },
   ],
   companies: [{ id: "companies", icon: <Building2 /> }],
   documents: [

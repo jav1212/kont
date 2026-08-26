@@ -7,7 +7,7 @@ La aplicación Web de producción no depende de Desktop y no debe modificarse co
 El proceso principal crea una única composición mediante
 `createRemoteKontavePorts` y `createKontaveApplicationClient`. Todas las
 operaciones funcionales de Products, Inventory, Purchasing, Sales, Profile,
-Billing, Organizations, Platform Status y seguridad atraviesan las features de
+Billing, Organizations, Portal Monitoring y seguridad atraviesan las features de
 ese runtime. Los controladores Desktop solo validan IPC o coordinan snapshots de
 presentación; no construyen transportes ni adaptadores remotos propios.
 
@@ -64,7 +64,7 @@ Proveen autenticación, almacenamiento seguro, renovación centralizada, reinten
 
 - `@kontave/workspace-context-application`
 - `@kontave/organizations-domain`
-- `@kontave/organization-delegations-domain`
+- `@kontave/delegated-access-domain`
 - `@kontave/modules-domain`
 - `@kontave/modules-application`
 
@@ -121,7 +121,7 @@ Las cargas exclusivas de Configuración se presentan mediante `GlobalInteraction
 - `@kontave/client-contracts`
 - `@kontave/client-remote`
 
-Desktop consume contratos tipados y un cliente HTTP común para perfil, preferencias, seguridad, organización, miembros, roles, facturación, documentos y estado de plataforma. El cliente se ejecuta en el proceso principal sobre el coordinador único de renovación de sesión.
+Desktop consume contratos tipados y un cliente HTTP común para perfil, preferencias, seguridad, organización, miembros, roles, facturación, documentos y monitoreo de portales. El cliente se ejecuta en el proceso principal sobre el coordinador único de renovación de sesión.
 
 ### Dispositivos
 
@@ -211,7 +211,7 @@ src/
 Reglas de dependencia:
 
 - `renderer` no accede directamente a Node, Electron, Supabase ni secretos.
-- `packages/client` posee los contratos y la orquestación funcional del cliente.
+- `packages/kernel` posee los contratos y la orquestación funcional portable; las capacidades de experiencia y plataforma mantienen fronteras independientes.
 - `renderer-bridge` no crea un segundo cliente: adapta contratos de
   `@kontave/client-contracts` y define únicamente proyecciones necesarias para
   cruzar IPC de forma serializable.

@@ -12,7 +12,7 @@ export const desktopPresentationRegistry =
     inventory: { status: "ready" },
     operationContext: { status: "ready" },
     organizations: { status: "ready" },
-    platformStatus: { status: "ready" },
+    portalMonitoring: { status: "ready" },
     products: { status: "ready" },
     profile: { status: "ready" },
     purchasing: { status: "ready" },

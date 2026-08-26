@@ -1,5 +1,5 @@
 import type { BrowserWindow } from "electron";
-import { OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
 import type { ModuleCode } from "@kontave/modules-domain";
 import { companyId, organizationId } from "@kontave/organizations-domain";
 import {

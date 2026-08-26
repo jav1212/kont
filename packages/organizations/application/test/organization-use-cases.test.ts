@@ -4,7 +4,7 @@ import {
   companyId,
   MembershipStatus,
   OrganizationRole,
-  OrganizationRelationship,
+  DirectOrganizationRelationship,
   OrganizationStatus,
   organizationId,
   userId,
@@ -23,7 +23,7 @@ import {
 const ownerId = userId("user-1");
 const ownOrganizationId = organizationId("org-1");
 const access: OrganizationAccess = {
-  relationship: OrganizationRelationship.Personal,
+  relationship: DirectOrganizationRelationship.Personal,
   organization: { id: ownOrganizationId, name: "Kontave", slug: "kontave", status: OrganizationStatus.Active, logoUrl: null, version: 1 },
   membership: { organizationId: ownOrganizationId, userId: ownerId, role: OrganizationRole.Owner, status: MembershipStatus.Active, permissions: ["*"] },
 };

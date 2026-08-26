@@ -6,7 +6,7 @@ import {
   DESKTOP_IPC,
   type DesktopBillingPlanState,
   type DesktopCurrentUserState,
-  type DesktopPlatformStatusState,
+  type DesktopPortalMonitoringState,
   type DesktopWorkspaceState,
   type KontaveRendererBridge,
 } from "../renderer-bridge";
@@ -115,15 +115,15 @@ const bridge: KontaveRendererBridge = {
       return () => ipcRenderer.off(DESKTOP_IPC.billingPlanChanged, handler);
     },
   },
-  platformStatus: {
-    getCurrent: () => ipcRenderer.invoke(DESKTOP_IPC.getPlatformStatus),
+  portalMonitoring: {
+    getCurrent: () => ipcRenderer.invoke(DESKTOP_IPC.getPortalMonitoring),
     subscribe(listener) {
       const handler = (
         _event: Electron.IpcRendererEvent,
-        payload: DesktopPlatformStatusState,
+        payload: DesktopPortalMonitoringState,
       ) => listener(payload);
-      ipcRenderer.on(DESKTOP_IPC.platformStatusChanged, handler);
-      return () => ipcRenderer.off(DESKTOP_IPC.platformStatusChanged, handler);
+      ipcRenderer.on(DESKTOP_IPC.portalMonitoringChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.portalMonitoringChanged, handler);
     },
   },
   navigation: {

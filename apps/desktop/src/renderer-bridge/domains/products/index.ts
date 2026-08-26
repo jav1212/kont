@@ -2,7 +2,7 @@ import type { ClientResultPort, ProductsPort } from "@kontave/client-contracts";
 
 export type {
   ProductCategoryOverviewQuery as DesktopProductCategoryOverviewQuery,
-  ProductInsightsQuery as DesktopProductInsightsQuery,
+  ProductUnitEconomicsQuery as DesktopProductUnitEconomicsQuery,
   ProductListQuery as DesktopProductListQuery,
   ProductMovementQuery as DesktopProductMovementQuery,
 } from "@kontave/client-contracts";

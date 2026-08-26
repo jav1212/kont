@@ -14,9 +14,9 @@ import {
   userId,
 } from "@kontave/organizations-domain";
 import {
-  OrganizationAccessFailure,
+  DelegatedAccessFailure,
   OrganizationAccessPathKind,
-} from "@kontave/organization-delegations-domain";
+} from "@kontave/delegated-access-domain";
 import { SalesDashboardFailure } from "@kontave/sales-application";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
@@ -115,7 +115,7 @@ export async function executeSalesDashboardRequest(
       );
     if (
       cause instanceof AuthorizationDenied ||
-      cause instanceof OrganizationAccessFailure
+      cause instanceof DelegatedAccessFailure
     )
       return apiError(
         "SALES_DASHBOARD_ACCESS_DENIED",

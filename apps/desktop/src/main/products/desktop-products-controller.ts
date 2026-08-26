@@ -22,7 +22,7 @@ import type {
 } from "@kontave/client-contracts";
 import type {
   DesktopProductCategoryOverviewQuery,
-  DesktopProductInsightsQuery,
+  DesktopProductUnitEconomicsQuery,
   DesktopProductListQuery,
   DesktopProductMovementQuery,
   DesktopProductsResult,
@@ -193,7 +193,7 @@ export class DesktopProductsController {
     organizationId: unknown,
     companyId: unknown,
     productId: unknown,
-    query: DesktopProductInsightsQuery,
+    query: DesktopProductUnitEconomicsQuery,
   ): Promise<DesktopProductsResult<ProductUnitEconomicsDto>> {
     return this.read(() =>
       this.products.unitEconomics(

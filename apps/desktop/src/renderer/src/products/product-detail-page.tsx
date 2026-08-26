@@ -56,7 +56,7 @@ export function ProductDetailPage({
   const [categories, setCategories] = useState<readonly ProductCategoryDto[]>(
     [],
   );
-  const [insights, setInsights] = useState<ProductUnitEconomicsDto>();
+  const [unitEconomics, setUnitEconomics] = useState<ProductUnitEconomicsDto>();
   const [presentation, setPresentation] =
     useState<DesktopInventoryDashboardSnapshot>();
   const [displayCurrency, setDisplayCurrency] = useState("VES");
@@ -87,7 +87,7 @@ export function ProductDetailPage({
       else failure(detail.error);
       if (categoryList.ok) setCategories(categoryList.value);
       else failure(categoryList.error);
-      if (economics.ok) setInsights(economics.value);
+      if (economics.ok) setUnitEconomics(economics.value);
       else failure(economics.error);
     });
     return () => {
@@ -279,8 +279,8 @@ export function ProductDetailPage({
         />
       ) : null}
       <div id="product-history">
-        <Insights
-          value={insights}
+        <UnitEconomics
+          value={unitEconomics}
           granularity={granularity}
           onGranularity={setGranularity}
           presentation={presentation}
@@ -571,7 +571,7 @@ function TaxForm({
     </Card>
   );
 }
-function Insights({
+function UnitEconomics({
   displayCurrency,
   granularity,
   onCurrency,

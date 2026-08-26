@@ -2,7 +2,7 @@ import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import { ModuleCode, type ModuleId } from "@kontave/modules-domain";
 import type { AccessibleOrganizationDto } from "@kontave/client-contracts";
 import { RemoteOrganizationsPort } from "@kontave/client-remote";
-import { DelegatedScope, OrganizationAccessPathKind, organizationDelegationId } from "@kontave/organization-delegations-domain";
+import { DelegatedAccessScope, OrganizationAccessPathKind, delegatedAccessGrantId } from "@kontave/delegated-access-domain";
 import { companyId, organizationId, userId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource, WorkspaceModuleSource, WorkspacePortfolioEntry, WorkspacePortfolioSource } from "@kontave/workspace-context-application";
 import type { PersistedWorkspaceContext, WorkspaceContextStore } from "@kontave/workspace-context-application/coordinator";
@@ -73,15 +73,15 @@ function emptyContext(): PersistedWorkspaceContext { return { organizationId: nu
 function mapWorkspace(dto: AccessibleOrganizationDto): WorkspacePortfolioEntry {
   return { organizationId: organizationId(dto.organizationId), name: dto.name, avatarUrl: dto.avatarUrl, relationship: dto.relationship, accessPath: {
     kind: readAccessPathKind(dto.accessPath.kind), actorUserId: userId(dto.accessPath.actorUserId), actingOrganizationId: organizationId(dto.accessPath.actingOrganizationId), targetOrganizationId: organizationId(dto.accessPath.targetOrganizationId),
-    delegationId: dto.accessPath.delegationId ? organizationDelegationId(dto.accessPath.delegationId) : null, scopes: dto.accessPath.scopes.map(readScope),
+    delegationId: dto.accessPath.delegationId ? delegatedAccessGrantId(dto.accessPath.delegationId) : null, scopes: dto.accessPath.scopes.map(readScope),
   } };
 }
 function readAccessPathKind(value: string): OrganizationAccessPathKind {
   if (value === OrganizationAccessPathKind.DirectMembership || value === OrganizationAccessPathKind.DelegatedOrganization) return value;
   throw new Error("Ruta de acceso organizacional inválida.");
 }
-function readScope(value: string): DelegatedScope {
-  const scope = Object.values(DelegatedScope).find((candidate) => candidate === value);
+function readScope(value: string): DelegatedAccessScope {
+  const scope = Object.values(DelegatedAccessScope).find((candidate) => candidate === value);
   if (!scope) throw new Error("Alcance delegado inválido.");
   return scope;
 }

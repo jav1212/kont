@@ -50,8 +50,8 @@ import { DesktopCurrentUserSource } from "./profile/desktop-current-user-source"
 import { DesktopExternalNavigation } from "./navigation/desktop-external-navigation";
 import { DesktopBillingPlanController } from "./billing/desktop-billing-plan-controller";
 import { DesktopBillingPlanSource } from "./billing/desktop-billing-plan-source";
-import { DesktopPlatformStatusController } from "./platform-status/desktop-platform-status-controller";
-import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source";
+import { DesktopPortalMonitoringController } from "./portal-monitoring/desktop-portal-monitoring-controller";
+import { DesktopPortalMonitoringSource } from "./portal-monitoring/desktop-portal-monitoring-source";
 import { DesktopSettingsController } from "./settings/desktop-settings-controller";
 import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller";
 import { DesktopSalesDashboardController } from "./sales/desktop-sales-dashboard-controller";
@@ -66,7 +66,7 @@ let workspace: DesktopWorkspaceController | undefined;
 let currentUser: DesktopCurrentUserController | undefined;
 let externalNavigation: DesktopExternalNavigation | undefined;
 let billingPlan: DesktopBillingPlanController | undefined;
-let platformStatus: DesktopPlatformStatusController | undefined;
+let portalMonitoring: DesktopPortalMonitoringController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let settings: DesktopSettingsController | undefined;
 let inventoryDashboard: DesktopInventoryDashboardController | undefined;
@@ -216,7 +216,7 @@ function registerIpc(): void {
     if (auth?.getState().status !== "authenticated") return result;
     await refreshBillingPlan(result.value.activeWorkspaceId);
     if (auth?.getState().status !== "authenticated") return result;
-    await refreshPlatformStatus();
+    await refreshPortalMonitoring();
     return result;
   });
   ipcMain.handle(
@@ -245,9 +245,9 @@ function registerIpc(): void {
     await initialization;
     return billingPlanController().getState();
   });
-  ipcMain.handle(DESKTOP_IPC.getPlatformStatus, async () => {
+  ipcMain.handle(DESKTOP_IPC.getPortalMonitoring, async () => {
     await initialization;
-    return platformStatusController().getState();
+    return portalMonitoringController().getState();
   });
   ipcMain.handle(
     DESKTOP_IPC.openExternalDestination,
@@ -570,10 +570,10 @@ function billingPlanController(): DesktopBillingPlanController {
   return billingPlan;
 }
 
-function platformStatusController(): DesktopPlatformStatusController {
-  if (!platformStatus)
-    throw new Error("Desktop platform status is not initialized.");
-  return platformStatus;
+function portalMonitoringController(): DesktopPortalMonitoringController {
+  if (!portalMonitoring)
+    throw new Error("Desktop portal monitoring is not initialized.");
+  return portalMonitoring;
 }
 
 function connectivityMonitor(): ConnectivityMonitor {
@@ -626,14 +626,14 @@ async function synchronizeWorkspace(
     await workspaceController().clear();
     currentUserController().clear();
     billingPlanController().clear();
-    platformStatusController().clear();
+    portalMonitoringController().clear();
     return state;
   }
   if (blocksRemoteOperations(connectivityMonitor().getSnapshot())) {
     workspaceController().markUnavailable();
     currentUserController().clear();
     billingPlanController().clear();
-    platformStatusController().clear();
+    portalMonitoringController().clear();
   } else {
     await initializeWorkspace();
     if (auth?.getState().status !== "authenticated")
@@ -649,7 +649,7 @@ async function synchronizeWorkspace(
     );
     if (auth?.getState().status !== "authenticated")
       return auth?.getState() ?? state;
-    await refreshPlatformStatus();
+    await refreshPortalMonitoring();
   }
   return state;
 }
@@ -659,7 +659,7 @@ async function handleSessionExpired(): Promise<void> {
   await workspaceController().clear();
   currentUserController().clear();
   billingPlanController().clear();
-  platformStatusController().clear();
+  portalMonitoringController().clear();
 }
 
 async function initializeWorkspace(): Promise<void> {
@@ -737,19 +737,19 @@ async function refreshBillingPlan(
   }
 }
 
-async function refreshPlatformStatus(): Promise<void> {
+async function refreshPortalMonitoring(): Promise<void> {
   try {
-    await platformStatusController().initialize();
+    await portalMonitoringController().initialize();
   } catch (cause: unknown) {
     if (isSessionExpired(cause)) return;
     console.error(
       JSON.stringify({
         level: "error",
-        code: "DESKTOP_PLATFORM_STATUS_REFRESH_FAILED",
+        code: "DESKTOP_PORTAL_MONITORING_REFRESH_FAILED",
         message:
           cause instanceof Error
             ? cause.message
-            : "Unknown platform status refresh failure",
+            : "Unknown portal monitoring refresh failure",
       }),
     );
   }
@@ -799,7 +799,7 @@ function publishConnectivity(): void {
           ? workspaceState.activeWorkspaceId
           : null,
       );
-      await refreshPlatformStatus();
+      await refreshPortalMonitoring();
     });
   }
 }
@@ -1045,9 +1045,9 @@ app.whenReady().then(() => {
     new DesktopBillingPlanSource(applicationClient().features.billing),
     () => mainWindow,
   );
-  platformStatus = new DesktopPlatformStatusController(
-    new DesktopPlatformStatusSource(
-      applicationClient().features.platformStatus,
+  portalMonitoring = new DesktopPortalMonitoringController(
+    new DesktopPortalMonitoringSource(
+      applicationClient().features.portalMonitoring,
     ),
     () => mainWindow,
   );

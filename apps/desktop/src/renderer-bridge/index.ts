@@ -7,7 +7,7 @@ export type * from "./domains/connectivity";
 export type * from "./domains/devices";
 export type * from "./domains/inventory";
 export type * from "./domains/navigation";
-export type * from "./domains/platform-status";
+export type * from "./domains/portal-monitoring";
 export type * from "./domains/products";
 export type * from "./domains/profile";
 export type * from "./domains/purchasing";

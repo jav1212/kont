@@ -1,5 +1,9 @@
 # ADR 0033: Orquestación portable de clientes
 
+> Nota posterior: ADR 0034 conserva esta decisión funcional y renombra su
+> ubicación física de `packages/client/*` a `packages/kernel/*` para distinguir
+> el composition root de las capacidades de experiencia y plataforma.
+
 - Estado: aceptado
 - Fecha: 2026-08-17
 

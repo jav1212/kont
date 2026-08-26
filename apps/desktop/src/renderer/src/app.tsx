@@ -57,7 +57,7 @@ import type {
   DesktopCurrentUserState,
   DesktopDeviceStatus,
   DesktopExternalDestination,
-  DesktopPlatformStatusState,
+  DesktopPortalMonitoringState,
   DesktopWorkspaceState,
   DesktopWorkspaceEntry,
 } from "../../renderer-bridge";
@@ -130,8 +130,8 @@ export function App() {
   const [billingPlan, setBillingPlan] = useState<DesktopBillingPlanState>({
     status: "loading",
   });
-  const [platformStatus, setPlatformStatus] =
-    useState<DesktopPlatformStatusState>({ status: "loading" });
+  const [portalMonitoring, setPortalMonitoring] =
+    useState<DesktopPortalMonitoringState>({ status: "loading" });
   const [theme, setTheme] = useState<KontaveTheme>(() =>
     localStorage.getItem("kontave.desktop.theme") === "dark" ? "dark" : "light",
   );
@@ -156,11 +156,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void window.kontave.platformStatus
+    void window.kontave.portalMonitoring
       .getCurrent()
-      .then(setPlatformStatus)
+      .then(setPortalMonitoring)
       .catch(() => undefined);
-    return window.kontave.platformStatus.subscribe(setPlatformStatus);
+    return window.kontave.portalMonitoring.subscribe(setPortalMonitoring);
   }, []);
 
   useEffect(() => {
@@ -200,7 +200,7 @@ export function App() {
         auth={auth}
         billingPlan={billingPlan}
         currentUser={currentUser}
-        platformStatus={platformStatus}
+        portalMonitoring={portalMonitoring}
         workspace={workspace}
         theme={theme}
         onThemeChange={setTheme}
@@ -221,7 +221,7 @@ function DesktopAppShell({
   currentUser,
   onSignedOut,
   onThemeChange,
-  platformStatus,
+  portalMonitoring,
   theme,
   workspace,
 }: {
@@ -231,7 +231,7 @@ function DesktopAppShell({
   readonly currentUser: DesktopCurrentUserState;
   readonly onSignedOut: (state: DesktopAuthState) => void;
   readonly onThemeChange: (theme: KontaveTheme) => void;
-  readonly platformStatus: DesktopPlatformStatusState;
+  readonly portalMonitoring: DesktopPortalMonitoringState;
   readonly theme: KontaveTheme;
   readonly workspace: DesktopWorkspaceState;
 }) {
@@ -298,7 +298,7 @@ function DesktopAppShell({
   const personalIdentity =
     currentUser.status === "ready" ? currentUser.user : null;
   const portalAvailability =
-    platformStatus.status === "ready" ? platformStatus.availability : "unknown";
+    portalMonitoring.status === "ready" ? portalMonitoring.availability : "unknown";
   const availableModules: readonly WorkspaceSidebarModule[] =
     workspace.status === "ready"
       ? workspace.modules.map((module) => ({
