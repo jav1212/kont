@@ -1,11 +1,11 @@
 import {
   AccessTokenRejectedFailure,
-  NativeSessionRefreshCoordinator,
-} from "@kontave/auth-application";
+  SessionRefreshCoordinator,
+} from "@kontave/auth/application";
 
 /** Adds native-client credentials and delegates 401 recovery to the shared coordinator. */
 export class MobileAuthenticatedRequest {
-  constructor(private readonly sessions: NativeSessionRefreshCoordinator) {}
+  constructor(private readonly sessions: SessionRefreshCoordinator) {}
 
   fetch(input: URL | string, init?: RequestInit): Promise<Response> {
     return this.sessions.execute(async (accessToken) => {

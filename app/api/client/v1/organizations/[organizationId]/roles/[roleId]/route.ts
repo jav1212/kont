@@ -1,4 +1,4 @@
-import { permissionCode, roleId } from "@kontave/access-control-domain";
+import { permissionCode, roleId } from "@kontave/access-control/domain";
 import type { UpdateRoleDto } from "@kontave/client-contracts";
 import {
   executeRoleRequest,

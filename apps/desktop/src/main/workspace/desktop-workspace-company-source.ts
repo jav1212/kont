@@ -8,7 +8,7 @@ import {
   organizationId,
   type OrganizationCompany,
   type OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type { WorkspaceCompanySource } from "@kontave/workspace-context-application";
 import { requireClientValue } from "../client/client-operation";
 

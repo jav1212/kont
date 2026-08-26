@@ -1,7 +1,7 @@
 import {
   AuthenticationFailure,
   authenticatedSessionId,
-} from "@kontave/auth-domain";
+} from "@kontave/auth/domain";
 import { authenticateClientRequest, readBearerToken } from "./auth-context";
 import { apiError, apiSuccess } from "../http/response";
 import { createSecurityActions } from "./security-actions";

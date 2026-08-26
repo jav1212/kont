@@ -5,7 +5,7 @@ import {
   permissionCode,
   type PermissionCode,
   type Role,
-} from "@kontave/access-control-domain";
+} from "@kontave/access-control/domain";
 import type { RoleDto } from "@kontave/client-contracts";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { clientSource } from "../http/client-source";

@@ -1,5 +1,5 @@
 import { Platform } from "@kontave/modules-domain";
-import { userId } from "@kontave/organizations-domain";
+import { userId } from "@kontave/organizations/domain";
 import { StaticSettingsCatalog, type SettingsResolutionContext } from "@kontave/settings-application";
 import { SETTINGS_ENTRIES, SETTINGS_SECTIONS, type SettingsEntryDefinition } from "@kontave/settings-contracts";
 

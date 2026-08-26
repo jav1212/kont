@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access/domain";
 import { ModuleCode, moduleId } from "@kontave/modules-domain";
 import {
   companyId,
@@ -8,7 +8,7 @@ import {
   userId,
   type OrganizationCompany,
   type OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import {
   WorkspaceContextCoordinator,
   WorkspaceContextFailure,

@@ -6,11 +6,11 @@ import {
   ListOrganizations,
   UpdateOrganization,
   UploadOrganizationLogo,
-} from "@kontave/organizations-application";
+} from "@kontave/organizations/application";
 import {
   SupabaseOrganizationLogoStorage,
   createOrganizationsDirectory,
-} from "@kontave/organizations-supabase";
+} from "@kontave/organizations/supabase";
 
 export function createOrganizationActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

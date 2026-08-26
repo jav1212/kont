@@ -2,13 +2,13 @@ import {
   PERMISSIONS,
   permissionCode,
   type PermissionCode,
-} from "@kontave/access-control-domain";
+} from "@kontave/access-control/domain";
 import { ModuleCode, Platform } from "@kontave/modules-domain";
 import {
   companyId,
   organizationId,
   userId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import {
   ResolveAvailableSettings,
   StaticSettingsCatalog,

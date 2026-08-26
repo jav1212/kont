@@ -1,5 +1,5 @@
 import type { CurrentUserDto } from "@kontave/client-contracts";
-import type { CurrentProfile } from "@kontave/profile-application";
+import type { CurrentProfile } from "@kontave/profile/application";
 
 export function toCurrentUserDto(profile: CurrentProfile): CurrentUserDto {
   return {

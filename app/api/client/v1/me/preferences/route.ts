@@ -1,6 +1,6 @@
 import { PreferencesFailure } from "@kontave/preferences-domain";
 import type { UpdateUserPreferencesDto } from "@kontave/client-contracts";
-import { userId } from "@kontave/organizations-domain";
+import { userId } from "@kontave/organizations/domain";
 import {
   authenticateClientRequest,
   readBearerToken,

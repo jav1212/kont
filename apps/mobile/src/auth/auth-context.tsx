@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AuthenticationService, NativeSessionRefreshCoordinator, PasswordRecoveryService, RegistrationService, type AuthenticationProvider } from "@kontave/auth-application";
-import { AuthenticationFailure, type AuthenticatedSession } from "@kontave/auth-domain";
-import { createSupabaseAuthenticationGateway } from "@kontave/auth-supabase";
+import { AuthenticationService, SessionRefreshCoordinator, PasswordRecoveryService, RegistrationService, type AuthenticationProvider } from "@kontave/auth/application";
+import { AuthenticationFailure, type AuthenticatedSession } from "@kontave/auth/domain";
+import { createSupabaseAuthenticationGateway } from "@kontave/auth/supabase";
 import Constants from "expo-constants";
 import { MobileSecureStorage } from "./mobile-secure-storage";
 import { MobileAuthenticatedRequest } from "./mobile-authenticated-request";
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }): Re
   const authentication = useMemo(() => new AuthenticationService(provider), [provider]);
   const registration = useMemo(() => new RegistrationService(provider), [provider]);
   const recovery = useMemo(() => new PasswordRecoveryService(provider), [provider]);
-  const sessions = useMemo(() => new NativeSessionRefreshCoordinator(provider), [provider]);
+  const sessions = useMemo(() => new SessionRefreshCoordinator(provider), [provider]);
   const authenticatedRequest = useMemo(() => new MobileAuthenticatedRequest(sessions), [sessions]);
   const [state, setState] = useState<MobileAuthState>({ status: "loading" });
 

@@ -18,8 +18,8 @@ import {
   DatalogicQw2100Adapter,
   NodeSerialPortProvider,
 } from "@kontave/devices-node";
-import { createSupabaseAuthenticationGateway } from "@kontave/auth-supabase";
-import { AuthenticationFailure } from "@kontave/auth-domain";
+import { createSupabaseAuthenticationGateway } from "@kontave/auth/supabase";
+import { AuthenticationFailure } from "@kontave/auth/domain";
 import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates-application";

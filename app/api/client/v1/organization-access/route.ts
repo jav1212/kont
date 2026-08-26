@@ -1,4 +1,4 @@
-import { userId } from "@kontave/organizations-domain";
+import { userId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "@/src/client-api/v1/auth/auth-context";
 import { apiError, apiSuccess } from "@/src/client-api/v1/http/response";
 import { createOrganizationAccessActions } from "@/src/client-api/v1/organization-access/organization-access-actions";

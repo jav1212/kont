@@ -1,11 +1,11 @@
-import { createSupabaseAccessTokenVerifier } from "@kontave/auth-supabase";
+import { createSupabaseAccessTokenVerifier } from "@kontave/auth/supabase";
 import {
   AuthenticationFailure,
   authenticatedSessionId,
   type AuthenticatedIdentity,
-} from "@kontave/auth-domain";
-import { ObserveNativeSession } from "@kontave/auth-application";
-import { createSupabaseNativeSessionRegistry } from "@kontave/auth-supabase";
+} from "@kontave/auth/domain";
+import { ObserveAuthenticatedSession } from "@kontave/auth/application";
+import { createSupabaseAuthenticatedSessionRegistry } from "@kontave/auth/supabase";
 
 export async function authenticateClientRequest(
   request: Request,
@@ -30,8 +30,8 @@ export async function authenticateClientRequest(
       ? clientHeader
       : "desktop";
   try {
-    await new ObserveNativeSession(
-      createSupabaseNativeSessionRegistry({ url, serviceRoleKey }),
+    await new ObserveAuthenticatedSession(
+      createSupabaseAuthenticatedSessionRegistry({ url, serviceRoleKey }),
     ).execute({
       id: authenticatedSessionId(identity.sessionId),
       userId: identity.userId,

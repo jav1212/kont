@@ -1,8 +1,8 @@
 import {
   GetOperationalCompany,
   ListOrganizationCompanies,
-} from "@kontave/companies-application";
-import { createCompanyRepository } from "@kontave/companies-supabase";
+} from "@kontave/companies/application";
+import { createCompanyRepository } from "@kontave/companies/supabase";
 
 export function createCompanyActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

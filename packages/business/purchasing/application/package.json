@@ -1,0 +1,27 @@
+{
+  "name": "@kontave/purchasing-application",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./dashboard": "./src/purchasing-dashboard.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@kontave/companies": "workspace:*",
+    "@kontave/fiscal-domain": "workspace:*",
+    "@kontave/monetary-domain": "workspace:*",
+    "@kontave/organizations": "workspace:*",
+    "@kontave/purchasing-domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@kontave/products-domain": "workspace:*",
+    "@kontave/purchasing-testing": "workspace:*",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}

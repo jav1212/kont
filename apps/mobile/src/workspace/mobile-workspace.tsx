@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { ModuleCode } from "@kontave/modules-domain";
 import type { CurrentUserDto } from "@kontave/client-contracts";
 import { RemoteProfilePort } from "@kontave/client-remote";
-import { companyId, organizationId } from "@kontave/organizations-domain";
+import { companyId, organizationId } from "@kontave/organizations/domain";
 import { WorkspaceContextCoordinator, type WorkspaceContextStatus } from "@kontave/workspace-context-application/coordinator";
 import { createMobileApi } from "../api/mobile-api";
 import { useAuth } from "../auth/auth-context";

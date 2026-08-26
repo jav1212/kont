@@ -1,6 +1,6 @@
 import type { PreferencesClock, UserPreferencesRepository } from "@kontave/preferences-application";
 import { PreferencesFailure, defaultUserPreferences, type UserPreferences } from "@kontave/preferences-domain";
-import { userId, type UserId } from "@kontave/organizations-domain";
+import { userId, type UserId } from "@kontave/organizations/domain";
 
 export class InMemoryUserPreferencesRepository implements UserPreferencesRepository {
   private readonly values = new Map<UserId, UserPreferences>();

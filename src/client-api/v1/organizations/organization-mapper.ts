@@ -5,7 +5,7 @@ import type {
 import type {
   OrganizationAccess,
   OrganizationCompany,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 
 export function toOrganizationDto(access: OrganizationAccess): OrganizationDto {
   return {

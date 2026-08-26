@@ -1,4 +1,4 @@
-import { authenticatedSessionId } from "@kontave/auth-domain";
+import { authenticatedSessionId } from "@kontave/auth/domain";
 import { executeSecurityRequest } from "@/src/client-api/v1/auth/security-http";
 
 interface RouteContext {

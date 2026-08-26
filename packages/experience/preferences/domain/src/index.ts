@@ -1,4 +1,4 @@
-import type { UserId } from "@kontave/organizations-domain";
+import type { UserId } from "@kontave/organizations/domain";
 
 export const ColorScheme = { Light: "light", Dark: "dark", System: "system" } as const;
 export type ColorScheme = typeof ColorScheme[keyof typeof ColorScheme];

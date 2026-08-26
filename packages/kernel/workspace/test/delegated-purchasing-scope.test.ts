@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PERMISSIONS, permissionCode } from "@kontave/access-control-domain";
-import { DelegatedAccessScope, OrganizationAccessPathKind, delegatedAccessGrantId } from "@kontave/delegated-access-domain";
-import { organizationId, userId } from "@kontave/organizations-domain";
+import { PERMISSIONS, permissionCode } from "@kontave/access-control/domain";
+import { DelegatedAccessScope, OrganizationAccessPathKind, delegatedAccessGrantId } from "@kontave/delegated-access/domain";
+import { organizationId, userId } from "@kontave/organizations/domain";
 import { DelegatedPermissionScopePolicy } from "../src/index";
 
 test("purchasing permissions require the explicit purchases grant scope", () => {

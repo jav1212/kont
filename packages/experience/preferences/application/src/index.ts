@@ -1,5 +1,5 @@
 import { PreferencesFailure, createUserPreferences, defaultUserPreferences, type AppearancePreferences, type RegionalPreferences, type UserPreferences } from "@kontave/preferences-domain";
-import type { UserId } from "@kontave/organizations-domain";
+import type { UserId } from "@kontave/organizations/domain";
 
 export interface UserPreferencesRepository {
   findByUser(userId: UserId): Promise<UserPreferences | null>;

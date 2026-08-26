@@ -1,5 +1,5 @@
 import type { CreateDocumentFolderDto } from "@kontave/client-contracts";
-import { companyId } from "@kontave/companies-domain";
+import { companyId } from "@kontave/companies/domain";
 import { documentFolderId } from "@kontave/documents-domain";
 import {
   executeDocumentRequest,

@@ -1,0 +1,1 @@
+{"extends":"../../../tooling/typescript/base.json","compilerOptions":{"module":"ESNext","moduleResolution":"Bundler","rootDir":".","noEmit":true},"include":["src/**/*.ts","test/**/*.ts"]}

@@ -1,4 +1,4 @@
-import type { AuthenticationFailureCode } from "@kontave/auth-domain";
+import type { AuthenticationFailureCode } from "@kontave/auth/domain";
 
 /** Minimal authenticated identity exposed to the renderer. */
 export interface DesktopAuthUser {
@@ -6,7 +6,7 @@ export interface DesktopAuthUser {
   readonly email: string | null;
 }
 
-/** Renderer-safe native session state. */
+/** Renderer-safe authenticated session state. */
 export type DesktopAuthState =
   | { readonly status: "loading" }
   | { readonly status: "anonymous" }

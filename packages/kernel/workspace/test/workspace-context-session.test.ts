@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
-import { companyId, organizationId, userId, type CompanyId, type OrganizationId } from "@kontave/organizations-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access/domain";
+import { companyId, organizationId, userId, type CompanyId, type OrganizationId } from "@kontave/organizations/domain";
 import { ModuleCode, moduleId, type ModuleCode as ModuleCodeValue } from "@kontave/modules-domain";
 import {
   WorkspaceRelationship,

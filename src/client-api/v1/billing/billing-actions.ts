@@ -11,7 +11,7 @@ import {
   SubmitManualPaymentRequest,
   type OrganizationBillingAuthorization,
 } from "@kontave/billing-application";
-import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import {
   createOrganizationBillingRepository,
   createPaymentReceiptStorage,

@@ -1,11 +1,11 @@
 import {
   AccessTokenRejectedFailure,
-  NativeSessionRefreshCoordinator,
-} from "@kontave/auth-application";
+  SessionRefreshCoordinator,
+} from "@kontave/auth/application";
 
-/** HTTP adapter for the protocol-neutral native session coordinator. */
+/** HTTP adapter for the protocol-neutral session coordinator. */
 export class DesktopAuthenticatedRequest {
-  constructor(private readonly sessions: NativeSessionRefreshCoordinator) {}
+  constructor(private readonly sessions: SessionRefreshCoordinator) {}
 
   fetch(input: URL | string, init?: RequestInit): Promise<Response> {
     return this.sessions.execute(async (accessToken) => {

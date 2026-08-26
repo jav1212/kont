@@ -3,18 +3,18 @@ import {
   PERMISSIONS,
   permissionCode,
   type PermissionCode,
-} from "@kontave/access-control-domain";
-import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
-import { companyId } from "@kontave/companies-domain";
+} from "@kontave/access-control/domain";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
+import { companyId } from "@kontave/companies/domain";
 import { InventoryFailure } from "@kontave/inventory-domain";
 import { RequireModuleCapability } from "@kontave/modules-application";
 import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
-import { organizationId, userId } from "@kontave/organizations-domain";
+import { organizationId, userId } from "@kontave/organizations/domain";
 import {
   DelegatedAccessFailure,
   OrganizationAccessPathKind,
-} from "@kontave/delegated-access-domain";
+} from "@kontave/delegated-access/domain";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import type { ApiErrorCode } from "@kontave/client-contracts";
 import { authenticateClientRequest } from "../auth/auth-context";

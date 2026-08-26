@@ -5,7 +5,7 @@ import {
   companyId,
   type CompanyId,
   type OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type { ActiveWorkspaceCompanyStore } from "@kontave/workspace-context-application";
 
 export class DesktopWorkspaceCompanyStore

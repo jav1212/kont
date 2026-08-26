@@ -1,4 +1,4 @@
-import { ProfileFailure } from "@kontave/profile-application";
+import { ProfileFailure } from "@kontave/profile/application";
 import type { CurrentUserDto } from "@kontave/client-contracts";
 import type { UpdateCurrentUserDto } from "@kontave/client-contracts";
 import {

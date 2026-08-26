@@ -4,7 +4,7 @@ import type {
   CompanyId,
   OrganizationCompany,
   OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type {
   WorkspaceCompanySource,
   WorkspaceModuleSource,

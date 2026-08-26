@@ -16,7 +16,7 @@ Every query for company-owned data must scope composite shared identifiers by or
 
 ## Consequences
 
-- `@kontave/companies-supabase` reads and writes `shared_companies`.
+- `@kontave/companies/supabase` reads and writes `shared_companies`.
 - `@kontave/employees-supabase` reads and writes `shared_employees` and `shared_employee_salary_history`.
 - Company module activation is stored in `shared_company_module_activations`.
 - Native routes may keep compatibility aliases, but aliases resolve the same shared records.

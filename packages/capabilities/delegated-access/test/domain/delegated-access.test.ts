@@ -1,0 +1,4 @@
+import assert from "node:assert/strict";import test from "node:test";import{organizationId}from"@kontave/organizations/domain";import{DelegatedAccessScope,DelegatedAccessStatus,assertValidDelegatedAccess,canAcceptDelegatedAccess}from"../../src/domain";
+test("self grant is rejected",()=>assert.throws(()=>assertValidDelegatedAccess(organizationId("a"),organizationId("a"),[DelegatedAccessScope.Accounting]),{code:"DELEGATED_ACCESS_SELF_REFERENCE"}));
+test("delegated access grants require explicit scopes",()=>assert.throws(()=>assertValidDelegatedAccess(organizationId("a"),organizationId("b"),[]),{code:"DELEGATED_ACCESS_SCOPES_EMPTY"}));
+test("only pending delegated access grants can be accepted",()=>{assert.equal(canAcceptDelegatedAccess(DelegatedAccessStatus.Pending),true);assert.equal(canAcceptDelegatedAccess(DelegatedAccessStatus.Active),false)});

@@ -1,4 +1,4 @@
-import { organizationId, userId } from "@kontave/organizations-domain";
+import { organizationId, userId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { apiError, apiSuccess } from "../http/response";
 import { billingErrorResponse } from "./billing-http";

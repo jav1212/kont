@@ -1,14 +1,14 @@
 import {
   AuthenticationService,
-  NativeSessionRefreshCoordinator,
+  SessionRefreshCoordinator,
   PasswordRecoveryService,
   RegistrationService,
   type AuthenticationProvider,
-} from "@kontave/auth-application";
+} from "@kontave/auth/application";
 import {
   AuthenticationFailure,
   type AuthenticatedSession,
-} from "@kontave/auth-domain";
+} from "@kontave/auth/domain";
 import type { BrowserWindow } from "electron";
 import {
   DESKTOP_IPC,
@@ -33,10 +33,10 @@ export class DesktopAuthController {
     this.authentication = new AuthenticationService(provider);
     this.registration = new RegistrationService(provider);
     this.recovery = new PasswordRecoveryService(provider);
-    this.sessions = new NativeSessionRefreshCoordinator(provider);
+    this.sessions = new SessionRefreshCoordinator(provider);
   }
 
-  readonly sessions: NativeSessionRefreshCoordinator;
+  readonly sessions: SessionRefreshCoordinator;
 
   getState(): DesktopAuthState {
     return this.state;

@@ -2,13 +2,13 @@ import {
   AuthorizationDenied,
   PERMISSIONS,
   permissionCode,
-} from "@kontave/access-control-domain";
-import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
+} from "@kontave/access-control/domain";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import {
   InventoryDashboardFailure,
   type InventoryDashboardSnapshot,
 } from "@kontave/inventory-application";
-import { companyId } from "@kontave/companies-domain";
+import { companyId } from "@kontave/companies/domain";
 import { RequireModuleCapability } from "@kontave/modules-application";
 import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
@@ -16,11 +16,11 @@ import {
   companyId as organizationCompanyId,
   organizationId,
   userId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import {
   DelegatedAccessFailure,
   OrganizationAccessPathKind,
-} from "@kontave/delegated-access-domain";
+} from "@kontave/delegated-access/domain";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { createCompanyActions } from "../companies/company-actions";

@@ -4,7 +4,7 @@ import type {
   OrganizationsPort,
 } from "@kontave/client-contracts";
 import type { ModuleCode, ModuleId } from "@kontave/modules-domain";
-import type { OrganizationId } from "@kontave/organizations-domain";
+import type { OrganizationId } from "@kontave/organizations/domain";
 import type { WorkspaceModuleSource } from "@kontave/workspace-context-application";
 import { requireClientValue } from "../client/client-operation";
 

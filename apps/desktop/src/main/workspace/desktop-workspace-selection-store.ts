@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import {
   organizationId,
   type OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type { ActiveWorkspaceSelectionStore } from "@kontave/workspace-context-application";
 
 export class DesktopWorkspaceSelectionStore

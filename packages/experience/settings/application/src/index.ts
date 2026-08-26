@@ -1,7 +1,7 @@
-import type { PermissionCode } from "@kontave/access-control-domain";
+import type { PermissionCode } from "@kontave/access-control/domain";
 import { Platform, type ModuleCode } from "@kontave/modules-domain";
 import { applicationNavigation } from "@kontave/navigation-domain";
-import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations-domain";
+import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations/domain";
 import { SettingsContextRequirement, type SettingsEntryDefinition, type SettingsEntryId, type SettingsSectionDefinition, type SettingsSectionId } from "@kontave/settings-contracts";
 
 export type SettingsConnectivity = "online" | "offline";

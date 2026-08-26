@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { evaluatePassword } from "@kontave/auth-domain";
+import { evaluatePassword } from "@kontave/auth/domain";
 import { Text } from "@kontave/ui-dom";
 
 /**

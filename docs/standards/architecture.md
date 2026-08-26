@@ -14,6 +14,8 @@ infraestructura┘
 - `packages/kernel/` contiene exclusivamente la composición portable, el ciclo de vida y la sesión global de la aplicación. Coordina capacidades, pero no posee sus reglas de negocio.
 - `packages/experience/` contiene capacidades portables que modelan la experiencia percibida por el usuario, como feedback, interacción, navegación, preferencias y catálogo de configuración.
 - `packages/platform/` contiene capacidades e integraciones técnicas con el entorno, como conectividad, actualizaciones, observabilidad y dispositivos.
+- `packages/business/` clasifica bounded contexts que modelan operaciones y políticas empresariales; no constituye un contexto agregado.
+- `packages/capabilities/` clasifica capacidades funcionales transversales con propiedad y API pública propias.
 - Los contextos de negocio permanecen en `packages/<capacidad>/*`; no se ubican en `kernel`, `experience` o `platform` sólo por ser consumidos por los clientes.
 - Una agrupación organiza responsabilidades relacionadas, pero no constituye por sí misma un bounded context ni autoriza dependencias laterales entre sus paquetes.
 - La ubicación física organiza el repositorio, pero la API pública continúa identificada por nombres estables `@kontave/*`.

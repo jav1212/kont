@@ -1,8 +1,8 @@
-import { PERMISSIONS, permissionCode, type PermissionCode } from "@kontave/access-control-domain";
+import { PERMISSIONS, permissionCode, type PermissionCode } from "@kontave/access-control/domain";
 import type {
   AssignedDelegatedAccess,
   DelegatedAccessRepository,
-} from "@kontave/delegated-access-application";
+} from "@kontave/delegated-access/application";
 import {
   DelegatedAccessScope,
   DelegatedAccessAssignmentStatus,
@@ -12,11 +12,11 @@ import {
   type AccessibleOrganization,
   type OrganizationAccessPath,
   type DelegatedAccessGrant,
-} from "@kontave/delegated-access-domain";
-import type { CompanyId as OrganizationCompanyId, OrganizationCompany, OrganizationId, UserId } from "@kontave/organizations-domain";
-import type { OrganizationPresentationDirectory } from "@kontave/organizations-application";
-import type { CompanyRepository } from "@kontave/companies-application";
-import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies-domain";
+} from "@kontave/delegated-access/domain";
+import type { CompanyId as OrganizationCompanyId, OrganizationCompany, OrganizationId, UserId } from "@kontave/organizations/domain";
+import type { OrganizationPresentationDirectory } from "@kontave/organizations/application";
+import type { CompanyRepository } from "@kontave/companies/application";
+import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies/domain";
 import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import type { ModuleCapability, ModuleCode } from "@kontave/modules-domain";
 

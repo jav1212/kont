@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { UserId } from "@kontave/organizations-domain";
+import type { UserId } from "@kontave/organizations/domain";
 import type { UserPreferencesRepository } from "@kontave/preferences-application";
 import {
   PreferencesFailure,

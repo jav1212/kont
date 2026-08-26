@@ -5,11 +5,11 @@ import {
   RevokeOrganizationInvitation,
   RevokeOrganizationMembership,
   UpdateOrganizationMembership,
-} from "@kontave/organizations-application";
+} from "@kontave/organizations/application";
 import {
   createOrganizationMembersRepository,
   createOrganizationsDirectory,
-} from "@kontave/organizations-supabase";
+} from "@kontave/organizations/supabase";
 import { createOrganizationInvitationNotifier } from "./organization-invitation-notifier";
 export function createMemberActions(origin: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,

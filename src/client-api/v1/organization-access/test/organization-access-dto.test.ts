@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access/domain";
 import {
   organizationId,
   userId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import {
   WorkspaceRelationship,
   type WorkspacePortfolioEntry,

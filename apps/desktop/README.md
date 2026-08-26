@@ -54,17 +54,17 @@ Que un destino aparezca en la navegación no implica que toda su pantalla sea na
 
 ### Identidad y sesión
 
-- `@kontave/auth-domain`
-- `@kontave/auth-application`
-- `@kontave/auth-supabase`
+- `@kontave/auth/domain`
+- `@kontave/auth/application`
+- `@kontave/auth/supabase`
 
 Proveen autenticación, almacenamiento seguro, renovación centralizada, reintento único y expiración global de sesión.
 
 ### Contexto de trabajo
 
 - `@kontave/workspace-context-application`
-- `@kontave/organizations-domain`
-- `@kontave/delegated-access-domain`
+- `@kontave/organizations/domain`
+- `@kontave/delegated-access/domain`
 - `@kontave/modules-domain`
 - `@kontave/modules-application`
 
@@ -96,7 +96,7 @@ La pantalla visible como “Departamentos” administra `product-categories`; el
 
 - `@kontave/settings-contracts`
 - `@kontave/settings-application`
-- `@kontave/access-control-domain`
+- `@kontave/access-control/domain`
 
 Settings resuelve qué opciones son visibles y si están disponibles, deshabilitadas o en modo de sólo lectura según plataforma, contexto, permisos, módulos y conectividad. Cada capability continúa siendo propietaria de sus datos; Settings no implementa un repositorio genérico de valores.
 

@@ -1,4 +1,4 @@
-import { OrganizationFailure } from "@kontave/organizations-domain";
+import { OrganizationFailure } from "@kontave/organizations/domain";
 import { apiError } from "../http/response";
 
 export function organizationErrorResponse(

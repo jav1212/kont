@@ -1,5 +1,5 @@
 import type { ChangePasswordDto } from "@kontave/client-contracts";
-import { AuthenticationFailure } from "@kontave/auth-domain";
+import { AuthenticationFailure } from "@kontave/auth/domain";
 import { executeSecurityRequest } from "@/src/client-api/v1/auth/security-http";
 
 export async function POST(request: Request) {

@@ -3,14 +3,14 @@ import {
   AssignDelegatedAccessMember,
   ChangeDelegatedAccessStatus,
   CreateDelegatedAccess,
-} from "@kontave/delegated-access-application";
-import { createDelegatedAccessInfrastructure } from "@kontave/delegated-access-supabase";
+} from "@kontave/delegated-access/application";
+import { createDelegatedAccessInfrastructure } from "@kontave/delegated-access/supabase";
 import {
   ListWorkspacePortfolio,
   ResolveWorkspaceAccessPath,
   type DirectOrganizationAccessDirectory,
 } from "@kontave/workspace-context-application";
-import { createOrganizationsDirectory } from "@kontave/organizations-supabase";
+import { createOrganizationsDirectory } from "@kontave/organizations/supabase";
 
 export function createOrganizationAccessActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -1,4 +1,4 @@
-import { ProfileFailure } from "@kontave/profile-application";
+import { ProfileFailure } from "@kontave/profile/application";
 import {
   authenticateClientRequest,
   readBearerToken,

@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron";
-import { OrganizationAccessPathKind } from "@kontave/delegated-access-domain";
+import { OrganizationAccessPathKind } from "@kontave/delegated-access/domain";
 import type { ModuleCode } from "@kontave/modules-domain";
-import { companyId, organizationId } from "@kontave/organizations-domain";
+import { companyId, organizationId } from "@kontave/organizations/domain";
 import {
   WorkspaceContextCoordinator,
   type WorkspaceContextFailure,

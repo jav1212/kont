@@ -7,8 +7,8 @@ import {
   DelegatedAccessScope,
   OrganizationAccessPathKind,
   delegatedAccessGrantId,
-} from "@kontave/delegated-access-domain";
-import { organizationId, userId } from "@kontave/organizations-domain";
+} from "@kontave/delegated-access/domain";
+import { organizationId, userId } from "@kontave/organizations/domain";
 import type {
   WorkspacePortfolioEntry,
   WorkspacePortfolioSource,

@@ -7,7 +7,7 @@
 
 La cuenta de facturación, suscripciones, facturas, métodos de pago, capacidades y consumo pertenecen a `Organization`. Un usuario solo accede a estos recursos mediante una membresía activa y un rol autorizado.
 
-El dominio portable se encuentra en `packages/billing/domain`; no depende de Supabase, Next.js, Electron ni de un proveedor de pagos. `application` declara puertos y permisos, mientras `supabase` traduce persistencia y el vocabulario histórico.
+El dominio portable se encuentra en `packages/business/billing/domain`; no depende de Supabase, Next.js, Electron ni de un proveedor de pagos. `application` declara puertos y permisos, mientras `supabase` traduce persistencia y el vocabulario histórico.
 
 Los importes monetarios se representan en unidades menores enteras y con moneda explícita. Las referencias de métodos de pago son tokens del proveedor; nunca se almacenan datos completos de tarjetas.
 

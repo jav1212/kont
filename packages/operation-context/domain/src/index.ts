@@ -1,5 +1,5 @@
 import { currencyCode, exchangeRate, type CurrencyCode, type ExchangeRateSnapshot } from "@kontave/monetary-domain";
-import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations-domain";
+import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations/domain";
 
 declare const localDateBrand: unique symbol;
 export type LocalDate = string & { readonly [localDateBrand]: true };

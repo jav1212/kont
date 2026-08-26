@@ -30,7 +30,7 @@ packages/employment/
 Para evitar fragmentación prematura, la implementación inicial será:
 
 ```text
-packages/employees/
+packages/business/employees/
 ├── domain
 ├── application
 ├── contracts

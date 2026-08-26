@@ -3,8 +3,8 @@ import {
   GetCurrentProfile,
   UpdateCurrentProfile,
   UploadCurrentProfileAvatar,
-} from "@kontave/profile-application";
-import { createSupabaseProfileAdapters } from "@kontave/profile-supabase";
+} from "@kontave/profile/application";
+import { createSupabaseProfileAdapters } from "@kontave/profile/supabase";
 
 export function createProfileActions(accessToken: string): {
   readonly getCurrentProfile: GetCurrentProfile;

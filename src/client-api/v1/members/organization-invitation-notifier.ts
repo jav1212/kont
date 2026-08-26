@@ -1,4 +1,4 @@
-import type { OrganizationInvitationNotifier } from "@kontave/organizations-application";
+import type { OrganizationInvitationNotifier } from "@kontave/organizations/application";
 import { Resend } from "resend";
 import { renderEmailLayout } from "@/src/shared/backend/utils/email-layout";
 

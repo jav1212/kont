@@ -105,9 +105,9 @@ Expo Updates se considera deshabilitado en Expo Go y builds de desarrollo que no
 
 ## Identidad y sesión
 
-- `@kontave/auth-domain`
-- `@kontave/auth-application`
-- `@kontave/auth-supabase`
+- `@kontave/auth/domain`
+- `@kontave/auth/application`
+- `@kontave/auth/supabase`
 
 La sesión se almacena mediante adaptadores seguros por plataforma. Las solicitudes autenticadas comparten la coordinación de refresh y reaccionan globalmente ante la expiración de sesión.
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { currency, exchangeRate } from "@kontave/monetary-domain";
-import { companyId, organizationId, userId } from "@kontave/organizations-domain";
+import { companyId, organizationId, userId } from "@kontave/organizations/domain";
 import { localDate, type OperationalDefaults } from "@kontave/operation-context-domain";
 import { OperationContextCoordinator, type OperationContextStore, type OperationExchangeRateResolver } from "../src/index";
 

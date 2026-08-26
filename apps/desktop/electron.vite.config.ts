@@ -31,17 +31,17 @@ export default defineConfig({
     plugins: [
       externalizeDepsPlugin({
         exclude: [
-          "@kontave/auth-application",
-          "@kontave/auth-domain",
-          "@kontave/auth-supabase",
+          "@kontave/auth/application",
+          "@kontave/auth/domain",
+          "@kontave/auth/supabase",
           "@kontave/client-connectivity-application",
           "@kontave/client-connectivity-contracts",
           "@kontave/client-contracts",
           "@kontave/monetary-domain",
           "@kontave/operation-context-application",
           "@kontave/operation-context-domain",
-          "@kontave/delegated-access-domain",
-          "@kontave/organizations-domain",
+          "@kontave/delegated-access/domain",
+          "@kontave/organizations/domain",
           "@kontave/workspace-context-application",
         ],
       }),

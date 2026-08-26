@@ -7,7 +7,7 @@ import {
   organizationId,
   type CompanyId,
   type OrganizationId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type {
   PersistedWorkspaceContext,
   WorkspaceContextStore,

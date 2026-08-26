@@ -1,5 +1,5 @@
 import type { CompanyDto } from "@kontave/client-contracts";
-import type { Company } from "@kontave/companies-domain";
+import type { Company } from "@kontave/companies/domain";
 
 export function toCompanyDto(company: Company): CompanyDto {
   return {

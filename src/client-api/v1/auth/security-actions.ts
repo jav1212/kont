@@ -3,11 +3,11 @@ import {
   ListAuthenticatedSessions,
   RevokeAuthenticatedSession,
   RevokeOtherAuthenticatedSessions,
-} from "@kontave/auth-application";
+} from "@kontave/auth/application";
 import {
   createSupabaseCredentialSecurity,
-  createSupabaseNativeSessionRegistry,
-} from "@kontave/auth-supabase";
+  createSupabaseAuthenticatedSessionRegistry,
+} from "@kontave/auth/supabase";
 
 export function createSecurityActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -16,7 +16,7 @@ export function createSecurityActions() {
   if (!url || !anonKey || !serviceRoleKey)
     throw new Error("Native security is not configured.");
 
-  const registry = createSupabaseNativeSessionRegistry({ url, serviceRoleKey });
+  const registry = createSupabaseAuthenticatedSessionRegistry({ url, serviceRoleKey });
   return {
     list: new ListAuthenticatedSessions(registry),
     revoke: new RevokeAuthenticatedSession(registry),

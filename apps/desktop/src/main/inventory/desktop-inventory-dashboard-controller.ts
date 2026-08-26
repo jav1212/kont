@@ -13,7 +13,7 @@ import {
   companyId,
   organizationId,
   userId,
-} from "@kontave/organizations-domain";
+} from "@kontave/organizations/domain";
 import type {
   ClientPortFeature,
   InventoryPort,

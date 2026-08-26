@@ -1,4 +1,4 @@
-import { AuthorizationSource } from "@kontave/access-control-domain";
+import { AuthorizationSource } from "@kontave/access-control/domain";
 
 const NATIVE_SOURCES = new Map<string, AuthorizationSource>([
   [AuthorizationSource.Desktop, AuthorizationSource.Desktop],

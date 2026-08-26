@@ -4,13 +4,13 @@ import {
   PERMISSIONS,
   permissionCode,
   type PermissionCode,
-} from "@kontave/access-control-domain";
-import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
+} from "@kontave/access-control/domain";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { DocumentsFailure } from "@kontave/documents-domain";
 import { RequireModuleCapability } from "@kontave/modules-application";
 import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
-import { organizationId, userId } from "@kontave/organizations-domain";
+import { organizationId, userId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { clientSource } from "../http/client-source";
 import { apiError, apiSuccess } from "../http/response";

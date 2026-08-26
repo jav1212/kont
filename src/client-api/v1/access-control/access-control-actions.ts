@@ -4,8 +4,8 @@ import {
   ListOrganizationRoles,
   ListPermissions,
   UpdateOrganizationRole,
-} from "@kontave/access-control-application";
-import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
+} from "@kontave/access-control/application";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 export function createAccessControlActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;
