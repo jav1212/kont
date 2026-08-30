@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import type { KontaveTheme } from "@kontave/design-tokens";
+import type { KontaveTheme } from "@kontave/ui/tokens";
 import { GlobalInteractionBoundary, ToastViewport } from "@kontave/ui-dom";
 import "@fontsource/darker-grotesque/latin-400.css";
 import "@fontsource/darker-grotesque/latin-500.css";

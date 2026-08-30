@@ -29,3 +29,16 @@ test("updates preferences with optimistic concurrency", async () => {
   assert.equal(result.version, 1);
   await assert.rejects(() => update.execute({ userId: userId("user-1"), expectedVersion: 0 }), { code: "PREFERENCES_VERSION_CONFLICT" });
 });
+
+test("maps unexpected repository errors to a typed public failure", async () => {
+  const repository: UserPreferencesRepository = {
+    findByUser: async () => { throw new Error("database unavailable"); },
+    save: async (preferences) => preferences,
+  };
+  await assert.rejects(
+    new GetEffectiveUserPreferences(repository, clock).execute(userId("user-1")),
+    (cause) => cause instanceof PreferencesFailure
+      && cause.code === "PREFERENCES_REPOSITORY_UNAVAILABLE"
+      && cause.cause instanceof Error,
+  );
+});

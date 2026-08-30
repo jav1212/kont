@@ -58,19 +58,39 @@ export type ReferralFailureCode =
   | "REFERRAL_NOT_FOUND"
   | "REPOSITORY_UNAVAILABLE";
 
+/** Expected failure raised by referral domain and boundary operations. */
 export class ReferralFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: ReferralFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "ReferralFailure";
   }
 }
 
+/**
+ * Prevents an organization from referring itself.
+ * @param referrer - Organization granting the referral.
+ * @param referred - Organization receiving the attribution.
+ * @returns Nothing when the organizations differ.
+ * @throws {ReferralFailure} When both identifiers are equal.
+ */
 export function assertDistinctOrganizations(referrer: OrganizationId, referred: OrganizationId): void {
   if (referrer === referred) {
     throw new ReferralFailure("SELF_REFERRAL", "An organization cannot refer itself.");
   }
 }
 
+/**
+ * Calculates a USD referral reward using integer basis points and half-up rounding.
+ * @param amount - Positive paid invoice amount in USD.
+ * @param basisPoints - Reward rate from 1 through 10,000.
+ * @returns The rounded reward amount in USD.
+ * @throws {ReferralFailure} When amount, currency or rate is invalid.
+ */
 export function calculatePercentageReward(amount: Money, basisPoints: number): Money {
   const hasValidAmount = amount.currency === Currency.Usd && amount.minorAmount > BigInt(0);
   const hasValidRate = Number.isInteger(basisPoints) && basisPoints > 0 && basisPoints <= 10_000;

@@ -19,6 +19,7 @@ export interface ProductState {
   readonly version: number;
 }
 
+/** Company-owned product aggregate with controlled lifecycle transitions. */
 export class Product {
   readonly id: ProductId;
   readonly companyId: CompanyId;
@@ -32,6 +33,11 @@ export class Product {
   readonly status: ProductStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates and validates a product aggregate.
+   * @param state - Complete persisted or newly-created product state.
+   * @throws {ProductFailure} When version, identifiers, text or barcodes are invalid.
+   */
   constructor(state: ProductState) {
     if (!Number.isSafeInteger(state.version) || state.version < 1) {
       throw new ProductFailure("PRODUCT_INVALID", "The product version is invalid.");
@@ -52,18 +58,41 @@ export class Product {
     this.version = state.version;
   }
 
+  /**
+   * Renames the product and optionally replaces its description.
+   * @param name - New product name.
+   * @param description - New description, defaulting to the current value.
+   * @returns A new aggregate version.
+   * @throws {ProductFailure} When text constraints fail.
+   */
   rename(name: string, description: string | null = this.description): Product {
     return new Product({ ...this, name, description, version: this.version + 1 });
   }
 
+  /**
+   * Changes the optional owning category.
+   * @param categoryId - New category, or `null` for unassigned.
+   * @returns A new aggregate version.
+   */
   recategorize(categoryId: ProductCategoryId | null): Product {
     return new Product({ ...this, categoryId, version: this.version + 1 });
   }
 
+  /**
+   * Replaces all product barcodes.
+   * @param barcodes - New unique barcode collection.
+   * @returns A new aggregate version.
+   * @throws {ProductFailure} When duplicate barcodes are supplied.
+   */
   replaceBarcodes(barcodes: readonly Barcode[]): Product {
     return new Product({ ...this, barcodes, version: this.version + 1 });
   }
 
+  /**
+   * Deactivates an active product.
+   * @returns A new inactive aggregate version.
+   * @throws {ProductFailure} Unless currently active.
+   */
   deactivate(): Product {
     if (this.status !== ProductStatus.Active) {
       throw new ProductFailure("PRODUCT_TRANSITION_INVALID", "Only an active product can be deactivated.");
@@ -71,6 +100,11 @@ export class Product {
     return new Product({ ...this, status: ProductStatus.Inactive, version: this.version + 1 });
   }
 
+  /**
+   * Activates an inactive product.
+   * @returns A new active aggregate version.
+   * @throws {ProductFailure} Unless currently inactive.
+   */
   activate(): Product {
     if (this.status !== ProductStatus.Inactive) {
       throw new ProductFailure("PRODUCT_TRANSITION_INVALID", "Only an inactive product can be activated.");

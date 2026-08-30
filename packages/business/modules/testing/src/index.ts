@@ -1,13 +1,17 @@
 import type { OrganizationId } from "@kontave/organizations/domain";
 import { ModuleInstallationStatus, type ModuleCode, type ModuleDefinition, type ModuleInstallation } from "@kontave/modules-domain";
 
+/** In-memory module catalog for application tests. */
 export class InMemoryModuleCatalog {
+  /** @param definitions - Definitions returned by catalog queries. */
   constructor(readonly definitions: readonly ModuleDefinition[]) {}
   async list() { return this.definitions; }
   async findByCode(code: ModuleCode) { return this.definitions.find((definition) => definition.code === code) ?? null; }
 }
 
+/** Mutable in-memory organization-module repository for tests. */
 export class InMemoryOrganizationModules {
+  /** @param installations - Initial installation records. */
   constructor(readonly installations: ModuleInstallation[] = []) {}
   async list(organizationId: OrganizationId) { return this.installations.filter((item) => item.organizationId === organizationId); }
   async find(organizationId: OrganizationId, code: ModuleCode) { return this.installations.find((item) => item.organizationId === organizationId && item.moduleCode === code) ?? null; }
@@ -22,7 +26,9 @@ export class InMemoryOrganizationModules {
   }
 }
 
+/** Fixed entitlement service for module application tests. */
 export class InMemoryModuleEntitlements {
+  /** @param codes - Module codes considered entitled. */
   constructor(private readonly codes: ReadonlySet<ModuleCode>) {}
   async isEntitled(_organizationId: OrganizationId, code: ModuleCode) { return this.codes.has(code); }
 }

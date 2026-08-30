@@ -1,4 +1,5 @@
-import { applyDesignTokens, type KontaveTheme } from "@kontave/design-tokens";
+import type { KontaveTheme } from "@kontave/ui/tokens";
+import { applyDesignTokens } from "@kontave/ui-dom";
 
 const desktopSansFont =
   '"Darker Grotesque", ui-sans-serif, system-ui, sans-serif';

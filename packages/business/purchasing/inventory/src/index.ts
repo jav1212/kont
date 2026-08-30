@@ -7,11 +7,12 @@ import {
   type InventoryOperationId,
   type StockEffectId,
 } from "@kontave/inventory-domain";
-import type {
-  AcquisitionCostStatus,
-  PurchaseReceiptConfirmed,
-  PurchaseReceiptReversed,
-  PurchaseReturnConfirmed,
+import {
+  PurchasingFailure,
+  type AcquisitionCostStatus,
+  type PurchaseReceiptConfirmed,
+  type PurchaseReceiptReversed,
+  type PurchaseReturnConfirmed,
 } from "@kontave/purchasing-domain";
 
 export interface PurchasingInventoryIds {
@@ -29,7 +30,17 @@ export interface PurchaseReceiptInventoryPosting {
   readonly valuations: readonly ReceiptValuationInstruction[];
 }
 
-export function purchaseReceiptInventoryPosting(event: PurchaseReceiptConfirmed, ids: PurchasingInventoryIds): PurchaseReceiptInventoryPosting {
+/**
+ * Builds the inventory operation and valuation instructions for a confirmed receipt.
+ * @param event Confirmed purchasing receipt event.
+ * @param ids Inventory identifiers allocated to this posting.
+ * @returns The inventory operation and per-effect valuation instructions.
+ * @throws {PurchasingFailure} When the effect identifiers do not match the receipt lines.
+ */
+export function purchaseReceiptInventoryPosting(
+  event: PurchaseReceiptConfirmed,
+  ids: PurchasingInventoryIds,
+): PurchaseReceiptInventoryPosting {
   requireEffectIds(event.lines.length, ids.effectIds);
   const effects = event.lines.map((line, index) => ({
     id: requireEffectId(ids.effectIds, index), productId: line.productId,
@@ -51,7 +62,17 @@ export function purchaseReceiptInventoryPosting(event: PurchaseReceiptConfirmed,
   };
 }
 
-export function purchaseReturnInventoryOperation(event: PurchaseReturnConfirmed, ids: PurchasingInventoryIds): InventoryOperation {
+/**
+ * Builds the outbound inventory operation for a confirmed supplier return.
+ * @param event Confirmed purchase-return event.
+ * @param ids Inventory identifiers allocated to this posting.
+ * @returns A posted inventory operation.
+ * @throws {PurchasingFailure} When the effect identifiers do not match the return lines.
+ */
+export function purchaseReturnInventoryOperation(
+  event: PurchaseReturnConfirmed,
+  ids: PurchasingInventoryIds,
+): InventoryOperation {
   requireEffectIds(event.lines.length, ids.effectIds);
   const effects = event.lines.map((line, index) => ({
     id: requireEffectId(ids.effectIds, index), productId: line.productId,
@@ -65,6 +86,12 @@ export function purchaseReturnInventoryOperation(event: PurchaseReturnConfirmed,
   }).post(event.occurredAt);
 }
 
+/**
+ * Reverses the inventory operation associated with a purchase receipt.
+ * @param input Original operation, reversal event, and allocated identifiers.
+ * @returns The original operation and its posted reversal.
+ * @throws {PurchasingFailure} When event provenance or effect identifiers do not match.
+ */
 export function reversePurchaseReceiptInventoryOperation(input: {
   readonly original: InventoryOperation;
   readonly event: PurchaseReceiptReversed;
@@ -72,7 +99,10 @@ export function reversePurchaseReceiptInventoryOperation(input: {
 }): ReturnType<InventoryOperation["reverse"]> {
   requireEffectIds(input.original.effects.length, input.ids.effectIds);
   if (input.original.source.operationKey !== input.event.originalOperationKey || input.original.source.kind !== "purchasing") {
-    throw new Error("Purchase receipt reversal does not match the original inventory operation.");
+    throw new PurchasingFailure(
+      "PURCHASE_INVENTORY_UNAVAILABLE",
+      "Purchase receipt reversal does not match the original inventory operation.",
+    );
   }
   return input.original.reverse({
     id: input.ids.operationId, effectIds: input.ids.effectIds,
@@ -82,10 +112,20 @@ export function reversePurchaseReceiptInventoryOperation(input: {
 }
 
 function requireEffectIds(length: number, ids: readonly StockEffectId[]): void {
-  if (length !== ids.length) throw new Error("Purchasing inventory posting requires one stock effect identifier per line.");
+  if (length !== ids.length) {
+    throw new PurchasingFailure(
+      "PURCHASE_INVENTORY_UNAVAILABLE",
+      "Purchasing inventory posting requires one stock effect identifier per line.",
+    );
+  }
 }
 function requireEffectId(ids: readonly StockEffectId[], index: number): StockEffectId {
   const id = ids[index];
-  if (id === undefined) throw new Error("Purchasing inventory stock effect identifier is missing.");
+  if (id === undefined) {
+    throw new PurchasingFailure(
+      "PURCHASE_INVENTORY_UNAVAILABLE",
+      "Purchasing inventory stock effect identifier is missing.",
+    );
+  }
   return id;
 }

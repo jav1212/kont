@@ -14,6 +14,7 @@ export interface ProductCategoryState {
   readonly version: number;
 }
 
+/** Company-owned product category aggregate. */
 export class ProductCategory {
   readonly id: ProductCategoryId;
   readonly companyId: CompanyId;
@@ -23,6 +24,11 @@ export class ProductCategory {
   readonly status: ProductCategoryStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates and validates a product category.
+   * @param state - Complete persisted or newly-created category state.
+   * @throws {ProductFailure} When version, identifiers or text are invalid.
+   */
   constructor(state: ProductCategoryState) {
     if (!Number.isSafeInteger(state.version) || state.version < 1) {
       throw new ProductFailure("PRODUCT_CATEGORY_INVALID", "The product category version is invalid.");
@@ -36,10 +42,22 @@ export class ProductCategory {
     this.version = state.version;
   }
 
+  /**
+   * Renames the category and optionally replaces its description.
+   * @param name - New category name.
+   * @param description - New description, defaulting to the current value.
+   * @returns A new aggregate version.
+   * @throws {ProductFailure} When text constraints fail.
+   */
   rename(name: string, description: string | null = this.description): ProductCategory {
     return new ProductCategory({ ...this, name, description, version: this.version + 1 });
   }
 
+  /**
+   * Deactivates an active category.
+   * @returns A new inactive aggregate version.
+   * @throws {ProductFailure} Unless currently active.
+   */
   deactivate(): ProductCategory {
     if (this.status !== ProductCategoryStatus.Active) {
       throw new ProductFailure("PRODUCT_TRANSITION_INVALID", "Only an active product category can be deactivated.");
@@ -47,6 +65,11 @@ export class ProductCategory {
     return new ProductCategory({ ...this, status: ProductCategoryStatus.Inactive, version: this.version + 1 });
   }
 
+  /**
+   * Activates an inactive category.
+   * @returns A new active aggregate version.
+   * @throws {ProductFailure} Unless currently inactive.
+   */
   activate(): ProductCategory {
     if (this.status !== ProductCategoryStatus.Inactive) {
       throw new ProductFailure("PRODUCT_TRANSITION_INVALID", "Only an inactive product category can be activated.");

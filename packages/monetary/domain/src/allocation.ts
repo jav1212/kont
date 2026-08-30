@@ -18,6 +18,13 @@ export interface MoneyAllocation<TKey> {
 
 const Decimal = DecimalJs.clone({ precision: 80, rounding: DecimalJs.ROUND_HALF_UP });
 
+/**
+ * Allocates exact minor units proportionally while conserving the input total.
+ * @typeParam TKey - Stable key used to identify each allocation part.
+ * @param input - Total money, weighted parts and residual strategy.
+ * @returns One exact allocation and residual adjustment per input part.
+ * @throws {MonetaryFailure} When parts or weights cannot form a valid allocation.
+ */
 export function allocateMoney<TKey>(input: {
   readonly total: Money;
   readonly parts: readonly AllocationPart<TKey>[];
@@ -70,6 +77,14 @@ export function allocateMoney<TKey>(input: {
   });
 }
 
+/**
+ * Creates a weighted allocation part from exact decimal text.
+ * @typeParam TKey - Stable key type for the allocation part.
+ * @param key - Part identifier.
+ * @param weight - Exact decimal weight.
+ * @returns The validated allocation part.
+ * @throws {MonetaryFailure} When weight text is invalid.
+ */
 export function allocationPart<TKey>(key: TKey, weight: string): AllocationPart<TKey> {
   return { key, weight: exactDecimal(weight) };
 }

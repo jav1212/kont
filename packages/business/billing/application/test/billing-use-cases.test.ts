@@ -18,3 +18,13 @@ test("credit applications reject zero before reaching persistence", () => {
   assert.throws(() => new ApplyBillingCredit(ledger).execute({organizationId:orgId,invoiceId:"invoice-1",amount:money(BigInt(0),Currency.Usd),idempotencyKey:"apply-0001",occurredAt:context.occurredAt}), BillingFailure);
   assert.equal(called,false);
 });
+
+test("billing queries map unexpected repository errors", async () => {
+  class FailingRepository extends Repository {
+    override async findAccount(): Promise<never> { throw new Error("network unavailable"); }
+  }
+  await assert.rejects(
+    () => new GetBillingOverview(new FailingRepository(), new Authorization([PERMISSIONS.BILLING_READ])).execute(actorId, orgId, context),
+    (error: unknown) => error instanceof BillingFailure && error.code === "BILLING_REPOSITORY_UNAVAILABLE",
+  );
+});

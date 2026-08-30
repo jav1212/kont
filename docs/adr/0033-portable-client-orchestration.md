@@ -156,7 +156,7 @@ Web/Desktop       Mobile
 Web y Desktop compartirán presentación React DOM cuando la experiencia coincida
 mediante `@kontave/ui-dom` y los componentes Web correspondientes. Mobile
 consumirá los mismos features, estados y acciones desde su presentación
-React Native basada en `@kontave/ui-native`.
+React Native basada en `@kontave/ui-react-native`.
 
 El kernel no expondrá componentes. Expondrá estado inmutable, suscripciones,
 comandos y errores esperados tipados. Cada renderer decidirá la estructura

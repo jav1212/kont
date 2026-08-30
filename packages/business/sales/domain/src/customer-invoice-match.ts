@@ -38,11 +38,34 @@ export class CustomerInvoiceMatch {
   readonly confirmedAt: SalesInstant | null;
   readonly version: number;
 
+  /**
+   * Rehydrates an invoice match while reconciling allocation totals.
+   * @param state Persisted match state.
+   * @throws {SalesFailure} When allocations, currency, or lifecycle are invalid.
+   */
   constructor(state: CustomerInvoiceMatchState) {
-    if (!Number.isSafeInteger(state.version) || state.version < 0 || state.allocations.length === 0) throw new SalesFailure("CUSTOMER_INVOICE_MATCH_INVALID", "Customer invoice match state is invalid.");
+    if (!Number.isSafeInteger(state.version) || state.version < 0 || state.allocations.length === 0) {
+      throw new SalesFailure(
+        "CUSTOMER_INVOICE_MATCH_INVALID",
+        "Customer invoice match state is invalid.",
+      );
+    }
     const allocations = state.allocations.map((allocation) => {
-      if (allocation.orderLineId === null && allocation.dispatchLineId === null) throw new SalesFailure("CUSTOMER_INVOICE_MATCH_INVALID", "Invoice allocation must reference an order or dispatch line.");
-      if (!sameCurrency(allocation.netAmount.currency, state.documentCurrency) || allocation.netAmount.minorAmount < 0n) throw new SalesFailure("SALES_CURRENCY_MISMATCH", "Invoice allocation currency is invalid.");
+      if (allocation.orderLineId === null && allocation.dispatchLineId === null) {
+        throw new SalesFailure(
+          "CUSTOMER_INVOICE_MATCH_INVALID",
+          "Invoice allocation must reference an order or dispatch line.",
+        );
+      }
+      if (
+        !sameCurrency(allocation.netAmount.currency, state.documentCurrency) ||
+        allocation.netAmount.minorAmount < 0n
+      ) {
+        throw new SalesFailure(
+          "SALES_CURRENCY_MISMATCH",
+          "Invoice allocation currency is invalid.",
+        );
+      }
       return allocation;
     });
     const total = allocations.reduce((sum, allocation) => addMoney(sum, allocation.netAmount), moneyFromMinor(0n, state.documentCurrency));
@@ -62,6 +85,12 @@ export class CustomerInvoiceMatch {
     this.version = state.version;
   }
 
+  /**
+   * Confirms this draft invoice match.
+   * @param value Confirmation timestamp.
+   * @returns A new confirmed match version.
+   * @throws {SalesFailure} When already confirmed or the instant is invalid.
+   */
   confirm(value: string): CustomerInvoiceMatch {
     if (this.status !== "draft") throw new SalesFailure("CUSTOMER_INVOICE_MATCH_INVALID", "Only a draft customer invoice match can be confirmed.");
     return new CustomerInvoiceMatch({ ...this, status: "confirmed", confirmedAt: salesInstant(value), version: this.version + 1 });

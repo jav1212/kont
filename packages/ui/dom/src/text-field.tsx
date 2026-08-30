@@ -1,5 +1,5 @@
 import { forwardRef, useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
-import type { FieldLoadingState } from "@kontave/ui-contracts";
+import type { FieldLoadingState } from "@kontave/ui/contracts";
 import { classNames } from "./internal/class-names";
 import { FieldSkeleton } from "./skeleton";
 
@@ -15,8 +15,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
   { className, endAdornment, error, hint, id: providedId, label, labelAction, loading = false, loadingLabel = false, ...props },
   ref,
 ) {
-  if (loading) return <FieldSkeleton hint={Boolean(hint || error)} label={label} loadingLabel={loadingLabel} />;
   const generatedId = useId();
+  if (loading) return <FieldSkeleton hint={Boolean(hint || error)} label={label} loadingLabel={loadingLabel} />;
   const id = providedId ?? generatedId;
   const messageId = error || hint ? `${id}-message` : undefined;
   return <div className={classNames("kt-field", className)}>

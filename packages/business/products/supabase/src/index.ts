@@ -36,9 +36,40 @@ export class SupabaseProductsRepository implements ProductsRepository {
   async createCategory(command:CreateProductCategoryCommand):Promise<ProductCategory>{return mapCategory(parse(categorySchema,await this.rpc("save_native_product_category",{...context(command),p_category_id:null,p_expected_version:null,p_name:command.name,p_description:command.description})));}
   async updateCategory(command:UpdateProductCategoryCommand):Promise<ProductCategory>{const current=(await this.listCategories({...command,status:"all"})).find(value=>value.id===command.categoryId);if(!current)throw new ProductFailure("PRODUCT_CATEGORY_NOT_FOUND","Product category was not found.");return mapCategory(parse(categorySchema,await this.rpc("save_native_product_category",{...context(command),p_category_id:command.categoryId,p_expected_version:command.expectedVersion,p_name:command.name??current.name,p_description:command.description===undefined?current.description:command.description})));}
   async setCategoryStatus(command:ProductCategoryVersionCommand,target:ProductCategoryStatus):Promise<ProductCategory>{return mapCategory(parse(categorySchema,await this.rpc("set_native_product_category_status",{...context(command),p_category_id:command.categoryId,p_expected_version:command.expectedVersion,p_status:target})));}
-  private async rpc(name:string,args:Record<string,unknown>):Promise<unknown>{const{data,error}=await this.client.rpc(name,args);if(error)throw mapError(error);return data;}
+  private async rpc(name: string, args: Record<string, unknown>): Promise<unknown> {
+    try {
+      const { data, error } = await this.client.rpc(name, args);
+      if (error) throw mapError(error);
+      return data;
+    } catch (cause: unknown) {
+      if (cause instanceof ProductFailure) throw cause;
+      throw new ProductFailure(
+        "PRODUCT_REPOSITORY_UNAVAILABLE",
+        "Product repository is unavailable.",
+        { cause },
+      );
+    }
+  }
 }
-export function createSupabaseProductsRepository(configuration:{readonly url:string;readonly serviceRoleKey:string}){return new SupabaseProductsRepository(createClient(configuration.url,configuration.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}));}
+/** Credentials required by the server-side products adapter. */
+export interface ProductsSupabaseConfiguration {
+  readonly url: string;
+  readonly serviceRoleKey: string;
+}
+/**
+ * Creates a stateless Supabase products repository.
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns A configured products repository.
+ */
+export function createSupabaseProductsRepository(
+  configuration: ProductsSupabaseConfiguration,
+): SupabaseProductsRepository {
+  return new SupabaseProductsRepository(createClient(
+    configuration.url,
+    configuration.serviceRoleKey,
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+  ));
+}
 function context(value:ProductCatalogContext){return{p_actor_user_id:value.actorUserId,p_organization_id:value.organizationId,p_company_id:value.companyId};}
 function mapCategory(value:z.infer<typeof categorySchema>){return new ProductCategory({...value,id:productCategoryId(value.id),companyId:companyId(value.companyId)});}
 function mapCategoryOverviewItem(value:z.infer<typeof categoryOverviewItemSchema>):ProductCategoryOverviewItem{return{category:mapCategory(value.category),productCount:value.productCount,createdAt:value.createdAt,updatedAt:value.updatedAt};}

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { companyId } from "@kontave/companies/domain";
-import { documentId, type StoredDocument } from "@kontave/documents-domain";
+import { DocumentsFailure, documentId, type StoredDocument } from "@kontave/documents-domain";
 import { organizationId, userId } from "@kontave/organizations/domain";
-import { DeleteDocument, type DocumentsRepository, type DocumentStorage } from "../src/index";
+import { DeleteDocument, ListDocuments, type DocumentsRepository, type DocumentStorage } from "../src/index";
 
 const organization = organizationId("organization-1");
 const document: StoredDocument = {
@@ -28,4 +28,29 @@ test("deletes storage before committing metadata deletion",async()=>{
  const storage:DocumentStorage={async createUpload(){throw new Error("unused")},async createDownload(){return""},async delete(){sequence.push("storage")}};
  await new DeleteDocument(repository(()=>sequence.push("metadata")),storage).execute({organizationId:organization,documentId:document.id,expectedVersion:2});
  assert.deepEqual(sequence,["storage","metadata"]);
+});
+
+test("maps unexpected repository errors to the portable failure", async () => {
+  const source = repository(() => undefined);
+  source.listDocuments = async () => { throw new Error("network unavailable"); };
+  await assert.rejects(
+    () => new ListDocuments(source).execute({ organizationId: organization }),
+    (error: unknown) => error instanceof DocumentsFailure && error.code === "DOCUMENT_REPOSITORY_UNAVAILABLE",
+  );
+});
+
+test("maps unexpected storage errors to the portable failure", async () => {
+  const storage: DocumentStorage = {
+    async createUpload() { throw new Error("unused"); },
+    async createDownload() { return ""; },
+    async delete() { throw new Error("storage unavailable"); },
+  };
+  await assert.rejects(
+    () => new DeleteDocument(repository(() => undefined), storage).execute({
+      organizationId: organization,
+      documentId: document.id,
+      expectedVersion: 2,
+    }),
+    (error: unknown) => error instanceof DocumentsFailure && error.code === "DOCUMENT_STORAGE_UNAVAILABLE",
+  );
 });

@@ -27,7 +27,13 @@ export type InventoryFailureCode =
   | "INVENTORY_CURRENCY_MISMATCH"
   | "INVENTORY_REPOSITORY_UNAVAILABLE";
 
+/** Expected failure raised by inventory domain and boundary operations. */
 export class InventoryFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: InventoryFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "InventoryFailure";

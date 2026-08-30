@@ -18,6 +18,12 @@ export type SalesFailureCode =
   | "SALES_INVENTORY_UNAVAILABLE";
 
 export class SalesFailure extends Error {
+  /**
+   * Creates an expected sales failure.
+   * @param code Stable machine-readable failure code.
+   * @param message Safe diagnostic message.
+   * @param options Optional underlying cause.
+   */
   constructor(readonly code: SalesFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "SalesFailure";

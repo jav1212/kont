@@ -10,7 +10,7 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import type { KontaveTheme } from "@kontave/design-tokens";
+import type { KontaveTheme } from "@kontave/ui/tokens";
 import {
   errorFeedback,
   successFeedback,

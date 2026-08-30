@@ -58,6 +58,7 @@ export interface ValuationApplication {
   readonly effect: ValuationEffect;
 }
 
+/** Weighted-average valuation position for one exact stock tuple. */
 export class ValuationPosition {
   readonly companyId: CompanyId;
   readonly productId: ProductId;
@@ -68,6 +69,7 @@ export class ValuationPosition {
   readonly averageUnitCost: UnitCost | null;
   readonly version: number;
 
+  /** @param state - Complete valuation state. @throws {InventoryFailure} When tuple, quantity, cost or currency is inconsistent. */
   constructor(state: ValuationPositionState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0 || isNegativeQuantity(state.quantity)) {
       throw new InventoryFailure("INVENTORY_VALUATION_INVALID", "Valuation position state is invalid.");
@@ -91,6 +93,7 @@ export class ValuationPosition {
     this.version = state.version;
   }
 
+  /** @param effect - Inbound stock effect. @param acquisitionValue - Total acquisition value. @returns Updated position and valuation effect. @throws {InventoryFailure} When direction, tuple or currency is invalid. */
   applyReceipt(effect: StockEffect, acquisitionValue: Money): ValuationApplication {
     this.requireMatchingEffect(effect);
     if (!isPositiveQuantity(effect.quantity) || acquisitionValue.minorAmount < 0n) {
@@ -114,6 +117,7 @@ export class ValuationPosition {
     };
   }
 
+  /** @param effect - Outbound stock effect. @returns Updated position and weighted-average valuation effect. @throws {InventoryFailure} When direction, tuple or stock constraints fail. */
   applyIssue(effect: StockEffect): ValuationApplication {
     this.requireMatchingEffect(effect);
     if (!isNegativeQuantity(effect.quantity) || this.averageUnitCost === null) {
@@ -153,6 +157,11 @@ export class ValuationPosition {
   }
 }
 
+/**
+ * Creates a zero-quantity valuation position for a stock tuple.
+ * @param input - Company, product, location, optional lot, unit and currency.
+ * @returns An empty weighted-average position.
+ */
 export function emptyValuationPosition(input: {
   readonly companyId: CompanyId;
   readonly productId: ProductId;

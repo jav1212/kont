@@ -7,7 +7,15 @@ import { z } from "zod";
 
 const folderRow=z.object({id:z.string(),organization_id:z.string(),company_id:z.string().nullable(),parent_id:z.string().nullable(),name:z.string(),created_by:z.string(),version:z.number().int().positive(),created_at:z.string(),updated_at:z.string()});
 const documentRow=z.object({id:z.string(),organization_id:z.string(),company_id:z.string().nullable(),folder_id:z.string().nullable(),name:z.string(),storage_path:z.string(),mime_type:z.string().nullable(),size_bytes:z.union([z.number(),z.string()]).nullable(),uploaded_by:z.string(),version:z.number().int().positive(),created_at:z.string(),updated_at:z.string()});
+/** Credentials required by the server-side documents adapters. */
 export interface DocumentsSupabaseConfiguration{readonly url:string;readonly serviceRoleKey:string}
+/**
+ * Creates document metadata and object-storage adapters sharing a stateless client.
+ *
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns Infrastructure adapters for document metadata and binary storage.
+ * @throws When the Supabase client rejects invalid construction parameters.
+ */
 export function createDocumentsInfrastructure(configuration:DocumentsSupabaseConfiguration){const client=createClient(configuration.url,configuration.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});return{repository:new SupabaseDocumentsRepository(client),storage:new SupabaseDocumentStorage(client)}}
 
 class SupabaseDocumentsRepository implements DocumentsRepository{

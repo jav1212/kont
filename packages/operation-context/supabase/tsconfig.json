@@ -1,5 +1,5 @@
 {
   "extends": "../../../tooling/typescript/source-package.json",
   "compilerOptions": { "noEmit": true },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

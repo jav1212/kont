@@ -1,4 +1,5 @@
 import "./styles.css";
+export { applyDesignTokens } from "./apply-design-tokens";
 export { Alert, type AlertProps } from "./alert";
 export { LogoFull, LogoMark, type LogoProps } from "./logo";
 export { ImageWithFallback, type ImageWithFallbackProps } from "./image-with-fallback";

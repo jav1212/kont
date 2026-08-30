@@ -41,9 +41,21 @@ export class PurchaseOrder {
   readonly status: PurchaseOrderStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates a purchase order while reconciling line amounts and currency.
+   * @param state Persisted order state.
+   * @throws {PurchasingFailure} When the order or any line is invalid.
+   */
   constructor(state: PurchaseOrderState) {
-    if (!Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0) throw new PurchasingFailure("PURCHASE_ORDER_INVALID", "Purchase order state is invalid.");
-    if (new Set(state.lines.map((line) => line.id)).size !== state.lines.length) throw new PurchasingFailure("PURCHASE_ORDER_INVALID", "Purchase order line identifiers must be unique.");
+    if (!Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0) {
+      throw new PurchasingFailure("PURCHASE_ORDER_INVALID", "Purchase order state is invalid.");
+    }
+    if (new Set(state.lines.map((line) => line.id)).size !== state.lines.length) {
+      throw new PurchasingFailure(
+        "PURCHASE_ORDER_INVALID",
+        "Purchase order line identifiers must be unique.",
+      );
+    }
     this.id = state.id;
     this.companyId = state.companyId;
     this.supplierId = state.supplierId;
@@ -54,16 +66,24 @@ export class PurchaseOrder {
     this.version = state.version;
   }
 
+  /** @returns A new approved order version. @throws {PurchasingFailure} When not a draft. */
   approve(): PurchaseOrder {
     if (this.status !== "draft") throw new PurchasingFailure("PURCHASE_ORDER_TRANSITION_INVALID", "Only a draft purchase order can be approved.");
     return new PurchaseOrder({ ...this, status: "approved", version: this.version + 1 });
   }
+  /** @returns A new closed order version. @throws {PurchasingFailure} When not approved. */
   close(): PurchaseOrder {
     if (this.status !== "approved") throw new PurchasingFailure("PURCHASE_ORDER_TRANSITION_INVALID", "Only an approved purchase order can be closed.");
     return new PurchaseOrder({ ...this, status: "closed", version: this.version + 1 });
   }
+  /** @returns A new cancelled order version. @throws {PurchasingFailure} When already closed or cancelled. */
   cancel(): PurchaseOrder {
-    if (this.status !== "draft" && this.status !== "approved") throw new PurchasingFailure("PURCHASE_ORDER_TRANSITION_INVALID", "Purchase order cannot be cancelled from its current state.");
+    if (this.status !== "draft" && this.status !== "approved") {
+      throw new PurchasingFailure(
+        "PURCHASE_ORDER_TRANSITION_INVALID",
+        "Purchase order cannot be cancelled from its current state.",
+      );
+    }
     return new PurchaseOrder({ ...this, status: "cancelled", version: this.version + 1 });
   }
 }

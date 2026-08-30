@@ -2,11 +2,10 @@
 
 ## Paquetes
 
-- `design-tokens`: valores portables y temas semánticos.
+- `ui`: contratos, valores portables y temas semánticos, expuestos por `@kontave/ui/contracts` y `@kontave/ui/tokens`.
 - `brand-assets`: fuentes canónicas de identidad.
-- `ui-contracts`: significados compartidos sin dependencia de framework.
 - `ui-dom`: primitivas React DOM independientes del cliente para Web, Desktop y otros hosts DOM.
-- `ui-native`: futura implementación React Native, creada con Mobile.
+- `ui-react-native`: primitivas React Native consumidas por Mobile.
 
 ## Selección de capa
 

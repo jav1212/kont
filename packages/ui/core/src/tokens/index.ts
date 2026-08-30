@@ -1,5 +1,7 @@
+/** Supported semantic color themes. */
 export type KontaveTheme = "light" | "dark";
 
+/** Canonical renderer-neutral design values. */
 export const designTokens = {
   color: {
     brand: { 50: "#FFF4F0", 100: "#FFE5DB", 200: "#FFC9B5", 400: "#FF7450", 500: "#D93A10", 600: "#B22C0B", 800: "#661805", 900: "#3D0F03", accent: "#FF4A18" },
@@ -33,6 +35,7 @@ const baseVariables: Readonly<Record<string, string>> = {
   "--kt-brand-deep": designTokens.color.brand[800], "--kt-brand-ink": designTokens.color.brand[900],
 };
 
+/** Canonical semantic CSS-variable values for each supported theme. */
 export const themeVariables: Readonly<Record<KontaveTheme, Readonly<Record<string, string>>>> = {
   light: {
     ...baseVariables,
@@ -56,15 +59,7 @@ export const themeVariables: Readonly<Record<KontaveTheme, Readonly<Record<strin
     "--kt-sidebar-background": "#111315", "--kt-sidebar-border": "rgb(255 255 255 / 0.06)",
     "--kt-sidebar-label": "rgb(232 236 248 / 0.62)", "--kt-sidebar-text": "rgb(232 236 248 / 0.72)",
     "--kt-sidebar-text-strong": "rgb(232 236 248 / 0.92)", "--kt-sidebar-hover": "rgb(255 255 255 / 0.06)",
-    "--kt-sidebar-active-background": "rgb(255 74 24 / 0.16)", "--kt-sidebar-active-text": "#FF7450",
+    "--kt-sidebar-active-background": "rgb(255 74 24 / 0.16)", "--kt-sidebar-active-text": "#FF4A18",
     "--kt-sidebar-active-border": "rgb(255 74 24 / 0.36)",
   },
 };
-
-/** Applies platform-neutral tokens to a DOM root without duplicating CSS values. */
-export function applyDesignTokens(root: HTMLElement, theme: KontaveTheme = "light"): void {
-  const variables = themeVariables[theme];
-  Object.entries(variables).forEach(([name, value]) => root.style.setProperty(name, value));
-  root.dataset.theme = theme;
-  root.style.colorScheme = theme;
-}

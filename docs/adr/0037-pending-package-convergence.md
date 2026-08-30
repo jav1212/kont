@@ -1,6 +1,6 @@
 # ADR 0037: Convergencia pendiente de paquetes y restricción de producción
 
-- Estado: propuesto
+- Estado: aceptado
 - Fecha: 2026-08-26
 
 ## Contexto
@@ -60,29 +60,25 @@ unidad de distribución. Deben converger junto con su contexto propietario, no
 mediante una migración parcial que mantenga indefinidamente el resto de las
 capas separadas.
 
-## Deuda abierta en UI
+## Resolución de la deuda UI
 
-`packages/ui/` contiene actualmente cinco unidades:
+El ADR 0038 resolvió este corte con cuatro unidades:
 
 - `@kontave/brand-assets`
-- `@kontave/ui-contracts`
-- `@kontave/design-tokens`
+- `@kontave/ui`
 - `@kontave/ui-dom`
-- `@kontave/ui-native`
+- `@kontave/ui-react-native`
 
-`ui-dom` depende de React DOM y es consumido por Desktop. `ui-native` depende
-de React Native y es consumido por Mobile. Esta diferencia de runtime es real,
-pero el término `native` no debe actuar como clasificación de dominio ni
-propagarse a contratos, casos de uso o capacidades portables.
+`ui-dom` depende de React DOM y es consumido por Desktop. `ui-react-native`
+depende de React Native y es consumido por Mobile. Los contratos y tokens
+convergieron en `@kontave/ui`; el efecto `applyDesignTokens` pasó al adaptador
+DOM para que el núcleo portable no dependa de `HTMLElement`.
 
-La siguiente fase debe auditar esta distribución y decidir con evidencia entre:
+La auditoría demostró peer dependencies, bundlers y ciclos de entrega distintos
+entre Electron/Vite y Expo/Metro. Por ello los adaptadores conservan manifests
+separados y el núcleo portable converge en `@kontave/ui`.
 
-1. un paquete `@kontave/ui` con contratos, tokens y adaptadores expuestos por
-   subpaths; o
-2. paquetes de adaptador separados cuando React DOM y React Native demuestren
-   dependencias, bundling o ciclos de entrega incompatibles.
-
-En ambos casos deben cumplirse estas condiciones:
+La solución cumple estas condiciones:
 
 - contratos y tokens no se duplican por plataforma;
 - ningún contrato portable usa `native` para distinguir clientes;
@@ -91,11 +87,9 @@ En ambos casos deben cumplirse estas condiciones:
   recursos no código lo requiere;
 - Desktop y Mobile consumen APIs explícitas sin imports internos del paquete.
 
-Este ADR no decide todavía si los adaptadores UI comparten manifest. Esa
-decisión requiere comprobar el comportamiento de Metro, Electron/Vite, peer
-dependencies y tree-shaking antes de modificar la topología.
+La decisión completa y su evidencia se registran en el ADR 0038.
 
-## Decisión propuesta
+## Decisión
 
 Mientras la aplicación Web permanezca fuera del alcance del refactor:
 
@@ -106,21 +100,21 @@ Mientras la aplicación Web permanezca fuera del alcance del refactor:
 3. Se permiten mejoras internas compatibles dentro de `packages/`: TSDoc,
    errores esperados tipados, imports TypeScript extensionless, pruebas y
    refuerzo de las dependencias hacia dentro.
-4. El siguiente corte seguro será la auditoría y resolución de la distribución
-   UI, porque sus consumidores están en Desktop y Mobile y no exige modificar
-   el Web de producción.
+4. La distribución UI se resolvió en el ADR 0038 sin modificar el Web de
+   producción.
 5. La convergencia de cada uno de los 17 contextos diferidos requerirá una
    tarea explícita que autorice la migración del Web.
 
 ## Secuencia de trabajo pendiente
 
-### Fase 1: UI portable y adaptadores
+### Fase 1 completada: UI portable y adaptadores
 
-- Medir las fronteras reales de dependencias y bundling.
-- Retirar `native` del lenguaje portable.
-- Consolidar contratos y tokens donde no exista una frontera de distribución.
-- Migrar Desktop y Mobile en el mismo corte.
-- Validar Metro, Electron/Vite, TypeScript, ESLint y pruebas de arquitectura.
+- Se midieron las fronteras reales de dependencias y bundling.
+- Se retiró `native` del lenguaje portable.
+- Se consolidaron contratos y tokens en `@kontave/ui`.
+- Desktop y Mobile migraron en el mismo corte.
+- Metro, Electron/Vite, TypeScript, ESLint y las pruebas de arquitectura forman
+  parte de los gates del corte.
 
 ### Fase 2: endurecimiento sin cambios públicos
 
@@ -130,7 +124,37 @@ Mientras la aplicación Web permanezca fuera del alcance del refactor:
 - Verificar que dominio y aplicación no importen SDKs, UI ni adaptadores.
 - Incorporar checks de duplicación de nombres y dependencias entre apps.
 
+#### Progreso
+
+| Contexto | Estado | Evidencia principal |
+| --- | --- | --- |
+| `operation-context` | Completado | Errores de coordinador y Supabase tipados; 15 pruebas focalizadas |
+| `experience/preferences` | Completado | Fronteras de aplicación y Supabase tipadas; 9 pruebas focalizadas |
+| `portal-monitoring` | Completado | Fallos de repositorio normalizados; 6 pruebas focalizadas |
+| `business/unit-economics` | Completado | Fuentes formateadas, RPC tipado y 6 pruebas focalizadas |
+| `business/pricing` | Completado | Dominio y casos de uso documentados; errores de repositorio tipados |
+| `business/documents` | Completado | Contratos documentados; errores de repositorio y almacenamiento tipados; 6 pruebas focalizadas |
+| `business/employees` | Completado | Agregado, puertos y Supabase documentados; fechas y errores de repositorio validados; 2 pruebas focalizadas |
+| `business/payments` | Completado | Contratos, casos de uso, Supabase y dobles documentados; errores de repositorio tipados; 2 pruebas focalizadas |
+| `monetary` | Completado | Dominio exacto y resolución documentados; caché y proveedor BCV tipados; 22 pruebas focalizadas |
+| `business/billing` | Completado | Puertos y casos de uso documentados; repositorio, ledger y almacenamiento tipados; 9 pruebas focalizadas |
+| `business/modules` | Completado | Dominio, puertos y casos de uso documentados; fallos de fronteras normalizados; 5 pruebas focalizadas |
+| `business/products` | Completado | Casos de uso y operaciones de dominio documentados; RPC y repositorio tipados; 3 pruebas focalizadas |
+| `business/referrals` | Completado | Dominio, puertos y casos de uso documentados; crédito anticorrupción y errores tipados; 4 pruebas focalizadas |
+| `business/taxation` | Completado | Dominio temporal y fiscal documentado; aplicación y Supabase formateados y tipados; 2 pruebas focalizadas |
+| `business/inventory` | Completado | Dominio, dashboard, operaciones y Supabase documentados y formateados; errores de frontera tipados; 22 pruebas focalizadas |
+| `business/purchasing` | Completado | Dominio, casos de uso, integración con inventario y Supabase documentados; errores de frontera tipados; 19 pruebas focalizadas |
+| `business/sales` | Completado | Dominio, casos de uso, integración con inventario y Supabase documentados; errores de frontera tipados; 16 pruebas focalizadas |
+
+Estos cortes conservan todos los nombres públicos existentes. Los 17 contextos
+diferidos completaron el endurecimiento compatible de la fase 2 sin modificar
+los consumidores Web congelados. La fase 3 permanece condicionada a una
+autorización explícita para migrar producción.
+
 ### Fase 3: migración explícita del Web
+
+El plan de ejecución, orden, gates y estrategia de rollback de esta fase se
+definen en el ADR 0039.
 
 Cuando exista autorización para tocar producción, cada contexto se migrará de
 forma atómica:

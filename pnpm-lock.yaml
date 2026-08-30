@@ -336,9 +336,6 @@ importers:
       '@kontave/delegated-access':
         specifier: workspace:*
         version: link:../../packages/capabilities/delegated-access
-      '@kontave/design-tokens':
-        specifier: workspace:*
-        version: link:../../packages/ui/design-tokens
       '@kontave/devices':
         specifier: workspace:*
         version: link:../../packages/platform/devices
@@ -366,6 +363,9 @@ importers:
       '@kontave/settings':
         specifier: workspace:*
         version: link:../../packages/experience/settings
+      '@kontave/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui/core
       '@kontave/ui-dom':
         specifier: workspace:*
         version: link:../../packages/ui/dom
@@ -491,9 +491,6 @@ importers:
       '@kontave/delegated-access':
         specifier: workspace:*
         version: link:../../packages/capabilities/delegated-access
-      '@kontave/design-tokens':
-        specifier: workspace:*
-        version: link:../../packages/ui/design-tokens
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:../../packages/business/modules/application
@@ -506,9 +503,12 @@ importers:
       '@kontave/organizations':
         specifier: workspace:*
         version: link:../../packages/capabilities/organizations
-      '@kontave/ui-native':
+      '@kontave/ui':
         specifier: workspace:*
-        version: link:../../packages/ui/native
+        version: link:../../packages/ui/core
+      '@kontave/ui-react-native':
+        specifier: workspace:*
+        version: link:../../packages/ui/react-native
       '@kontave/workspace-context-application':
         specifier: workspace:*
         version: link:../../packages/kernel/workspace
@@ -1746,6 +1746,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -1756,6 +1759,9 @@ importers:
         specifier: workspace:*
         version: link:../application
     devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -2151,6 +2157,12 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@kontave/organizations':
+        specifier: workspace:*
+        version: link:../../capabilities/organizations
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -2265,13 +2277,7 @@ importers:
 
   packages/ui/brand-assets: {}
 
-  packages/ui/contracts:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/ui/design-tokens:
+  packages/ui/core:
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -2288,9 +2294,9 @@ importers:
       '@kontave/client-interaction':
         specifier: workspace:*
         version: link:../../experience/interaction
-      '@kontave/ui-contracts':
+      '@kontave/ui':
         specifier: workspace:*
-        version: link:../contracts
+        version: link:../core
       flag-icons:
         specifier: ^7.5.0
         version: 7.5.0
@@ -2314,14 +2320,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/ui/native:
+  packages/ui/react-native:
     dependencies:
-      '@kontave/design-tokens':
+      '@kontave/ui':
         specifier: workspace:*
-        version: link:../design-tokens
-      '@kontave/ui-contracts':
-        specifier: workspace:*
-        version: link:../contracts
+        version: link:../core
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -2335,6 +2338,8 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+
+  tooling/architecture: {}
 
 packages:
 

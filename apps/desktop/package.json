@@ -25,7 +25,7 @@
     "@kontave/client-remote": "workspace:*",
     "@kontave/client-runtime": "workspace:*",
     "@kontave/client-updates": "workspace:*",
-    "@kontave/design-tokens": "workspace:*",
+    "@kontave/ui": "workspace:*",
     "@kontave/devices": "workspace:*",
     "@kontave/modules-application": "workspace:*",
     "@kontave/modules-domain": "workspace:*",

@@ -16,6 +16,12 @@ export interface Money {
 
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
 
+/**
+ * Normalizes and brands an ISO-style three-letter currency code.
+ * @param value - Untrusted currency code.
+ * @returns The uppercase branded code.
+ * @throws {MonetaryFailure} When the code is not exactly three ASCII letters.
+ */
 export function currencyCode(value: string): CurrencyCode {
   const normalized = value.trim().toUpperCase();
   if (!CURRENCY_PATTERN.test(normalized)) {
@@ -24,6 +30,13 @@ export function currencyCode(value: string): CurrencyCode {
   return normalized as CurrencyCode;
 }
 
+/**
+ * Creates a currency definition.
+ * @param value - ISO-style currency code.
+ * @param minorUnit - Supported fractional digit count from 0 through 100.
+ * @returns The validated currency definition.
+ * @throws {MonetaryFailure} When code or minor unit is invalid.
+ */
 export function currency(value: string, minorUnit: number): CurrencyDefinition {
   if (!Number.isInteger(minorUnit) || minorUnit < 0 || minorUnit > 100) {
     throw new MonetaryFailure("INVALID_MINOR_UNIT", "Currency minor unit must be an integer between 0 and 100.");
@@ -31,10 +44,23 @@ export function currency(value: string, minorUnit: number): CurrencyDefinition {
   return { code: currencyCode(value), minorUnit };
 }
 
+/**
+ * Creates money from an exact minor-unit amount.
+ * @param minorAmount - Signed integer minor units.
+ * @param definition - Currency definition.
+ * @returns The exact money value.
+ */
 export function moneyFromMinor(minorAmount: bigint, definition: CurrencyDefinition): Money {
   return { minorAmount, currency: definition };
 }
 
+/**
+ * Parses decimal money without rounding.
+ * @param value - Exact decimal amount.
+ * @param definition - Currency and supported minor-unit scale.
+ * @returns The exact minor-unit money value.
+ * @throws {MonetaryFailure} When invalid or more precise than the currency permits.
+ */
 export function moneyFromDecimal(value: string, definition: CurrencyDefinition): Money {
   const parsed = exactDecimal(value);
   const [wholePart = "0", fractionPart = ""] = parsed.split(".");
@@ -51,6 +77,11 @@ export function moneyFromDecimal(value: string, definition: CurrencyDefinition):
   return moneyFromMinor(negative ? -absoluteMinor : absoluteMinor, definition);
 }
 
+/**
+ * Converts money to exact fixed-scale decimal text.
+ * @param value - Money value to serialize.
+ * @returns Exact decimal text at the currency's minor-unit scale.
+ */
 export function moneyToDecimal(value: Money): ExactDecimal {
   const negative = value.minorAmount < 0n;
   const absolute = negative ? -value.minorAmount : value.minorAmount;
@@ -61,31 +92,70 @@ export function moneyToDecimal(value: Money): ExactDecimal {
   return exactDecimal(negative ? `-${rendered}` : rendered);
 }
 
+/**
+ * Rounds an exact decimal to a currency's minor-unit scale.
+ * @param value - Decimal amount to quantize.
+ * @param definition - Target currency definition.
+ * @param mode - Explicit rounding mode.
+ * @returns Quantized money.
+ */
 export function quantizeMoney(value: ExactDecimal, definition: CurrencyDefinition, mode: RoundingMode): Money {
   const Decimal = decimalParts(value);
   const quantized = Decimal.toDecimalPlaces(definition.minorUnit, decimalRounding(mode)).toFixed(definition.minorUnit);
   return moneyFromDecimal(quantized, definition);
 }
 
+/**
+ * Adds money in the same currency definition.
+ * @param left - Left amount.
+ * @param right - Right amount.
+ * @returns Their exact sum.
+ * @throws {MonetaryFailure} When currencies differ.
+ */
 export function addMoney(left: Money, right: Money): Money {
   requireSameCurrency(left, right);
   return moneyFromMinor(left.minorAmount + right.minorAmount, left.currency);
 }
 
+/**
+ * Subtracts money in the same currency definition.
+ * @param left - Minuend.
+ * @param right - Subtrahend.
+ * @returns Their exact difference.
+ * @throws {MonetaryFailure} When currencies differ.
+ */
 export function subtractMoney(left: Money, right: Money): Money {
   requireSameCurrency(left, right);
   return moneyFromMinor(left.minorAmount - right.minorAmount, left.currency);
 }
 
+/**
+ * Negates a money value.
+ * @param value - Money to negate.
+ * @returns Its additive inverse in the same currency.
+ */
 export function negateMoney(value: Money): Money {
   return moneyFromMinor(-value.minorAmount, value.currency);
 }
 
+/**
+ * Compares money in the same currency definition.
+ * @param left - Left amount.
+ * @param right - Right amount.
+ * @returns `-1`, `0` or `1` according to numeric ordering.
+ * @throws {MonetaryFailure} When currencies differ.
+ */
 export function compareMoney(left: Money, right: Money): -1 | 0 | 1 {
   requireSameCurrency(left, right);
   return left.minorAmount < right.minorAmount ? -1 : left.minorAmount > right.minorAmount ? 1 : 0;
 }
 
+/**
+ * Compares both code and minor-unit scale of currency definitions.
+ * @param left - Left definition.
+ * @param right - Right definition.
+ * @returns Whether both definitions are identical.
+ */
 export function sameCurrency(left: CurrencyDefinition, right: CurrencyDefinition): boolean {
   return left.code === right.code && left.minorUnit === right.minorUnit;
 }

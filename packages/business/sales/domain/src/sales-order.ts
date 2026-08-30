@@ -46,6 +46,11 @@ export class SalesOrder {
   readonly status: SalesOrderStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates a sales order while reconciling line amounts and currency.
+   * @param state Persisted order state.
+   * @throws {SalesFailure} When the order or any line is invalid.
+   */
   constructor(state: SalesOrderState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0 || new Set(state.lines.map((line) => line.id)).size !== state.lines.length) {
       throw new SalesFailure("SALES_ORDER_INVALID", "Sales order state is invalid.");
@@ -61,14 +66,17 @@ export class SalesOrder {
     this.version = state.version;
   }
 
+  /** @returns A new approved order version. @throws {SalesFailure} When not a draft. */
   approve(): SalesOrder {
     if (this.status !== "draft") throw new SalesFailure("SALES_ORDER_TRANSITION_INVALID", "Only a draft sales order can be approved.");
     return new SalesOrder({ ...this, status: "approved", version: this.version + 1 });
   }
+  /** @returns A new closed order version. @throws {SalesFailure} When not approved. */
   close(): SalesOrder {
     if (this.status !== "approved") throw new SalesFailure("SALES_ORDER_TRANSITION_INVALID", "Only an approved sales order can be closed.");
     return new SalesOrder({ ...this, status: "closed", version: this.version + 1 });
   }
+  /** @returns A new cancelled order version. @throws {SalesFailure} When already closed or cancelled. */
   cancel(): SalesOrder {
     if (this.status !== "draft" && this.status !== "approved") throw new SalesFailure("SALES_ORDER_TRANSITION_INVALID", "Sales order cannot be cancelled from its current state.");
     return new SalesOrder({ ...this, status: "cancelled", version: this.version + 1 });

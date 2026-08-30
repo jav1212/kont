@@ -128,22 +128,45 @@ export interface BillingCreditApplication {
   readonly appliedAt: string;
 }
 
+/** Stable expected-failure codes exposed by the billing capability. */
 export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE" | "BILLING_CREDIT_INSUFFICIENT" | "BILLING_INVOICE_NOT_APPLICABLE" | "BILLING_CURRENCY_MISMATCH" | "BILLING_PLAN_NOT_FOUND" | "BILLING_PLAN_CONTACT_REQUIRED" | "BILLING_PAYMENT_REQUEST_INVALID" | "BILLING_RECEIPT_INVALID" | "BILLING_RECEIPT_UNAVAILABLE";
+/** Expected failure raised by billing domain and boundary operations. */
 export class BillingFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: BillingFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "BillingFailure";
   }
 }
 
+/**
+ * Creates a non-negative billing amount.
+ *
+ * @param minorAmount - Amount in the currency's minor unit.
+ * @param currency - Currency of the amount.
+ * @returns An immutable billing amount.
+ * @throws {TypeError} When the amount is negative.
+ */
 export function money(minorAmount: bigint, currency: Currency): Money {
-  if (minorAmount < BigInt(0)) throw new TypeError("Money cannot be negative.");
-  return { minorAmount, currency };
+  if (minorAmount < 0n) throw new TypeError("Money cannot be negative.");
+  return Object.freeze({ minorAmount, currency });
 }
 
+/**
+ * Calculates a bounded or unlimited usage limit.
+ *
+ * @param used - Current non-negative usage.
+ * @param maximum - Non-negative maximum, or `null` for unlimited.
+ * @returns Usage, maximum and remaining capacity.
+ * @throws {TypeError} When either numeric input is invalid.
+ */
 export function limit(used: number, maximum: number | null): Limit {
   if (!Number.isInteger(used) || used < 0 || (maximum !== null && (!Number.isInteger(maximum) || maximum < 0))) {
     throw new TypeError("Usage limits must be non-negative integers.");
   }
-  return { used, maximum, remaining: maximum === null ? null : Math.max(0, maximum - used) };
+  return Object.freeze({ used, maximum, remaining: maximum === null ? null : Math.max(0, maximum - used) });
 }

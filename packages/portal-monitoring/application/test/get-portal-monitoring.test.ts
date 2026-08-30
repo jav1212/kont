@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PortalAvailability, type PortalStatus } from "@kontave/portal-monitoring-domain";
+import { PortalAvailability, PortalMonitoringFailure, type PortalStatus } from "@kontave/portal-monitoring-domain";
 import { GetPortalMonitoring, type PortalMonitoringRepository } from "../src/index";
 
 class Repository implements PortalMonitoringRepository {
@@ -17,4 +17,16 @@ test("builds a monitoring snapshot from persisted portal observations", async ()
   assert.equal(snapshot.status, PortalAvailability.Operational);
   assert.equal(snapshot.portals[0]?.slug, "seniat");
   assert.equal(snapshot.observedAt, "2026-08-15T12:00:00.000Z");
+});
+
+test("maps unexpected repository errors to a typed public failure", async () => {
+  const repository: PortalMonitoringRepository = {
+    listActivePortalStatuses: async () => { throw new Error("database unavailable"); },
+  };
+  await assert.rejects(
+    new GetPortalMonitoring(repository).execute(),
+    (cause) => cause instanceof PortalMonitoringFailure
+      && cause.code === "PORTAL_MONITORING_REPOSITORY_UNAVAILABLE"
+      && cause.cause instanceof Error,
+  );
 });

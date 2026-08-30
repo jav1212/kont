@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { currency, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations/domain";
-import { localDate, type OperationalDefaults } from "@kontave/operation-context-domain";
+import { OperationContextFailure, localDate, type OperationalDefaults } from "@kontave/operation-context-domain";
 import { OperationContextCoordinator, type OperationContextStore, type OperationExchangeRateResolver } from "../src/index";
 
 const USD = currency("USD", 2), VES = currency("VES", 2);
@@ -46,4 +46,54 @@ test("a slower date change cannot overwrite the latest selection", async () => {
   await Promise.all([first, second]);
   assert.equal(coordinator.getState().status, "ready");
   assert.equal(store.value?.effectiveDate, "2026-08-16");
+});
+
+test("invalid manual rates publish a typed failure without leaving a changing state", async () => {
+  const store = new MemoryStore();
+  const rates: OperationExchangeRateResolver = { historical: async (_currency, date) => result(date, "150.12") };
+  const coordinator = new OperationContextCoordinator(store, rates, clock);
+  await coordinator.initialize(key);
+
+  await assert.rejects(
+    coordinator.selectManualExchangeRate({ baseCurrency: USD, value: "151", reason: " " }),
+    (cause) => cause instanceof OperationContextFailure && cause.code === "OPERATION_CONTEXT_INVALID",
+  );
+
+  const state = coordinator.getState();
+  assert.equal(state.status, "failed");
+  assert.equal(state.status === "failed" ? state.previous?.version : null, 1);
+  assert.equal(store.value?.version, 1);
+});
+
+test("an unavailable official rate persists an explicit unavailable selection", async () => {
+  const store = new MemoryStore();
+  const rates: OperationExchangeRateResolver = {
+    historical: async () => { throw { code: "RATE_NOT_AVAILABLE" }; },
+  };
+  const coordinator = new OperationContextCoordinator(store, rates, clock);
+
+  await coordinator.initialize(key);
+
+  assert.equal(coordinator.getState().status, "ready");
+  assert.equal(store.value?.exchangeRate.status, "unavailable");
+});
+
+test("unexpected resolver failures cross the boundary as typed application failures", async () => {
+  const store = new MemoryStore();
+  let fail = false;
+  const rates: OperationExchangeRateResolver = {
+    historical: async (_currency, date) => {
+      if (fail) throw new Error("provider offline");
+      return result(date, "150.12");
+    },
+  };
+  const coordinator = new OperationContextCoordinator(store, rates, clock);
+  await coordinator.initialize(key);
+  fail = true;
+
+  await assert.rejects(
+    coordinator.refreshExchangeRate(),
+    (cause) => cause instanceof OperationContextFailure && cause.code === "OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE",
+  );
+  assert.equal(coordinator.getState().status, "failed");
 });

@@ -17,6 +17,7 @@ export interface StockLotState {
   readonly version: number;
 }
 
+/** Traceable product lot at an inventory location. */
 export class StockLot {
   readonly id: StockLotId;
   readonly companyId: CompanyId;
@@ -27,6 +28,7 @@ export class StockLot {
   readonly status: StockLotStatus;
   readonly version: number;
 
+  /** @param state - Complete lot state. @throws {InventoryFailure} When lot data or version is invalid. */
   constructor(state: StockLotState) {
     const lotNumber = state.lotNumber.trim();
     if (!lotNumber || lotNumber.length > 128 || !Number.isSafeInteger(state.version) || state.version < 1) {
@@ -45,6 +47,7 @@ export class StockLot {
     this.version = state.version;
   }
 
+  /** @param onDate - Effective inventory date. @param expirationRequired - Whether policy requires expiration. @returns Nothing when usable. @throws {InventoryFailure} When blocked, depleted or expired. */
   assertUsable(onDate: string, expirationRequired: boolean): void {
     const date = localDate(onDate);
     if (this.status !== "active") {
@@ -58,6 +61,7 @@ export class StockLot {
     }
   }
 
+  /** @returns A new blocked lot version. @throws {InventoryFailure} When already depleted. */
   block(): StockLot {
     if (this.status !== "active") throw new InventoryFailure("INVENTORY_LOT_INVALID", "Only an active lot can be blocked.");
     return new StockLot({ ...this, status: "blocked", version: this.version + 1 });

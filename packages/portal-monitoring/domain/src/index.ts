@@ -37,12 +37,25 @@ export interface PortalMonitoringSnapshot {
 export type PortalMonitoringFailureCode = "PORTAL_MONITORING_REPOSITORY_UNAVAILABLE";
 
 export class PortalMonitoringFailure extends Error {
+  /**
+   * Creates an expected portal-monitoring failure.
+   *
+   * @param code - Stable failure classification.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional original cause.
+   */
   constructor(readonly code: PortalMonitoringFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "PortalMonitoringFailure";
   }
 }
 
+/**
+ * Builds an immutable aggregate snapshot from individual portal observations.
+ *
+ * @param portals - Active portals and their latest known observations.
+ * @returns Worst-case availability, counts and newest valid observation timestamp.
+ */
 export function summarizePortalMonitoring(portals: readonly PortalStatus[]): PortalMonitoringSnapshot {
   const summary = portals.reduce<PortalStatusSummary>((current, portal) => ({
     operational: current.operational + Number(portal.status === PortalAvailability.Operational),

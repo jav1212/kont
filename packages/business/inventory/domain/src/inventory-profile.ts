@@ -23,6 +23,7 @@ export interface InventoryProfileState {
   readonly version: number;
 }
 
+/** Product-owned inventory policy aggregate. */
 export class InventoryProfile {
   readonly productId: ProductId;
   readonly companyId: CompanyId;
@@ -32,6 +33,7 @@ export class InventoryProfile {
   readonly status: InventoryProfileStatus;
   readonly version: number;
 
+  /** @param state - Complete profile state. @throws {InventoryFailure} When policy or version is invalid. */
   constructor(state: InventoryProfileState) {
     if (!Number.isSafeInteger(state.version) || state.version < 1) {
       throw new InventoryFailure("INVENTORY_PROFILE_INVALID", "Inventory profile version is invalid.");
@@ -45,6 +47,7 @@ export class InventoryProfile {
     this.version = state.version;
   }
 
+  /** @param effect - Stock effect to validate. @returns Nothing when accepted. @throws {InventoryFailure} When policy rejects the effect. */
   assertAccepts(effect: StockEffect): void {
     if (this.status !== "active") {
       throw new InventoryFailure("INVENTORY_PROFILE_INACTIVE", "Inactive inventory profile cannot receive stock effects.");
@@ -60,6 +63,7 @@ export class InventoryProfile {
     }
   }
 
+  /** @returns A new inactive profile version. @throws {InventoryFailure} Unless currently active. */
   deactivate(): InventoryProfile {
     if (this.status !== "active") {
       throw new InventoryFailure("INVENTORY_PROFILE_INVALID", "Only an active inventory profile can be deactivated.");
@@ -67,6 +71,7 @@ export class InventoryProfile {
     return new InventoryProfile({ ...this, status: "inactive", version: this.version + 1 });
   }
 
+  /** @returns A new active profile version. @throws {InventoryFailure} Unless currently inactive. */
   activate(): InventoryProfile {
     if (this.status !== "inactive") {
       throw new InventoryFailure("INVENTORY_PROFILE_INVALID", "Only an inactive inventory profile can be activated.");

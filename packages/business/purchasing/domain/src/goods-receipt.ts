@@ -67,6 +67,11 @@ export class GoodsReceipt {
   readonly reversedAt: PurchaseInstant | null;
   readonly version: number;
 
+  /**
+   * Rehydrates a goods receipt while enforcing lifecycle and line invariants.
+   * @param state Persisted receipt state.
+   * @throws {PurchasingFailure} When the state is invalid.
+   */
   constructor(state: GoodsReceiptState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0 || new Set(state.lines.map((line) => line.id)).size !== state.lines.length) {
       throw new PurchasingFailure("PURCHASE_RECEIPT_INVALID", "Goods receipt state is invalid.");
@@ -86,22 +91,58 @@ export class GoodsReceipt {
     this.version = state.version;
   }
 
+  /**
+   * Confirms this draft receipt.
+   * @param value Confirmation timestamp.
+   * @returns The next aggregate version and its stock event.
+   * @throws {PurchasingFailure} When the receipt is not a draft or the instant is invalid.
+   */
   confirm(value: string): { readonly receipt: GoodsReceipt; readonly event: PurchaseReceiptConfirmed } {
     if (this.status !== "draft") throw new PurchasingFailure("PURCHASE_RECEIPT_TRANSITION_INVALID", "Only a draft receipt can be confirmed.");
     const occurredAt = purchaseInstant(value);
     const version = this.version + 1;
     const operationKey = `purchase-receipt:${this.id}:v${version}`;
     const receipt = new GoodsReceipt({ ...this, status: "confirmed", confirmedAt: occurredAt, version });
-    return { receipt, event: { type: "purchasing.receipt_confirmed", eventId: operationKey, operationKey, receiptId: this.id, companyId: this.companyId, supplierId: this.supplierId, effectiveDate: this.receiptDate, occurredAt, lines: this.lines } };
+    return {
+      receipt,
+      event: {
+        type: "purchasing.receipt_confirmed",
+        eventId: operationKey,
+        operationKey,
+        receiptId: this.id,
+        companyId: this.companyId,
+        supplierId: this.supplierId,
+        effectiveDate: this.receiptDate,
+        occurredAt,
+        lines: this.lines,
+      },
+    };
   }
 
+  /**
+   * Reverses this confirmed receipt.
+   * @param value Reversal timestamp.
+   * @returns The next aggregate version and its reversal event.
+   * @throws {PurchasingFailure} When the receipt is not confirmed or the instant is invalid.
+   */
   reverse(value: string): { readonly receipt: GoodsReceipt; readonly event: PurchaseReceiptReversed } {
     if (this.status !== "confirmed") throw new PurchasingFailure("PURCHASE_RECEIPT_TRANSITION_INVALID", "Only a confirmed receipt can be reversed.");
     const occurredAt = purchaseInstant(value);
     const originalOperationKey = `purchase-receipt:${this.id}:v${this.version}`;
     const version = this.version + 1;
     const receipt = new GoodsReceipt({ ...this, status: "reversed", reversedAt: occurredAt, version });
-    return { receipt, event: { type: "purchasing.receipt_reversed", eventId: `purchase-receipt-reversal:${this.id}:v${version}`, originalOperationKey, receiptId: this.id, companyId: this.companyId, effectiveDate: this.receiptDate, occurredAt } };
+    return {
+      receipt,
+      event: {
+        type: "purchasing.receipt_reversed",
+        eventId: `purchase-receipt-reversal:${this.id}:v${version}`,
+        originalOperationKey,
+        receiptId: this.id,
+        companyId: this.companyId,
+        effectiveDate: this.receiptDate,
+        occurredAt,
+      },
+    };
   }
 }
 

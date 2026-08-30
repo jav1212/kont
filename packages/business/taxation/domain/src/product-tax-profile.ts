@@ -23,6 +23,7 @@ export interface ProductTaxProfileState {
   readonly version: number;
 }
 
+/** Company-owned product tax-classification aggregate. */
 export class ProductTaxProfile {
   readonly id: ProductTaxProfileId;
   readonly companyId: CompanyId;
@@ -31,6 +32,11 @@ export class ProductTaxProfile {
   readonly assignments: readonly ProductTaxAssignment[];
   readonly version: number;
 
+  /**
+   * Rehydrates and validates a product tax profile.
+   * @param state - Complete persisted or newly-created profile state.
+   * @throws {TaxationFailure} When version, jurisdiction or assignments are invalid.
+   */
   constructor(state: ProductTaxProfileState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0) throw new TaxationFailure("TAXATION_PROFILE_INVALID", "Tax profile version is invalid.");
     this.id = state.id;
@@ -51,6 +57,13 @@ export class ProductTaxProfile {
     this.version = state.version;
   }
 
+  /**
+   * Resolves the effective assignment for a tax code and date.
+   * @param code - Tax code to resolve.
+   * @param value - Effective local date in `YYYY-MM-DD` format.
+   * @returns The matching classification assignment.
+   * @throws {TaxationFailure} When the date is invalid or no assignment exists.
+   */
   assignmentAt(code: TaxCode, value: string): ProductTaxAssignment {
     const date = taxationDate(value);
     const assignment = this.assignments.find((candidate) => candidate.taxCode === code && includesDate(candidate.effectiveFrom, candidate.effectiveTo, date));

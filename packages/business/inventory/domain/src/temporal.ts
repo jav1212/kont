@@ -8,6 +8,12 @@ export type LocalDate = string & { readonly [localDateBrand]: true };
 export type Instant = string & { readonly [instantBrand]: true };
 export type InventoryMonth = string & { readonly [inventoryMonthBrand]: true };
 
+/**
+ * Validates and brands a real local inventory date.
+ * @param value - Date in `YYYY-MM-DD` format.
+ * @returns The normalized branded date.
+ * @throws {InventoryFailure} When malformed or impossible.
+ */
 export function localDate(value: string): LocalDate {
   const normalized = value.trim();
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
@@ -22,6 +28,12 @@ export function localDate(value: string): LocalDate {
   return normalized as LocalDate;
 }
 
+/**
+ * Validates and brands an inventory event instant.
+ * @param value - ISO-compatible date-time text.
+ * @returns The normalized branded instant.
+ * @throws {InventoryFailure} When invalid.
+ */
 export function instant(value: string): Instant {
   const normalized = value.trim();
   if (!normalized.includes("T") || Number.isNaN(Date.parse(normalized))) {
@@ -30,6 +42,12 @@ export function instant(value: string): Instant {
   return normalized as Instant;
 }
 
+/**
+ * Validates and brands an inventory accounting month.
+ * @param value - Month in `YYYY-MM` format.
+ * @returns The normalized branded month.
+ * @throws {InventoryFailure} When invalid.
+ */
 export function inventoryMonth(value: string): InventoryMonth {
   const normalized = value.trim();
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(normalized)) {
@@ -38,6 +56,10 @@ export function inventoryMonth(value: string): InventoryMonth {
   return normalized as InventoryMonth;
 }
 
+/**
+ * @param value - Local inventory date.
+ * @returns Its `YYYY-MM` inventory month.
+ */
 export function monthOf(value: LocalDate): InventoryMonth {
   return inventoryMonth(value.slice(0, 7));
 }

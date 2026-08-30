@@ -18,17 +18,33 @@ export type CustomerReturnId = string & { readonly [customerReturnIdBrand]: true
 export type CustomerReturnLineId = string & { readonly [customerReturnLineIdBrand]: true };
 export type CustomerInvoiceMatchId = string & { readonly [customerInvoiceMatchIdBrand]: true };
 
+/** @param value Raw identifier. @returns A validated customer identifier. @throws {SalesFailure} When invalid. */
 export const customerId = (value: string): CustomerId => id(value, "customer") as CustomerId;
+/** @param value Raw identifier. @returns A validated sales-order identifier. @throws {SalesFailure} When invalid. */
 export const salesOrderId = (value: string): SalesOrderId => id(value, "order") as SalesOrderId;
-export const salesOrderLineId = (value: string): SalesOrderLineId => id(value, "order line") as SalesOrderLineId;
-export const goodsDispatchId = (value: string): GoodsDispatchId => id(value, "dispatch") as GoodsDispatchId;
-export const goodsDispatchLineId = (value: string): GoodsDispatchLineId => id(value, "dispatch line") as GoodsDispatchLineId;
-export const customerReturnId = (value: string): CustomerReturnId => id(value, "return") as CustomerReturnId;
-export const customerReturnLineId = (value: string): CustomerReturnLineId => id(value, "return line") as CustomerReturnLineId;
-export const customerInvoiceMatchId = (value: string): CustomerInvoiceMatchId => id(value, "invoice match") as CustomerInvoiceMatchId;
+/** @param value Raw identifier. @returns A validated sales-order-line identifier. @throws {SalesFailure} When invalid. */
+export const salesOrderLineId = (value: string): SalesOrderLineId =>
+  id(value, "order line") as SalesOrderLineId;
+/** @param value Raw identifier. @returns A validated dispatch identifier. @throws {SalesFailure} When invalid. */
+export const goodsDispatchId = (value: string): GoodsDispatchId =>
+  id(value, "dispatch") as GoodsDispatchId;
+/** @param value Raw identifier. @returns A validated dispatch-line identifier. @throws {SalesFailure} When invalid. */
+export const goodsDispatchLineId = (value: string): GoodsDispatchLineId =>
+  id(value, "dispatch line") as GoodsDispatchLineId;
+/** @param value Raw identifier. @returns A validated customer-return identifier. @throws {SalesFailure} When invalid. */
+export const customerReturnId = (value: string): CustomerReturnId =>
+  id(value, "return") as CustomerReturnId;
+/** @param value Raw identifier. @returns A validated customer-return-line identifier. @throws {SalesFailure} When invalid. */
+export const customerReturnLineId = (value: string): CustomerReturnLineId =>
+  id(value, "return line") as CustomerReturnLineId;
+/** @param value Raw identifier. @returns A validated invoice-match identifier. @throws {SalesFailure} When invalid. */
+export const customerInvoiceMatchId = (value: string): CustomerInvoiceMatchId =>
+  id(value, "invoice match") as CustomerInvoiceMatchId;
 
 function id(value: string, name: string): string {
   const normalized = value.trim();
-  if (!normalized || normalized.length > 128) throw new SalesFailure("SALES_IDENTIFIER_INVALID", `Sales ${name} identifier is invalid.`);
+  if (!normalized || normalized.length > 128) {
+    throw new SalesFailure("SALES_IDENTIFIER_INVALID", `Sales ${name} identifier is invalid.`);
+  }
   return normalized;
 }

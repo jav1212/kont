@@ -22,6 +22,11 @@ export class Supplier {
   readonly status: SupplierStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates a supplier while enforcing its invariants.
+   * @param state Persisted supplier state.
+   * @throws {PurchasingFailure} When the state is invalid.
+   */
   constructor(state: SupplierState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0) throw new PurchasingFailure("SUPPLIER_INVALID", "Supplier version is invalid.");
     this.id = state.id;
@@ -33,10 +38,12 @@ export class Supplier {
     this.version = state.version;
   }
 
+  /** @returns Nothing when active. @throws {PurchasingFailure} When the supplier is inactive. */
   assertActive(): void {
     if (this.status !== "active") throw new PurchasingFailure("SUPPLIER_INACTIVE", "Supplier is inactive.");
   }
 
+  /** @returns A new inactive supplier version. @throws {PurchasingFailure} When already inactive. */
   deactivate(): Supplier {
     this.assertActive();
     return new Supplier({ ...this, status: "inactive", version: this.version + 1 });

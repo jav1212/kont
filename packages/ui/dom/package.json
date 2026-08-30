@@ -9,7 +9,7 @@
   "dependencies": {
     "@kontave/client-feedback": "workspace:*",
     "@kontave/client-interaction": "workspace:*",
-    "@kontave/ui-contracts": "workspace:*",
+    "@kontave/ui": "workspace:*",
     "flag-icons": "^7.5.0",
     "sonner": "^1.7.4"
   },

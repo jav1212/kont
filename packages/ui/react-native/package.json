@@ -1,5 +1,5 @@
 {
-  "name": "@kontave/ui-native",
+  "name": "@kontave/ui-react-native",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,7 @@
     "react-native": "^0.81.0"
   },
   "dependencies": {
-    "@kontave/design-tokens": "workspace:*",
-    "@kontave/ui-contracts": "workspace:*"
+    "@kontave/ui": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",

@@ -2,18 +2,23 @@ import { currencyCode, exchangeRate, type CurrencyCode, type ExchangeRateSnapsho
 import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations/domain";
 
 declare const localDateBrand: unique symbol;
+
+/** Calendar date without a time zone, encoded as `YYYY-MM-DD`. */
 export type LocalDate = string & { readonly [localDateBrand]: true };
 
+/** Identifies one user's operational defaults within an organization and company. */
 export interface OperationContextKey {
   readonly userId: UserId;
   readonly organizationId: OrganizationId;
   readonly companyId: CompanyId;
 }
 
+/** Result of resolving the exchange rate applicable to an operational date. */
 export type ExchangeRateSelection =
   | { readonly status: "resolved"; readonly value: ExchangeRateSnapshot }
   | { readonly status: "unavailable"; readonly effectiveDate: LocalDate };
 
+/** Immutable operational defaults shared by business capabilities. */
 export interface OperationalDefaults {
   readonly key: OperationContextKey;
   readonly effectiveDate: LocalDate;
@@ -23,6 +28,7 @@ export interface OperationalDefaults {
   readonly updatedAt: string;
 }
 
+/** Stable codes exposed by expected operation-context failures. */
 export type OperationContextFailureCode =
   | "OPERATION_CONTEXT_INVALID"
   | "OPERATION_CONTEXT_ACCESS_DENIED"
@@ -30,9 +36,17 @@ export type OperationContextFailureCode =
   | "OPERATION_CONTEXT_RATE_UNAVAILABLE"
   | "OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE";
 
+/** Expected domain or boundary failure with a stable machine-readable code. */
 export class OperationContextFailure extends Error {
   readonly code: OperationContextFailureCode;
 
+  /**
+   * Creates an expected operation-context failure.
+   *
+   * @param code - Stable failure classification.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional error cause retained for diagnostics.
+   */
   constructor(code: OperationContextFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.code = code;
@@ -40,6 +54,13 @@ export class OperationContextFailure extends Error {
   }
 }
 
+/**
+ * Validates and brands a renderer-independent civil date.
+ *
+ * @param value - Candidate date using `YYYY-MM-DD`.
+ * @returns The validated local date.
+ * @throws {OperationContextFailure} When the value is not a real calendar date in the required format.
+ */
 export function localDate(value: string): LocalDate {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw invalid("Effective date must use YYYY-MM-DD format.");
   const [year, month, day] = value.split("-").map(Number) as [number, number, number];
@@ -50,6 +71,13 @@ export function localDate(value: string): LocalDate {
   return value as LocalDate;
 }
 
+/**
+ * Validates and freezes a complete operational-defaults snapshot.
+ *
+ * @param input - Candidate key, date, currency, rate selection and concurrency metadata.
+ * @returns An immutable normalized snapshot.
+ * @throws {OperationContextFailure} When any invariant, timestamp, version or exchange-rate relationship is invalid.
+ */
 export function createOperationalDefaults(input: OperationalDefaults): OperationalDefaults {
   const effectiveDate = localDate(input.effectiveDate);
   const presentationCurrency = currencyCode(input.presentationCurrency);
@@ -60,6 +88,12 @@ export function createOperationalDefaults(input: OperationalDefaults): Operation
   return Object.freeze({ ...input, effectiveDate, presentationCurrency, exchangeRate: selection, key: Object.freeze({ ...input.key }) });
 }
 
+/**
+ * Creates an immutable unavailable-rate selection for an effective date.
+ *
+ * @param effectiveDate - Date for which no rate could be resolved.
+ * @returns An unavailable exchange-rate selection.
+ */
 export function unavailableExchangeRate(effectiveDate: LocalDate): ExchangeRateSelection {
   return Object.freeze({ status: "unavailable", effectiveDate });
 }

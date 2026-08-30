@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { BillingCreditEntryType, Currency, money, type BillingCreditBalance } from "@kontave/billing-domain";
 import { organizationId, type OrganizationId } from "@kontave/organizations/domain";
-import { AttributionStatus, RewardStatus, RewardType, type ReferralAttribution } from "@kontave/referrals-domain";
+import { AttributionStatus, ReferralFailure, RewardStatus, RewardType, type ReferralAttribution } from "@kontave/referrals-domain";
 import { InMemoryReferralsRepository } from "@kontave/referrals-testing";
-import { AttachReferral, GrantReferralReward, type BillingCreditIssuer } from "../src/index";
+import { AttachReferral, GrantReferralReward, type BillingCreditIssuer, type ReferralsRepository } from "../src/index";
 
 const referrer = organizationId("00000000-0000-4000-8000-000000000001");
 const referred = organizationId("00000000-0000-4000-8000-000000000002");
@@ -85,4 +85,14 @@ test("reconciles an existing reward through the idempotent billing port", async 
   assert.equal(result, existing);
   assert.equal(credits.issued.length, 1);
   assert.equal(credits.issued[0]?.idempotencyKey, `referral:${existing.id}`);
+});
+
+test("maps unexpected repository failures", async () => {
+  const repository = {
+    async findOrganizationByCode(): Promise<never> { throw new Error("network unavailable"); },
+  } as unknown as ReferralsRepository;
+  await assert.rejects(
+    () => new AttachReferral(repository).execute(referred, "KONTAVE20"),
+    (error: unknown) => error instanceof ReferralFailure && error.code === "REPOSITORY_UNAVAILABLE",
+  );
 });

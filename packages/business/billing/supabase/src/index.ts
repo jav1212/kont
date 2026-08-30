@@ -4,15 +4,31 @@ import { BillingFailure, Currency, limit, money, type BillingAccount, type Billi
 import type { OrganizationId } from "@kontave/organizations/domain";
 import { billingAccountRowSchema, billingCreditApplicationRowSchema, billingPlanRowSchema, entitlementRowSchema, invoiceRowSchema, manualPaymentRequestRowSchema, paymentMethodRowSchema, subscriptionRowSchema } from "./persistence-codecs";
 
+/** Credentials required by server-side billing adapters. */
 export interface BillingSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
+/**
+ * Creates the organization billing repository.
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns A stateless billing repository.
+ */
 export function createOrganizationBillingRepository(configuration: BillingSupabaseConfiguration): OrganizationBillingRepository {
   return new SupabaseOrganizationBillingRepository(createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }));
 }
+/**
+ * Creates payment-receipt object storage.
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns A receipt-storage adapter.
+ */
 export function createPaymentReceiptStorage(configuration: BillingSupabaseConfiguration): PaymentReceiptStorage {
   return new SupabasePaymentReceiptStorage(createBillingClient(configuration));
 }
+/**
+ * Creates the billing-credit ledger repository.
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns A credit-ledger adapter.
+ */
 export function createBillingCreditLedger(configuration: BillingSupabaseConfiguration): BillingCreditLedgerRepository {
   return new SupabaseBillingCreditLedger(createBillingClient(configuration));
 }

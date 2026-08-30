@@ -33,28 +33,94 @@ const rowSchema = z.object({
 });
 
 export interface OperationContextRowSource {
+  /**
+   * Loads one raw persistence row.
+   *
+   * @param key - Scoped operation-context key.
+   * @returns Raw data and any database-reported error.
+   */
   load(key: OperationContextKey): Promise<{ readonly data: unknown; readonly error: DatabaseError | null }>;
+  /**
+   * Saves one raw persistence row with optimistic concurrency.
+   *
+   * @param value - Validated operational defaults.
+   * @param expectedVersion - Version that must currently be stored.
+   * @returns Raw authoritative data and any database-reported error.
+   */
   save(value: OperationalDefaults, expectedVersion: number): Promise<{ readonly data: unknown; readonly error: DatabaseError | null }>;
+  /**
+   * Removes one raw persistence row.
+   *
+   * @param key - Scoped operation-context key.
+   * @returns Any database-reported error.
+   */
   clear(key: OperationContextKey): Promise<{ readonly error: DatabaseError | null }>;
 }
 
-interface DatabaseError { readonly message: string; readonly code?: string }
+/** Minimal database error surface required by the adapter. */
+export interface DatabaseError {
+  readonly message: string;
+  readonly code?: string;
+}
 
+/** Supabase-backed implementation of the operation-context persistence port. */
 export class SupabaseOperationContextStore implements OperationContextStore {
+  /**
+   * Creates a store over an injectable row source.
+   *
+   * @param source - Raw persistence operations used by the adapter.
+   */
   constructor(private readonly source: OperationContextRowSource) {}
+
+  /**
+   * Loads and validates the snapshot scoped to a key.
+   *
+   * @param key - Expected user, organization and company scope.
+   * @returns The decoded snapshot, or `null` when none exists.
+   * @throws {OperationContextFailure} When persistence, decoding or ownership validation fails.
+   */
   async load(key: OperationContextKey): Promise<OperationalDefaults | null> {
-    const result = await this.source.load(key);
-    if (result.error) throw translate(result.error);
-    return result.data === null ? null : decode(result.data, key);
+    try {
+      const result = await this.source.load(key);
+      if (result.error) throw translate(result.error);
+      return result.data === null ? null : decode(result.data, key);
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
   }
+
+  /**
+   * Saves and validates an authoritative snapshot using optimistic concurrency.
+   *
+   * @param value - Validated snapshot to persist.
+   * @param expectedVersion - Version that must currently be stored.
+   * @returns The decoded authoritative snapshot.
+   * @throws {OperationContextFailure} When persistence, concurrency, decoding or ownership validation fails.
+   */
   async save(value: OperationalDefaults, expectedVersion: number): Promise<OperationalDefaults> {
-    const result = await this.source.save(value, expectedVersion);
-    if (result.error) throw translate(result.error);
-    return decode(result.data, value.key);
+    try {
+      const result = await this.source.save(value, expectedVersion);
+      if (result.error) throw translate(result.error);
+      return decode(result.data, value.key);
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
   }
+
+  /**
+   * Removes the snapshot scoped to a key.
+   *
+   * @param key - User, organization and company scope to clear.
+   * @returns Nothing after the database confirms the operation.
+   * @throws {OperationContextFailure} When persistence is unavailable or access is denied.
+   */
   async clear(key: OperationContextKey): Promise<void> {
-    const result = await this.source.clear(key);
-    if (result.error) throw translate(result.error);
+    try {
+      const result = await this.source.clear(key);
+      if (result.error) throw translate(result.error);
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
   }
 }
 
@@ -83,7 +149,20 @@ class SupabaseOperationContextRowSource implements OperationContextRowSource {
   }
 }
 
-export function createSupabaseOperationContextStore(configuration: { readonly url: string; readonly serviceRoleKey: string }): SupabaseOperationContextStore {
+/** Server-only credentials required to create the Supabase adapter. */
+export interface SupabaseOperationContextConfiguration {
+  readonly url: string;
+  readonly serviceRoleKey: string;
+}
+
+/**
+ * Creates a server-side operation-context store with session persistence disabled.
+ *
+ * @param configuration - Supabase URL and service-role credential.
+ * @returns A configured operation-context persistence adapter.
+ * @throws When the Supabase client rejects invalid construction parameters.
+ */
+export function createSupabaseOperationContextStore(configuration: SupabaseOperationContextConfiguration): SupabaseOperationContextStore {
   const client = createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
@@ -137,4 +216,9 @@ function translate(error: DatabaseError): OperationContextFailure {
   if (message.includes("OPERATION_CONTEXT_ACCESS_DENIED")) return new OperationContextFailure("OPERATION_CONTEXT_ACCESS_DENIED", "The user cannot access this operation context.");
   if (message.includes("OPERATION_CONTEXT_INVALID")) return new OperationContextFailure("OPERATION_CONTEXT_INVALID", "Operation context data is invalid.");
   return new OperationContextFailure("OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE", "Operation context persistence is unavailable.", { cause: error });
+}
+
+function repositoryFailure(cause: unknown): OperationContextFailure {
+  if (cause instanceof OperationContextFailure) return cause;
+  return new OperationContextFailure("OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE", "Operation context persistence is unavailable.", { cause });
 }

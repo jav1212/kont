@@ -2,8 +2,12 @@ import {
   InventoryOperation, inventoryLocationId, localDate, quantity, stockLotId,
   type InventoryOperationId, type StockEffectId,
 } from "@kontave/inventory-domain";
-import type {
-  CustomerReturnConfirmed, GoodsDispatchLineId, SalesDispatchConfirmed, SalesDispatchReversed,
+import {
+  SalesFailure,
+  type CustomerReturnConfirmed,
+  type GoodsDispatchLineId,
+  type SalesDispatchConfirmed,
+  type SalesDispatchReversed,
 } from "@kontave/sales-domain";
 
 export interface SalesInventoryIds {
@@ -19,7 +23,17 @@ export interface CustomerReturnInventoryPosting {
   readonly valuations: readonly CustomerReturnValuationInstruction[];
 }
 
-export function salesDispatchInventoryOperation(event: SalesDispatchConfirmed, ids: SalesInventoryIds): InventoryOperation {
+/**
+ * Builds the outbound inventory operation for a confirmed dispatch.
+ * @param event Confirmed sales-dispatch event.
+ * @param ids Inventory identifiers allocated to this posting.
+ * @returns A posted inventory operation.
+ * @throws {SalesFailure} When the effect identifiers do not match the dispatch lines.
+ */
+export function salesDispatchInventoryOperation(
+  event: SalesDispatchConfirmed,
+  ids: SalesInventoryIds,
+): InventoryOperation {
   requireEffectIds(event.lines.length, ids.effectIds);
   const effects = event.lines.map((line, index) => ({
     id: requireEffectId(ids.effectIds, index), productId: line.productId,
@@ -33,7 +47,17 @@ export function salesDispatchInventoryOperation(event: SalesDispatchConfirmed, i
   }).post(event.occurredAt);
 }
 
-export function customerReturnInventoryPosting(event: CustomerReturnConfirmed, ids: SalesInventoryIds): CustomerReturnInventoryPosting {
+/**
+ * Builds the inventory operation and valuation instructions for a customer return.
+ * @param event Confirmed customer-return event.
+ * @param ids Inventory identifiers allocated to this posting.
+ * @returns The inventory operation and original-dispatch valuation references.
+ * @throws {SalesFailure} When the effect identifiers do not match the return lines.
+ */
+export function customerReturnInventoryPosting(
+  event: CustomerReturnConfirmed,
+  ids: SalesInventoryIds,
+): CustomerReturnInventoryPosting {
   requireEffectIds(event.lines.length, ids.effectIds);
   const effects = event.lines.map((line, index) => ({
     id: requireEffectId(ids.effectIds, index), productId: line.productId,
@@ -51,6 +75,12 @@ export function customerReturnInventoryPosting(event: CustomerReturnConfirmed, i
   };
 }
 
+/**
+ * Reverses the inventory operation associated with a sales dispatch.
+ * @param input Original operation, reversal event, and allocated identifiers.
+ * @returns The original operation and its posted reversal.
+ * @throws {SalesFailure} When event provenance or effect identifiers do not match.
+ */
 export function reverseSalesDispatchInventoryOperation(input: {
   readonly original: InventoryOperation;
   readonly event: SalesDispatchReversed;
@@ -58,7 +88,10 @@ export function reverseSalesDispatchInventoryOperation(input: {
 }): ReturnType<InventoryOperation["reverse"]> {
   requireEffectIds(input.original.effects.length, input.ids.effectIds);
   if (input.original.source.operationKey !== input.event.originalOperationKey || input.original.source.kind !== "sales") {
-    throw new Error("Sales dispatch reversal does not match the original inventory operation.");
+    throw new SalesFailure(
+      "SALES_INVENTORY_UNAVAILABLE",
+      "Sales dispatch reversal does not match the original inventory operation.",
+    );
   }
   return input.original.reverse({
     id: input.ids.operationId, effectIds: input.ids.effectIds,
@@ -68,10 +101,20 @@ export function reverseSalesDispatchInventoryOperation(input: {
 }
 
 function requireEffectIds(length: number, ids: readonly StockEffectId[]): void {
-  if (length !== ids.length) throw new Error("Sales inventory posting requires one stock effect identifier per line.");
+  if (length !== ids.length) {
+    throw new SalesFailure(
+      "SALES_INVENTORY_UNAVAILABLE",
+      "Sales inventory posting requires one stock effect identifier per line.",
+    );
+  }
 }
 function requireEffectId(ids: readonly StockEffectId[], index: number): StockEffectId {
   const id = ids[index];
-  if (id === undefined) throw new Error("Sales inventory stock effect identifier is missing.");
+  if (id === undefined) {
+    throw new SalesFailure(
+      "SALES_INVENTORY_UNAVAILABLE",
+      "Sales inventory stock effect identifier is missing.",
+    );
+  }
   return id;
 }

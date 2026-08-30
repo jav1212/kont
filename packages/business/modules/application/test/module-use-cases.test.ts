@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { organizationId } from "@kontave/organizations/domain";
-import { ModuleCapability, ModuleCode, ModuleLifecycleStatus, Platform, moduleId } from "@kontave/modules-domain";
+import { ModuleCapability, ModuleCode, ModuleFailure, ModuleLifecycleStatus, Platform, moduleId } from "@kontave/modules-domain";
 import { InMemoryModuleCatalog, InMemoryModuleEntitlements, InMemoryOrganizationModules } from "@kontave/modules-testing";
-import { InstallModule, ListAvailableOrganizationModules, RequireModuleCapability, SuspendModule } from "../src/index";
+import { InstallModule, ListAvailableModules, ListAvailableOrganizationModules, RequireModuleCapability, SuspendModule } from "../src/index";
 
 const organization = organizationId("organization-1");
 const inventory = { id: moduleId("inventory-id"), code: ModuleCode.Inventory, name: "Inventory", status: ModuleLifecycleStatus.Active, capabilities: [ModuleCapability.InventoryProducts], dependencies: [] as ModuleCode[], supportedPlatforms: [Platform.Web, Platform.Desktop] };
@@ -42,5 +42,13 @@ test("available modules require an active installation and platform support", as
   assert.deepEqual(
     await new ListAvailableOrganizationModules(catalog, installations).execute(organization, Platform.Desktop),
     [{ id: inventory.id, code: ModuleCode.Inventory, name: inventory.name }],
+  );
+});
+
+test("maps unexpected catalog failures to the portable module failure", async () => {
+  const catalog = { async list(): Promise<never> { throw new Error("network unavailable"); }, async findByCode() { return null; } };
+  await assert.rejects(
+    () => new ListAvailableModules(catalog).execute(),
+    (error: unknown) => error instanceof ModuleFailure && error.code === "MODULE_REPOSITORY_UNAVAILABLE",
   );
 });

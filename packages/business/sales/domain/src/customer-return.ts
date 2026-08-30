@@ -50,9 +50,21 @@ export class CustomerReturn {
   readonly confirmedAt: SalesInstant | null;
   readonly version: number;
 
+  /**
+   * Rehydrates a customer return while enforcing lifecycle and line invariants.
+   * @param state Persisted return state.
+   * @throws {SalesFailure} When the state is invalid.
+   */
   constructor(state: CustomerReturnState) {
     const reason = state.reason.trim();
-    if (!reason || reason.length > 500 || !Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0 || new Set(state.lines.map((line) => line.id)).size !== state.lines.length) {
+    if (
+      !reason ||
+      reason.length > 500 ||
+      !Number.isSafeInteger(state.version) ||
+      state.version < 0 ||
+      state.lines.length === 0 ||
+      new Set(state.lines.map((line) => line.id)).size !== state.lines.length
+    ) {
       throw new SalesFailure("CUSTOMER_RETURN_INVALID", "Customer return state is invalid.");
     }
     this.id = state.id;
@@ -72,12 +84,32 @@ export class CustomerReturn {
     this.version = state.version;
   }
 
+  /**
+   * Confirms this draft customer return.
+   * @param value Confirmation timestamp.
+   * @returns The next aggregate version and its stock event.
+   * @throws {SalesFailure} When the return is not a draft or the instant is invalid.
+   */
   confirm(value: string): { readonly customerReturn: CustomerReturn; readonly event: CustomerReturnConfirmed } {
     if (this.status !== "draft") throw new SalesFailure("CUSTOMER_RETURN_TRANSITION_INVALID", "Only a draft customer return can be confirmed.");
     const occurredAt = salesInstant(value);
     const version = this.version + 1;
     const operationKey = `customer-return:${this.id}:v${version}`;
     const customerReturn = new CustomerReturn({ ...this, status: "confirmed", confirmedAt: occurredAt, version });
-    return { customerReturn, event: { type: "sales.customer_return_confirmed", eventId: operationKey, operationKey, returnId: this.id, companyId: this.companyId, customerId: this.customerId, dispatchId: this.dispatchId, effectiveDate: this.returnDate, occurredAt, lines: this.lines } };
+    return {
+      customerReturn,
+      event: {
+        type: "sales.customer_return_confirmed",
+        eventId: operationKey,
+        operationKey,
+        returnId: this.id,
+        companyId: this.companyId,
+        customerId: this.customerId,
+        dispatchId: this.dispatchId,
+        effectiveDate: this.returnDate,
+        occurredAt,
+        lines: this.lines,
+      },
+    };
   }
 }

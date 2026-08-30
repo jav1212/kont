@@ -14,7 +14,13 @@ export type TaxationFailureCode =
   | "TAXATION_ACCESS_DENIED"
   | "TAXATION_REPOSITORY_UNAVAILABLE";
 
+/** Expected failure raised by taxation domain and boundary operations. */
 export class TaxationFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: TaxationFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "TaxationFailure";

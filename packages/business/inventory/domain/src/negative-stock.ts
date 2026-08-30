@@ -68,6 +68,7 @@ export interface NegativeReceiptApplication {
   readonly costOfIssueAdjustment: Money;
 }
 
+/** Tracks negative-stock exposure and later receipt settlements. */
 export class NegativeStockPosition {
   readonly companyId: CompanyId;
   readonly productId: ProductId;
@@ -79,6 +80,7 @@ export class NegativeStockPosition {
   readonly exposures: readonly NegativeStockExposure[];
   readonly version: number;
 
+  /** @param state - Complete negative-stock state. @throws {InventoryFailure} When tuple, exposure or settlement history is inconsistent. */
   constructor(state: NegativeStockPositionState) {
     if (!isNegativeQuantity(state.quantity) || state.provisionalValue.minorAmount >= 0n || state.exposures.length === 0) {
       throw new InventoryFailure("INVENTORY_VALUATION_INVALID", "Negative stock position requires negative quantity, value and open exposures.");
@@ -142,6 +144,7 @@ export class NegativeStockPosition {
     };
   }
 
+  /** @param effect - Outbound stock effect. @returns Updated exposure and valuation consequence. @throws {InventoryFailure} When tuple or direction is invalid. */
   applyIssue(effect: StockEffect): NegativeIssueApplication {
     this.assertMatching(effect);
     if (!isNegativeQuantity(effect.quantity)) {
@@ -167,6 +170,7 @@ export class NegativeStockPosition {
     };
   }
 
+  /** @param effect - Inbound stock effect. @param acquisitionValue - Total value received. @returns Updated exposure and settlements. @throws {InventoryFailure} When tuple, direction or currency is invalid. */
   applyReceipt(effect: StockEffect, acquisitionValue: Money): NegativeReceiptApplication {
     this.assertMatching(effect);
     if (!isPositiveQuantity(effect.quantity) || !sameCurrency(acquisitionValue.currency, this.provisionalValue.currency)) {

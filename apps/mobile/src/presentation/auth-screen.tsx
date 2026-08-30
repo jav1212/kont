@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Alert, Button, Heading, Screen, Text, TextField, nativeTheme } from "@kontave/ui-native";
+import { Alert, Button, Heading, Screen, Text, TextField, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authErrorMessage, useAuth } from "../auth/auth-context";
 import { readRememberedEmail, writeRememberedEmail } from "../auth/remembered-email-storage";

@@ -52,9 +52,21 @@ export class PurchaseReturn {
   readonly confirmedAt: PurchaseInstant | null;
   readonly version: number;
 
+  /**
+   * Rehydrates a purchase return while enforcing lifecycle and line invariants.
+   * @param state Persisted return state.
+   * @throws {PurchasingFailure} When the state is invalid.
+   */
   constructor(state: PurchaseReturnState) {
     const reason = state.reason.trim();
-    if (!reason || reason.length > 500 || !Number.isSafeInteger(state.version) || state.version < 0 || state.lines.length === 0 || new Set(state.lines.map((line) => line.id)).size !== state.lines.length) {
+    if (
+      !reason ||
+      reason.length > 500 ||
+      !Number.isSafeInteger(state.version) ||
+      state.version < 0 ||
+      state.lines.length === 0 ||
+      new Set(state.lines.map((line) => line.id)).size !== state.lines.length
+    ) {
       throw new PurchasingFailure("PURCHASE_RETURN_INVALID", "Purchase return state is invalid.");
     }
     this.id = state.id;
@@ -74,12 +86,32 @@ export class PurchaseReturn {
     this.version = state.version;
   }
 
+  /**
+   * Confirms this draft supplier return.
+   * @param value Confirmation timestamp.
+   * @returns The next aggregate version and its stock event.
+   * @throws {PurchasingFailure} When the return is not a draft or the instant is invalid.
+   */
   confirm(value: string): { readonly purchaseReturn: PurchaseReturn; readonly event: PurchaseReturnConfirmed } {
     if (this.status !== "draft") throw new PurchasingFailure("PURCHASE_RETURN_TRANSITION_INVALID", "Only a draft purchase return can be confirmed.");
     const occurredAt = purchaseInstant(value);
     const version = this.version + 1;
     const operationKey = `purchase-return:${this.id}:v${version}`;
     const purchaseReturn = new PurchaseReturn({ ...this, status: "confirmed", confirmedAt: occurredAt, version });
-    return { purchaseReturn, event: { type: "purchasing.return_confirmed", eventId: operationKey, operationKey, returnId: this.id, companyId: this.companyId, supplierId: this.supplierId, receiptId: this.receiptId, effectiveDate: this.returnDate, occurredAt, lines: this.lines } };
+    return {
+      purchaseReturn,
+      event: {
+        type: "purchasing.return_confirmed",
+        eventId: operationKey,
+        operationKey,
+        returnId: this.id,
+        companyId: this.companyId,
+        supplierId: this.supplierId,
+        receiptId: this.receiptId,
+        effectiveDate: this.returnDate,
+        occurredAt,
+        lines: this.lines,
+      },
+    };
   }
 }

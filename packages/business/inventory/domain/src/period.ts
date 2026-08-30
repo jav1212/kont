@@ -12,6 +12,7 @@ export interface InventoryPeriodState {
   readonly version: number;
 }
 
+/** Company inventory accounting period controlling effective-date writes. */
 export class InventoryPeriod {
   readonly companyId: CompanyId;
   readonly month: InventoryMonth;
@@ -19,6 +20,7 @@ export class InventoryPeriod {
   readonly closedAt: Instant | null;
   readonly version: number;
 
+  /** @param state - Complete period state. @throws {InventoryFailure} When month or closure state is inconsistent. */
   constructor(state: InventoryPeriodState) {
     if (!Number.isSafeInteger(state.version) || state.version < 1 || (state.status === "closed") !== (state.closedAt !== null)) {
       throw new InventoryFailure("INVENTORY_DATE_INVALID", "Inventory period state is invalid.");
@@ -34,12 +36,14 @@ export class InventoryPeriod {
     return new InventoryPeriod({ companyId, month: inventoryMonth(month), status: "open", closedAt: null, version: 1 });
   }
 
+  /** @param effectiveDate - Date proposed for an inventory write. @returns Nothing when accepted. @throws {InventoryFailure} When closed or outside the month. */
   assertAccepts(effectiveDate: LocalDate): void {
     if (monthOf(effectiveDate) === this.month && this.status === "closed") {
       throw new InventoryFailure("INVENTORY_PERIOD_CLOSED", `Inventory period ${this.month} is closed.`);
     }
   }
 
+  /** @param closedAt - Closure instant. @returns A closed period. @throws {InventoryFailure} When already closed or instant is invalid. */
   close(closedAt: string): InventoryPeriod {
     if (this.status !== "open") throw new InventoryFailure("INVENTORY_PERIOD_CLOSED", "Inventory period is already closed.");
     return new InventoryPeriod({ ...this, status: "closed", closedAt: instant(closedAt), version: this.version + 1 });

@@ -42,6 +42,12 @@ export interface StockEffect {
   readonly quantity: Quantity;
 }
 
+/**
+ * Validates and freezes one directional stock effect.
+ * @param input - Product, location, optional lot, quantity and valuation data.
+ * @returns The immutable stock effect.
+ * @throws {InventoryFailure} When direction or quantity is invalid.
+ */
 export function stockEffect(input: StockEffect): StockEffect {
   if (isZeroQuantity(input.quantity)) {
     throw new InventoryFailure("INVENTORY_QUANTITY_INVALID", "Stock effect quantity cannot be zero.");
@@ -75,6 +81,7 @@ export interface InventoryReversal {
   readonly reversal: InventoryOperation;
 }
 
+/** Immutable inventory operation aggregate containing balanced stock effects. */
 export class InventoryOperation {
   readonly id: InventoryOperationId;
   readonly companyId: CompanyId;
@@ -87,6 +94,7 @@ export class InventoryOperation {
   readonly reversalOf: InventoryOperationId | null;
   readonly reversedBy: InventoryOperationId | null;
 
+  /** @param state - Complete operation state. @throws {InventoryFailure} When identity, effects, source or transition state is invalid. */
   constructor(state: InventoryOperationState) {
     validateSource(state.source);
     if (state.effects.length === 0) {
@@ -119,6 +127,7 @@ export class InventoryOperation {
     return new InventoryOperation({ ...input, status: "draft", postedAt: null, reversedBy: null });
   }
 
+  /** @param postedAt - Posting instant. @returns A new posted operation version. @throws {InventoryFailure} Unless currently draft. */
   post(postedAt: string): InventoryOperation {
     if (this.status !== "draft") {
       throw new InventoryFailure("INVENTORY_OPERATION_TRANSITION_INVALID", "Only a draft operation can be posted.");
@@ -126,6 +135,7 @@ export class InventoryOperation {
     return new InventoryOperation({ ...this, status: "posted", postedAt: instant(postedAt) });
   }
 
+  /** @param input - Reversal identity, effective date, instant and reason. @returns Original update and compensating reversal. @throws {InventoryFailure} Unless posted or when input is invalid. */
   reverse(input: ReversalInput): InventoryReversal {
     if (this.status !== "posted") {
       throw new InventoryFailure("INVENTORY_OPERATION_TRANSITION_INVALID", "Only a posted operation can be reversed.");

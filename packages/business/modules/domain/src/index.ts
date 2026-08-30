@@ -2,6 +2,12 @@ import type { OrganizationId } from "@kontave/organizations/domain";
 
 declare const moduleIdBrand: unique symbol;
 export type ModuleId = string & { readonly [moduleIdBrand]: true };
+/**
+ * Validates and brands a module identifier.
+ * @param value - Untrusted identifier.
+ * @returns The normalized module identifier.
+ * @throws {ModuleFailure} When empty.
+ */
 export function moduleId(value: string): ModuleId {
   const normalized = value.trim();
   if (!normalized) throw new ModuleFailure("MODULE_INVALID", "Module identifiers cannot be empty.");
@@ -42,6 +48,12 @@ export enum Platform {
   Mobile = "mobile",
 }
 
+/**
+ * Parses a portable client platform.
+ * @param value - Untrusted platform value.
+ * @returns The matching platform enum member.
+ * @throws {ModuleFailure} When unsupported.
+ */
 export function platform(value: string): Platform {
   if (value === Platform.Web || value === Platform.Desktop || value === Platform.Mobile) return value;
   throw new ModuleFailure("MODULE_INVALID", "The requested platform is invalid.");
@@ -94,13 +106,27 @@ export type ModuleFailureCode =
   | "COMPANY_MODULE_NOT_ACTIVE"
   | "MODULE_REPOSITORY_UNAVAILABLE";
 
+/** Expected failure raised by module domain and boundary operations. */
 export class ModuleFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: ModuleFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "ModuleFailure";
   }
 }
 
+/**
+ * Verifies lifecycle, entitlement and dependency activation constraints.
+ * @param definition - Module definition being activated.
+ * @param entitled - Whether the organization owns a commercial entitlement.
+ * @param activeDependencies - Module codes currently active for the organization.
+ * @returns Nothing when activation is permitted.
+ * @throws {ModuleFailure} When any activation constraint fails.
+ */
 export function assertModuleCanActivate(
   definition: ModuleDefinition,
   entitled: boolean,
@@ -114,6 +140,12 @@ export function assertModuleCanActivate(
   if (missing) throw new ModuleFailure("MODULE_DEPENDENCY_MISSING", `The required module ${missing} is not active.`);
 }
 
+/**
+ * Checks whether a module definition provides a capability.
+ * @param definition - Module definition to inspect.
+ * @param capability - Required capability.
+ * @returns Whether the capability is declared.
+ */
 export function moduleProvides(definition: ModuleDefinition, capability: ModuleCapability): boolean {
   return definition.capabilities.includes(capability);
 }

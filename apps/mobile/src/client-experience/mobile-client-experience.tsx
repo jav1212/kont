@@ -10,7 +10,7 @@ import { PresentFeedback, codedErrorFeedback, type ClientFeedback, type Feedback
 import { GlobalInteractionGate, type InteractionBlock, type InteractionBlockLease } from "@kontave/client-interaction/application";
 import { ClientUpdateCoordinator, ClientUpdateFailure, type ClientUpdateCheckResult, type ClientUpdateProvider } from "@kontave/client-updates/application";
 import type { ClientUpdateCapabilities, ClientUpdateRelease, ClientUpdateSnapshot, InstalledClientRelease } from "@kontave/client-updates/contracts";
-import { Button, Text, nativeTheme } from "@kontave/ui-native";
+import { Button, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
 
 interface ClientExperienceValue {
   readonly connectivity: ConnectivitySnapshot;

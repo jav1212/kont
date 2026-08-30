@@ -21,6 +21,12 @@ export interface TaxDecision {
   readonly source: TaxDecisionSource;
 }
 
+/**
+ * Validates and freezes an auditable tax decision.
+ * @param input - Complete tax calculation result and provenance.
+ * @returns An immutable tax decision.
+ * @throws {TaxationFailure} When calculation inputs or results are inconsistent.
+ */
 export function taxDecision(input: TaxDecision): TaxDecision {
   const rate = exactDecimal(input.rate);
   if (!sameCurrency(input.taxableBase.currency, input.amount.currency)) {

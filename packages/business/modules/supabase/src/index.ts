@@ -4,7 +4,13 @@ import { ModuleEntitlementStatus, ModuleFailure, moduleId, type ModuleCode, type
 import { organizationId, type OrganizationId } from "@kontave/organizations/domain";
 import { moduleDefinitionRowSchema, moduleInstallationRowSchema } from "./persistence-codecs";
 
+/** Credentials required by server-side module adapters. */
 export interface ModulesSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
+/**
+ * Creates catalog, installation and entitlement adapters sharing a stateless client.
+ * @param configuration - Supabase endpoint and service-role credential.
+ * @returns Infrastructure adapters for the modules capability.
+ */
 export function createModulesInfrastructure(configuration: ModulesSupabaseConfiguration) {
   const client = createClient(configuration.url, configuration.serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   return { catalog: new SupabaseModuleCatalog(client), installations: new SupabaseOrganizationModules(client), entitlements: new SupabaseModuleEntitlements(client) };

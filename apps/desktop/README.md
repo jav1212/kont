@@ -133,7 +133,7 @@ Gestionan descubrimiento, conexión, reconexión y eventos de dispositivos. Elec
 
 ### Interfaz
 
-- `@kontave/design-tokens`
+- `@kontave/ui/tokens`
 - `@kontave/brand-assets`
 - `@kontave/ui-dom`
 

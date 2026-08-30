@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
-import type { InteractiveState, UiIntent, UiSize } from "@kontave/ui-contracts";
+import type { InteractiveState, UiIntent, UiSize } from "@kontave/ui/contracts";
 import { classNames } from "./internal/class-names";
 
 export type ButtonAppearance = "solid" | "outline" | "text" | "unstyled";

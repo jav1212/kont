@@ -9,9 +9,15 @@ export type MonetaryFailureCode =
   | "DIVISION_BY_ZERO"
   | "INVALID_ALLOCATION";
 
+/** Expected failure raised by exact monetary domain operations. */
 export class MonetaryFailure extends Error {
   readonly code: MonetaryFailureCode;
 
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(
     code: MonetaryFailureCode,
     message: string,

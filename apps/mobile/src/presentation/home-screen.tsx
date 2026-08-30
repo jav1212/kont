@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ModuleCode } from "@kontave/modules-domain";
 import type { NavigationTarget } from "@kontave/navigation";
 import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { Button, Heading, Screen, Text, nativeTheme } from "@kontave/ui-native";
+import { Button, Heading, Screen, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
 import { useAuth } from "../auth/auth-context";
 import { BcvCalculatorScreen } from "./bcv-calculator-screen";
 import { mobileBreadcrumbs, mobileModuleIcon, mobileModuleNavigation, mobileStaticNavigationTarget, type MobileIconName } from "../navigation/mobile-navigation";

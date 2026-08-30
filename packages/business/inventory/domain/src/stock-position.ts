@@ -15,6 +15,7 @@ export interface StockPositionState {
   readonly version: number;
 }
 
+/** Exact on-hand position for one product, location, lot and unit tuple. */
 export class StockPosition {
   readonly companyId: CompanyId;
   readonly productId: ProductId;
@@ -23,6 +24,7 @@ export class StockPosition {
   readonly onHand: Quantity;
   readonly version: number;
 
+  /** @param state - Complete stock-position state. @throws {InventoryFailure} When the tuple or quantity is invalid. */
   constructor(state: StockPositionState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0) {
       throw new InventoryFailure("INVENTORY_POSITION_MISMATCH", "Stock position version is invalid.");
@@ -35,6 +37,7 @@ export class StockPosition {
     this.version = state.version;
   }
 
+  /** @param effect - Stock effect to apply. @param profile - Product inventory policy. @returns The resulting position. @throws {InventoryFailure} When tuple or policy constraints fail. */
   apply(effect: StockEffect, profile: InventoryProfile): StockPosition {
     profile.assertAccepts(effect);
     if (profile.companyId !== this.companyId || effect.productId !== this.productId || effect.locationId !== this.locationId || effect.lotId !== this.lotId) {

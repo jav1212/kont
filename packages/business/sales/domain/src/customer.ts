@@ -24,6 +24,11 @@ export class Customer {
   readonly status: CustomerStatus;
   readonly version: number;
 
+  /**
+   * Rehydrates a customer while enforcing its invariants.
+   * @param state Persisted customer state.
+   * @throws {SalesFailure} When the state is invalid.
+   */
   constructor(state: CustomerState) {
     if (!Number.isSafeInteger(state.version) || state.version < 0) throw new SalesFailure("CUSTOMER_INVALID", "Customer version is invalid.");
     this.id = state.id;
@@ -36,10 +41,12 @@ export class Customer {
     this.version = state.version;
   }
 
+  /** @returns Nothing when active. @throws {SalesFailure} When the customer is inactive. */
   assertActive(): void {
     if (this.status !== "active") throw new SalesFailure("CUSTOMER_INACTIVE", "Customer is inactive.");
   }
 
+  /** @returns A new inactive customer version. @throws {SalesFailure} When already inactive. */
   deactivate(): Customer {
     this.assertActive();
     return new Customer({ ...this, status: "inactive", version: this.version + 1 });

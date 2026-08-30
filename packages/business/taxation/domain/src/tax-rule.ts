@@ -19,6 +19,12 @@ export interface TaxRule {
   readonly version: string;
 }
 
+/**
+ * Validates and freezes an effective tax rule.
+ * @param input - Complete legal rule definition.
+ * @returns An immutable tax rule.
+ * @throws {TaxationFailure} When dates, rate or legal basis are invalid.
+ */
 export function taxRule(input: TaxRule): TaxRule {
   const jurisdiction = required(input.jurisdiction, 16, "jurisdiction").toUpperCase();
   const legalBasis = required(input.legalBasis, 500, "legal basis");
@@ -33,6 +39,12 @@ export function taxRule(input: TaxRule): TaxRule {
   return { ...input, jurisdiction, legalBasis, version, rate };
 }
 
+/**
+ * Resolves the unique effective legal rule for a classification and date.
+ * @param input - Candidate rules, classification, jurisdiction and effective date.
+ * @returns The matching tax rule.
+ * @throws {TaxationFailure} When no unique matching rule exists.
+ */
 export function resolveTaxRule(input: {
   readonly rules: readonly TaxRule[];
   readonly taxCode: TaxCode;

@@ -1,11 +1,11 @@
 # ADR 0006: Sistema de diseño multiplataforma
 
-- Estado: aceptado
+- Estado: sustituido por ADR 0038
 - Fecha: 2026-08-11
 
 ## Decisión
 
-Kontave centraliza decisiones visuales en `@kontave/design-tokens` y recursos de identidad en `@kontave/brand-assets`. Los clientes basados en React DOM, incluidos Web y Desktop, comparten primitivas mediante `@kontave/ui-dom`. Mobile implementará `@kontave/ui-native` sobre los mismos tokens y contratos cuando exista su primer consumidor real.
+Kontave centraliza decisiones visuales portables en `@kontave/ui` y recursos de identidad en `@kontave/brand-assets`. Los clientes basados en React DOM comparten primitivas mediante `@kontave/ui-dom`; Mobile utiliza `@kontave/ui-react-native`. El ADR 0038 precisa la topología y sustituye los nombres de distribución originales.
 
 No se mantiene un único paquete de componentes para React DOM y React Native. Se comparte el significado visual y la API coherente; cada renderer conserva una implementación apropiada para su plataforma.
 

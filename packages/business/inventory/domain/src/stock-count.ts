@@ -61,6 +61,7 @@ export interface StockCountConfirmation {
   readonly adjustment: InventoryOperation | null;
 }
 
+/** Physical stock-count aggregate with explicit confirmation adjustment. */
 export class StockCount {
   readonly id: StockCountId;
   readonly companyId: CompanyId;
@@ -72,6 +73,7 @@ export class StockCount {
   readonly adjustmentOperationId: InventoryOperationId | null;
   readonly version: number;
 
+  /** @param state - Complete stock-count state. @throws {InventoryFailure} When lines, status, dates or confirmation state are inconsistent. */
   constructor(state: StockCountState) {
     if (state.lines.length === 0 || !Number.isSafeInteger(state.version) || state.version < 1) {
       throw new InventoryFailure("INVENTORY_COUNT_INVALID", "Stock count state is invalid.");
@@ -100,6 +102,7 @@ export class StockCount {
     this.version = state.version;
   }
 
+  /** @param input - Count date, confirmation instant and adjustment identity. @returns Confirmed count and compensating operation. @throws {InventoryFailure} Unless draft or when input is invalid. */
   confirm(input: ConfirmStockCountInput): StockCountConfirmation {
     if (this.status !== "draft") throw new InventoryFailure("INVENTORY_COUNT_INVALID", "Only a draft stock count can be confirmed.");
     const differences = this.lines

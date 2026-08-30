@@ -13,6 +13,10 @@ export const INVENTORY_PRODUCT_ID = productId("inventory-product-1");
 export const MAIN_LOCATION_ID = inventoryLocationId("main-location");
 export const VES = currency("VES", 2);
 
+/**
+ * Creates the default active inventory profile used by domain tests.
+ * @returns A profile with no lot tracking, forbidden negative stock and weighted-average valuation.
+ */
 export function inventoryProfileFixture(): InventoryProfile {
   return new InventoryProfile({
     companyId: INVENTORY_COMPANY_ID,
@@ -25,6 +29,10 @@ export function inventoryProfileFixture(): InventoryProfile {
   });
 }
 
+/**
+ * Creates an empty VES valuation position at the main fixture location.
+ * @returns A zero-quantity weighted-average valuation position.
+ */
 export function emptyValuationFixture() {
   return emptyValuationPosition({
     companyId: INVENTORY_COMPANY_ID,

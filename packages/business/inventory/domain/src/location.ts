@@ -13,6 +13,7 @@ export interface InventoryLocationState {
   readonly version: number;
 }
 
+/** Company-owned physical or logical inventory location. */
 export class InventoryLocation {
   readonly id: InventoryLocationId;
   readonly companyId: CompanyId;
@@ -21,6 +22,7 @@ export class InventoryLocation {
   readonly status: InventoryLocationStatus;
   readonly version: number;
 
+  /** @param state - Complete location state. @throws {InventoryFailure} When identity, text or version is invalid. */
   constructor(state: InventoryLocationState) {
     const name = state.name.trim();
     const description = state.description?.trim() || null;
@@ -38,6 +40,7 @@ export class InventoryLocation {
     this.version = state.version;
   }
 
+  /** @returns A new inactive location version. @throws {InventoryFailure} Unless currently active. */
   deactivate(): InventoryLocation {
     if (this.status !== "active") {
       throw new InventoryFailure("INVENTORY_LOCATION_INVALID", "Only an active inventory location can be deactivated.");

@@ -1,6 +1,7 @@
 import { ExchangeRateApplicationFailure, type CurrencyCatalog, type ExchangeRateProvider, type ExchangeRateSet } from "@kontave/monetary-application";
 import { currencyCode, exchangeRate, type CurrencyDefinition, type ExchangeRateSnapshot } from "@kontave/monetary-domain";
 
+/** Runtime and retry policy for the Monitor BCV adapter. */
 export interface MonitorBcvConfiguration {
   readonly baseUrl: string;
   readonly timeoutMilliseconds: number;
@@ -8,12 +9,30 @@ export interface MonitorBcvConfiguration {
   readonly historicalLookbackDays: number;
 }
 
-export interface MonitorBcvTransport { request(url: URL, signal: AbortSignal): Promise<{ readonly status: number; readonly body: string }>; }
-export interface Clock { now(): Date; today(): string; }
+/** HTTP transport port used to keep provider behavior deterministic in tests. */
+export interface MonitorBcvTransport {
+  /** @returns The raw HTTP status and response body. */
+  request(url: URL, signal: AbortSignal): Promise<{ readonly status: number; readonly body: string }>;
+}
+/** Clock port used for Caracas business dates and capture instants. */
+export interface Clock {
+  /** @returns The current instant. */
+  now(): Date;
+  /** @returns Today's Caracas date in `YYYY-MM-DD` format. */
+  today(): string;
+}
 
 interface MonitorEntry { readonly code: string; readonly buy: string; readonly sell: string; readonly date: string; readonly country: string | null; readonly percentageChange: string | null; }
 
+/** Exchange-rate provider adapter backed by the Monitor BCV HTTP API. */
 export class MonitorBcvProvider implements ExchangeRateProvider {
+  /**
+   * @param catalog - Catalog used to recognize provider currency codes.
+   * @param quoteCurrency - Currency in which this adapter quotes every rate.
+   * @param transport - Abort-aware HTTP transport.
+   * @param configuration - Endpoint, timeout, retry and lookback policy.
+   * @param clock - Clock used for current dates and capture instants.
+   */
   constructor(
     private readonly catalog: CurrencyCatalog,
     private readonly quoteCurrency: CurrencyDefinition,
@@ -22,16 +41,24 @@ export class MonitorBcvProvider implements ExchangeRateProvider {
     private readonly clock: Clock = systemClock,
   ) {}
 
+  /** {@inheritDoc ExchangeRateProvider.getCurrentRates} */
   async getCurrentRates(input: { readonly quoteCurrency: CurrencyDefinition }): Promise<ExchangeRateSet> {
     this.requireQuote(input.quoteCurrency);
     const entries = await this.fetch("/exchange-rate");
     return this.map(entries, this.clock.today());
   }
 
+  /** {@inheritDoc ExchangeRateProvider.getRatesForDate} */
   async getRatesForDate(input: { readonly quoteCurrency: CurrencyDefinition; readonly date: string }): Promise<ExchangeRateSet> {
     this.requireQuote(input.quoteCurrency);
     const url = new URL("/exchange-rate/list", this.configuration.baseUrl);
-    url.searchParams.set("start", subtractDays(input.date, this.configuration.historicalLookbackDays));
+    let start: string;
+    try {
+      start = subtractDays(input.date, this.configuration.historicalLookbackDays);
+    } catch (cause: unknown) {
+      throw new ExchangeRateApplicationFailure("INVALID_PROVIDER_RESPONSE", "Date must use YYYY-MM-DD format.", { cause });
+    }
+    url.searchParams.set("start", start);
     url.searchParams.set("end", input.date);
     return this.map(await this.fetch(url), input.date);
   }
@@ -81,13 +108,22 @@ export class MonitorBcvProvider implements ExchangeRateProvider {
   }
 }
 
+/** Fetch-based Monitor BCV transport for browser and Node-compatible runtimes. */
 export class FetchMonitorBcvTransport implements MonitorBcvTransport {
+  /** {@inheritDoc MonitorBcvTransport.request} */
   async request(url: URL, signal: AbortSignal): Promise<{ status: number; body: string }> {
     const response = await fetch(url, { signal, headers: { accept: "application/json" } });
     return { status: response.status, body: await response.text() };
   }
 }
 
+/**
+ * Decodes Monitor BCV JSON without allowing IEEE-754 conversion of rate tokens.
+ *
+ * @param body - Raw provider response body.
+ * @returns Validated provider entries with decimal rates retained as strings.
+ * @throws {ExchangeRateApplicationFailure} When the payload shape is invalid.
+ */
 export function decodeMonitorBcvEntries(body: string): readonly MonitorEntry[] {
   try {
     // Quote rate number tokens before JSON.parse so IEEE-754 never touches authoritative decimals.
@@ -115,5 +151,10 @@ function parseProviderDate(value: string): string {
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 function subtractDays(value: string, days: number): string { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() - days); return date.toISOString().slice(0, 10); }
+/**
+ * Creates the production-safe default provider policy.
+ *
+ * @returns Default endpoint, timeout, retry and historical lookback settings.
+ */
 export function defaultMonitorBcvConfiguration(): MonitorBcvConfiguration { return { baseUrl: "https://api-monitor-bcv.vercel.app", timeoutMilliseconds: 5_000, retryAttempts: 1, historicalLookbackDays: 7 }; }
 const systemClock: Clock = { now: () => new Date(), today: () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Caracas", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) };

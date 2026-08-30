@@ -231,7 +231,6 @@ function Selector<TEntry extends SelectorEntry>({
 
   useEffect(() => {
     if (!open) return;
-    setQuery("");
     const frame = requestAnimationFrame(() => searchRef.current?.focus());
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return;
@@ -251,7 +250,10 @@ function Selector<TEntry extends SelectorEntry>({
       className="kt-sidebar-selector__trigger"
       aria-expanded={open}
       aria-haspopup="listbox"
-      onClick={() => setOpen((current) => !current)}
+      onClick={() => setOpen((current) => {
+        if (!current) setQuery("");
+        return !current;
+      })}
     >
       <SelectorAvatar entry={selected} kind={kind} />
       <Text className="kt-sidebar-selector__copy" tone="inherit">
@@ -331,7 +333,6 @@ function WorkspaceContextSelector({ items, onSelect, selected }: {
 
   useEffect(() => {
     if (!open) return;
-    setQuery("");
     const frame = requestAnimationFrame(() => searchRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open]);
@@ -344,7 +345,10 @@ function WorkspaceContextSelector({ items, onSelect, selected }: {
       className="kt-workspace-context__trigger"
       aria-expanded={canSwitch ? open : undefined}
       aria-haspopup={canSwitch ? "listbox" : undefined}
-      onClick={() => canSwitch && setOpen((current) => !current)}
+      onClick={() => canSwitch && setOpen((current) => {
+        if (!current) setQuery("");
+        return !current;
+      })}
     >
       <WorkspaceAvatar workspace={selected} />
       <Text className="kt-workspace-context__copy" tone="inherit">
@@ -576,7 +580,10 @@ function AccountActionButton({ action, close, iconOnly = false, onAction }: {
 function useDismissibleMenu<TElement extends HTMLElement>(open: boolean, close: () => void) {
   const ref = useRef<TElement>(null);
   const closeRef = useRef(close);
-  closeRef.current = close;
+
+  useEffect(() => {
+    closeRef.current = close;
+  }, [close]);
 
   useEffect(() => {
     if (!open) return;

@@ -15,7 +15,13 @@ export type ProductFailureCode =
   | "PRODUCT_TRANSITION_INVALID"
   | "PRODUCT_REPOSITORY_UNAVAILABLE";
 
+/** Expected failure raised by product domain and boundary operations. */
 export class ProductFailure extends Error {
+  /**
+   * @param code - Stable machine-readable failure code.
+   * @param message - Safe diagnostic message.
+   * @param options - Optional underlying cause.
+   */
   constructor(readonly code: ProductFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "ProductFailure";

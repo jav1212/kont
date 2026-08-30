@@ -18,6 +18,12 @@ export type PurchasingFailureCode =
   | "PURCHASE_INVENTORY_UNAVAILABLE";
 
 export class PurchasingFailure extends Error {
+  /**
+   * Creates an expected purchasing failure.
+   * @param code Stable machine-readable failure code.
+   * @param message Safe diagnostic message.
+   * @param options Optional underlying cause.
+   */
   constructor(readonly code: PurchasingFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "PurchasingFailure";

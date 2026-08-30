@@ -28,6 +28,12 @@ export interface MoneyConversion {
   readonly roundingMode: RoundingMode;
 }
 
+/**
+ * Creates a positive directed exchange rate while preserving published scale.
+ * @param input - Base currency, quote currency and authoritative decimal rate.
+ * @returns The validated exchange rate.
+ * @throws {MonetaryFailure} When non-positive or between identical currencies.
+ */
 export function exchangeRate(input: {
   readonly baseCurrency: CurrencyDefinition;
   readonly quoteCurrency: CurrencyDefinition;
@@ -43,6 +49,12 @@ export function exchangeRate(input: {
   return { ...input, value, publishedScale: decimalScale(input.value) };
 }
 
+/**
+ * Converts money in the rate's base currency to its quote currency.
+ * @param input - Source amount, directed rate and explicit rounding mode.
+ * @returns Exact intermediate amount and quantized conversion.
+ * @throws {MonetaryFailure} When the amount does not match the rate direction.
+ */
 export function convertMoney(input: {
   readonly amount: Money;
   readonly rate: ExchangeRate;
@@ -64,6 +76,12 @@ export function convertMoney(input: {
   };
 }
 
+/**
+ * Calculates realized gain or loss between recognition and settlement rates.
+ * @param input - Foreign amount, both directed rates and rounding mode.
+ * @returns Gain, loss or neutral difference with both converted amounts.
+ * @throws {MonetaryFailure} When rate directions or quote currencies conflict.
+ */
 export function calculateExchangeDifference(input: {
   readonly foreignAmount: Money;
   readonly recognitionRate: ExchangeRate;
