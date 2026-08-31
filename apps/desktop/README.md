@@ -35,7 +35,7 @@ Desktop obtiene los módulos disponibles mediante:
 GET /api/client/v1/organizations/{organizationId}/modules/available?platform=desktop
 ```
 
-El sidebar puede presentar los siguientes códigos definidos por `@kontave/modules-domain`:
+El sidebar puede presentar los siguientes códigos definidos por `@kontave/modules/domain`:
 
 | Código       | Módulo       | Navegación disponible                                       |
 | ------------ | ------------ | ----------------------------------------------------------- |
@@ -65,8 +65,8 @@ Proveen autenticación, almacenamiento seguro, renovación centralizada, reinten
 - `@kontave/workspace-context-application`
 - `@kontave/organizations/domain`
 - `@kontave/delegated-access/domain`
-- `@kontave/modules-domain`
-- `@kontave/modules-application`
+- `@kontave/modules/domain`
+- `@kontave/modules/application`
 
 Coordinan organización, empresa y módulo activos. Las selecciones se persisten por usuario y organización mediante adaptadores Desktop.
 
@@ -78,9 +78,9 @@ Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. D
 
 ### Contexto operativo e inventario
 
-- `@kontave/operation-context-domain`
-- `@kontave/operation-context-application`
-- `@kontave/monetary-domain`
+- `@kontave/operation-context/domain`
+- `@kontave/operation-context/application`
+- `@kontave/monetary/domain`
 
 El contexto operativo conserva por usuario, organización y empresa la fecha efectiva, moneda de presentación y tasa seleccionada. El proceso principal de Desktop inicializa su coordinador portable mediante un store HTTP autenticado; el renderer recibe únicamente el snapshot resultante.
 

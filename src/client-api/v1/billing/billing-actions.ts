@@ -10,12 +10,12 @@ import {
   ListManualPaymentRequests,
   SubmitManualPaymentRequest,
   type OrganizationBillingAuthorization,
-} from "@kontave/billing-application";
+} from "@kontave/billing/application";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import {
   createOrganizationBillingRepository,
   createPaymentReceiptStorage,
-} from "@kontave/billing-supabase";
+} from "@kontave/billing/supabase";
 
 export function createBillingActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

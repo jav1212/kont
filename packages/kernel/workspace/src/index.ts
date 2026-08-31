@@ -17,8 +17,8 @@ import type { CompanyId as OrganizationCompanyId, OrganizationCompany, Organizat
 import type { OrganizationPresentationDirectory } from "@kontave/organizations/application";
 import type { CompanyRepository } from "@kontave/companies/application";
 import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies/domain";
-import type { AvailableOrganizationModule } from "@kontave/modules-application";
-import type { ModuleCapability, ModuleCode } from "@kontave/modules-domain";
+import type { AvailableOrganizationModule } from "@kontave/modules/application";
+import type { ModuleCapability, ModuleCode } from "@kontave/modules/domain";
 
 /** Classifies how a workspace portfolio entry is reachable by the actor. */
 export const WorkspaceRelationship = {

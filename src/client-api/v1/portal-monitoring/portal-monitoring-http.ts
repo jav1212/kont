@@ -1,4 +1,4 @@
-import { PortalMonitoringFailure } from "@kontave/portal-monitoring-domain";
+import { PortalMonitoringFailure } from "@kontave/portal-monitoring/domain";
 import { apiError } from "../http/response";
 
 export function portalMonitoringErrorResponse(

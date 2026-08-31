@@ -1,12 +1,12 @@
 import type { UpdateProductSalePricingDto } from "@kontave/client-contracts";
-import { currencyCode } from "@kontave/monetary-domain";
+import { currencyCode } from "@kontave/monetary/domain";
 import {
   fixedSalePricing,
   markupSalePricing,
   PricingFailure,
   type ProductSalePricing,
-} from "@kontave/pricing-domain";
-import { productId } from "@kontave/products-domain";
+} from "@kontave/pricing/domain";
+import { productId } from "@kontave/products/domain";
 import { createProductCommercialActions } from "@/src/client-api/v1/products/product-commercial-actions";
 import {
   executeProductRequest,

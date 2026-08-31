@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currency } from "@kontave/monetary-domain";
+import { currency } from "@kontave/monetary/domain";
 import { PayrollRun, payrollDefinitionId, payrollPeriod, payrollRunId } from "../../src/domain/index";
 
 const VES = currency("VES", 2);

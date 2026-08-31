@@ -4,11 +4,11 @@ import type {
   ReferralOverviewDto,
   ReferralRewardDto,
 } from "@kontave/client-contracts";
-import type { Money } from "@kontave/billing-domain";
+import type { Money } from "@kontave/billing/domain";
 import type {
   ReferralAttribution,
   ReferralReward,
-} from "@kontave/referrals-domain";
+} from "@kontave/referrals/domain";
 
 export function toReferralAttributionDto(
   value: ReferralAttribution,

@@ -7,7 +7,7 @@ import {
   moneyFromDecimal,
   moneyToDecimal,
   type ExchangeRateSnapshot,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import {
   assessCestaticket,
   CESTATICKET_CURRENT_AMOUNT,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currency, exactDecimal, moneyFromDecimal } from "@kontave/monetary-domain";
+import { currency, exactDecimal, moneyFromDecimal } from "@kontave/monetary/domain";
 import { FiscalFailure, fiscalTaxDetermination } from "../../src/domain";
 
 const VES = currency("VES", 2);

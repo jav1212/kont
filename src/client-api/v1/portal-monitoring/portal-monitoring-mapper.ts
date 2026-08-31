@@ -1,5 +1,5 @@
 import type { PortalMonitoringDto } from "@kontave/client-contracts";
-import type { PortalMonitoringSnapshot } from "@kontave/portal-monitoring-domain";
+import type { PortalMonitoringSnapshot } from "@kontave/portal-monitoring/domain";
 
 export function toPortalMonitoringDto(
   snapshot: PortalMonitoringSnapshot,

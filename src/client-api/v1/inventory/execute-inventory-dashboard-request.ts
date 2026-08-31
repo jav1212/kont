@@ -7,11 +7,11 @@ import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import {
   InventoryDashboardFailure,
   type InventoryDashboardSnapshot,
-} from "@kontave/inventory-application";
+} from "@kontave/inventory/application";
 import { companyId } from "@kontave/companies/domain";
-import { RequireModuleCapability } from "@kontave/modules-application";
-import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+import { RequireModuleCapability } from "@kontave/modules/application";
+import { ModuleCapability, ModuleFailure } from "@kontave/modules/domain";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 import {
   companyId as organizationCompanyId,
   organizationId,

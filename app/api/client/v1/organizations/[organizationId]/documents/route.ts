@@ -1,6 +1,6 @@
 import type { RegisterDocumentDto } from "@kontave/client-contracts";
 import { companyId } from "@kontave/companies/domain";
-import { documentFolderId } from "@kontave/documents-domain";
+import { documentFolderId } from "@kontave/documents/domain";
 import {
   executeDocumentRequest,
   documentsCreate,

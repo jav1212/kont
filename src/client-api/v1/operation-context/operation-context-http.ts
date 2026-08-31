@@ -1,4 +1,4 @@
-import { OperationContextFailure } from "@kontave/operation-context-domain";
+import { OperationContextFailure } from "@kontave/operation-context/domain";
 import { apiError } from "@/src/client-api/v1/http/response";
 
 export function operationContextErrorResponse(

@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@kontave/access-control": "workspace:*",
-    "@kontave/modules-domain": "workspace:*",
+    "@kontave/modules": "workspace:*",
     "@kontave/navigation": "workspace:*",
     "@kontave/organizations": "workspace:*"
   },

@@ -1,16 +1,16 @@
 import {
   ApplyBillingCredit,
   GetBillingCreditBalance,
-} from "@kontave/billing-application";
-import { ConfirmPayment } from "@kontave/billing-orchestration";
-import { createBillingCreditLedger } from "@kontave/billing-supabase";
+} from "@kontave/billing/application";
+import { ConfirmPayment } from "@kontave/billing/orchestration";
+import { createBillingCreditLedger } from "@kontave/billing/supabase";
 import {
   ListPayments,
   RecordPaymentConfirmation,
-} from "@kontave/payments-application";
-import { createPaymentsInfrastructure } from "@kontave/payments-supabase";
-import { GrantReferralReward } from "@kontave/referrals-application";
-import { createReferralsInfrastructure } from "@kontave/referrals-supabase";
+} from "@kontave/payments/application";
+import { createPaymentsInfrastructure } from "@kontave/payments/supabase";
+import { GrantReferralReward } from "@kontave/referrals/application";
+import { createReferralsInfrastructure } from "@kontave/referrals/supabase";
 
 export function createPaymentActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,

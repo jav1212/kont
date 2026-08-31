@@ -1,5 +1,5 @@
-import { ListCompanyEmployees } from "@kontave/employees-application";
-import { createEmployeeInfrastructure } from "@kontave/employees-supabase";
+import { ListCompanyEmployees } from "@kontave/employees/application";
+import { createEmployeeInfrastructure } from "@kontave/employees/supabase";
 export function createEmployeeActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;

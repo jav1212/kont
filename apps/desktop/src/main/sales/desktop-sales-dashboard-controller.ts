@@ -1,14 +1,14 @@
 import {
   OperationContextCoordinator,
   type OperationContextStore,
-} from "@kontave/operation-context-application";
+} from "@kontave/operation-context/application";
 import {
   createOperationalDefaults,
   localDate,
   type OperationContextKey,
   type OperationalDefaults,
-} from "@kontave/operation-context-domain";
-import { currency, currencyCode, exchangeRate } from "@kontave/monetary-domain";
+} from "@kontave/operation-context/domain";
+import { currency, currencyCode, exchangeRate } from "@kontave/monetary/domain";
 import {
   companyId,
   organizationId,

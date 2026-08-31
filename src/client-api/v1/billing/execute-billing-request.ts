@@ -2,7 +2,7 @@ import { organizationId, userId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { apiError, apiSuccess } from "../http/response";
 import { billingErrorResponse } from "./billing-http";
-import type { BillingAuthorizationContext } from "@kontave/billing-application";
+import type { BillingAuthorizationContext } from "@kontave/billing/application";
 import { clientSource } from "../http/client-source";
 
 export async function executeBillingRequest<T>(

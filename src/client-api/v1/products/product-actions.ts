@@ -11,9 +11,9 @@ import {
   SetProductStatus,
   UpdateProduct,
   UpdateProductCategory,
-} from "@kontave/products-application";
-import { ProductCategoryStatus, ProductStatus } from "@kontave/products-domain";
-import { createSupabaseProductsRepository } from "@kontave/products-supabase";
+} from "@kontave/products/application";
+import { ProductCategoryStatus, ProductStatus } from "@kontave/products/domain";
+import { createSupabaseProductsRepository } from "@kontave/products/supabase";
 export function createProductActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;

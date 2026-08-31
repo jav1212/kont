@@ -1,5 +1,5 @@
 import type { DocumentDto, DocumentFolderDto } from "@kontave/client-contracts";
-import type { DocumentFolder, StoredDocument } from "@kontave/documents-domain";
+import type { DocumentFolder, StoredDocument } from "@kontave/documents/domain";
 export const toDocumentDto = (value: StoredDocument): DocumentDto => ({
   id: value.id,
   organizationId: value.organizationId,

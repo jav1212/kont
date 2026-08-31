@@ -1,4 +1,4 @@
-import { Platform } from "@kontave/modules-domain";
+import { Platform } from "@kontave/modules/domain";
 import { userId } from "@kontave/organizations/domain";
 import { StaticSettingsCatalog, type SettingsResolutionContext } from "../application/index";
 import { SETTINGS_ENTRIES, SETTINGS_SECTIONS, type SettingsEntryDefinition } from "../contracts/index";

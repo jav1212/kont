@@ -3,7 +3,7 @@ import {
   permissionCode,
   type PermissionCode,
 } from "@kontave/access-control/domain";
-import { ModuleCode, Platform } from "@kontave/modules-domain";
+import { ModuleCode, Platform } from "@kontave/modules/domain";
 import {
   companyId,
   organizationId,

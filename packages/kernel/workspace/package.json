@@ -16,8 +16,7 @@
     "@kontave/companies": "workspace:*",
     "@kontave/delegated-access": "workspace:*",
     "@kontave/organizations": "workspace:*",
-    "@kontave/modules-application": "workspace:*",
-    "@kontave/modules-domain": "workspace:*"
+    "@kontave/modules": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.12",

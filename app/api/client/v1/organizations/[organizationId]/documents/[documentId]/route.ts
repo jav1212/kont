@@ -1,5 +1,5 @@
 import type { MoveDocumentDto } from "@kontave/client-contracts";
-import { documentFolderId, documentId } from "@kontave/documents-domain";
+import { documentFolderId, documentId } from "@kontave/documents/domain";
 import {
   executeDocumentRequest,
   documentsDelete,

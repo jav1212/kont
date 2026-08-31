@@ -1,5 +1,5 @@
-import type { EmployeeId } from "@kontave/employees-domain";
-import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
+import type { EmployeeId } from "@kontave/employees/domain";
+import type { CurrencyDefinition, Money } from "@kontave/monetary/domain";
 import type { PayrollDefinitionId, PayrollRelationshipId } from "./identifiers";
 import type { PayrollPeriod } from "./period";
 import { requireLocalDate } from "./period";

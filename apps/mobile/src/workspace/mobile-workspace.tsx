@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ModuleCode } from "@kontave/modules-domain";
+import type { ModuleCode } from "@kontave/modules/domain";
 import type { CurrentUserDto } from "@kontave/client-contracts";
 import { RemoteProfilePort } from "@kontave/client-remote";
 import { companyId, organizationId } from "@kontave/organizations/domain";

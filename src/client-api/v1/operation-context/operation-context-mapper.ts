@@ -1,5 +1,5 @@
 import type { OperationalDefaultsDto } from "@kontave/client-contracts";
-import type { OperationalDefaults } from "@kontave/operation-context-domain";
+import type { OperationalDefaults } from "@kontave/operation-context/domain";
 
 export function toOperationalDefaultsDto(
   value: OperationalDefaults,

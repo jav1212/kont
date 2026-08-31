@@ -1,8 +1,8 @@
 import {
   GetEffectiveUserPreferences,
   UpdateUserPreferences,
-} from "@kontave/preferences-application";
-import { createSupabaseUserPreferencesRepository } from "@kontave/preferences-supabase";
+} from "@kontave/preferences/application";
+import { createSupabaseUserPreferencesRepository } from "@kontave/preferences/supabase";
 
 export function createPreferencesActions(accessToken: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -1,5 +1,5 @@
 import type { EmployeeDto } from "@kontave/client-contracts";
-import type { Employee } from "@kontave/employees-domain";
+import type { Employee } from "@kontave/employees/domain";
 export function toEmployeeDto(employee: Employee): EmployeeDto {
   return {
     id: employee.id,

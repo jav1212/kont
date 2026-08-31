@@ -1,6 +1,6 @@
 import { companyId } from "@kontave/companies/domain";
 import { FiscalDocument, fiscalDocumentId, fiscalDocumentLineId, type FiscalDocumentState } from "../domain";
-import { currency, exactDecimal, moneyFromDecimal } from "@kontave/monetary-domain";
+import { currency, exactDecimal, moneyFromDecimal } from "@kontave/monetary/domain";
 
 export const FISCAL_TEST_CURRENCY = currency("VES", 2);
 

@@ -1,4 +1,4 @@
-import { exactDecimal, type Money } from "@kontave/monetary-domain";
+import { exactDecimal, type Money } from "@kontave/monetary/domain";
 import { percentageOf } from "./calculation";
 import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
 

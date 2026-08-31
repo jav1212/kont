@@ -2,12 +2,12 @@ import type {
   AvailableOrganizationModuleDto,
   ModuleDefinitionDto,
   ModuleInstallationDto,
-} from "@kontave/modules-contracts";
-import type { AvailableOrganizationModule } from "@kontave/modules-application";
+} from "@kontave/modules/contracts";
+import type { AvailableOrganizationModule } from "@kontave/modules/application";
 import type {
   ModuleDefinition,
   ModuleInstallation,
-} from "@kontave/modules-domain";
+} from "@kontave/modules/domain";
 export function toModuleDefinitionDto(
   value: ModuleDefinition,
 ): ModuleDefinitionDto {

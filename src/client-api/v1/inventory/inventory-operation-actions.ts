@@ -5,8 +5,8 @@ import {
   PostInventoryOperation,
   ReverseInventoryOperation,
   UpdateInventoryOperation,
-} from "@kontave/inventory-application";
-import { createSupabaseInventoryOperationsRepository } from "@kontave/inventory-supabase";
+} from "@kontave/inventory/application";
+import { createSupabaseInventoryOperationsRepository } from "@kontave/inventory/supabase";
 
 export function createInventoryOperationActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,

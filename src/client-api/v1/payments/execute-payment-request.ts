@@ -4,9 +4,9 @@ import {
   permissionCode,
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
-import { BillingFailure } from "@kontave/billing-domain";
+import { BillingFailure } from "@kontave/billing/domain";
 import { organizationId } from "@kontave/organizations/domain";
-import { PaymentFailure } from "@kontave/payments-domain";
+import { PaymentFailure } from "@kontave/payments/domain";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { clientSource } from "../http/client-source";
 import { apiError, apiSuccess } from "../http/response";

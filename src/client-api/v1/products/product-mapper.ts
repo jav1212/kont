@@ -3,8 +3,8 @@ import type {
   ProductCategoryOverviewPage,
   ProductCursorPage,
   ProductDetail,
-} from "@kontave/products-application";
-import type { ProductCategory } from "@kontave/products-domain";
+} from "@kontave/products/application";
+import type { ProductCategory } from "@kontave/products/domain";
 import type {
   ProductCategoryDto,
   ProductCategoryOverviewDto,
@@ -13,8 +13,8 @@ import type {
   ProductDto,
   ProductListDto,
 } from "@kontave/client-contracts";
-import type { ProductSalePricing } from "@kontave/pricing-domain";
-import type { ResolvedProductTaxation } from "@kontave/taxation-application";
+import type { ProductSalePricing } from "@kontave/pricing/domain";
+import type { ResolvedProductTaxation } from "@kontave/taxation/application";
 export function toProductCategoryDto(
   value: ProductCategory,
 ): ProductCategoryDto {

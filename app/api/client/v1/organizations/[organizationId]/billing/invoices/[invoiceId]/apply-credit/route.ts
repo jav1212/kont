@@ -1,7 +1,7 @@
 import { createPaymentActions } from "@/src/client-api/v1/payments/payment-actions";
 import { toCreditApplicationDto } from "@/src/client-api/v1/payments/payment-dto";
 import { executePaymentRequest } from "@/src/client-api/v1/payments/execute-payment-request";
-import { Currency, money } from "@kontave/billing-domain";
+import { Currency, money } from "@kontave/billing/domain";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 const schema = z.object({

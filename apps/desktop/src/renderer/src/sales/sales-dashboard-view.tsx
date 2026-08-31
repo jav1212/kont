@@ -14,7 +14,7 @@ import {
   moneyFromDecimal,
   moneyToDecimal,
   quantizeMoney,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import {
   Button,
   CurrencyFlag,

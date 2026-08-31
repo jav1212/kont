@@ -1,4 +1,4 @@
-import type { RoundingMode } from "@kontave/monetary-domain";
+import type { RoundingMode } from "@kontave/monetary/domain";
 import type { PayrollPolicyReference } from "../domain";
 import { VenezuelanPayrollFailure } from "./failure";
 

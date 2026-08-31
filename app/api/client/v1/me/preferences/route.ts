@@ -1,4 +1,4 @@
-import { PreferencesFailure } from "@kontave/preferences-domain";
+import { PreferencesFailure } from "@kontave/preferences/domain";
 import type { UpdateUserPreferencesDto } from "@kontave/client-contracts";
 import { userId } from "@kontave/organizations/domain";
 import {

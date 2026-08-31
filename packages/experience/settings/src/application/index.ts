@@ -1,5 +1,5 @@
 import type { PermissionCode } from "@kontave/access-control/domain";
-import { Platform, type ModuleCode } from "@kontave/modules-domain";
+import { Platform, type ModuleCode } from "@kontave/modules/domain";
 import { applicationNavigation } from "@kontave/navigation";
 import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations/domain";
 import { SettingsContextRequirement, type SettingsEntryDefinition, type SettingsEntryId, type SettingsSectionDefinition, type SettingsSectionId } from "../contracts/index";

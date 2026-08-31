@@ -31,17 +31,21 @@ export default defineConfig({
     plugins: [
       externalizeDepsPlugin({
         exclude: [
-          "@kontave/auth/application",
-          "@kontave/auth/domain",
-          "@kontave/auth/supabase",
-          "@kontave/client-connectivity/application",
-          "@kontave/client-connectivity/contracts",
+          // electron-vite matches dependency package names, not export subpaths.
+          // Bundle workspace packages so Electron never loads their TypeScript
+          // source exports directly through Node's strip-only loader.
+          "@kontave/access-control",
+          "@kontave/auth",
+          "@kontave/client-connectivity",
           "@kontave/client-contracts",
-          "@kontave/monetary-domain",
-          "@kontave/operation-context-application",
-          "@kontave/operation-context-domain",
-          "@kontave/delegated-access/domain",
-          "@kontave/organizations/domain",
+          "@kontave/client-remote",
+          "@kontave/client-runtime",
+          "@kontave/client-updates",
+          "@kontave/delegated-access",
+          "@kontave/devices",
+          "@kontave/monetary/domain",
+          "@kontave/operation-context",
+          "@kontave/organizations",
           "@kontave/workspace-context-application",
         ],
       }),

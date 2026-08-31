@@ -1,7 +1,7 @@
 import { app } from "electron";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { ModuleCode } from "@kontave/modules-domain";
+import type { ModuleCode } from "@kontave/modules/domain";
 import {
   companyId,
   organizationId,

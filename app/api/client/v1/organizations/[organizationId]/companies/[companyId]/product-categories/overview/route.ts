@@ -1,7 +1,7 @@
 import {
   ProductCategoryStatus,
   ProductFailure,
-} from "@kontave/products-domain";
+} from "@kontave/products/domain";
 import {
   executeProductRequest,
   productsRead,

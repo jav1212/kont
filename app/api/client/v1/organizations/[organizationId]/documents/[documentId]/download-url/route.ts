@@ -1,4 +1,4 @@
-import { documentId } from "@kontave/documents-domain";
+import { documentId } from "@kontave/documents/domain";
 import {
   executeDocumentRequest,
   documentsRead,

@@ -1,5 +1,5 @@
 import { PERMISSIONS, permissionCode, type PermissionCode } from "@kontave/access-control/domain";
-import { Platform, type ModuleCode } from "@kontave/modules-domain";
+import { Platform, type ModuleCode } from "@kontave/modules/domain";
 import type { NavigationDestinationId } from "@kontave/navigation";
 
 /** Supported ownership scopes for settings entries. */

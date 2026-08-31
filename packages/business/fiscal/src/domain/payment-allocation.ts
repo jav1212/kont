@@ -1,4 +1,4 @@
-import { sameCurrency, type ExchangeRateSnapshot, type Money } from "@kontave/monetary-domain";
+import { sameCurrency, type ExchangeRateSnapshot, type Money } from "@kontave/monetary/domain";
 import { FiscalFailure } from "./fiscal-failure";
 
 export interface FiscalPaymentAllocation {

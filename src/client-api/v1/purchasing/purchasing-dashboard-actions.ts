@@ -1,5 +1,5 @@
-import { GetPurchasingDashboard } from "@kontave/purchasing-application/dashboard";
-import { createSupabasePurchasingDashboardReader } from "@kontave/purchasing-supabase";
+import { GetPurchasingDashboard } from "@kontave/purchasing/application/dashboard";
+import { createSupabasePurchasingDashboardReader } from "@kontave/purchasing/supabase";
 export function createPurchasingDashboardActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;

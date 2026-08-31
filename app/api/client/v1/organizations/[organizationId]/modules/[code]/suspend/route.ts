@@ -1,7 +1,7 @@
 import { createModuleActions } from "@/src/client-api/v1/modules/module-actions";
 import { toModuleInstallationDto } from "@/src/client-api/v1/modules/module-dto";
 import { executeModuleRequest } from "@/src/client-api/v1/modules/execute-module-request";
-import { ModuleCode } from "@kontave/modules-domain";
+import { ModuleCode } from "@kontave/modules/domain";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function POST(

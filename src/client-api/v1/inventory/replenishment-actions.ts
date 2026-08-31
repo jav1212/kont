@@ -1,5 +1,5 @@
-import { UpdateReplenishmentPolicy } from "@kontave/inventory-application";
-import { createSupabaseReplenishmentPolicyRepository } from "@kontave/inventory-supabase";
+import { UpdateReplenishmentPolicy } from "@kontave/inventory/application";
+import { createSupabaseReplenishmentPolicyRepository } from "@kontave/inventory/supabase";
 export function createReplenishmentActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;

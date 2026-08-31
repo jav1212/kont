@@ -5,9 +5,9 @@ import {
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId } from "@kontave/companies/domain";
-import { RequireModuleCapability } from "@kontave/modules-application";
-import { ModuleCapability } from "@kontave/modules-domain";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+import { RequireModuleCapability } from "@kontave/modules/application";
+import { ModuleCapability } from "@kontave/modules/domain";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 import { organizationId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "@/src/client-api/v1/auth/auth-context";
 import { createCompanyActions } from "@/src/client-api/v1/companies/company-actions";

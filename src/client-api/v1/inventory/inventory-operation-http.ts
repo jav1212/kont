@@ -6,10 +6,10 @@ import {
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId } from "@kontave/companies/domain";
-import { InventoryFailure } from "@kontave/inventory-domain";
-import { RequireModuleCapability } from "@kontave/modules-application";
-import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+import { InventoryFailure } from "@kontave/inventory/domain";
+import { RequireModuleCapability } from "@kontave/modules/application";
+import { ModuleCapability, ModuleFailure } from "@kontave/modules/domain";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 import { organizationId, userId } from "@kontave/organizations/domain";
 import {
   DelegatedAccessFailure,

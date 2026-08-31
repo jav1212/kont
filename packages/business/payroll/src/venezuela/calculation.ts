@@ -8,7 +8,7 @@ import {
   sameCurrency,
   type ExactDecimal,
   type Money,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import { VenezuelanPayrollFailure } from "./failure";
 
 /**

@@ -1,5 +1,5 @@
-import { GetPortalMonitoring } from "@kontave/portal-monitoring-application";
-import { createPortalMonitoringRepository } from "@kontave/portal-monitoring-supabase";
+import { GetPortalMonitoring } from "@kontave/portal-monitoring/application";
+import { createPortalMonitoringRepository } from "@kontave/portal-monitoring/supabase";
 
 export function createPortalMonitoringActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

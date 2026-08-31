@@ -1,11 +1,11 @@
 import type { ExchangeRateSetDto } from "@kontave/client-contracts";
-import { currency } from "@kontave/monetary-domain";
+import { currency } from "@kontave/monetary/domain";
 import {
   companyId,
   organizationId,
   userId,
 } from "@kontave/organizations/domain";
-import { localDate } from "@kontave/operation-context-domain";
+import { localDate } from "@kontave/operation-context/domain";
 import { authenticateClientRequest } from "@/src/client-api/v1/auth/auth-context";
 import { apiError, apiSuccess } from "@/src/client-api/v1/http/response";
 import {

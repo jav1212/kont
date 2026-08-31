@@ -3,8 +3,8 @@ import type {
   MoneyDto,
   PaymentDto,
 } from "@kontave/client-contracts";
-import type { BillingCreditApplication, Money } from "@kontave/billing-domain";
-import type { Payment } from "@kontave/payments-domain";
+import type { BillingCreditApplication, Money } from "@kontave/billing/domain";
+import type { Payment } from "@kontave/payments/domain";
 export function toPaymentDto(v: Payment): PaymentDto {
   return {
     id: v.id,

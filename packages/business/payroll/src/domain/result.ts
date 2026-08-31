@@ -1,4 +1,4 @@
-import type { ExactDecimal, Money } from "@kontave/monetary-domain";
+import type { ExactDecimal, Money } from "@kontave/monetary/domain";
 import type { PayrollElementClassification, PayrollProcessingPhase } from "./element";
 import type { PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers";
 import type { PayrollWorkerSnapshot } from "./relationship";

@@ -1,8 +1,8 @@
 import {
   AttachReferral,
   GetReferralOverview,
-} from "@kontave/referrals-application";
-import { createReferralsInfrastructure } from "@kontave/referrals-supabase";
+} from "@kontave/referrals/application";
+import { createReferralsInfrastructure } from "@kontave/referrals/supabase";
 
 export function createReferralActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

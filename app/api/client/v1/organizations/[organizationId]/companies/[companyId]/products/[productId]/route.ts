@@ -6,7 +6,7 @@ import {
   ProductFailure,
   sku,
   UnitOfMeasure,
-} from "@kontave/products-domain";
+} from "@kontave/products/domain";
 import {
   executeProductRequest,
   productsRead,
@@ -14,7 +14,7 @@ import {
 } from "@/src/client-api/v1/products/product-http";
 import { toProductDetailDto } from "@/src/client-api/v1/products/product-mapper";
 import { createProductCommercialActions } from "@/src/client-api/v1/products/product-commercial-actions";
-import { VENEZUELAN_IVA } from "@kontave/taxation-venezuela";
+import { VENEZUELAN_IVA } from "@kontave/taxation/venezuela";
 type C = {
   params: Promise<{
     organizationId: string;

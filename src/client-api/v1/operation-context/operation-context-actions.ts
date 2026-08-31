@@ -2,12 +2,12 @@ import {
   InMemoryExchangeRateCache,
   IsoCurrencyCatalog,
   ResolveExchangeRates,
-} from "@kontave/monetary-application";
-import { currency } from "@kontave/monetary-domain";
-import { MonitorBcvProvider } from "@kontave/monetary-monitor-bcv-adapter";
-import { OperationContextCoordinator } from "@kontave/operation-context-application";
-import { localDate } from "@kontave/operation-context-domain";
-import { createSupabaseOperationContextStore } from "@kontave/operation-context-supabase";
+} from "@kontave/monetary/application";
+import { currency } from "@kontave/monetary/domain";
+import { MonitorBcvProvider } from "@kontave/monetary/monitor-bcv";
+import { OperationContextCoordinator } from "@kontave/operation-context/application";
+import { localDate } from "@kontave/operation-context/domain";
+import { createSupabaseOperationContextStore } from "@kontave/operation-context/supabase";
 
 const USD = currency("USD", 2);
 const VES = currency("VES", 2);

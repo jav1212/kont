@@ -5,7 +5,7 @@ import {
   sameCurrency,
   subtractMoney,
   type Money,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import type { VenezuelanObligationCode } from "./rules";
 import { VenezuelanPayrollFailure } from "./failure";
 

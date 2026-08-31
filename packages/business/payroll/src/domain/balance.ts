@@ -1,7 +1,7 @@
-import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
+import type { CurrencyDefinition, Money } from "@kontave/monetary/domain";
 import type { PayrollBalanceCode, PayrollRelationshipId } from "./identifiers";
 import type { PayrollBalanceDimension, PayrollUnit } from "./element";
-import type { ExactDecimal } from "@kontave/monetary-domain";
+import type { ExactDecimal } from "@kontave/monetary/domain";
 import { PayrollFailure } from "./payroll-failure";
 
 export interface PayrollBalanceDefinition { readonly code: PayrollBalanceCode; readonly name: string; readonly unit: PayrollUnit; readonly currency: CurrencyDefinition | null; readonly dimensions: readonly PayrollBalanceDimension[]; }

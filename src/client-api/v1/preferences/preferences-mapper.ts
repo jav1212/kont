@@ -1,4 +1,4 @@
-import type { UserPreferences } from "@kontave/preferences-domain";
+import type { UserPreferences } from "@kontave/preferences/domain";
 import type { UserPreferencesDto } from "@kontave/client-contracts";
 
 export function toUserPreferencesDto(

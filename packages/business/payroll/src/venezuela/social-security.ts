@@ -7,7 +7,7 @@ import {
   quantizeMoney,
   type ExactDecimal,
   type Money,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import { maximumMoney, minimumMoney, multiplyMoney, percentageOf, requireNonNegativeDecimal, requireNonNegativeMoney } from "./calculation";
 import { VenezuelanPayrollFailure } from "./failure";
 import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";

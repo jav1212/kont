@@ -1,7 +1,0 @@
-import assert from "node:assert/strict";
-import test from "node:test";
-import { productSalePricingFixture } from "../src/index";
-
-test("creates portable pricing fixtures", () => {
-  assert.equal(productSalePricingFixture().policy?.mode, "fixed");
-});

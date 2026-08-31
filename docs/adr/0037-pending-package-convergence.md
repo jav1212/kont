@@ -2,6 +2,7 @@
 
 - Estado: aceptado
 - Fecha: 2026-08-26
+- Resultado de fase 3: completado el 2026-08-31 por el ADR 0039
 
 ## Contexto
 
@@ -156,8 +157,14 @@ autorización explícita para migrar producción.
 El plan de ejecución, orden, gates y estrategia de rollback de esta fase se
 definen en el ADR 0039.
 
-Cuando exista autorización para tocar producción, cada contexto se migrará de
-forma atómica:
+La fase 3 se completó el 2026-08-31. Los 17 contextos convergieron a una unidad
+de distribución cada uno, se retiraron los 55 manifests de capa previstos y el
+workspace pasó de 102 a 47 proyectos. Web, Desktop y Mobile compilan con el
+grafo definitivo; la instalación congelada, los gates globales y las pruebas
+focalizadas quedaron aprobados. El detalle por corte y sus superficies públicas
+finales permanece registrado en el ADR 0039.
+
+La ejecución aplicó de forma atómica en cada contexto:
 
 1. crear el paquete unificado y sus subpath exports;
 2. mover domain, application, adapters y testing a módulos internos;
@@ -166,8 +173,7 @@ forma atómica:
 5. actualizar el lockfile;
 6. ejecutar build Web, validaciones de consumidores y gates globales.
 
-No se iniciará una segunda migración de contexto hasta cerrar las referencias
-heredadas de la anterior.
+Cada migración cerró sus referencias heredadas antes de iniciar la siguiente.
 
 ## Criterios de aceptación
 
@@ -186,8 +192,8 @@ Cada corte de convergencia debe demostrar:
 
 ## Consecuencias
 
-- La deuda restante queda cuantificada y no se confunde con trabajo seguro para
-  la fase actual.
+- La deuda de distribución cuantificada por este ADR quedó retirada por el ADR
+  0039.
 - El freeze de producción deja de ser una expresión ambigua: bloquea cambios en
   consumidores Web, no mejoras internas compatibles de los paquetes.
 - UI se convierte en el siguiente punto de decisión arquitectónica.

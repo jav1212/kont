@@ -1,4 +1,4 @@
-import { BillingFailure } from "@kontave/billing-domain";
+import { BillingFailure } from "@kontave/billing/domain";
 import { AuthorizationDenied } from "@kontave/access-control/domain";
 import { apiError } from "../http/response";
 

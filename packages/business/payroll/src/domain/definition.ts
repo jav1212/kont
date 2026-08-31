@@ -1,5 +1,5 @@
 import type { CompanyId } from "@kontave/companies/domain";
-import type { CurrencyDefinition } from "@kontave/monetary-domain";
+import type { CurrencyDefinition } from "@kontave/monetary/domain";
 import type { PayrollDefinitionId } from "./identifiers";
 import type { PayrollFrequency } from "./period";
 import { PayrollFailure } from "./payroll-failure";

@@ -1,4 +1,4 @@
-import { localDate } from "@kontave/operation-context-domain";
+import { localDate } from "@kontave/operation-context/domain";
 import type {
   ClientPortFeature,
   OperationContextPort,

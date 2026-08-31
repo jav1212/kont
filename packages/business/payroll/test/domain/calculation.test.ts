@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { employeeId } from "@kontave/employees-domain";
-import { currency, moneyFromDecimal } from "@kontave/monetary-domain";
+import { employeeId } from "@kontave/employees/domain";
+import { currency, moneyFromDecimal } from "@kontave/monetary/domain";
 import {
   calculatePayrollRelationship, decimalInput, moneyInput, orderDefinitions, payrollElementCode, payrollElementDefinition,
   payrollElementEntry, payrollElementEntryId, payrollPeriod, payrollRelationshipId, type PayrollElementDefinition, type PayrollWorkerSnapshot,

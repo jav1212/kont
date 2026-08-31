@@ -1,15 +1,15 @@
 import {
   GetProductSalePricing,
   UpdateProductSalePricing,
-} from "@kontave/pricing-application";
-import { createSupabaseProductSalePricingRepository } from "@kontave/pricing-supabase";
+} from "@kontave/pricing/application";
+import { createSupabaseProductSalePricingRepository } from "@kontave/pricing/supabase";
 import {
   GetResolvedProductTaxation,
   SetProductTaxTreatment,
-} from "@kontave/taxation-application";
-import { createSupabaseProductTaxationRepository } from "@kontave/taxation-supabase";
-import { GetProductUnitEconomics } from "@kontave/unit-economics-application";
-import { createSupabaseUnitEconomicsReader } from "@kontave/unit-economics-supabase";
+} from "@kontave/taxation/application";
+import { createSupabaseProductTaxationRepository } from "@kontave/taxation/supabase";
+import { GetProductUnitEconomics } from "@kontave/unit-economics/application";
+import { createSupabaseUnitEconomicsReader } from "@kontave/unit-economics/supabase";
 export function createProductCommercialActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.SUPABASE_SERVICE_ROLE_KEY;

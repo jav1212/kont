@@ -1,5 +1,5 @@
-import type { AvailableOrganizationModule } from "@kontave/modules-application";
-import { ModuleCode, type ModuleId } from "@kontave/modules-domain";
+import type { AvailableOrganizationModule } from "@kontave/modules/application";
+import { ModuleCode, type ModuleId } from "@kontave/modules/domain";
 import type { AccessibleOrganizationDto } from "@kontave/client-contracts";
 import { RemoteOrganizationsPort } from "@kontave/client-remote";
 import { DelegatedAccessScope, OrganizationAccessPathKind, delegatedAccessGrantId } from "@kontave/delegated-access/domain";

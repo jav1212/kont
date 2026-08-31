@@ -15,11 +15,11 @@ import type {
   OrganizationUsage,
   PaymentMethod,
   Subscription,
-} from "@kontave/billing-domain";
+} from "@kontave/billing/domain";
 import type {
   BillingPlan,
   ManualPaymentRequest,
-} from "@kontave/billing-domain";
+} from "@kontave/billing/domain";
 import type {
   BillingPlanDto,
   ManualPaymentRequestDto,

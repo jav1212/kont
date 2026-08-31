@@ -13,7 +13,7 @@ import {
   type ExchangeRateSnapshot,
   type Money,
   type MoneyConversion,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
 import { VenezuelanPayrollFailure } from "./failure";
 import {

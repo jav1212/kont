@@ -1,4 +1,4 @@
-import { exactDecimal, moneyFromMinor, type Money } from "@kontave/monetary-domain";
+import { exactDecimal, moneyFromMinor, type Money } from "@kontave/monetary/domain";
 import { percentageOf } from "./calculation";
 import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
 import { VenezuelanPayrollFailure } from "./failure";

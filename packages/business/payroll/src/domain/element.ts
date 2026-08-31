@@ -1,4 +1,4 @@
-import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary-domain";
+import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary/domain";
 import type { PayrollBalanceCode, PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers";
 import { requireLocalDate } from "./period";
 import { PayrollFailure } from "./payroll-failure";

@@ -1,4 +1,4 @@
-import { BillingCycle, BillingFailure } from "@kontave/billing-domain";
+import { BillingCycle, BillingFailure } from "@kontave/billing/domain";
 import type { SubmitManualPaymentRequestDto } from "@kontave/client-contracts";
 import { createBillingActions } from "@/src/client-api/v1/billing/billing-actions";
 import { executeBillingRequest } from "@/src/client-api/v1/billing/execute-billing-request";

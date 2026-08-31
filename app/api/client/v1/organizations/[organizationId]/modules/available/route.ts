@@ -1,4 +1,4 @@
-import { platform } from "@kontave/modules-domain";
+import { platform } from "@kontave/modules/domain";
 import { createModuleActions } from "@/src/client-api/v1/modules/module-actions";
 import { toAvailableOrganizationModuleDto } from "@/src/client-api/v1/modules/module-dto";
 import { executeModuleRequest } from "@/src/client-api/v1/modules/execute-module-request";

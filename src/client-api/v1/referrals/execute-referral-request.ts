@@ -4,7 +4,7 @@ import {
   permissionCode,
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
-import { ReferralFailure } from "@kontave/referrals-domain";
+import { ReferralFailure } from "@kontave/referrals/domain";
 import { organizationId } from "@kontave/organizations/domain";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { clientSource } from "../http/client-source";

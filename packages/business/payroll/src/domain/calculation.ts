@@ -1,7 +1,7 @@
 import {
   addDecimal, addMoney, exactDecimal, moneyFromMinor, moneyToDecimal, multiplyDecimal, quantizeMoney, sameCurrency,
   type CurrencyDefinition, type ExactDecimal,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import type { PayrollElementDefinition, PayrollElementEntry, PayrollInputValue, PayrollProcessingPhase } from "./element";
 import type { PayrollElementCode } from "./identifiers";
 import { PayrollFailure } from "./payroll-failure";

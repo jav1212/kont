@@ -5,15 +5,15 @@ import {
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId } from "@kontave/companies/domain";
-import { RequireModuleCapability } from "@kontave/modules-application";
-import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+import { RequireModuleCapability } from "@kontave/modules/application";
+import { ModuleCapability, ModuleFailure } from "@kontave/modules/domain";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 import { organizationId, userId } from "@kontave/organizations/domain";
 import {
   DelegatedAccessFailure,
   OrganizationAccessPathKind,
 } from "@kontave/delegated-access/domain";
-import { PurchasingDashboardFailure } from "@kontave/purchasing-application/dashboard";
+import { PurchasingDashboardFailure } from "@kontave/purchasing/application/dashboard";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { createCompanyActions } from "../companies/company-actions";

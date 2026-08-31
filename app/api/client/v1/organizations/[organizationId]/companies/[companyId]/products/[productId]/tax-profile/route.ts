@@ -1,7 +1,7 @@
 import type { UpdateProductTaxationDto } from "@kontave/client-contracts";
-import { productId } from "@kontave/products-domain";
-import type { ResolvedProductTaxation } from "@kontave/taxation-application";
-import { VENEZUELAN_IVA } from "@kontave/taxation-venezuela";
+import { productId } from "@kontave/products/domain";
+import type { ResolvedProductTaxation } from "@kontave/taxation/application";
+import { VENEZUELAN_IVA } from "@kontave/taxation/venezuela";
 import { createProductCommercialActions } from "@/src/client-api/v1/products/product-commercial-actions";
 import {
   executeProductRequest,

@@ -1,5 +1,5 @@
-import type { AvailableOrganizationModule } from "@kontave/modules-application";
-import type { ModuleCode } from "@kontave/modules-domain";
+import type { AvailableOrganizationModule } from "@kontave/modules/application";
+import type { ModuleCode } from "@kontave/modules/domain";
 import type {
   CompanyId,
   OrganizationCompany,
@@ -145,11 +145,11 @@ export class WorkspaceContextCoordinator {
 
   async selectModule(moduleCode: ModuleCode): Promise<WorkspaceContextStatus> {
     const snapshot = this.state.snapshot;
-    const module = snapshot.modules.find((item) => item.code === moduleCode);
-    if (!module) {
+    const selectedModule = snapshot.modules.find((item) => item.code === moduleCode);
+    if (!selectedModule) {
       return this.fail(++this.operation, new WorkspaceContextFailure("MODULE_NOT_AVAILABLE", "El módulo no está disponible."));
     }
-    return this.commitSelection({ ...snapshot, activeModule: module });
+    return this.commitSelection({ ...snapshot, activeModule: selectedModule });
   }
 
   async clear(): Promise<WorkspaceContextStatus> {

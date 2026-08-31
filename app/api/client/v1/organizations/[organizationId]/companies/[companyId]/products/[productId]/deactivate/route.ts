@@ -1,5 +1,5 @@
 import type { ProductVersionDto } from "@kontave/client-contracts";
-import { productId } from "@kontave/products-domain";
+import { productId } from "@kontave/products/domain";
 import {
   executeProductRequest,
   productsUpdate,

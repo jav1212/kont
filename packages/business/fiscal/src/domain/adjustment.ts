@@ -1,4 +1,4 @@
-import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary-domain";
+import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary/domain";
 import { FiscalFailure } from "./fiscal-failure";
 
 export type FiscalAdjustmentKind = "discount" | "surcharge";

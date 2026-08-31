@@ -5,8 +5,8 @@ import {
   ListAvailableOrganizationModules,
   ListOrganizationModules,
   SuspendModule,
-} from "@kontave/modules-application";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+} from "@kontave/modules/application";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 
 export function createModuleActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

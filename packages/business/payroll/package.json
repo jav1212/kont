@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@kontave/companies": "workspace:*",
-    "@kontave/employees-domain": "workspace:*",
-    "@kontave/monetary-domain": "workspace:*"
+    "@kontave/employees": "workspace:*",
+    "@kontave/monetary": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.12",

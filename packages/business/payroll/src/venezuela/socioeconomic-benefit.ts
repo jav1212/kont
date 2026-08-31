@@ -8,7 +8,7 @@ import {
   type ExchangeRateSnapshot,
   type Money,
   type MoneyConversion,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import { VenezuelanPayrollFailure } from "./failure";
 import {
   ECONOMIC_WAR_BONUS_DECREE_4805,

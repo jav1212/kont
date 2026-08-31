@@ -1,5 +1,5 @@
-import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
-import { addMoney, moneyFromMinor, sameCurrency } from "@kontave/monetary-domain";
+import type { CurrencyDefinition, Money } from "@kontave/monetary/domain";
+import { addMoney, moneyFromMinor, sameCurrency } from "@kontave/monetary/domain";
 import type { PayrollDefinitionId, PayrollRunId } from "./identifiers";
 import type { PayrollPeriod } from "./period";
 import { PayrollFailure } from "./payroll-failure";

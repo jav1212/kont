@@ -9,8 +9,8 @@ import {
   MoveDocument,
   RegisterDocument,
   RenameDocumentFolder,
-} from "@kontave/documents-application";
-import { createDocumentsInfrastructure } from "@kontave/documents-supabase";
+} from "@kontave/documents/application";
+import { createDocumentsInfrastructure } from "@kontave/documents/supabase";
 
 export function createDocumentActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,

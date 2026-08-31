@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PERMISSIONS, permissionCode } from "@kontave/access-control/domain";
-import { Platform } from "@kontave/modules-domain";
+import { Platform } from "@kontave/modules/domain";
 import { companyId, organizationId, userId } from "@kontave/organizations/domain";
 import { SETTINGS_ENTRIES, SETTINGS_SECTIONS } from "../../src/contracts/index";
 import { ResolveAvailableSettings, StaticSettingsCatalog, type SettingsResolutionContext } from "../../src/application/index";

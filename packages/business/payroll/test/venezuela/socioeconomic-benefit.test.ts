@@ -6,7 +6,7 @@ import {
   moneyFromDecimal,
   moneyToDecimal,
   type ExchangeRateSnapshot,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import {
   assessSocioeconomicBenefit,
   CURRENT_SOCIOECONOMIC_BENEFIT_RULE,

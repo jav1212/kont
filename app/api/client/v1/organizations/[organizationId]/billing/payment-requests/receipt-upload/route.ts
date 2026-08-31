@@ -2,7 +2,7 @@ import type {
   CreatePaymentReceiptUploadDto,
   PaymentReceiptUploadDto,
 } from "@kontave/client-contracts";
-import { BillingFailure } from "@kontave/billing-domain";
+import { BillingFailure } from "@kontave/billing/domain";
 import { createBillingActions } from "@/src/client-api/v1/billing/billing-actions";
 import { executeBillingRequest } from "@/src/client-api/v1/billing/execute-billing-request";
 export const dynamic = "force-dynamic";

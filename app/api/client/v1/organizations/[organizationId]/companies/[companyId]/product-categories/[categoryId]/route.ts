@@ -1,5 +1,5 @@
 import type { UpdateProductCategoryDto } from "@kontave/client-contracts";
-import { productCategoryId } from "@kontave/products-domain";
+import { productCategoryId } from "@kontave/products/domain";
 import {
   executeProductRequest,
   productsRead,

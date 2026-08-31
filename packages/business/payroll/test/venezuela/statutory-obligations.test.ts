@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currency, exactDecimal, moneyFromDecimal, moneyToDecimal } from "@kontave/monetary-domain";
+import { currency, exactDecimal, moneyFromDecimal, moneyToDecimal } from "@kontave/monetary/domain";
 import {
   assessFaov,
   assessIncesEmployee,

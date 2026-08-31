@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import type { ModuleCode } from "@kontave/modules-domain";
+import type { ModuleCode } from "@kontave/modules/domain";
 import type { NavigationTarget } from "@kontave/navigation";
 import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Button, Heading, Screen, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";

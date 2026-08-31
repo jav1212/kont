@@ -1,5 +1,5 @@
 import type { UpdateProductInventoryProfileDto } from "@kontave/client-contracts";
-import { productId } from "@kontave/products-domain";
+import { productId } from "@kontave/products/domain";
 import { createReplenishmentActions } from "@/src/client-api/v1/inventory/replenishment-actions";
 import {
   executeProductRequest,

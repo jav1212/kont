@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { ModuleCode } from "@kontave/modules-domain";
+import { ModuleCode } from "@kontave/modules/domain";
 import {
   applicationNavigation,
   resolveBreadcrumbs,

@@ -1,6 +1,6 @@
 import { companyId } from "@kontave/companies/domain";
-import { employeeId } from "@kontave/employees-domain";
-import { currency, moneyFromDecimal } from "@kontave/monetary-domain";
+import { employeeId } from "@kontave/employees/domain";
+import { currency, moneyFromDecimal } from "@kontave/monetary/domain";
 import {
   payrollDefinitionId,
   payrollElementEntryId,

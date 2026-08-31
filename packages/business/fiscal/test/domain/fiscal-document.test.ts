@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { companyId } from "@kontave/companies/domain";
-import { currency, exactDecimal, exchangeRate, moneyFromDecimal } from "@kontave/monetary-domain";
+import { currency, exactDecimal, exchangeRate, moneyFromDecimal } from "@kontave/monetary/domain";
 import {
   FiscalDocument,
   FiscalFailure,

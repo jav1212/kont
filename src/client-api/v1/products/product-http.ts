@@ -6,20 +6,20 @@ import {
 } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId } from "@kontave/companies/domain";
-import { RequireModuleCapability } from "@kontave/modules-application";
-import { ModuleCapability, ModuleFailure } from "@kontave/modules-domain";
-import { createModulesInfrastructure } from "@kontave/modules-supabase";
+import { RequireModuleCapability } from "@kontave/modules/application";
+import { ModuleCapability, ModuleFailure } from "@kontave/modules/domain";
+import { createModulesInfrastructure } from "@kontave/modules/supabase";
 import { organizationId, userId } from "@kontave/organizations/domain";
 import {
   DelegatedAccessFailure,
   OrganizationAccessPathKind,
 } from "@kontave/delegated-access/domain";
-import { ProductFailure } from "@kontave/products-domain";
-import { InventoryFailure } from "@kontave/inventory-domain";
-import { InventoryDashboardFailure } from "@kontave/inventory-application";
-import { PricingFailure } from "@kontave/pricing-domain";
-import { TaxationFailure } from "@kontave/taxation-domain";
-import { UnitEconomicsFailure } from "@kontave/unit-economics-application";
+import { ProductFailure } from "@kontave/products/domain";
+import { InventoryFailure } from "@kontave/inventory/domain";
+import { InventoryDashboardFailure } from "@kontave/inventory/application";
+import { PricingFailure } from "@kontave/pricing/domain";
+import { TaxationFailure } from "@kontave/taxation/domain";
+import { UnitEconomicsFailure } from "@kontave/unit-economics/application";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { createCompanyActions } from "../companies/company-actions";

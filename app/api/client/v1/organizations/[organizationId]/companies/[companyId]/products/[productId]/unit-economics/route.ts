@@ -1,4 +1,4 @@
-import { productId } from "@kontave/products-domain";
+import { productId } from "@kontave/products/domain";
 import { createProductCommercialActions } from "@/src/client-api/v1/products/product-commercial-actions";
 import {
   executeProductRequest,

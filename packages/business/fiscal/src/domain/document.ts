@@ -7,7 +7,7 @@ import {
   type CurrencyDefinition,
   type ExactDecimal,
   type Money,
-} from "@kontave/monetary-domain";
+} from "@kontave/monetary/domain";
 import { fiscalAdjustment, type FiscalAdjustment } from "./adjustment";
 import { FiscalFailure } from "./fiscal-failure";
 import type { FiscalDocumentId, FiscalDocumentLineId, FiscalNumber } from "./identifiers";
