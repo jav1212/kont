@@ -1,0 +1,30 @@
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 4
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"
+interrupt_message = true
+
+[agents.project_manager]
+description = "Coordinates cross-cutting Kontave delivery without writing code."
+config_file = "./agents/project_manager.toml"
+
+[agents.backend_engineer]
+description = "Owns backend APIs, domain/application code, and persistence adapters."
+config_file = "./agents/backend_engineer.toml"
+
+[agents.web_engineer]
+description = "Owns the production Next.js Web presentation."
+config_file = "./agents/web_engineer.toml"
+
+[agents.desktop_engineer]
+description = "Owns Electron Desktop and explicitly assigned Device Bridge work."
+config_file = "./agents/desktop_engineer.toml"
+
+[agents.mobile_engineer]
+description = "Owns the Expo and React Native Mobile client."
+config_file = "./agents/mobile_engineer.toml"
+
+[agents.documentation_engineer]
+description = "Documents material changes from the stabilized final diff."
+config_file = "./agents/documentation_engineer.toml"

@@ -10,6 +10,26 @@ pnpm build      # Production build + TypeScript check
 pnpm lint       # ESLint
 ```
 
+## Multi-agent workflow
+
+Project-scoped roles live in `.codex/agents/`:
+
+| Role | Default ownership |
+| --- | --- |
+| `project_manager` | Read-only coordination for multi-surface work. |
+| `backend_engineer` | `app/api/**`, backend modules, `src/client-api/v1/**`, and explicitly assigned package layers. |
+| `web_engineer` | Production Web presentation; excludes `app/api/**` by default. |
+| `desktop_engineer` | `apps/desktop/**`; Device Bridge only when explicitly assigned. |
+| `mobile_engineer` | `apps/mobile/**`. |
+| `documentation_engineer` | Material documentation updates from the stabilized final diff; no runtime behavior changes. |
+
+- Use one specialist directly for a focused single-surface task. Use `project_manager` only when work crosses surfaces, shared contracts, or dependency order.
+- Spawn agents on demand; normally use at most three specialists in parallel. Parallelize read-heavy discovery, review, and tests before write-heavy implementation.
+- Assign exactly one writer per file and shared package. Specialists do not spawn more agents unless the task explicitly delegates orchestration to them.
+- Send compact task packets with outcome, allowed paths, exclusions, contract, acceptance criteria, and validation commands. Return summaries and evidence, not raw logs.
+- After material changes stabilize, use `documentation_engineer` when public behavior, APIs, architecture, data, setup, or operations changed. Skip it for documentation-neutral changes.
+- The primary agent owns final integration, cross-consumer validation, and user-facing decisions. See `.codex/README.md` for examples and the token policy.
+
 ## New architecture development
 
 Kontave is adopting an incremental pnpm monorepo for native Desktop and Mobile clients. The production Next.js application remains at the repository root until the shared architecture has been validated by Desktop and Device Bridge.
@@ -38,7 +58,9 @@ Until the native foundation is validated:
 
 Architecture decisions and detailed standards live in `docs/adr/` and `docs/standards/`.
 
-There are no tests in this project.
+The root Web does not have a dedicated test suite. Workspace packages and some
+applications do have focused tests; run the checks and tests owned by the
+affected workspace plus proportional root validation.
 
 ## Architecture
 
