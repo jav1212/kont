@@ -7,6 +7,7 @@ import {
   RemoteBillingPort,
   RemoteInventoryPort,
   RemoteOperationContextPort,
+  RemoteOperationContextStore,
   RemoteOrganizationsPort,
   RemoteOfficialExchangeRatesPort,
   RemotePortalMonitoringPort,
@@ -15,6 +16,7 @@ import {
   RemoteSalesPort,
   type RemoteTransport,
 } from "../src/index";
+import { companyId, organizationId, userId } from "@kontave/organizations/domain";
 
 test("remote client applies the platform header and unwraps API data", async () => {
   let request: RequestInit | undefined;
@@ -101,6 +103,20 @@ test("official rates use the company operation-context endpoint", async () => {
     requestedPath,
     "/api/client/v1/organizations/organization-1/companies/company-1/operation-context/exchange-rates?date=2026-08-17",
   );
+});
+
+test("remote operation-context store centralizes DTO-to-domain conversion", async () => {
+  const key = { userId: userId("user-1"), organizationId: organizationId("organization-1"), companyId: companyId("company-1") };
+  const dto = {
+    effectiveDate: "2026-08-17", presentationCurrency: "VES", version: 2, updatedAt: "2026-08-17T12:00:00.000Z",
+    exchangeRate: { status: "resolved" as const, value: { baseCurrency: "USD", quoteCurrency: "VES", value: "150.100", effectiveDate: "2026-08-17", capturedAt: "2026-08-17T12:00:00.000Z", source: { kind: "official" as const, authority: "BCV", reference: null } } },
+  };
+  const store = new RemoteOperationContextStore({ get: async () => dto, update: async () => dto });
+  const decoded = await store.load(key);
+  assert.equal(decoded?.exchangeRate.status, "resolved");
+  assert.equal(decoded?.exchangeRate.status === "resolved" && decoded.exchangeRate.value.rate.value, "150.1");
+  const saved = await store.save(decoded!, 2);
+  assert.equal(saved.version, 2);
 });
 
 test("domain adapters own every Client API route", async () => {

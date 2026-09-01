@@ -4,6 +4,15 @@
 > ubicación física de `packages/client/*` a `packages/kernel/*` para distinguir
 > el composition root de las capacidades de experiencia y plataforma.
 
+> Nota de implementación (compatible): `@kontave/client-contracts` expone
+> decodificadores runtime para entradas serializables de clientes;
+> `@kontave/client-runtime` expone la restauración tipada de resultados de
+> feature; y `@kontave/client-remote` aloja `RemoteOperationContextStore`, la
+> única adaptación DTO-a-dominio del contexto operativo remoto. Desktop consume
+> estas APIs en ese orden y conserva IPC, Electron y almacenamiento como
+> adaptadores de plataforma. Esta precisión implementa, sin sustituir, la
+> separación de responsabilidades adoptada aquí.
+
 - Estado: aceptado
 - Fecha: 2026-08-17
 

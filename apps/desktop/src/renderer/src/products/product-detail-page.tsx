@@ -44,13 +44,11 @@ export function ProductDetailPage({
   onTitleChange,
   organizationId,
   productId,
-  userId,
 }: {
   readonly companyId: string;
   readonly onTitleChange?: (title: string) => void;
   readonly organizationId: string;
   readonly productId: string;
-  readonly userId: string;
 }) {
   const [product, setProduct] = useState<ProductDetailDto>();
   const [categories, setCategories] = useState<readonly ProductCategoryDto[]>(
@@ -97,7 +95,7 @@ export function ProductDetailPage({
   useEffect(() => {
     let active = true;
     void window.kontave.inventory
-      .getDashboard(userId, organizationId, companyId)
+      .getDashboard(organizationId, companyId)
       .then((result) => {
         if (!active || !result.ok) return;
         setPresentation(result.value);
@@ -106,7 +104,7 @@ export function ProductDetailPage({
     return () => {
       active = false;
     };
-  }, [companyId, organizationId, userId]);
+  }, [companyId, organizationId]);
   useEffect(() => {
     if (product?.name) onTitleChange?.(product.name);
   }, [onTitleChange, product?.name]);

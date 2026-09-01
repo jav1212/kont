@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -71,12 +71,10 @@ export function InventoryOperationsView({
   companyId,
   mode,
   organizationId,
-  userId,
 }: {
   readonly companyId: string;
   readonly mode: Mode;
   readonly organizationId: string;
-  readonly userId: string;
 }) {
   const now = new Date(),
     initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -153,14 +151,14 @@ export function InventoryOperationsView({
   }, [organizationId]);
   useEffect(() => {
     void window.kontave.inventory
-      .getDashboard(userId, organizationId, companyId)
+      .getDashboard(organizationId, companyId)
       .then((result) => {
         if (!result.ok) return;
         setPresentation(result.value);
         setMonth(result.value.operationContext.effectiveDate.slice(0, 7));
         setDisplayCurrency(result.value.operationContext.presentationCurrency);
       });
-  }, [companyId, organizationId, userId]);
+  }, [companyId, organizationId]);
   const refresh = () => {
     setRefreshing(true);
     setCursor(undefined);
@@ -412,7 +410,7 @@ function OperationDialog({
     [reference, setReference] = useState(""),
     [notes, setNotes] = useState(""),
     [effectiveDate, setEffectiveDate] = useState("");
-  const load = async () => {
+  const load = useCallback(async () => {
     const result = await window.kontave.inventory.operation(
       organizationId,
       companyId,
@@ -424,10 +422,24 @@ function OperationDialog({
       setNotes(result.value.notes ?? "");
       setEffectiveDate(result.value.effectiveDate);
     } else failure(result.error);
-  };
+  }, [companyId, operationId, organizationId]);
   useEffect(() => {
-    void load();
-  }, [operationId]);
+    let active = true;
+    void window.kontave.inventory
+      .operation(organizationId, companyId, operationId)
+      .then((result) => {
+        if (!active) return;
+        if (result.ok) {
+          setDetail(result.value);
+          setReference(result.value.reference ?? "");
+          setNotes(result.value.notes ?? "");
+          setEffectiveDate(result.value.effectiveDate);
+        } else failure(result.error);
+      });
+    return () => {
+      active = false;
+    };
+  }, [companyId, operationId, organizationId]);
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!detail) return;

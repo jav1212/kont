@@ -20,13 +20,11 @@ import type {
   RecentInventoryMovementDto,
 } from "@kontave/client-contracts";
 import type {
-  DesktopAuthState,
   DesktopInventoryDashboardQuery,
   DesktopInventoryDashboardSnapshot,
 } from "../../../renderer-bridge";
 
 interface InventoryDashboardViewProps {
-  readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
   readonly organizationId: string;
   readonly companyId: string;
 }
@@ -36,11 +34,7 @@ interface InventoryDashboardViewProps {
  * @param props - Authentication and active organization/company context.
  * @returns Inventory dashboard view.
  */
-export function InventoryDashboardView({
-  auth,
-  companyId,
-  organizationId,
-}: InventoryDashboardViewProps) {
+export function InventoryDashboardView({ companyId, organizationId }: InventoryDashboardViewProps) {
   const [snapshot, setSnapshot] =
     useState<DesktopInventoryDashboardSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +43,7 @@ export function InventoryDashboardView({
   const load = (query?: DesktopInventoryDashboardQuery): void => {
     setLoading(true);
     void window.kontave.inventory
-      .getDashboard(auth.user.id, organizationId, companyId, query)
+      .getDashboard(organizationId, companyId, query)
       .then((result) => {
         if (result.ok) {
           setSnapshot(result.value);
@@ -69,7 +63,7 @@ export function InventoryDashboardView({
   useEffect(() => {
     let active = true;
     void window.kontave.inventory
-      .getDashboard(auth.user.id, organizationId, companyId)
+      .getDashboard(organizationId, companyId)
       .then((result) => {
         if (!active) return;
         if (result.ok) {
@@ -90,7 +84,7 @@ export function InventoryDashboardView({
     return () => {
       active = false;
     };
-  }, [auth.user.id, companyId, organizationId]);
+  }, [companyId, organizationId]);
 
   if (loading && !snapshot) return <InventoryDashboardSkeleton />;
   if (!snapshot)

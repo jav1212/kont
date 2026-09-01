@@ -3,12 +3,9 @@ import {
   type OperationContextStore,
 } from "@kontave/operation-context/application";
 import {
-  createOperationalDefaults,
   localDate,
-  type OperationContextKey,
   type OperationalDefaults,
 } from "@kontave/operation-context/domain";
-import { currency, currencyCode, exchangeRate } from "@kontave/monetary/domain";
 import {
   companyId,
   organizationId,
@@ -23,8 +20,9 @@ import type {
 import type { DesktopSalesDashboardResult } from "../../renderer-bridge";
 import {
   findClientOperationFailure,
-  requireClientValue,
-} from "../client/client-operation";
+  unwrapClientOperationResult,
+} from "@kontave/client-runtime";
+import { publicFailureMessage } from "../client/client-operation";
 
 type ValidSalesDashboardQuery = {
   readonly from?: string;
@@ -48,6 +46,7 @@ export class DesktopSalesDashboardController {
   constructor(
     private readonly operationContext: ClientPortFeature<OperationContextPort>,
     private readonly sales: ClientPortFeature<SalesPort>,
+    private readonly operationContextStore: OperationContextStore,
   ) {}
 
   /**
@@ -109,7 +108,7 @@ export class DesktopSalesDashboardController {
     };
     try {
       const coordinator = new OperationContextCoordinator(
-        new ContextStore(this.operationContext),
+        this.operationContextStore,
         {
           historical: async () => {
             throw new Error(
@@ -136,8 +135,8 @@ export class DesktopSalesDashboardController {
         }),
         this.operationContext.exchangeRates(organization, company, to),
       ]);
-      const dashboard = requireClientValue(dashboardResult);
-      const rates = requireClientValue(ratesResult);
+      const dashboard = unwrapClientOperationResult(dashboardResult);
+      const rates = unwrapClientOperationResult(ratesResult);
       return {
         ok: true,
         value: {
@@ -150,54 +149,6 @@ export class DesktopSalesDashboardController {
       return failure(cause, "SALES_DASHBOARD_UNAVAILABLE");
     }
   }
-}
-
-class ContextStore implements OperationContextStore {
-  constructor(
-    private readonly remote: ClientPortFeature<OperationContextPort>,
-  ) {}
-
-  async load(key: OperationContextKey): Promise<OperationalDefaults> {
-    const dto = requireClientValue(
-      await this.remote.get(key.organizationId, key.companyId),
-    );
-    const selection =
-      dto.exchangeRate.status === "unavailable"
-        ? {
-            status: "unavailable" as const,
-            effectiveDate: localDate(dto.exchangeRate.effectiveDate),
-          }
-        : {
-            status: "resolved" as const,
-            value: {
-              rate: exchangeRate({
-                baseCurrency: currency(dto.exchangeRate.value.baseCurrency, 2),
-                quoteCurrency: currency(
-                  dto.exchangeRate.value.quoteCurrency,
-                  2,
-                ),
-                value: dto.exchangeRate.value.value,
-              }),
-              effectiveDate: dto.exchangeRate.value.effectiveDate,
-              capturedAt: dto.exchangeRate.value.capturedAt,
-              source: dto.exchangeRate.value.source,
-            },
-          };
-    return createOperationalDefaults({
-      key,
-      effectiveDate: localDate(dto.effectiveDate),
-      presentationCurrency: currencyCode(dto.presentationCurrency),
-      exchangeRate: selection,
-      version: dto.version,
-      updatedAt: dto.updatedAt,
-    });
-  }
-
-  async save(): Promise<OperationalDefaults> {
-    throw new Error("Sales dashboard does not update the operation context.");
-  }
-
-  async clear(): Promise<void> {}
 }
 
 const clock = {
@@ -274,7 +225,7 @@ function failure(
       ok: false,
       error: {
         code: clientFailure.code,
-        message: clientFailure.message,
+        message: publicFailureMessage(clientFailure.code),
         requestId: clientFailure.requestId,
       },
     };
@@ -282,10 +233,7 @@ function failure(
     ok: false,
     error: {
       code: fallback,
-      message:
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo cargar el tablero de ventas.",
+      message: publicFailureMessage(fallback),
       requestId: null,
     },
   };

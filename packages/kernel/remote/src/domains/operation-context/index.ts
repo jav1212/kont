@@ -6,6 +6,8 @@ import type {
 } from "@kontave/client-contracts";
 import type { RemoteTransport } from "../../transport";
 
+export * from "./store";
+
 /** Remote adapter for company-scoped operational defaults and exchange rates. */
 export class RemoteOperationContextPort implements OperationContextPort {
   /**

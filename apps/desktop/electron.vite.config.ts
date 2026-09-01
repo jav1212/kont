@@ -43,7 +43,7 @@ export default defineConfig({
           "@kontave/client-updates",
           "@kontave/delegated-access",
           "@kontave/devices",
-          "@kontave/monetary/domain",
+          "@kontave/monetary",
           "@kontave/operation-context",
           "@kontave/organizations",
           "@kontave/workspace-context-application",

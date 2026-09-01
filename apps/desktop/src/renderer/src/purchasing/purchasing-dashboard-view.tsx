@@ -18,7 +18,6 @@ import {
 import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type { PurchasingDashboardDayDto } from "@kontave/client-contracts";
 import type {
-  DesktopAuthState,
   DesktopPurchasingDashboardQuery,
   DesktopPurchasingDashboardSnapshot,
 } from "../../../renderer-bridge";
@@ -29,7 +28,6 @@ interface Failure {
   readonly requestId: string | null;
 }
 interface Props {
-  readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
   readonly organizationId: string;
   readonly companyId: string;
 }
@@ -40,11 +38,7 @@ type ViewState = "initial-loading" | "ready" | "empty" | "failed";
  * @param props - Authentication and active operational context.
  * @returns Purchasing dashboard view.
  */
-export function PurchasingDashboardView({
-  auth,
-  organizationId,
-  companyId,
-}: Props) {
+export function PurchasingDashboardView({ organizationId, companyId }: Props) {
   const [snapshot, setSnapshot] =
     useState<DesktopPurchasingDashboardSnapshot | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -56,7 +50,7 @@ export function PurchasingDashboardView({
     setLoading(true);
     setFailure(null);
     void window.kontave.purchasing
-      .getDashboard(auth.user.id, organizationId, companyId, query)
+      .getDashboard(organizationId, companyId, query)
       .then((result) => {
         if (result.ok) {
           setSnapshot(result.value);
@@ -77,7 +71,7 @@ export function PurchasingDashboardView({
   useEffect(() => {
     let active = true;
     void window.kontave.purchasing
-      .getDashboard(auth.user.id, organizationId, companyId)
+      .getDashboard(organizationId, companyId)
       .then((result) => {
         if (!active) return;
         if (result.ok) {
@@ -100,7 +94,7 @@ export function PurchasingDashboardView({
     return () => {
       active = false;
     };
-  }, [auth.user.id, organizationId, companyId]);
+  }, [organizationId, companyId]);
 
   const viewState: ViewState =
     loading && !snapshot

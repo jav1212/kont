@@ -30,13 +30,11 @@ import type {
   SalesDashboardDocumentDto,
 } from "@kontave/client-contracts";
 import type {
-  DesktopAuthState,
   DesktopSalesDashboardQuery,
   DesktopSalesDashboardSnapshot,
 } from "../../../renderer-bridge";
 
 interface Props {
-  readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
   readonly organizationId: string;
   readonly companyId: string;
 }
@@ -46,7 +44,7 @@ interface Props {
  * @param props - Authentication and active operational context.
  * @returns Sales dashboard view.
  */
-export function SalesDashboardView({ auth, organizationId, companyId }: Props) {
+export function SalesDashboardView({ organizationId, companyId }: Props) {
   const [snapshot, setSnapshot] = useState<DesktopSalesDashboardSnapshot>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
@@ -85,7 +83,7 @@ export function SalesDashboardView({ auth, organizationId, companyId }: Props) {
     setRefreshing(true);
     setError(undefined);
     void window.kontave.sales
-      .getDashboard(auth.user.id, organizationId, companyId, query)
+      .getDashboard(organizationId, companyId, query)
       .then((result) =>
         result.ok ? accept(result.value) : reject(result.error),
       )
@@ -95,7 +93,7 @@ export function SalesDashboardView({ auth, organizationId, companyId }: Props) {
   useEffect(() => {
     let active = true;
     void window.kontave.sales
-      .getDashboard(auth.user.id, organizationId, companyId)
+      .getDashboard(organizationId, companyId)
       .then((result) => {
         if (!active) return;
         if (result.ok) accept(result.value);
@@ -107,7 +105,7 @@ export function SalesDashboardView({ auth, organizationId, companyId }: Props) {
     return () => {
       active = false;
     };
-  }, [auth.user.id, organizationId, companyId]);
+  }, [organizationId, companyId]);
 
   if (loading && !snapshot) return <DashboardSkeleton />;
   if (!snapshot)

@@ -86,7 +86,10 @@ export class DesktopWorkspaceController {
     return status.status === "failed"
       ? {
           ok: false,
-          error: { code: status.error.code, message: status.error.message },
+          error: {
+            code: status.error.code,
+            message: workspaceFailureMessage(status.error),
+          },
         }
       : { ok: true, value: this.state };
   }
@@ -99,6 +102,18 @@ export class DesktopWorkspaceController {
     );
     return state;
   }
+}
+
+/**
+ * Converts workspace failures into stable renderer copy without remote diagnostics.
+ * @param failure - Typed failure produced by the workspace coordinator.
+ * @returns Presentation-safe Spanish feedback for the Desktop IPC envelope.
+ */
+export function workspaceFailureMessage(failure: WorkspaceContextFailure): string {
+  if (failure.code.endsWith("ACCESS_DENIED"))
+    return "No tienes acceso al espacio de trabajo seleccionado.";
+  if (failure.code.includes("MODULE")) return "El módulo seleccionado no está disponible.";
+  return "No se pudo actualizar el espacio de trabajo. Intenta nuevamente.";
 }
 
 function mapStatus(state: WorkspaceContextStatus): DesktopWorkspaceState {

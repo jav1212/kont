@@ -7,6 +7,7 @@ import {
   powerMonitor,
 } from "electron";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { DeviceEvent, DeviceFailure } from "@kontave/devices/contracts";
 import {
   DeviceManager,
@@ -24,7 +25,10 @@ import { ConnectivityMonitor } from "@kontave/client-connectivity/application";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates/application";
 import { createElectronClientUpdateProvider } from "@kontave/client-updates/electron";
-import { createRemoteKontavePorts } from "@kontave/client-remote";
+import {
+  createRemoteKontavePorts,
+  createRemoteOperationContextStore,
+} from "@kontave/client-remote";
 import {
   createKontaveApplicationClient,
   type KontaveClientFeatures,
@@ -38,6 +42,7 @@ import {
 } from "../renderer-bridge";
 import { DesktopAuthController } from "./auth/desktop-auth-controller";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage";
+import { authenticationFailureMessage } from "./auth/authentication-failure-message";
 import { DesktopAuthenticatedRequest } from "./auth/desktop-authenticated-request";
 import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe";
 import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller";
@@ -59,8 +64,10 @@ import { DesktopInventoryOperationsController } from "./inventory/desktop-invent
 import { DesktopPurchasingDashboardController } from "./purchasing/desktop-purchasing-dashboard-controller";
 import { DesktopProductsController } from "./products/desktop-products-controller";
 import { SecureIpcRegistrar } from "./ipc/secure-ipc-registrar";
+import { developmentRendererUrl } from "./ipc/renderer-origin-policy";
 
 let mainWindow: BrowserWindow | undefined;
+let trustedRendererUrl: string | undefined;
 let updates: ClientUpdateCoordinator | undefined;
 let workspace: DesktopWorkspaceController | undefined;
 let currentUser: DesktopCurrentUserController | undefined;
@@ -84,6 +91,7 @@ let shutdownCommitted = false;
 const ipcMain = new SecureIpcRegistrar(
   electronIpcMain,
   () => mainWindow?.webContents,
+  () => trustedRendererUrl,
 );
 
 class DesktopDeviceHost implements DeviceEventSink, DeviceLogger {
@@ -306,13 +314,12 @@ function registerIpc(): void {
     DESKTOP_IPC.getInventoryDashboard,
     (
       _event,
-      actorId: unknown,
       organizationId: unknown,
       companyId: unknown,
       query: unknown,
     ) =>
       inventoryDashboardController().getDashboard(
-        actorId,
+        authenticatedActorId(),
         organizationId,
         companyId,
         query,
@@ -320,9 +327,9 @@ function registerIpc(): void {
   );
   ipcMain.handle(
     DESKTOP_IPC.getSalesDashboard,
-    (_event, actorId, organizationId, companyId, query) =>
+    (_event, organizationId, companyId, query) =>
       salesDashboardController().getDashboard(
-        actorId,
+        authenticatedActorId(),
         organizationId,
         companyId,
         query,
@@ -399,13 +406,12 @@ function registerIpc(): void {
     DESKTOP_IPC.getPurchasingDashboard,
     (
       _event,
-      actorId: unknown,
       organizationId: unknown,
       companyId: unknown,
       query: unknown,
     ) =>
       purchasingDashboardController().getDashboard(
-        actorId,
+        authenticatedActorId(),
         organizationId,
         companyId,
         query,
@@ -619,6 +625,14 @@ function applicationClient(): KontaveClient<KontaveClientFeatures> {
   return client;
 }
 
+/** Returns the authenticated identity instead of accepting an actor supplied by renderer code. */
+function authenticatedActorId(): string {
+  const state = auth?.getState();
+  if (state?.status !== "authenticated")
+    throw new Error("Se requiere una sesión autenticada.");
+  return state.user.id;
+}
+
 async function synchronizeWorkspace(
   state: Awaited<ReturnType<DesktopAuthController["initialize"]>>,
 ) {
@@ -819,7 +833,13 @@ async function runAuthOperation<T>(
     return { ok: true, value: await operation(auth) };
   } catch (cause: unknown) {
     if (cause instanceof AuthenticationFailure) {
-      return { ok: false, error: { code: cause.code, message: cause.message } };
+      return {
+        ok: false,
+        error: {
+          code: cause.code,
+          message: authenticationFailureMessage(cause.code),
+        },
+      };
     }
     console.error(
       JSON.stringify({ level: "error", code: "AUTH_UNEXPECTED_FAILURE" }),
@@ -833,6 +853,7 @@ async function runAuthOperation<T>(
     };
   }
 }
+
 
 function createWindow(): void {
   const icon = appIconPath();
@@ -912,11 +933,18 @@ function createWindow(): void {
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());
   mainWindow.once("ready-to-show", () => mainWindow?.show());
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-  } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+  const developmentUrl = developmentRendererUrl(
+    process.env.ELECTRON_RENDERER_URL,
+    app.isPackaged,
+  );
+  if (developmentUrl) {
+    trustedRendererUrl = developmentUrl;
+    void mainWindow.loadURL(developmentUrl);
+    return;
   }
+  const rendererFile = join(__dirname, "../renderer/index.html");
+  trustedRendererUrl = pathToFileURL(rendererFile).toString();
+  void mainWindow.loadFile(rendererFile);
 }
 
 function appIconPath(): string {
@@ -990,10 +1018,12 @@ app.whenReady().then(() => {
   inventoryDashboard = new DesktopInventoryDashboardController(
     applicationClient().features.inventory,
     applicationClient().features.operationContext,
+    createRemoteOperationContextStore(remotePorts.operationContext),
   );
   salesDashboard = new DesktopSalesDashboardController(
     applicationClient().features.operationContext,
     applicationClient().features.sales,
+    createRemoteOperationContextStore(remotePorts.operationContext),
   );
   inventoryOperations = new DesktopInventoryOperationsController(
     applicationClient().features.inventory,

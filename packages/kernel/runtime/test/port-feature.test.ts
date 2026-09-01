@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ClientCapabilityStatus } from "@kontave/client-contracts";
 import { createPortFeature } from "../src/features/port-feature";
+import {
+  ClientOperationFailure,
+  findClientOperationFailure,
+  unwrapClientOperationResult,
+} from "../src/client-operation";
 
 interface GreetingPort {
   greet(name: string): Promise<string>;
@@ -27,6 +32,19 @@ test("port features reject calls before start and execute after start", async ()
     ok: true,
     value: "Hola, Ana",
   });
+});
+
+test("client operation helpers restore expected failures for platform orchestration", () => {
+  let error: ClientOperationFailure | null = null;
+  try {
+    unwrapClientOperationResult({ ok: false, error: { code: "NETWORK_UNAVAILABLE", message: "Sin conexión", recoverable: true, requestId: "request-1" } });
+  } catch (cause: unknown) {
+    assert.ok(cause instanceof ClientOperationFailure);
+    error = cause;
+  }
+  assert.ok(error);
+  assert.equal(error.code, "NETWORK_UNAVAILABLE");
+  assert.equal(findClientOperationFailure(new Error("outer", { cause: error })), error);
 });
 
 test("port features normalize failures and publish their failed state", async () => {

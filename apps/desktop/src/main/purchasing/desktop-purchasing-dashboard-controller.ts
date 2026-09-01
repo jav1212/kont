@@ -11,20 +11,35 @@ import type {
 import {
   ClientOperationFailure,
   findClientOperationFailure,
-  requireClientValue,
-} from "../client/client-operation";
+  unwrapClientOperationResult,
+} from "@kontave/client-runtime";
+import { publicFailureMessage } from "../client/client-operation";
 
+/** Adapts portable purchasing dashboards to Desktop defaults and result envelopes. */
 export class DesktopPurchasingDashboardController {
   private readonly inFlight = new Map<
     string,
     Promise<DesktopPurchasingDashboardResult>
   >();
 
+  /**
+   * Creates a purchasing dashboard controller over portable client features.
+   * @param purchasing - Purchasing feature port.
+   * @param operationContext - Operational-context feature port.
+   */
   constructor(
     private readonly purchasing: ClientPortFeature<PurchasingPort>,
     private readonly operationContext: ClientPortFeature<OperationContextPort>,
   ) {}
 
+  /**
+   * Loads and coalesces a purchasing dashboard request.
+   * @param actor - Authenticated actor selected by the main process.
+   * @param organization - Organization identifier.
+   * @param company - Company identifier.
+   * @param raw - Boundary-validated Desktop dashboard query.
+   * @returns A presentation-safe dashboard result.
+   */
   getDashboard(
     actor: unknown,
     organization: unknown,
@@ -68,7 +83,7 @@ export class DesktopPurchasingDashboardController {
     query: DesktopPurchasingDashboardQuery,
   ): Promise<DesktopPurchasingDashboardResult> {
     try {
-      const context = requireClientValue(
+      const context = unwrapClientOperationResult(
         await this.operationContext.get(organization, company),
       );
       const period = resolvePurchasingDashboardPeriod(
@@ -86,8 +101,8 @@ export class DesktopPurchasingDashboardController {
         }),
         this.operationContext.exchangeRates(organization, company, rateDate),
       ]);
-      const dashboard = requireClientValue(dashboardResult);
-      const exchangeRates = requireClientValue(exchangeRatesResult);
+      const dashboard = unwrapClientOperationResult(dashboardResult);
+      const exchangeRates = unwrapClientOperationResult(exchangeRatesResult);
       return {
         ok: true,
         value: { operationContext: context, exchangeRates, dashboard },
@@ -162,7 +177,7 @@ function failure(
         ok: false,
         error: {
           code: native.code,
-          message: native.message,
+          message: publicFailureMessage(native.code),
           requestId: native.requestId ?? null,
         },
       }
@@ -170,10 +185,7 @@ function failure(
         ok: false,
         error: {
           code: fallback,
-          message:
-            cause instanceof Error
-              ? cause.message
-              : "No se pudo cargar el tablero de compras.",
+          message: publicFailureMessage(fallback),
           requestId: null,
         },
       };

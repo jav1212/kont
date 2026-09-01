@@ -608,7 +608,6 @@ function DesktopAppShell({
             workspace.activeWorkspaceId &&
             workspace.activeCompanyId ? (
             <SalesDashboardView
-              auth={auth}
               organizationId={workspace.activeWorkspaceId}
               companyId={workspace.activeCompanyId}
             />
@@ -617,7 +616,6 @@ function DesktopAppShell({
             workspace.activeWorkspaceId &&
             workspace.activeCompanyId ? (
             <InventoryDashboardView
-              auth={auth}
               organizationId={workspace.activeWorkspaceId}
               companyId={workspace.activeCompanyId}
             />
@@ -627,7 +625,6 @@ function DesktopAppShell({
             workspace.activeCompanyId ? (
             <PurchasingDashboardView
               key={`${workspace.activeWorkspaceId}:${workspace.activeCompanyId}`}
-              auth={auth}
               organizationId={workspace.activeWorkspaceId}
               companyId={workspace.activeCompanyId}
             />
@@ -659,7 +656,6 @@ function DesktopAppShell({
             workspace.activeWorkspaceId &&
             workspace.activeCompanyId ? (
             <ProductDetailPage
-              userId={auth.user.id}
               organizationId={workspace.activeWorkspaceId}
               companyId={workspace.activeCompanyId}
               productId={inventoryProductDetailId}
@@ -670,7 +666,6 @@ function DesktopAppShell({
             workspace.activeWorkspaceId &&
             workspace.activeCompanyId ? (
             <InventoryOperationsView
-              userId={auth.user.id}
               organizationId={workspace.activeWorkspaceId}
               companyId={workspace.activeCompanyId}
               mode={inventoryFlowMode}

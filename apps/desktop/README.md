@@ -4,12 +4,15 @@ Cliente nativo de Kontave construido con Electron, React y `electron-vite`. La a
 
 La aplicación Web de producción no depende de Desktop y no debe modificarse como parte del desarrollo de este cliente.
 
-El proceso principal crea una única composición mediante
-`createRemoteKontavePorts` y `createKontaveApplicationClient`. Todas las
-operaciones funcionales de Products, Inventory, Purchasing, Sales, Profile,
-Billing, Organizations, Portal Monitoring y seguridad atraviesan las features de
-ese runtime. Los controladores Desktop solo validan IPC o coordinan snapshots de
-presentación; no construyen transportes ni adaptadores remotos propios.
+El proceso principal consume la composición portable en la dirección
+`@kontave/client-contracts` → `@kontave/client-runtime` →
+`@kontave/client-remote`: los contratos definen el límite serializable, el
+runtime compone features y resultados tipados, y el adaptador remote provee los
+puertos HTTP comunes. Todas las operaciones funcionales de Products, Inventory,
+Purchasing, Sales, Profile, Billing, Organizations, Portal Monitoring y
+seguridad atraviesan esa composición. Los controladores Desktop únicamente
+adaptan esas features a IPC, lifecycle y snapshots de presentación; no
+construyen transportes ni adaptadores remotos propios.
 
 ## Desarrollo
 
@@ -25,7 +28,21 @@ Verificación:
 ```bash
 corepack pnpm --filter @kontave/desktop build
 corepack pnpm --filter @kontave/desktop typecheck
+corepack pnpm --filter @kontave/desktop test
+corepack pnpm --filter @kontave/client-contracts check
+corepack pnpm --filter @kontave/client-contracts test
+corepack pnpm --filter @kontave/client-runtime check
+corepack pnpm --filter @kontave/client-runtime test
+corepack pnpm --filter @kontave/client-remote check
+corepack pnpm --filter @kontave/client-remote test
+corepack pnpm --filter @kontave/operation-context check
+corepack pnpm --filter @kontave/operation-context test
 ```
+
+El script `test` de Desktop ejecuta los archivos `src/**/*.test.ts` mediante
+`tsx --test`; no es un check decorativo. Cubre, entre otros límites, validación
+IPC, política del origen del renderer, registro del sender/frame confiable,
+sanitización de fallos, almacenamiento seguro y workspace.
 
 ## Módulos organizacionales
 
@@ -80,9 +97,10 @@ Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. D
 
 - `@kontave/operation-context/domain`
 - `@kontave/operation-context/application`
+- `@kontave/client-remote`
 - `@kontave/monetary/domain`
 
-El contexto operativo conserva por usuario, organización y empresa la fecha efectiva, moneda de presentación y tasa seleccionada. El proceso principal de Desktop inicializa su coordinador portable mediante un store HTTP autenticado; el renderer recibe únicamente el snapshot resultante.
+El contexto operativo conserva por usuario, organización y empresa la fecha efectiva, moneda de presentación y tasa seleccionada. `@kontave/client-remote` provee el único `RemoteOperationContextStore`, que transforma el DTO remoto en el modelo de dominio y conserva la semántica de persistencia por empresa. Inventory y Sales lo reutilizan; Desktop ya no mantiene coordinadores ni conversiones DTO-a-dominio duplicados. El renderer recibe únicamente el snapshot resultante.
 
 El tablero de Inventario termina su período en la fecha efectiva del contexto y presenta valores reales de entradas, salidas, movimientos y valoración. Las listas recientes consumen `recentInboundMovements` y `recentOutboundMovements`; no interpretan compras o ventas como flujo físico. Los campos comerciales heredados se conservan únicamente por compatibilidad del contrato.
 
@@ -220,9 +238,34 @@ Reglas de dependencia:
 - `preload` expone una operación cerrada por caso de uso y nunca entrega
   `ipcRenderer`, eventos Electron ni canales elegidos por el renderer.
 - `main` implementa HTTP, almacenamiento seguro, Electron y dispositivos.
-- Todo handler IPC valida que el emisor sea el frame principal confiable.
+- Todo handler IPC cruza una matriz cerrada de canales, aridad y decodificadores
+  runtime. Los decodificadores de `@kontave/client-contracts` rechazan campos
+  inesperados y validan tipos, límites, enums, fechas y versiones antes de que
+  un controlador privilegiado reciba la solicitud.
+- Todo handler IPC valida el `webContents`, el frame principal y la URL exacta
+  del documento confiable. El preload expone operaciones cerradas; los
+  tableros derivan el actor de la sesión autenticada en main y no aceptan un
+  `actorId` del renderer.
 - Los packages portables no importan desde `apps/desktop`.
 - Desktop puede depender de packages; los packages nunca dependen de Desktop.
+
+## Límites de seguridad y operación
+
+La ventana empaquetada carga exclusivamente el archivo renderer incluido en la
+aplicación. En desarrollo, `ELECTRON_RENDERER_URL` solo se admite cuando
+Electron no está empaquetado y su URL HTTP(S) usa `localhost`, `127.0.0.1` o
+`[::1]`; otros orígenes se rechazan. La misma URL canónica se usa para validar
+el origen del IPC.
+
+Los errores que llegan al renderer usan códigos estables, mensajes públicos y
+un `requestId` cuando corresponda. Diagnósticos de transporte, mensajes remotos
+y causas inesperadas permanecen en el proceso principal y sus logs.
+
+La sesión de Supabase permanece cifrada con `safeStorage` en main. Su archivo
+se actualiza de forma serializada y atómica: cada reemplazo usa un temporal
+único con permisos `0600`, lo renombra al destino y limpia el temporal si la
+escritura o el renombrado fallan. Las dependencias nativas se inyectan en el adaptador únicamente
+para probar estos escenarios sin exponerlas al renderer.
 
 ## Variables de entorno
 

@@ -19,7 +19,6 @@ export type DesktopSalesDashboardResult =
   DesktopResult<DesktopSalesDashboardSnapshot>;
 export interface DesktopSalesApi {
   getDashboard(
-    userId: string,
     organizationId: string,
     companyId: string,
     query?: DesktopSalesDashboardQuery,

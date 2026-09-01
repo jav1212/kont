@@ -23,15 +23,24 @@ import type {
 import {
   ClientOperationFailure,
   findClientOperationFailure,
-  requireClientValue,
-} from "../client/client-operation";
+  unwrapClientOperationResult,
+} from "@kontave/client-runtime";
+import { publicFailureMessage } from "../client/client-operation";
 
+/** Adapts portable account, organization, and billing operations to Desktop IPC. */
 export class DesktopSettingsController {
   private readonly snapshotsInFlight = new Map<
     string,
     Promise<DesktopSettingsResult<DesktopSettingsSnapshot>>
   >();
 
+  /**
+   * Creates the settings controller over portable feature ports.
+   * @param authentication - Authentication feature port.
+   * @param billing - Billing feature port.
+   * @param organizations - Organization feature port.
+   * @param profile - Profile feature port.
+   */
   constructor(
     private readonly authentication: ClientPortFeature<AuthenticationPort>,
     private readonly billing: ClientPortFeature<BillingPort>,
@@ -39,6 +48,12 @@ export class DesktopSettingsController {
     private readonly profile: ClientPortFeature<ProfilePort>,
   ) {}
 
+  /**
+   * Loads and coalesces the settings snapshot for an optional organization.
+   * @param organizationId - Selected organization, or null for personal settings.
+   * @param companyId - Selected company, or null when none is selected.
+   * @returns A presentation-safe settings snapshot result.
+   */
   getSnapshot(
     organizationId: unknown,
     companyId: unknown,
@@ -68,9 +83,9 @@ export class DesktopSettingsController {
           this.profile.preferences(),
           this.authentication.sessions(),
         ]);
-      const profile = requireClientValue(profileResult);
-      const preferences = requireClientValue(preferencesResult);
-      const sessions = requireClientValue(sessionsResult);
+      const profile = unwrapClientOperationResult(profileResult);
+      const preferences = unwrapClientOperationResult(preferencesResult);
+      const sessions = unwrapClientOperationResult(sessionsResult);
       if (!organizationId)
         return success({
           profile,
@@ -157,9 +172,10 @@ export class DesktopSettingsController {
       import("@kontave/client-contracts").ClientOperationResult<T>
     >,
   ): Promise<T> {
-    return requireClientValue(await operation());
+    return unwrapClientOperationResult(await operation());
   }
 
+  /** @param command - Boundary-validated profile change. @returns A safe profile result. */
   updateProfile(
     command: unknown,
   ): Promise<DesktopSettingsResult<CurrentUserDto>> {
@@ -169,6 +185,7 @@ export class DesktopSettingsController {
       ),
     );
   }
+  /** @param command - Boundary-validated preferences change. @returns A safe preferences result. */
   updatePreferences(
     command: unknown,
   ): Promise<DesktopSettingsResult<UserPreferencesDto>> {
@@ -178,6 +195,12 @@ export class DesktopSettingsController {
       ),
     );
   }
+  /**
+   * Updates one organization.
+   * @param organizationId - Target organization identifier.
+   * @param command - Boundary-validated organization change.
+   * @returns A safe organization result.
+   */
   updateOrganization(
     organizationId: unknown,
     command: unknown,
@@ -193,6 +216,12 @@ export class DesktopSettingsController {
       ),
     );
   }
+  /**
+   * Changes the authenticated account password.
+   * @param newPassword - Boundary-validated replacement password.
+   * @param revokeOtherSessions - Whether other sessions must be revoked.
+   * @returns A safe password-change result.
+   */
   changePassword(
     newPassword: unknown,
     revokeOtherSessions: unknown,
@@ -208,6 +237,11 @@ export class DesktopSettingsController {
       ),
     );
   }
+  /**
+   * Revokes one authenticated session.
+   * @param sessionId - Target session identifier.
+   * @returns A safe revocation result.
+   */
   revokeSession(
     sessionId: unknown,
   ): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>> {
@@ -217,6 +251,7 @@ export class DesktopSettingsController {
       this.clientValue(() => this.authentication.revokeSession(sessionId)),
     );
   }
+  /** @returns A safe result after revoking all other authenticated sessions. */
   revokeOtherSessions(): Promise<
     DesktopSettingsResult<{ readonly revoked: boolean }>
   > {
@@ -252,7 +287,7 @@ function failure<T>(cause: unknown): DesktopSettingsResult<T> {
       ok: false,
       error: {
         code: clientFailure.code,
-        message: clientFailure.message,
+        message: publicFailureMessage(clientFailure.code),
         requestId: clientFailure.requestId,
       },
     };

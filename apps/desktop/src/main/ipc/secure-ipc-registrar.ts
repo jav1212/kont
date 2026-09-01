@@ -1,4 +1,8 @@
 import type { IpcMain, IpcMainInvokeEvent, WebContents } from "electron";
+import {
+  DesktopIpcValidationFailure,
+  validateDesktopIpcInvocation,
+} from "./desktop-ipc-validation";
 
 type ElectronIpcHandler = Parameters<IpcMain["handle"]>[1];
 
@@ -13,10 +17,12 @@ export class SecureIpcRegistrar {
    * Creates a registrar over Electron's process-global IPC registry.
    * @param ipc - Electron IPC registry owned by the main process.
    * @param trustedWebContents - Resolves the sole renderer allowed to invoke handlers.
+   * @param trustedFrameUrl - Resolves the exact document URL allowed to use the bridge.
    */
   constructor(
     private readonly ipc: IpcMain,
     private readonly trustedWebContents: () => WebContents | undefined,
+    private readonly trustedFrameUrl: () => string | undefined,
   ) {}
 
   /**
@@ -29,7 +35,21 @@ export class SecureIpcRegistrar {
   handle(channel: string, handler: ElectronIpcHandler): void {
     this.ipc.handle(channel, (event, ...arguments_) => {
       this.assertTrustedSender(event);
-      return handler(event, ...arguments_);
+      try {
+        const validated = validateDesktopIpcInvocation(channel, arguments_);
+        return handler(event, ...validated);
+      } catch (cause: unknown) {
+        if (cause instanceof DesktopIpcValidationFailure)
+          return {
+            ok: false,
+            error: {
+              code: "INVALID_REQUEST",
+              message: "La información enviada no es válida.",
+              requestId: null,
+            },
+          };
+        throw cause;
+      }
     });
   }
 
@@ -38,7 +58,8 @@ export class SecureIpcRegistrar {
     if (
       trusted === undefined ||
       event.sender !== trusted ||
-      event.senderFrame !== trusted.mainFrame
+      event.senderFrame !== trusted.mainFrame ||
+      event.senderFrame.url !== this.trustedFrameUrl()
     ) {
       throw new Error("Rejected IPC invocation from an untrusted renderer.");
     }

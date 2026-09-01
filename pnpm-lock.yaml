@@ -304,6 +304,9 @@ importers:
       electron-vite:
         specifier: 5.0.0
         version: 5.0.0(vite@7.3.6(@types/node@22.20.1)(jiti@2.6.1)(lightningcss@1.33.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0))
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -1022,6 +1025,15 @@ importers:
       '@kontave/client-contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@kontave/monetary':
+        specifier: workspace:*
+        version: link:../../monetary
+      '@kontave/operation-context':
+        specifier: workspace:*
+        version: link:../../operation-context
+      '@kontave/organizations':
+        specifier: workspace:*
+        version: link:../../capabilities/organizations
     devDependencies:
       tsx:
         specifier: ^4.23.12

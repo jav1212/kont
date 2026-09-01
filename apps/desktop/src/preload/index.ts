@@ -171,10 +171,9 @@ const bridge: KontaveRendererBridge = {
       ipcRenderer.invoke(DESKTOP_IPC.revokeOtherSettingsSessions),
   },
   inventory: {
-    getDashboard: (userId, organizationId, companyId, query) =>
+    getDashboard: (organizationId, companyId, query) =>
       ipcRenderer.invoke(
         DESKTOP_IPC.getInventoryDashboard,
-        userId,
         organizationId,
         companyId,
         query,
@@ -240,20 +239,18 @@ const bridge: KontaveRendererBridge = {
       ),
   },
   sales: {
-    getDashboard: (userId, organizationId, companyId, query) =>
+    getDashboard: (organizationId, companyId, query) =>
       ipcRenderer.invoke(
         DESKTOP_IPC.getSalesDashboard,
-        userId,
         organizationId,
         companyId,
         query,
       ),
   },
   purchasing: {
-    getDashboard: (userId, organizationId, companyId, query) =>
+    getDashboard: (organizationId, companyId, query) =>
       ipcRenderer.invoke(
         DESKTOP_IPC.getPurchasingDashboard,
-        userId,
         organizationId,
         companyId,
         query,

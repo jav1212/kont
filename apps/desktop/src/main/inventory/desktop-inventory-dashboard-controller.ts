@@ -3,12 +3,9 @@ import {
   type OperationContextStore,
 } from "@kontave/operation-context/application";
 import {
-  createOperationalDefaults,
   localDate,
-  type OperationContextKey,
   type OperationalDefaults,
 } from "@kontave/operation-context/domain";
-import { currency, currencyCode, exchangeRate } from "@kontave/monetary/domain";
 import {
   companyId,
   organizationId,
@@ -23,24 +20,41 @@ import type {
 import {
   ClientOperationFailure,
   findClientOperationFailure,
-  requireClientValue,
-} from "../client/client-operation";
+  unwrapClientOperationResult,
+} from "@kontave/client-runtime";
+import { publicFailureMessage } from "../client/client-operation";
 import type {
   DesktopInventoryDashboardQuery,
   DesktopInventoryDashboardResult,
 } from "../../renderer-bridge";
 
+/** Adapts portable inventory dashboards to Desktop defaults and result envelopes. */
 export class DesktopInventoryDashboardController {
   private readonly dashboardsInFlight = new Map<
     string,
     Promise<DesktopInventoryDashboardResult>
   >();
 
+  /**
+   * Creates a dashboard controller over portable remote features.
+   * @param inventory - Inventory feature port.
+   * @param operationContext - Operational-context feature port.
+   * @param operationContextStore - Shared context cache used to avoid duplicate requests.
+   */
   constructor(
     private readonly inventory: ClientPortFeature<InventoryPort>,
     private readonly operationContext: ClientPortFeature<OperationContextPort>,
+    private readonly operationContextStore: OperationContextStore,
   ) {}
 
+  /**
+   * Loads and coalesces an inventory dashboard request.
+   * @param actorId - Authenticated actor selected by the main process.
+   * @param organization - Organization identifier.
+   * @param company - Company identifier.
+   * @param rawQuery - Boundary-validated Desktop dashboard query.
+   * @returns A presentation-safe dashboard result.
+   */
   getDashboard(
     actorId: unknown,
     organization: unknown,
@@ -92,9 +106,8 @@ export class DesktopInventoryDashboardController {
       companyId: companyId(company as string),
     };
     try {
-      const store = new RemoteOperationContextStore(this.operationContext);
       const coordinator = new OperationContextCoordinator(
-        store,
+        this.operationContextStore,
         {
           historical: async () => {
             throw new Error(
@@ -121,8 +134,8 @@ export class DesktopInventoryDashboardController {
         }),
         this.operationContext.exchangeRates(organization, company, to),
       ]);
-      const dashboard = requireClientValue(dashboardResult);
-      const exchangeRates = requireClientValue(exchangeRatesResult);
+      const dashboard = unwrapClientOperationResult(dashboardResult);
+      const exchangeRates = unwrapClientOperationResult(exchangeRatesResult);
       return {
         ok: true,
         value: {
@@ -137,73 +150,10 @@ export class DesktopInventoryDashboardController {
   }
 }
 
-class RemoteOperationContextStore implements OperationContextStore {
-  constructor(
-    private readonly remote: ClientPortFeature<OperationContextPort>,
-  ) {}
-  async load(key: OperationContextKey): Promise<OperationalDefaults | null> {
-    return decodeOperationalDefaults(
-      requireClientValue(
-        await this.remote.get(key.organizationId, key.companyId),
-      ),
-      key,
-    );
-  }
-  async save(
-    value: OperationalDefaults,
-    expectedVersion: number,
-  ): Promise<OperationalDefaults> {
-    const dto = requireClientValue(
-      await this.remote.update(value.key.organizationId, value.key.companyId, {
-        expectedVersion,
-        effectiveDate: value.effectiveDate,
-        presentationCurrency: value.presentationCurrency,
-      }),
-    );
-    return decodeOperationalDefaults(dto, value.key);
-  }
-  async clear(): Promise<void> {
-    /* The persisted context is intentionally retained per company. */
-  }
-}
-
 const desktopClock = {
   now: () => new Date().toISOString(),
   today: () => localDate(new Date().toISOString().slice(0, 10)),
 };
-
-function decodeOperationalDefaults(
-  dto: OperationalDefaultsDto,
-  key: OperationContextKey,
-): OperationalDefaults {
-  const selection =
-    dto.exchangeRate.status === "unavailable"
-      ? {
-          status: "unavailable" as const,
-          effectiveDate: localDate(dto.exchangeRate.effectiveDate),
-        }
-      : {
-          status: "resolved" as const,
-          value: {
-            rate: exchangeRate({
-              baseCurrency: currency(dto.exchangeRate.value.baseCurrency, 2),
-              quoteCurrency: currency(dto.exchangeRate.value.quoteCurrency, 2),
-              value: dto.exchangeRate.value.value,
-            }),
-            effectiveDate: dto.exchangeRate.value.effectiveDate,
-            capturedAt: dto.exchangeRate.value.capturedAt,
-            source: dto.exchangeRate.value.source,
-          },
-        };
-  return createOperationalDefaults({
-    key,
-    effectiveDate: localDate(dto.effectiveDate),
-    presentationCurrency: currencyCode(dto.presentationCurrency),
-    exchangeRate: selection,
-    version: dto.version,
-    updatedAt: dto.updatedAt,
-  });
-}
 
 function encodeOperationalDefaults(
   value: OperationalDefaults,
@@ -260,7 +210,7 @@ function failure(
       ok: false,
       error: {
         code: remoteFailure.code,
-        message: remoteFailure.message,
+        message: publicFailureMessage(remoteFailure.code),
         requestId: remoteFailure.requestId ?? crypto.randomUUID(),
       },
     };
@@ -268,10 +218,7 @@ function failure(
     ok: false,
     error: {
       code: fallbackCode,
-      message:
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo cargar el tablero de inventario.",
+      message: publicFailureMessage(fallbackCode),
       requestId: crypto.randomUUID(),
     },
   };

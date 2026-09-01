@@ -37,7 +37,6 @@ export type DesktopInventoryResult<T> = DesktopResult<T>;
 /** Inventory capability exposed by preload. */
 export interface DesktopInventoryApi {
   getDashboard(
-    userId: string,
     organizationId: string,
     companyId: string,
     query?: DesktopInventoryDashboardQuery,

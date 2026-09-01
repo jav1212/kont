@@ -11,7 +11,10 @@
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
-    "@kontave/client-contracts": "workspace:*"
+    "@kontave/client-contracts": "workspace:*",
+    "@kontave/monetary": "workspace:*",
+    "@kontave/operation-context": "workspace:*",
+    "@kontave/organizations": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.12",
