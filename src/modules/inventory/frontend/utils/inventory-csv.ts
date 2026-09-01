@@ -113,6 +113,23 @@ export function parseDepartmentsCsv(raw: string): DepartmentCsvResult {
 // Spanish column names kept for user-facing CSV backward compatibility.
 const PROV_HEADERS = ["rif", "nombre", "contacto", "telefono", "email", "direccion", "notas", "activo"] as const;
 
+/** Identifies the layout used by a supplier import file. */
+export type SupplierCsvFormat = "canonical" | "legacy";
+
+/**
+ * Decodes an uploaded supplier file, accepting UTF-8 only when its byte sequence is valid.
+ *
+ * @param bytes - Raw bytes read from the selected file.
+ * @returns The decoded file contents and the encoding that was required.
+ */
+export function decodeSuppliersCsvBytes(bytes: ArrayBuffer): { text: string; encoding: "utf-8" | "windows-1252" } {
+    try {
+        return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), encoding: "utf-8" };
+    } catch {
+        return { text: new TextDecoder("windows-1252").decode(bytes), encoding: "windows-1252" };
+    }
+}
+
 export function suppliersToCsv(suppliers: Supplier[]): string {
     const header = PROV_HEADERS.map(csvCell).join(",");
     const rows   = suppliers.map((s) =>
@@ -130,44 +147,163 @@ export function suppliersToCsv(suppliers: Supplier[]): string {
     return [header, ...rows].join("\r\n");
 }
 
+/** Parsed supplier rows together with their source layout and validation messages. */
 export interface SupplierCsvResult {
     suppliers: Omit<Supplier, "id" | "companyId" | "createdAt" | "updatedAt">[];
     errors:    string[];
+    format:    SupplierCsvFormat;
+    /** Physical source line for each supplier, aligned by array index. */
+    sourceLines: number[];
 }
 
+function normalizedSupplierHeader(header: string): string {
+    return header.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function legacySupplierNotes(account: string, bank: string): string {
+    return [account && `Cuenta: ${account}`, bank && `Banco: ${bank}`].filter(Boolean).join(" · ");
+}
+
+/**
+ * Parses either the canonical comma-separated supplier export or the legacy tab-separated PROVEEDORES file.
+ *
+ * @param raw - Decoded CSV content.
+ * @returns Valid supplier rows, detected format, and row-level validation messages.
+ */
 export function parseSuppliersCsv(raw: string): SupplierCsvResult {
-    const lines = normalizeRaw(raw);
+    const lines = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+        .split("\n").map((text, index) => ({ text: text.trim(), sourceLine: index + 1 })).filter((line) => line.text);
     const errors: string[] = [];
     const suppliers: SupplierCsvResult["suppliers"] = [];
+    const sourceLines: number[] = [];
 
-    if (lines.length < 2) return { suppliers: [], errors: ["El CSV está vacío o no tiene datos."] };
+    if (lines.length < 2) return { suppliers: [], errors: ["El CSV está vacío o no tiene datos."], format: "canonical", sourceLines: [] };
 
-    const header = parseHeader(lines[0]).join(",");
-    if (header !== PROV_HEADERS.join(",")) {
-        return { suppliers: [], errors: [`Encabezado inválido. Se esperaba: ${PROV_HEADERS.join(",")}`] };
+    const header = parseHeader(lines[0].text).join(",");
+    if (header === PROV_HEADERS.join(",")) {
+        for (let i = 1; i < lines.length; i++) {
+            const clean = cleanCols(splitCsvLine(lines[i].text));
+            const [rif, name, contact, phone, email, address, notes, activeRaw] = clean;
+
+            if (!name) { errors.push(`Línea ${lines[i].sourceLine}: nombre vacío.`); continue; }
+
+            suppliers.push({
+                rif: rif ?? "", name, contact: contact ?? "", phone: phone ?? "", email: email ?? "",
+                address: address ?? "", notes: notes ?? "", active: activeRaw?.toLowerCase() !== "false",
+            });
+            sourceLines.push(lines[i].sourceLine);
+        }
+        return { suppliers, errors, format: "canonical", sourceLines };
     }
 
-    for (let i = 1; i < lines.length; i++) {
-        const clean = cleanCols(splitCsvLine(lines[i]));
-        const [rif, name, contact, phone, email, address, notes, activeRaw] = clean;
+    const headerIndex = lines.findIndex((line) => {
+        const headers = line.text.split("\t").map(normalizedSupplierHeader);
+        return headers.includes("rif") && (headers.includes("proveedor") || headers.includes("nombredeempresa") || headers.includes("nombredeempresaproveedor"));
+    });
+    if (headerIndex < 0) {
+        return { suppliers: [], errors: [`Encabezado inválido. Se esperaba: ${PROV_HEADERS.join(",")} o el formato legado PROVEEDORES.`], format: "legacy", sourceLines: [] };
+    }
+    const legacyHeaders = lines[headerIndex].text.split("\t").map(normalizedSupplierHeader);
+    const column = (names: string[]) => legacyHeaders.findIndex((headerName) => names.includes(headerName));
+    const rifIndex = column(["rif"]);
+    const nameIndex = column(["nombredeempresa", "proveedor", "nombredeempresaproveedor"]);
+    const phoneIndex = column(["telefono"]);
+    const emailIndex = column(["email", "correo", "correoelectronico"]);
+    const addressIndex = column(["direccion"]);
+    const accountIndex = column(["cuenta"]);
+    const bankIndex = column(["banco"]);
 
-        if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+        const clean = lines[i].text.split("\t").map((value) => value.trim());
+        const value = (index: number) => index >= 0 ? clean[index] ?? "" : "";
+        const name = value(nameIndex);
 
-        const active = activeRaw?.toLowerCase() !== "false";
+        if (!name) { errors.push(`Línea ${lines[i].sourceLine}: nombre vacío.`); continue; }
 
         suppliers.push({
-            rif:     rif ?? "",
+            rif:     value(rifIndex),
             name,
-            contact: contact ?? "",
-            phone:   phone ?? "",
-            email:   email ?? "",
-            address: address ?? "",
-            notes:   notes ?? "",
-            active,
+            contact: "",
+            phone:   value(phoneIndex),
+            email:   value(emailIndex),
+            address: value(addressIndex),
+            notes:   legacySupplierNotes(value(accountIndex), value(bankIndex)),
+            active:  true,
         });
+        sourceLines.push(lines[i].sourceLine);
     }
 
-    return { suppliers, errors };
+    return { suppliers, errors, format: "legacy", sourceLines };
+}
+
+/**
+ * Normalizes a RIF for case- and punctuation-insensitive identity matching.
+ *
+ * @param rif - The supplier tax identifier as entered or imported.
+ * @returns Uppercase alphanumeric RIF identity key, or an empty string when no identifier exists.
+ */
+export function normalizeSupplierRif(rif: string): string {
+    return rif.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** A single supplier persistence operation prepared by an import reconciliation. */
+export interface SupplierImportOperation {
+    supplier: Supplier;
+    action: "create" | "update";
+}
+
+/** Safe import operations and source rows excluded from automatic persistence. */
+export interface SupplierImportPlan {
+    operations: SupplierImportOperation[];
+    omitted: string[];
+}
+
+function appendDistinctNote(existing: string, imported: string): string {
+    if (!imported || existing.includes(imported)) return existing;
+    return existing ? `${existing}\n${imported}` : imported;
+}
+
+/**
+ * Reconciles parsed supplier rows with the loaded catalog without performing persistence.
+ * Legacy rows only fill non-empty imported fields and preserve active status; canonical rows replace fields authoritatively.
+ *
+ * @param result - Parsed import rows and their source format.
+ * @param existing - Suppliers currently scoped to the selected company.
+ * @param companyId - Company that owns created suppliers.
+ * @returns Create/update operations and rows safely omitted due to duplicate identities.
+ */
+export function planSupplierImport(result: SupplierCsvResult, existing: Supplier[], companyId: string): SupplierImportPlan {
+    const operations: SupplierImportOperation[] = [];
+    const omitted: string[] = [];
+    const sourceRifs = new Set<string>();
+    const existingByRif = new Map<string, Supplier[]>();
+    for (const supplier of existing) {
+        const key = normalizeSupplierRif(supplier.rif);
+        if (key) existingByRif.set(key, [...(existingByRif.get(key) ?? []), supplier]);
+    }
+    for (const [index, imported] of result.suppliers.entries()) {
+        const key = normalizeSupplierRif(imported.rif);
+        const sourceLine = result.sourceLines[index] ?? index + 2;
+        if (key && sourceRifs.has(key)) { omitted.push(`Fila ${sourceLine}: RIF duplicado en el archivo (${imported.rif}). Se conserva la primera ocurrencia.`); continue; }
+        if (key) sourceRifs.add(key);
+        const matches = key ? existingByRif.get(key) ?? [] : [];
+        if (matches.length > 1) { omitted.push(`Fila ${sourceLine}: existen múltiples proveedores con RIF ${imported.rif}; se omitió para evitar una actualización ambigua.`); continue; }
+        if (matches.length === 0) {
+            operations.push({ supplier: { ...imported, companyId, active: result.format === "legacy" ? true : imported.active }, action: "create" });
+            continue;
+        }
+        const current = matches[0];
+        const supplier = result.format === "canonical"
+            ? { ...imported, companyId, id: current.id }
+            : {
+                ...current,
+                rif: imported.rif || current.rif, name: imported.name || current.name, phone: imported.phone || current.phone,
+                email: imported.email || current.email, address: imported.address || current.address,
+                notes: appendDistinctNote(current.notes, imported.notes), companyId,
+            };
+        operations.push({ supplier, action: "update" });
+    }
+    return { operations, omitted };
 }
 
 // ── Products ───────────────────────────────────────────────────────────────────

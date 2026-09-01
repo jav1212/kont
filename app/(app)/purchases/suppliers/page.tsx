@@ -15,8 +15,11 @@ import type { Supplier } from "@/src/modules/purchases/backend/domain/supplier";
 import {
     suppliersToCsv,
     parseSuppliersCsv,
+    decodeSuppliersCsvBytes,
+    planSupplierImport,
     downloadCsv,
     type SupplierCsvResult,
+    type SupplierImportOperation,
 } from "@/src/modules/inventory/frontend/utils/inventory-csv";
 import {
     Truck,
@@ -46,6 +49,16 @@ const fieldCls = [
 ].join(" ");
 
 type EstadoFilter = "todos" | "activo" | "inactivo";
+
+type SupplierImportPreview = {
+    result: SupplierCsvResult;
+    operations: SupplierImportOperation[];
+    omitted: string[];
+    created: number;
+    updated: number;
+    failed: string[];
+    hasAttempted: boolean;
+};
 
 function emptySupplier(companyId: string): Supplier {
     return {
@@ -190,7 +203,7 @@ export default function ProveedoresPage() {
     const [form, setForm] = useState<Supplier | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-    const [importResult, setImportResult] = useState<SupplierCsvResult | null>(null);
+    const [importPreview, setImportPreview] = useState<SupplierImportPreview | null>(null);
     const [importing, setImporting] = useState(false);
     const [pasteOpen, setPasteOpen] = useState(false);
     const [pasteText, setPasteText] = useState("");
@@ -246,34 +259,66 @@ export default function ProveedoresPage() {
         downloadCsv(suppliersToCsv(suppliers), "proveedores.csv");
     }
 
+    function previewImport(result: SupplierCsvResult) {
+        if (!companyId) return;
+        const plan = planSupplierImport(result, suppliers, companyId);
+        setImportPreview({
+            result,
+            operations: plan.operations,
+            omitted: plan.omitted,
+            created: plan.operations.filter((operation) => operation.action === "create").length,
+            updated: plan.operations.filter((operation) => operation.action === "update").length,
+            failed: [],
+            hasAttempted: false,
+        });
+    }
+
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const result = parseSuppliersCsv(ev.target?.result as string);
-            setImportResult(result);
+            const bytes = ev.target?.result as ArrayBuffer;
+            const decoded = decodeSuppliersCsvBytes(bytes);
+            previewImport(parseSuppliersCsv(decoded.text));
         };
-        reader.readAsText(file, "utf-8");
+        reader.readAsArrayBuffer(file);
         e.target.value = "";
     }
 
     function handlePasteParse() {
         if (!pasteText.trim()) return;
         const result = parseSuppliersCsv(pasteText);
-        setImportResult(result);
+        previewImport(result);
         setPasteOpen(false);
         setPasteText("");
     }
 
     async function handleImport() {
-        if (!importResult || !companyId) return;
+        if (!importPreview || !companyId) return;
         setImporting(true);
-        for (const s of importResult.suppliers) {
-            await saveSupplier({ ...s, companyId });
+        const failures: SupplierImportOperation[] = [];
+        let created = 0;
+        let updated = 0;
+        for (const operation of importPreview.operations) {
+            const saved = await saveSupplier(operation.supplier);
+            if (!saved) {
+                failures.push(operation);
+            } else if (operation.action === "create") {
+                created++;
+            } else {
+                updated++;
+            }
         }
         setImporting(false);
-        setImportResult(null);
+        setImportPreview((current) => current ? {
+            ...current,
+            operations: failures,
+            created: current.hasAttempted ? current.created + created : current.created - failures.filter((operation) => operation.action === "create").length,
+            updated: current.hasAttempted ? current.updated + updated : current.updated - failures.filter((operation) => operation.action === "update").length,
+            failed: failures.map((operation) => `No se pudo ${operation.action === "create" ? "crear" : "actualizar"} ${operation.supplier.name}.`),
+            hasAttempted: true,
+        } : null);
         loadSuppliers(companyId);
     }
 
@@ -467,7 +512,7 @@ export default function ProveedoresPage() {
                 )}
 
                 {/* Import preview */}
-                {importResult && (
+                {importPreview && (
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-3 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg border border-success/30 bg-success/10 text-text-success flex items-center justify-center flex-shrink-0">
@@ -475,28 +520,34 @@ export default function ProveedoresPage() {
                             </div>
                             <div>
                                 <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                    Vista previa de importación
+                                    {importPreview.hasAttempted ? "Resultado de importación" : "Vista previa de importación"}
                                 </p>
-                                {importResult.suppliers.length > 0 && (
+                                {(importPreview.operations.length > 0 || importPreview.omitted.length > 0) && (
                                     <p className="font-sans text-[12px] text-[var(--text-secondary)]">
-                                        {importResult.suppliers.length} proveedor(es) listos para importar.
+                                        {importPreview.operations.length} {importPreview.hasAttempted ? "pendiente(s)" : "listo(s)"} · {importPreview.omitted.length} omitido(s) · {importPreview.failed.length} fallido(s).
                                     </p>
                                 )}
                             </div>
                         </div>
-                        {importResult.errors.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px] uppercase tracking-[0.1em]">
+                            <span className="rounded border border-success/20 bg-success/10 px-2 py-1.5 text-text-success">{importPreview.hasAttempted ? "Creados" : "Por crear"} {importPreview.created}</span>
+                            <span className="rounded border border-primary-500/20 bg-primary-500/10 px-2 py-1.5 text-primary-500">{importPreview.hasAttempted ? "Actualizados" : "Por actualizar"} {importPreview.updated}</span>
+                            <span className="rounded border border-warning/20 bg-warning/10 px-2 py-1.5 text-text-warning">Omitidos {importPreview.omitted.length}</span>
+                            <span className="rounded border border-error/20 bg-error/10 px-2 py-1.5 text-text-error">Fallidos {importPreview.failed.length}</span>
+                        </div>
+                        {[...importPreview.result.errors, ...importPreview.omitted, ...importPreview.failed].length > 0 && (
                             <ul className="space-y-1 pl-1 border-l-2 border-error/30 ml-1">
-                                {importResult.errors.map((e, i) => (
+                                {[...importPreview.result.errors, ...importPreview.omitted, ...importPreview.failed].map((e, i) => (
                                     <li key={i} className="font-sans text-[13px] text-text-error pl-3">{e}</li>
                                 ))}
                             </ul>
                         )}
                         <div className="flex items-center gap-2 pt-1 border-t border-border-light">
-                            <BaseButton.Root variant="secondary" size="sm" onClick={() => setImportResult(null)}>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => setImportPreview(null)}>
                                 Cancelar
                             </BaseButton.Root>
-                            <BaseButton.Root variant="primary" size="sm" onClick={handleImport} isDisabled={importing || importResult.suppliers.length === 0} loading={importing}>
-                                {importing ? "Importando…" : `Importar ${importResult.suppliers.length}`}
+                            <BaseButton.Root variant="primary" size="sm" onClick={handleImport} isDisabled={importing || importPreview.operations.length === 0} loading={importing}>
+                                {importing ? "Importando…" : `Importar ${importPreview.operations.length}`}
                             </BaseButton.Root>
                         </div>
                     </div>
