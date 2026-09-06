@@ -1,3 +1,5 @@
+import { salesDashboard } from "./decoding";
+import { decodeRemote } from "../../decoding";
 import type {
   SalesDashboardDto,
   SalesDashboardQuery,
@@ -19,14 +21,18 @@ export class RemoteSalesPort implements SalesPort {
    * @param companyId - Operational company.
    * @param query - Period, granularity and recent-document limit.
    * @returns Sales dashboard snapshot.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   dashboard(
     organizationId: string,
     companyId: string,
     query: SalesDashboardQuery,
   ): Promise<SalesDashboardDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${root(organizationId, companyId)}/sales/dashboard${queryString(query)}`,
+      { method: "GET" },
+      salesDashboard,
     );
   }
 }

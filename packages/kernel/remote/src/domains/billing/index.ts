@@ -1,3 +1,5 @@
+import { billingOverview, billingPlan, paymentRequest } from "./decoding";
+import { decodeRemote, array } from "../../decoding";
 import type {
   BillingOverviewDto,
   BillingPort,
@@ -18,29 +20,47 @@ export class RemoteBillingPort implements BillingPort {
    * Loads an organization's billing overview.
    * @param organizationId - Billing owner organization.
    * @returns Account, subscriptions, entitlements and usage.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   overview(organizationId: string): Promise<BillingOverviewDto> {
-    return this.transport.get(`${root(organizationId)}/overview`);
+    return decodeRemote(
+      this.transport,
+      `${root(organizationId)}/overview`,
+      { method: "GET" },
+      billingOverview,
+    );
   }
 
   /**
    * Lists plans available to an organization.
    * @param organizationId - Billing owner organization.
    * @returns Available billing plans.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   plans(organizationId: string): Promise<readonly BillingPlanDto[]> {
-    return this.transport.get(`${root(organizationId)}/plans`);
+    return decodeRemote(
+      this.transport,
+      `${root(organizationId)}/plans`,
+      { method: "GET" },
+      (value) => array(value, billingPlan),
+    );
   }
 
   /**
    * Lists manual payment requests for an organization.
    * @param organizationId - Billing owner organization.
    * @returns Existing manual payment requests.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   paymentRequests(
     organizationId: string,
   ): Promise<readonly ManualPaymentRequestDto[]> {
-    return this.transport.get(`${root(organizationId)}/payment-requests`);
+    return decodeRemote(
+      this.transport,
+      `${root(organizationId)}/payment-requests`,
+      { method: "GET" },
+      (value) => array(value, paymentRequest),
+    );
   }
 }
 

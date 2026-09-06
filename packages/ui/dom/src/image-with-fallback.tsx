@@ -18,7 +18,6 @@ export function ImageWithFallback({ alt, fallback, onError, src, ...props }: Ima
 
   if (!src || failed) return fallback;
   // A renderer-neutral DOM primitive cannot depend on Next.js Image.
-  // eslint-disable-next-line @next/next/no-img-element
   return <img
     {...props}
     alt={alt}

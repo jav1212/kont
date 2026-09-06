@@ -2,9 +2,27 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+// Native clients and portable workspaces keep the common React/TypeScript
+// checks, but Next.js routing and bundler conventions belong to the root Web.
+const nativeWorkspaceRules = Object.fromEntries(
+  nextVitals.flatMap((config) =>
+    Object.keys(config.rules ?? {})
+      .filter((rule) => rule.startsWith("@next/next/"))
+      .map((rule) => [rule, "off"]),
+  ),
+);
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: [
+      "packages/**/*.{js,jsx,mjs,ts,tsx,mts,cts}",
+      "apps/**/*.{js,jsx,mjs,ts,tsx,mts,cts}",
+      "tooling/**/*.{js,jsx,mjs,ts,tsx,mts,cts}",
+    ],
+    rules: nativeWorkspaceRules,
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

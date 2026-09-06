@@ -16,7 +16,12 @@ import {
   RemoteSalesPort,
   type RemoteTransport,
 } from "../src/index";
-import { companyId, organizationId, userId } from "@kontave/organizations/domain";
+import * as fixtures from "./response-fixtures";
+import {
+  companyId,
+  organizationId,
+  userId,
+} from "@kontave/organizations/domain";
 
 test("remote client applies the platform header and unwraps API data", async () => {
   let request: RequestInit | undefined;
@@ -65,6 +70,43 @@ test("remote client exposes serializable backend failure details", async () => {
   );
 });
 
+test("remote client rejects malformed error envelopes", async () => {
+  const client = new KontaveRemoteClient({
+    baseUrl: "https://kontave.test",
+    platform: "web",
+    authenticatedRequest: async () =>
+      Response.json(
+        { error: { code: "PRODUCT_NOT_FOUND", message: "Missing" } },
+        { status: 404 },
+      ),
+  });
+  await assert.rejects(
+    client.get("/api/products/missing"),
+    (failure: unknown) => {
+      assert.ok(failure instanceof KontaveRemoteFailure);
+      assert.equal(failure.code, "INVALID_RESPONSE");
+      assert.equal(failure.requestId, null);
+      return true;
+    },
+  );
+});
+
+test("profile adapter rejects missing and malformed nested response fields", async () => {
+  const transport: RemoteTransport = {
+    get: async <T>() => ({ appearance: { colorScheme: "light" } }) as T,
+    request: async <T>() => undefined as T,
+  };
+  await assert.rejects(
+    new RemoteProfilePort(transport).preferences(),
+    (failure: unknown) => {
+      assert.ok(failure instanceof KontaveRemoteFailure);
+      assert.equal(failure.code, "INVALID_RESPONSE");
+      assert.equal(failure.requestId, null);
+      return true;
+    },
+  );
+});
+
 test("official rates use the company operation-context endpoint", async () => {
   let requestedPath = "";
   const transport: RemoteTransport = {
@@ -106,15 +148,43 @@ test("official rates use the company operation-context endpoint", async () => {
 });
 
 test("remote operation-context store centralizes DTO-to-domain conversion", async () => {
-  const key = { userId: userId("user-1"), organizationId: organizationId("organization-1"), companyId: companyId("company-1") };
-  const dto = {
-    effectiveDate: "2026-08-17", presentationCurrency: "VES", version: 2, updatedAt: "2026-08-17T12:00:00.000Z",
-    exchangeRate: { status: "resolved" as const, value: { baseCurrency: "USD", quoteCurrency: "VES", value: "150.100", effectiveDate: "2026-08-17", capturedAt: "2026-08-17T12:00:00.000Z", source: { kind: "official" as const, authority: "BCV", reference: null } } },
+  const key = {
+    userId: userId("user-1"),
+    organizationId: organizationId("organization-1"),
+    companyId: companyId("company-1"),
   };
-  const store = new RemoteOperationContextStore({ get: async () => dto, update: async () => dto });
+  const dto = {
+    effectiveDate: "2026-08-17",
+    presentationCurrency: "VES",
+    version: 2,
+    updatedAt: "2026-08-17T12:00:00.000Z",
+    exchangeRate: {
+      status: "resolved" as const,
+      value: {
+        baseCurrency: "USD",
+        quoteCurrency: "VES",
+        value: "150.100",
+        effectiveDate: "2026-08-17",
+        capturedAt: "2026-08-17T12:00:00.000Z",
+        source: {
+          kind: "official" as const,
+          authority: "BCV",
+          reference: null,
+        },
+      },
+    },
+  };
+  const store = new RemoteOperationContextStore({
+    get: async () => dto,
+    update: async () => dto,
+  });
   const decoded = await store.load(key);
   assert.equal(decoded?.exchangeRate.status, "resolved");
-  assert.equal(decoded?.exchangeRate.status === "resolved" && decoded.exchangeRate.value.rate.value, "150.1");
+  assert.equal(
+    decoded?.exchangeRate.status === "resolved" &&
+      decoded.exchangeRate.value.rate.value,
+    "150.1",
+  );
   const saved = await store.save(decoded!, 2);
   assert.equal(saved.version, 2);
 });
@@ -124,7 +194,31 @@ test("domain adapters own every Client API route", async () => {
   const transport: RemoteTransport = {
     get: async <T>(path: string) => {
       paths.push(`GET ${path}`);
-      return undefined as T;
+      if (path === "/api/client/v1/auth/sessions") return [] as T;
+      if (path === "/api/client/v1/me") {
+        return {
+          userId: "user-1",
+          email: null,
+          displayName: null,
+          avatarUrl: null,
+          version: 1,
+        } as T;
+      }
+      if (path.endsWith("/billing/overview"))
+        return fixtures.billingOverviewFixture as T;
+      if (path.includes("/inventory/dashboard?"))
+        return fixtures.inventoryDashboardFixture as T;
+      if (path.includes("/operation-context/exchange-rates?"))
+        return fixtures.exchangeRateSetFixture as T;
+      if (path === "/api/client/v1/organization-access") return [] as T;
+      if (path.includes("/modules/available?")) return [] as T;
+      if (path === "/api/client/v1/platform/status")
+        return fixtures.portalMonitoringFixture as T;
+      if (path.includes("/purchasing/dashboard?"))
+        return fixtures.purchasingDashboardFixture as T;
+      if (path.includes("/sales/dashboard?"))
+        return fixtures.salesDashboardFixture as T;
+      throw new Error(`Unexpected GET ${path}`);
     },
     request: async <T>(path: string, init: RequestInit) => {
       paths.push(`${init.method} ${path}`);

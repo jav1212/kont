@@ -3,6 +3,7 @@ import type {
   ApiErrorCode,
   ApiSuccess,
 } from "@kontave/client-contracts";
+import { registerEnvelopeExecutor } from "./response-envelope";
 
 export type KontaveClientPlatform = "desktop" | "mobile" | "web";
 export type KontaveRequest = (
@@ -84,7 +85,9 @@ export class KontaveRemoteClient implements RemoteTransport {
    */
   constructor(
     private readonly configuration: KontaveRemoteClientConfiguration,
-  ) {}
+  ) {
+    registerEnvelopeExecutor(this, (path, init) => this.execute(path, init));
+  }
 
   /**
    * Executes a typed GET request and unwraps the standard Kontave response envelope.
@@ -93,7 +96,7 @@ export class KontaveRemoteClient implements RemoteTransport {
    * @throws {@link KontaveRemoteFailure} when authentication, transport or protocol validation fails.
    */
   async get<T>(path: string): Promise<T> {
-    return this.request<T>(path, { method: "GET" });
+    return (await this.execute(path, { method: "GET" })).data as T;
   }
 
   /**
@@ -104,6 +107,20 @@ export class KontaveRemoteClient implements RemoteTransport {
    * @throws {@link KontaveRemoteFailure} when authentication, timeout, transport or protocol validation fails.
    */
   async request<T>(path: string, init: RequestInit): Promise<T> {
+    return (await this.execute(path, init)).data as T;
+  }
+
+  /**
+   * Executes a request while retaining metadata for capability-owned decoders.
+   * @param path - API path resolved against the configured origin.
+   * @param init - Request method, headers and serialized payload.
+   * @returns The validated response envelope, with untrusted data.
+   * @throws {KontaveRemoteFailure} On authentication, protocol or transport failure.
+   */
+  private async execute(
+    path: string,
+    init: RequestInit,
+  ): Promise<ApiSuccess<unknown>> {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
@@ -121,7 +138,7 @@ export class KontaveRemoteClient implements RemoteTransport {
       );
       const payload: unknown = await response.json().catch(() => null);
       if (!response.ok) throw readFailure(payload);
-      return readSuccess<T>(payload).data;
+      return readSuccess<unknown>(payload);
     } catch (cause: unknown) {
       if (cause instanceof KontaveRemoteFailure) throw cause;
       throw new KontaveRemoteFailure(
@@ -178,6 +195,11 @@ function readSuccess<T>(payload: unknown): ApiSuccess<T> {
     throw new KontaveRemoteFailure(
       "INVALID_RESPONSE",
       "Kontave devolvió una respuesta no válida.",
+      isRecord(payload) &&
+      isRecord(payload.meta) &&
+      typeof payload.meta.requestId === "string"
+        ? payload.meta.requestId
+        : null,
     );
   }
   return payload as unknown as ApiSuccess<T>;
@@ -188,11 +210,17 @@ function readFailure(payload: unknown): KontaveRemoteFailure {
     !isRecord(payload) ||
     !isRecord(payload.error) ||
     typeof payload.error.code !== "string" ||
-    typeof payload.error.message !== "string"
+    typeof payload.error.message !== "string" ||
+    typeof payload.error.requestId !== "string"
   ) {
     return new KontaveRemoteFailure(
       "INVALID_RESPONSE",
       "Kontave devolvió un error no válido.",
+      isRecord(payload) &&
+      isRecord(payload.error) &&
+      typeof payload.error.requestId === "string"
+        ? payload.error.requestId
+        : null,
     );
   }
   const error = payload as unknown as ApiError;

@@ -51,9 +51,21 @@ export interface PurchaseFulfillmentReader {
 }
 
 export interface PurchasingCommitPort {
-  /** @param receipt Resulting receipt. @param event Receipt event. @returns Completion after atomic persistence. */
+  /**
+   * Persists the receipt state change and its event in one durable transaction.
+   * Implementations must scope both records to the receipt company and make the
+   * event operation key unique, so a delivery retry cannot create a second event.
+   * @param receipt Resulting receipt.
+   * @param event Receipt event whose `operationKey` is the idempotency key.
+   * @returns Completion only after both records are durable, or rejection with neither persisted.
+   */
   commitReceipt(receipt: GoodsReceipt, event: PurchaseReceiptConfirmed | PurchaseReceiptReversed): Promise<void>;
-  /** @param purchaseReturn Resulting return. @param event Return event. @returns Completion after atomic persistence. */
+  /**
+   * Persists a return and its event in one company-scoped durable transaction.
+   * @param purchaseReturn Resulting return.
+   * @param event Return event whose `operationKey` is the idempotency key.
+   * @returns Completion only after both records are durable, or rejection with neither persisted.
+   */
   commitReturn(purchaseReturn: PurchaseReturn, event: PurchaseReturnConfirmed): Promise<void>;
   /** @param match Confirmed invoice match. @returns Completion after atomic persistence. */
   commitInvoiceMatch(match: SupplierInvoiceMatch): Promise<void>;

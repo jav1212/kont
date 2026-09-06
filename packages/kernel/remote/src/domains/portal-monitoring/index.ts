@@ -1,3 +1,5 @@
+import { portalMonitoring } from "./decoding";
+import { decodeRemote } from "../../decoding";
 import type {
   PortalMonitoringDto,
   PortalMonitoringPort,
@@ -12,8 +14,15 @@ export class RemotePortalMonitoringPort implements PortalMonitoringPort {
    */
   constructor(private readonly transport: RemoteTransport) {}
 
-  /** @returns The latest aggregate and per-portal availability snapshot. */
+  /** @returns The latest aggregate and per-portal availability snapshot.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   current(): Promise<PortalMonitoringDto> {
-    return this.transport.get("/api/client/v1/platform/status");
+    return decodeRemote(
+      this.transport,
+      "/api/client/v1/platform/status",
+      { method: "GET" },
+      portalMonitoring,
+    );
   }
 }

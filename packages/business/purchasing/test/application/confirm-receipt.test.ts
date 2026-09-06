@@ -45,6 +45,27 @@ test("outbox consumer delegates the same event and idempotency key to inventory"
   assert.equal(delivered[0]?.operationKey, event.operationKey);
 });
 
+test("does not report confirmation when the atomic commit boundary rejects", async () => {
+  const useCase = new ConfirmGoodsReceipt(
+    { find: async () => goodsReceiptFixture() }, { find: async () => supplierFixture() }, { find: async () => approvedPurchaseOrderFixture() },
+    { receivedAmount: async () => exactDecimal("3"), returnedAmount: async () => exactDecimal("0") },
+    commitPort(() => { throw new Error("transaction aborted"); }),
+  );
+  await assert.rejects(() => useCase.execute(goodsReceiptFixture().id, "2026-08-13T10:00:00-04:00"), /transaction aborted/);
+});
+
+test("repeated confirmation attempts expose the same deterministic operation key to the commit boundary", async () => {
+  const keys: string[] = [];
+  const useCase = new ConfirmGoodsReceipt(
+    { find: async () => goodsReceiptFixture() }, { find: async () => supplierFixture() }, { find: async () => approvedPurchaseOrderFixture() },
+    { receivedAmount: async () => exactDecimal("3"), returnedAmount: async () => exactDecimal("0") },
+    commitPort((_receipt, event) => keys.push(event.eventId)),
+  );
+  await useCase.execute(goodsReceiptFixture().id, "2026-08-13T10:00:00-04:00");
+  await useCase.execute(goodsReceiptFixture().id, "2026-08-13T10:00:00-04:00");
+  assert.deepEqual(keys, ["purchase-receipt:purchasing-receipt-1:v1", "purchase-receipt:purchasing-receipt-1:v1"]);
+});
+
 function commitPort(onReceipt: (receipt: GoodsReceipt, event: PurchaseReceiptConfirmed | PurchaseReceiptReversed) => void): PurchasingCommitPort {
   return {
     commitReceipt: async (receipt, event) => onReceipt(receipt, event),

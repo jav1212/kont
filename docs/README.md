@@ -40,6 +40,7 @@ This folder is organized by purpose so project planning and Claude prompts stay 
 ### Architecture
 
 - [architecture/MODULES_CATALOG.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/architecture/MODULES_CATALOG.md)
+- [architecture/portable-package-hardening.md](architecture/portable-package-hardening.md)
 
 ### Requirements
 

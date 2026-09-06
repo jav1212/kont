@@ -1,3 +1,18 @@
+import {
+  productList,
+  productDetail,
+  product,
+  productMovementPage,
+  replenishmentPolicy,
+  category,
+  categoryOverviewItem,
+  categoryOverview,
+  unitEconomics,
+  salePricing,
+  taxation,
+} from "./decoding";
+import { organization } from "../organizations/decoding";
+import { decodeRemote, array } from "../../decoding";
 import type {
   ProductCategoryOverviewQuery,
   ProductUnitEconomicsQuery,
@@ -9,7 +24,6 @@ import type { RemoteTransport } from "../../transport";
 import type {
   CreateProductCategoryDto,
   CreateProductDto,
-  OrganizationDto,
   ProductCategoryDto,
   ProductCategoryOverviewDto,
   ProductCategoryOverviewItemDto,
@@ -36,63 +50,88 @@ export class RemoteProductsPort implements ProductsPort {
    */
   constructor(private readonly client: RemoteTransport) {}
 
-  /** {@inheritDoc ProductsPort.permissions} */
+  /** {@inheritDoc ProductsPort.permissions}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   async permissions(organizationId: string): Promise<readonly string[]> {
     return (
-      await this.client.get<OrganizationDto>(
+      await decodeRemote(
+        this.client,
         `/api/client/v1/organizations/${segment(organizationId)}`,
+        { method: "GET" },
+        organization,
       )
     ).permissions;
   }
 
-  /** {@inheritDoc ProductsPort.list} */
+  /** {@inheritDoc ProductsPort.list}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   list(
     organizationId: string,
     companyId: string,
     query: ProductListQuery = {},
   ): Promise<ProductListDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products${queryString(query)}`,
+      { method: "GET" },
+      productList,
     );
   }
 
-  /** {@inheritDoc ProductsPort.get} */
+  /** {@inheritDoc ProductsPort.get}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   get(
     organizationId: string,
     companyId: string,
     productId: string,
   ): Promise<ProductDetailDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}`,
+      { method: "GET" },
+      productDetail,
     );
   }
 
-  /** {@inheritDoc ProductsPort.create} */
+  /** {@inheritDoc ProductsPort.create}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   create(
     organizationId: string,
     companyId: string,
     command: CreateProductDto,
   ): Promise<ProductDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products`,
       json("POST", command),
+      product,
     );
   }
 
-  /** {@inheritDoc ProductsPort.update} */
+  /** {@inheritDoc ProductsPort.update}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   update(
     organizationId: string,
     companyId: string,
     productId: string,
     command: UpdateProductDto,
   ): Promise<ProductDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}`,
       json("PATCH", command),
+      product,
     );
   }
 
-  /** {@inheritDoc ProductsPort.setStatus} */
+  /** {@inheritDoc ProductsPort.setStatus}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   setStatus(
     organizationId: string,
     companyId: string,
@@ -100,74 +139,100 @@ export class RemoteProductsPort implements ProductsPort {
     active: boolean,
     expectedVersion: number,
   ): Promise<ProductDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/${active ? "activate" : "deactivate"}`,
       json("POST", { expectedVersion }),
+      product,
     );
   }
 
-  /** {@inheritDoc ProductsPort.movements} */
+  /** {@inheritDoc ProductsPort.movements}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   movements(
     organizationId: string,
     companyId: string,
     productId: string,
     query: ProductMovementQuery = {},
   ): Promise<ProductMovementPageDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/movements${queryString(query)}`,
+      { method: "GET" },
+      productMovementPage,
     );
   }
 
-  /** {@inheritDoc ProductsPort.updateInventoryProfile} */
+  /** {@inheritDoc ProductsPort.updateInventoryProfile}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   updateInventoryProfile(
     organizationId: string,
     companyId: string,
     productId: string,
     command: UpdateProductInventoryProfileDto,
   ): Promise<ProductReplenishmentPolicyDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/inventory-profile`,
       json("PATCH", command),
+      replenishmentPolicy,
     );
   }
 
-  /** {@inheritDoc ProductsPort.categories} */
+  /** {@inheritDoc ProductsPort.categories}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   categories(
     organizationId: string,
     companyId: string,
     status: "active" | "inactive" | "all" = "active",
   ): Promise<readonly ProductCategoryDto[]> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories?status=${status}`,
+      { method: "GET" },
+      (value) => array(value, category),
     );
   }
 
-  /** {@inheritDoc ProductsPort.createCategory} */
+  /** {@inheritDoc ProductsPort.createCategory}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   createCategory(
     organizationId: string,
     companyId: string,
     command: CreateProductCategoryDto,
   ): Promise<ProductCategoryDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories`,
       json("POST", command),
+      category,
     );
   }
 
-  /** {@inheritDoc ProductsPort.updateCategory} */
+  /** {@inheritDoc ProductsPort.updateCategory}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   updateCategory(
     organizationId: string,
     companyId: string,
     categoryId: string,
     command: UpdateProductCategoryDto,
   ): Promise<ProductCategoryDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories/${segment(categoryId)}`,
       json("PATCH", command),
+      category,
     );
   }
 
-  /** {@inheritDoc ProductsPort.setCategoryStatus} */
+  /** {@inheritDoc ProductsPort.setCategoryStatus}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   setCategoryStatus(
     organizationId: string,
     companyId: string,
@@ -175,69 +240,94 @@ export class RemoteProductsPort implements ProductsPort {
     active: boolean,
     expectedVersion: number,
   ): Promise<ProductCategoryDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories/${segment(categoryId)}/${active ? "activate" : "deactivate"}`,
       json("POST", { expectedVersion }),
+      category,
     );
   }
 
-  /** {@inheritDoc ProductsPort.getCategory} */
+  /** {@inheritDoc ProductsPort.getCategory}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   getCategory(
     organizationId: string,
     companyId: string,
     categoryId: string,
   ): Promise<ProductCategoryOverviewItemDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories/${segment(categoryId)}`,
+      { method: "GET" },
+      categoryOverviewItem,
     );
   }
 
-  /** {@inheritDoc ProductsPort.categoryOverview} */
+  /** {@inheritDoc ProductsPort.categoryOverview}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   categoryOverview(
     organizationId: string,
     companyId: string,
     query: ProductCategoryOverviewQuery = {},
   ): Promise<ProductCategoryOverviewDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/product-categories/overview${queryString(query)}`,
+      { method: "GET" },
+      categoryOverview,
     );
   }
 
-  /** {@inheritDoc ProductsPort.unitEconomics} */
+  /** {@inheritDoc ProductsPort.unitEconomics}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   unitEconomics(
     organizationId: string,
     companyId: string,
     productId: string,
     query: ProductUnitEconomicsQuery,
   ): Promise<ProductUnitEconomicsDto> {
-    return this.client.get(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/unit-economics${queryString(query)}`,
+      { method: "GET" },
+      unitEconomics,
     );
   }
 
-  /** {@inheritDoc ProductsPort.updateSalePricing} */
+  /** {@inheritDoc ProductsPort.updateSalePricing}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   updateSalePricing(
     organizationId: string,
     companyId: string,
     productId: string,
     command: UpdateProductSalePricingDto,
   ): Promise<ProductSalePricingDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/sale-pricing`,
       json("PATCH", command),
+      salePricing,
     );
   }
 
-  /** {@inheritDoc ProductsPort.updateTaxation} */
+  /** {@inheritDoc ProductsPort.updateTaxation}
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   updateTaxation(
     organizationId: string,
     companyId: string,
     productId: string,
     command: UpdateProductTaxationDto,
   ): Promise<ProductTaxationDto> {
-    return this.client.request(
+    return decodeRemote(
+      this.client,
       `${root(organizationId, companyId)}/products/${segment(productId)}/tax-profile`,
       json("PATCH", command),
+      taxation,
     );
   }
 }

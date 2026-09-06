@@ -1,3 +1,5 @@
+import { operationalDefaults, exchangeRateSet } from "./decoding";
+import { decodeRemote } from "../../decoding";
 import type {
   ExchangeRateSetDto,
   OperationContextPort,
@@ -21,12 +23,18 @@ export class RemoteOperationContextPort implements OperationContextPort {
    * @param organizationId - Owning organization.
    * @param companyId - Operational company.
    * @returns Persisted defaults and resolved exchange-rate selection.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   get(
     organizationId: string,
     companyId: string,
   ): Promise<OperationalDefaultsDto> {
-    return this.transport.get(root(organizationId, companyId));
+    return decodeRemote(
+      this.transport,
+      root(organizationId, companyId),
+      { method: "GET" },
+      operationalDefaults,
+    );
   }
 
   /**
@@ -35,15 +43,18 @@ export class RemoteOperationContextPort implements OperationContextPort {
    * @param companyId - Operational company.
    * @param command - Versioned defaults update.
    * @returns Updated operational defaults.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   update(
     organizationId: string,
     companyId: string,
     command: UpdateOperationalDefaultsDto,
   ): Promise<OperationalDefaultsDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       root(organizationId, companyId),
       json(command),
+      operationalDefaults,
     );
   }
 
@@ -53,14 +64,18 @@ export class RemoteOperationContextPort implements OperationContextPort {
    * @param companyId - Operational company.
    * @param date - Local effective date in YYYY-MM-DD format.
    * @returns Exchange-rate set resolved by the server.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   exchangeRates(
     organizationId: string,
     companyId: string,
     date: string,
   ): Promise<ExchangeRateSetDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${root(organizationId, companyId)}/exchange-rates?date=${encodeURIComponent(date)}`,
+      { method: "GET" },
+      exchangeRateSet,
     );
   }
 }

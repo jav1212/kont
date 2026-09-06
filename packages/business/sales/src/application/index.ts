@@ -75,9 +75,21 @@ export interface SalesFulfillmentReader {
 }
 
 export interface SalesCommitPort {
-  /** @param dispatch Resulting dispatch. @param event Dispatch event. @returns Completion after atomic persistence. */
+  /**
+   * Persists the dispatch state change and its event in one durable transaction.
+   * Implementations must scope both records to the dispatch company and make the
+   * event operation key unique, so a delivery retry cannot create a second event.
+   * @param dispatch Resulting dispatch.
+   * @param event Dispatch event whose `operationKey` is the idempotency key.
+   * @returns Completion only after both records are durable, or rejection with neither persisted.
+   */
   commitDispatch(dispatch: GoodsDispatch, event: SalesDispatchConfirmed | SalesDispatchReversed): Promise<void>;
-  /** @param customerReturn Resulting return. @param event Return event. @returns Completion after atomic persistence. */
+  /**
+   * Persists a customer return and its event in one company-scoped durable transaction.
+   * @param customerReturn Resulting return.
+   * @param event Return event whose `operationKey` is the idempotency key.
+   * @returns Completion only after both records are durable, or rejection with neither persisted.
+   */
   commitReturn(customerReturn: CustomerReturn, event: CustomerReturnConfirmed): Promise<void>;
   /** @param match Confirmed invoice match. @returns Completion after atomic persistence. */
   commitInvoiceMatch(match: CustomerInvoiceMatch): Promise<void>;

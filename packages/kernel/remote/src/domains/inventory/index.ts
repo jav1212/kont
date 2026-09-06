@@ -1,3 +1,9 @@
+import {
+  inventoryDashboard,
+  inventoryOperation,
+  inventoryFlowPage,
+} from "./decoding";
+import { decodeRemote } from "../../decoding";
 import type {
   CreateInventoryOperationDto,
   InventoryDashboardDto,
@@ -25,14 +31,18 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param query - Date range, granularity and recent-item limit.
    * @returns Inventory dashboard snapshot.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   dashboard(
     organizationId: string,
     companyId: string,
     query: InventoryDashboardQuery,
   ): Promise<InventoryDashboardDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${root(organizationId, companyId)}/inventory/dashboard${queryString(query)}`,
+      { method: "GET" },
+      inventoryDashboard,
     );
   }
 
@@ -42,6 +52,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param query - Flow filters and pagination.
    * @returns A page of inbound movements.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   entries(
     organizationId: string,
@@ -57,6 +68,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param query - Flow filters and pagination.
    * @returns A page of outbound movements.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   outputs(
     organizationId: string,
@@ -72,6 +84,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param query - Operation filters and pagination.
    * @returns A page of manual inventory operations.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   operations(
     organizationId: string,
@@ -90,14 +103,18 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param operationId - Inventory operation identifier.
    * @returns Operation details.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   operation(
     organizationId: string,
     companyId: string,
     operationId: string,
   ): Promise<InventoryOperationDetailDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${operationRoot(organizationId, companyId)}/${segment(operationId)}`,
+      { method: "GET" },
+      inventoryOperation,
     );
   }
 
@@ -107,15 +124,18 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param companyId - Operational company.
    * @param command - Draft operation data.
    * @returns Created operation.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   create(
     organizationId: string,
     companyId: string,
     command: CreateInventoryOperationDto,
   ): Promise<InventoryOperationDetailDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       operationRoot(organizationId, companyId),
       json("POST", command),
+      inventoryOperation,
     );
   }
 
@@ -126,6 +146,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param operationId - Inventory operation identifier.
    * @param command - Versioned operation changes.
    * @returns Updated operation.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   update(
     organizationId: string,
@@ -133,9 +154,11 @@ export class RemoteInventoryPort implements InventoryPort {
     operationId: string,
     command: UpdateInventoryOperationDto,
   ): Promise<InventoryOperationDetailDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       `${operationRoot(organizationId, companyId)}/${segment(operationId)}`,
       json("PATCH", command),
+      inventoryOperation,
     );
   }
 
@@ -146,6 +169,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param operationId - Inventory operation identifier.
    * @param expectedVersion - Version required for optimistic concurrency.
    * @returns Posted operation.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   post(
     organizationId: string,
@@ -153,9 +177,11 @@ export class RemoteInventoryPort implements InventoryPort {
     operationId: string,
     expectedVersion: number,
   ): Promise<InventoryOperationDetailDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       `${operationRoot(organizationId, companyId)}/${segment(operationId)}/post`,
       json("POST", { expectedVersion }),
+      inventoryOperation,
     );
   }
 
@@ -166,6 +192,7 @@ export class RemoteInventoryPort implements InventoryPort {
    * @param operationId - Inventory operation identifier.
    * @param command - Version and reversal reason.
    * @returns Reversed operation.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   reverse(
     organizationId: string,
@@ -173,9 +200,11 @@ export class RemoteInventoryPort implements InventoryPort {
     operationId: string,
     command: ReverseInventoryOperationDto,
   ): Promise<InventoryOperationDetailDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       `${operationRoot(organizationId, companyId)}/${segment(operationId)}/reverse`,
       json("POST", command),
+      inventoryOperation,
     );
   }
 
@@ -185,8 +214,11 @@ export class RemoteInventoryPort implements InventoryPort {
     companyId: string,
     query: InventoryFlowQuery,
   ): Promise<InventoryFlowPageDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${root(organizationId, companyId)}/inventory/${kind}${queryString(query)}`,
+      { method: "GET" },
+      inventoryFlowPage,
     );
   }
 }

@@ -6,6 +6,8 @@ import type {
   UserPreferencesDto,
 } from "@kontave/client-contracts";
 import type { RemoteTransport } from "../../transport";
+import { decodeRemote } from "../../decoding";
+import { currentUser, preferences } from "./decoding";
 
 /** Remote adapter for the current user's profile and preferences. */
 export class RemoteProfilePort implements ProfilePort {
@@ -15,36 +17,59 @@ export class RemoteProfilePort implements ProfilePort {
    */
   constructor(private readonly transport: RemoteTransport) {}
 
-  /** @returns The current user's profile. */
+  /** @returns The current user's profile.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   current(): Promise<CurrentUserDto> {
-    return this.transport.get("/api/client/v1/me");
+    return decodeRemote(
+      this.transport,
+      "/api/client/v1/me",
+      { method: "GET" },
+      currentUser,
+    );
   }
 
-  /** @returns The current user's presentation and regional preferences. */
+  /** @returns The current user's presentation and regional preferences.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
+   */
   preferences(): Promise<UserPreferencesDto> {
-    return this.transport.get("/api/client/v1/me/preferences");
+    return decodeRemote(
+      this.transport,
+      "/api/client/v1/me/preferences",
+      { method: "GET" },
+      preferences,
+    );
   }
 
   /**
    * Updates the current profile.
    * @param command - Versioned profile changes.
    * @returns The updated profile.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   update(command: UpdateCurrentUserDto): Promise<CurrentUserDto> {
-    return this.transport.request("/api/client/v1/me", json(command));
+    return decodeRemote(
+      this.transport,
+      "/api/client/v1/me",
+      json(command),
+      currentUser,
+    );
   }
 
   /**
    * Updates current user preferences.
    * @param command - Versioned preference changes.
    * @returns The updated preferences.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   updatePreferences(
     command: UpdateUserPreferencesDto,
   ): Promise<UserPreferencesDto> {
-    return this.transport.request(
+    return decodeRemote(
+      this.transport,
       "/api/client/v1/me/preferences",
       json(command),
+      preferences,
     );
   }
 }

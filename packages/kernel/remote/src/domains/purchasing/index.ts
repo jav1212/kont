@@ -1,3 +1,5 @@
+import { purchasingDashboard } from "./decoding";
+import { decodeRemote } from "../../decoding";
 import type {
   PurchasingDashboardDto,
   PurchasingDashboardQuery,
@@ -19,14 +21,18 @@ export class RemotePurchasingPort implements PurchasingPort {
    * @param companyId - Operational company.
    * @param query - Period, granularity and recent-document limit.
    * @returns Purchasing dashboard snapshot.
+   * @throws KontaveRemoteFailure when the transport fails or response data violates the DTO contract.
    */
   dashboard(
     organizationId: string,
     companyId: string,
     query: PurchasingDashboardQuery,
   ): Promise<PurchasingDashboardDto> {
-    return this.transport.get(
+    return decodeRemote(
+      this.transport,
       `${root(organizationId, companyId)}/purchasing/dashboard${queryString(query)}`,
+      { method: "GET" },
+      purchasingDashboard,
     );
   }
 }

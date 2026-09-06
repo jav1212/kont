@@ -6,5 +6,8 @@
   "scripts": {
     "check": "node src/check-workspace.mjs",
     "test": "node --test test/**/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
   }
 }
