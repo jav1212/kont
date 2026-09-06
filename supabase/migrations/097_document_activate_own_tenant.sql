@@ -33,7 +33,7 @@ COMO INVOCARLA
     const { data, error } = await supabase.rpc('activate_own_tenant');
   Llamarla desde el backend con SUPABASE_SERVICE_ROLE_KEY hace que auth.uid()
   sea NULL y la funcion rechace con 28000. El backend de Kont usa service-role
-  por diseno (ver CLAUDE.md "Route protection model"), por eso el callsite
+  por diseno, por eso el callsite
   natural es un Client Component, no una API route.
 
 ESTADO ACTUAL (2026-05-06)

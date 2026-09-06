@@ -1,6 +1,6 @@
 # Docs Index
 
-This folder is organized by purpose so project planning and Claude prompts stay easy to navigate.
+This folder is organized by purpose so project documentation and planning stay easy to navigate.
 
 ## Structure
 
@@ -14,10 +14,6 @@ This folder is organized by purpose so project planning and Claude prompts stay 
   - requirement planning and attack-plan tracking
 - `architecture/`
   - architecture plans, module catalogs, and future design docs
-- `claude/rules/`
-  - persistent rule sets for Claude tasks
-- `claude/tasks/`
-  - task-specific prompts for Claude execution
 
 ## Key files
 
@@ -46,18 +42,6 @@ This folder is organized by purpose so project planning and Claude prompts stay 
 
 - [requirements/README.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/requirements/README.md)
 - [requirements/templates/REQUIREMENT_TEMPLATE.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/requirements/templates/REQUIREMENT_TEMPLATE.md)
-
-### Claude rules
-
-- [claude/rules/CLAUDE_BACKEND_REFACTOR_RULES.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/rules/CLAUDE_BACKEND_REFACTOR_RULES.md)
-- [claude/rules/CLAUDE_FRONTEND_REFACTOR_RULES.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/rules/CLAUDE_FRONTEND_REFACTOR_RULES.md)
-
-### Claude tasks
-
-- [claude/tasks/CLAUDE_TASK_ATTACK_PLAN.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/tasks/CLAUDE_TASK_ATTACK_PLAN.md)
-- [claude/tasks/CLAUDE_TASK_BACKEND_REFACTOR_PLAN.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/tasks/CLAUDE_TASK_BACKEND_REFACTOR_PLAN.md)
-- [claude/tasks/CLAUDE_TASK_FRONTEND_REFACTOR_PLAN.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/tasks/CLAUDE_TASK_FRONTEND_REFACTOR_PLAN.md)
-- [claude/tasks/CLAUDE_TASK_HOOKS_DATA_PATTERN.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/claude/tasks/CLAUDE_TASK_HOOKS_DATA_PATTERN.md)
 
 ## Notes
 

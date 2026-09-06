@@ -1,7 +1,7 @@
 -- =============================================================================
 -- 095_use_company_id_as_rif.sql
 --
--- Fix: companies.id IS the RIF (per repo convention — see CLAUDE.md). Existing
+-- Fix: companies.id IS the RIF. Existing
 -- RPCs query the separate `rif` column, which was added later and is null for
 -- legacy companies → false "RIF no configurado" errors. This migration:
 --
