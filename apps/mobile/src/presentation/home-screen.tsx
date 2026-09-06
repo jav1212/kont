@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ModuleCode } from "@kontave/modules/domain";
 import type { NavigationTarget } from "@kontave/navigation";
 import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { Button, Heading, Screen, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
+import { Button, Heading, Screen, Text, reactNativeTheme as nativeTheme } from "@kontave/ui";
 import { useAuth } from "../auth/auth-context";
 import { BcvCalculatorScreen } from "./bcv-calculator-screen";
 import { mobileBreadcrumbs, mobileModuleIcon, mobileModuleNavigation, mobileStaticNavigationTarget, type MobileIconName } from "../navigation/mobile-navigation";
@@ -28,7 +28,7 @@ function WorkspaceShell(): React.JSX.Element {
   const [target, setTarget] = useState<NavigationTarget | null>(null);
 
   if ((workspace.state.status === "idle" || workspace.state.status === "loading") && !snapshot.activeWorkspace) return <Screen style={styles.center}><ActivityIndicator size="large" color={nativeTheme.color.primary} /></Screen>;
-  if (workspace.state.status === "failed" && !snapshot.activeWorkspace) return <Screen style={styles.center}><View style={styles.failureIcon}><Ionicons name="cloud-offline-outline" size={28} color={nativeTheme.color.primary} /></View><Heading style={styles.failureTitle}>No pudimos entrar</Heading><Text style={styles.centerText}>{workspace.state.error.message}</Text><Button label="Reintentar" onPress={() => { void workspace.refresh(); }} /><Button intent="neutral" label="Cerrar sesión" onPress={() => { void auth.signOut(); }} /></Screen>;
+  if (workspace.state.status === "failed" && !snapshot.activeWorkspace) return <Screen style={styles.center}><View style={styles.failureIcon}><Ionicons name="cloud-offline-outline" size={28} color={nativeTheme.color.primary} /></View><Heading style={styles.failureTitle}>No pudimos entrar</Heading><Text style={styles.centerText}>{workspace.state.error.message}</Text><Button onPress={() => { void workspace.refresh(); }}>Reintentar</Button><Button intent="neutral" onPress={() => { void auth.signOut(); }}>Cerrar sesión</Button></Screen>;
 
   return <View style={styles.shell}>
     <WorkspaceHeader onGoHome={() => { setTarget(null); setTab("home"); }} onOpenSelector={() => setSelectorOpen(true)} onOpenProfile={() => setAccountOpen(true)} />

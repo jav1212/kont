@@ -24,8 +24,8 @@ import {
   OptionPicker,
   Skeleton,
   StatusBadge,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { presentFeedback } from "../presentation/toast";
 import type { DesktopProductCategoryOverviewQuery } from "../../../renderer-bridge";
 import { runExclusiveMutation } from "../client-interaction";
 
@@ -127,12 +127,12 @@ export function ProductCategoriesView({
           <Button
             appearance="unstyled"
             aria-label="Actualizar categorías"
-            onClick={refresh}
+            onPress={refresh}
           >
             <RefreshCw className={refreshing ? "is-spinning" : undefined} />
           </Button>
           {permissions.includes("inventory.create") ? (
-            <Button onClick={() => setCreating(true)}>
+            <Button onPress={() => setCreating(true)}>
               <Plus />
               Nueva categoría
             </Button>
@@ -159,7 +159,7 @@ export function ProductCategoriesView({
             { value: "active", label: "Activos" },
             { value: "inactive", label: "Inactivos" },
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setStatus(value);
           }}
@@ -176,7 +176,7 @@ export function ProductCategoriesView({
               { value: "products", label: "Productos" },
               { value: "updatedAt", label: "Actualización" },
             ]}
-            onChange={(value) => {
+            onValueChange={(value) => {
               setCursor(undefined);
               setSort(value);
             }}
@@ -184,7 +184,7 @@ export function ProductCategoriesView({
           <Button
             appearance="unstyled"
             aria-label="Cambiar dirección"
-            onClick={() => {
+            onPress={() => {
               setCursor(undefined);
               setDirection((value) => (value === "asc" ? "desc" : "asc"));
             }}
@@ -237,7 +237,7 @@ export function ProductCategoriesView({
             <Button
               appearance="text"
               intent="neutral"
-              onClick={() => setCursor(page.nextCursor ?? undefined)}
+              onPress={() => setCursor(page.nextCursor ?? undefined)}
             >
               Cargar más
             </Button>
@@ -418,14 +418,14 @@ function CategoryDetail({
               <Button
                 appearance="text"
                 intent="neutral"
-                onClick={() => setEditing(true)}
+                onPress={() => setEditing(true)}
               >
                 Editar
               </Button>
               <Button
                 appearance="text"
                 intent="neutral"
-                onClick={() => void changeStatus()}
+                onPress={() => void changeStatus()}
               >
                 <Archive />
                 {category.status === "active" ? "Desactivar" : "Reactivar"}
@@ -561,7 +561,7 @@ function CategoryEditor({
             type="button"
             appearance="text"
             intent="neutral"
-            onClick={onClose}
+            onPress={onClose}
           >
             Cancelar
           </Button>
@@ -602,7 +602,7 @@ function Dialog({
       >
         <header>
           <h2>{title}</h2>
-          <Button appearance="unstyled" aria-label="Cerrar" onClick={onClose}>
+          <Button appearance="unstyled" aria-label="Cerrar" onPress={onClose}>
             <X />
           </Button>
         </header>

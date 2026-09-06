@@ -30,13 +30,9 @@ const LAYERS = new Set([
   "infrastructure",
   "composition",
 ]);
-// Renderer and HTTP composition packages deliberately expose outer-layer code.
-// UI contracts/tokens (@kontave/ui) retain the portable export checks.
-const OUTER_PACKAGES = new Set([
-  "@kontave/ui-dom",
-  "@kontave/ui-react-native",
-  "@kontave/client-remote",
-]);
+// UI's root is checked by renderer below; its portable subpaths stay subject
+// to the same transitive checks as every other inward-facing package.
+const OUTER_PACKAGES = new Set(["@kontave/client-remote"]);
 
 /**
  * Recursively lists source files below a directory.
@@ -209,6 +205,17 @@ function sourceTarget(target) {
   return undefined;
 }
 
+/**
+ * Collects every conditional source entry so non-default branches cannot hide leaks.
+ * @param {unknown} target - An exports-map value, including nested conditions.
+ * @returns {string[]} Unique source paths in declaration order.
+ */
+function sourceTargets(target) {
+  if (typeof target === "string") return sourceTarget(target) ? [target] : [];
+  if (!target || typeof target !== "object") return [];
+  return [...new Set(Object.values(target).flatMap(sourceTargets))];
+}
+
 /** @param {string} key @param {{manifest: object, root: string}} record @returns {string | undefined} */
 function exportedFile(key, record) {
   const exports = key.startsWith("#")
@@ -327,9 +334,102 @@ function isExplicitOuterEntry(record, key) {
   return (
     Boolean(
       entry &&
-        ["adapters", "infrastructure"].includes(layerFor(entry, record.root)),
-    ) || OUTER_PACKAGES.has(record.manifest.name)
+      ["adapters", "infrastructure"].includes(layerFor(entry, record.root)),
+    ) ||
+    OUTER_PACKAGES.has(record.manifest.name) ||
+    (record.manifest.name === "@kontave/ui" && key === ".")
   );
+}
+
+/**
+ * Enforces UI's consumer-independent foundation and separate renderer graphs.
+ * @param {{manifest: object, root: string}} record - The unified UI package.
+ * @param {string} workspaceRoot - Repository root used for diagnostic paths.
+ * @returns {Promise<string[]>} Boundary and conditional-export violations.
+ */
+async function auditUiBoundaries(record, workspaceRoot) {
+  const violations = [];
+  const scopes = ["core", "dom", "react-native"];
+  const scopeFor = (path) =>
+    scopes.find((scope) =>
+      path.startsWith(`${join(record.root, scope, "src")}${sep}`),
+    );
+  const rootExport = record.manifest.exports?.["."];
+  if (rootExport) {
+    for (const [condition, scope] of [
+      ["default", "dom"],
+      ["react-native", "react-native"],
+      ["kontave-react-native", "react-native"],
+    ]) {
+      const targets = sourceTargets(rootExport[condition]);
+      if (
+        !targets.length ||
+        targets.some(
+          (target) =>
+            scopeFor(resolve(record.root, target)) !== scope ||
+            !existsSync(resolve(record.root, target)),
+        )
+      )
+        violations.push(
+          `${relative(workspaceRoot, record.path)} UI '${condition}' export must resolve exclusively to ${scope}/src`,
+        );
+    }
+    const keys = Object.keys(rootExport);
+    if (keys.indexOf("default") !== keys.length - 1)
+      violations.push(
+        `${relative(workspaceRoot, record.path)} UI default condition must follow native conditions`,
+      );
+  }
+  for (const scope of scopes) {
+    const files = await walk(join(record.root, scope, "src"), (path) =>
+      SOURCE_EXTENSIONS.has(extname(path)),
+    );
+    for (const path of files) {
+      for (const specifier of moduleSpecifiers(
+        path,
+        await readFile(path, "utf8"),
+      )) {
+        const prefix = `${relative(workspaceRoot, path)} UI ${scope}`;
+        const target = specifier.startsWith(".")
+          ? resolveLocal(path, specifier)
+          : undefined;
+        const targetScope = target ? scopeFor(target) : undefined;
+        if (targetScope && targetScope !== scope && targetScope !== "core")
+          violations.push(
+            `${prefix} imports another renderer through '${specifier}'`,
+          );
+        if (scope === "core" && FRAMEWORK_OR_PLATFORM_PACKAGES.test(specifier))
+          violations.push(
+            `${prefix} imports framework or platform dependency '${specifier}'`,
+          );
+        if (
+          scope === "dom" &&
+          /^(?:react-native(?:\/|$)|@react-native(?:-community)?\/|expo(?:-|\/|$))/.test(
+            specifier,
+          )
+        )
+          violations.push(`${prefix} imports native dependency '${specifier}'`);
+        if (
+          scope === "react-native" &&
+          /^(?:react-dom(?:\/|$)|react-aria(?:-components)?(?:\/|$)|@react-aria\/|next(?:\/|$)|sonner$|flag-icons(?:\/|$))|\.css$/.test(
+            specifier,
+          )
+        )
+          violations.push(`${prefix} imports DOM dependency '${specifier}'`);
+        if (
+          specifier.startsWith("@kontave/") &&
+          !["@kontave/ui/tokens", "@kontave/ui/contracts"].includes(
+            specifier,
+          ) &&
+          !(scope !== "core" && specifier.startsWith("@kontave/brand-assets"))
+        )
+          violations.push(
+            `${prefix} imports consumer or business dependency '${specifier}'`,
+          );
+      }
+    }
+  }
+  return violations;
 }
 
 /**
@@ -514,17 +614,20 @@ export async function auditWorkspace(workspaceRoot) {
   for (const name of edges.keys()) visit(name);
 
   for (const record of records) {
+    if (record.manifest.name === "@kontave/ui")
+      violations.push(...(await auditUiBoundaries(record, workspaceRoot)));
     for (const [key, target] of Object.entries(record.manifest.exports ?? {})) {
       if (!sourceTarget(target) || isExplicitOuterEntry(record, key)) continue;
-      const entry = exportedFile(key, record);
-      if (
-        entry &&
-        existsSync(entry) &&
-        (await reexportsInfrastructure(entry, record, byName))
-      )
-        violations.push(
-          `${relative(workspaceRoot, record.path)} portable export '${key}' transitively exposes adapter, infrastructure, framework, or platform code`,
-        );
+      for (const source of sourceTargets(target)) {
+        const entry = resolve(record.root, source);
+        if (
+          existsSync(entry) &&
+          (await reexportsInfrastructure(entry, record, byName))
+        )
+          violations.push(
+            `${relative(workspaceRoot, record.path)} portable export '${key}' transitively exposes adapter, infrastructure, framework, or platform code`,
+          );
+      }
     }
   }
   return [...new Set(violations)].sort();

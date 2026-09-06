@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Heading, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
+import { Heading, Text, reactNativeTheme as nativeTheme } from "@kontave/ui";
 import {
   RemoteExchangeRatesFailure,
   RemoteOfficialExchangeRatesPort,

@@ -1,6 +1,6 @@
 import { Check, X } from "lucide-react";
 import { evaluatePassword } from "@kontave/auth/domain";
-import { Text } from "@kontave/ui-dom";
+import { Text } from "@kontave/ui";
 
 /**
  * Displays which password policy requirements are currently satisfied.

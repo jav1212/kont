@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Alert, Button, Heading, Screen, Text, TextField, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
+import { Alert, Button, Checkbox, Heading, Screen, Text, TextField, reactNativeTheme as nativeTheme } from "@kontave/ui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authErrorMessage, useAuth } from "../auth/auth-context";
 import { readRememberedEmail, writeRememberedEmail } from "../auth/remembered-email-storage";
@@ -102,24 +102,21 @@ export function AuthScreen(): React.JSX.Element {
             {error ? <Alert intent="danger">{error}</Alert> : null}
 
             <View style={styles.fields}>
-              {needsEmail ? <TextField controlHeight={responsive.controlHeight} label="Correo electrónico" placeholder="nombre@empresa.com" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} /> : null}
-              {needsCode ? <TextField controlHeight={responsive.controlHeight} label="Código de verificación" placeholder="00000000" keyboardType="number-pad" maxLength={8} value={code} onChangeText={setCode} /> : null}
+              {needsEmail ? <TextField controlHeight={responsive.controlHeight} label="Correo electrónico" placeholder="nombre@empresa.com" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onValueChange={setEmail} /> : null}
+              {needsCode ? <TextField controlHeight={responsive.controlHeight} label="Código de verificación" placeholder="00000000" keyboardType="number-pad" maxLength={8} value={code} onValueChange={setCode} /> : null}
               {needsPassword ? <TextField
                 label={mode === "complete-recovery" ? "Nueva contraseña" : "Contraseña"}
                 controlHeight={responsive.controlHeight}
                 labelAction={mode === "sign-in" ? <Pressable accessibilityRole="button" onPress={() => navigate("request-recovery")}><Text style={styles.fieldLink}>¿Olvidaste tu contraseña?</Text></Pressable> : undefined}
                 endAdornment={<PasswordVisibility visible={passwordVisible} onPress={() => setPasswordVisible((current) => !current)} />}
-                placeholder="••••••••" secureTextEntry={!passwordVisible} value={password} onChangeText={setPassword}
+                placeholder="••••••••" secureTextEntry={!passwordVisible} value={password} onValueChange={setPassword}
               /> : null}
-              {needsConfirmation ? <TextField controlHeight={responsive.controlHeight} label="Confirmar contraseña" placeholder="••••••••" secureTextEntry value={passwordConfirmation} onChangeText={setPasswordConfirmation} /> : null}
+              {needsConfirmation ? <TextField controlHeight={responsive.controlHeight} label="Confirmar contraseña" placeholder="••••••••" secureTextEntry value={passwordConfirmation} onValueChange={setPasswordConfirmation} /> : null}
             </View>
 
-            {mode === "sign-in" ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: remember }} onPress={() => setRemember((current) => !current)} style={styles.remember}>
-              <View style={[styles.checkbox, remember && styles.checkboxChecked]}>{remember ? <Ionicons color="#FFFFFF" name="checkmark" size={13} /> : null}</View>
-              <Text style={styles.rememberText}>Recordarme</Text>
-            </Pressable> : null}
+            {mode === "sign-in" ? <Checkbox checked={remember} label="Recordarme" onCheckedChange={setRemember} /> : null}
 
-            <Button controlHeight={responsive.controlHeight} label={actionFor(mode)} loading={busy} onPress={() => { void submit(); }} size="lg" />
+            <Button controlHeight={responsive.controlHeight} loading={busy} onPress={() => { void submit(); }} size="lg">{actionFor(mode)}</Button>
 
             {mode === "verify-registration" ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => { void auth.resendRegistration(email).catch((cause: unknown) => setError(authErrorMessage(cause))); }}><Text style={styles.centerLink}>Reenviar código</Text></Pressable> : null}
             </View>
@@ -231,7 +228,6 @@ const styles = StyleSheet.create({
   loginDescription: { color: "#667087", fontSize: 13, lineHeight: 20.8, marginTop: 15, maxWidth: 340 },
   formArea: { gap: 21, marginTop: 36 },
   fields: { gap: 22 }, fieldLink: { color: nativeTheme.color.primary, fontSize: 11, fontWeight: "700" },
-  remember: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: 9 }, checkbox: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#D4D9E2", borderRadius: 6, borderWidth: 1, height: 20, justifyContent: "center", width: 20 }, checkboxChecked: { backgroundColor: nativeTheme.color.primary, borderColor: nativeTheme.color.primary }, rememberText: { color: "#566075", fontSize: 12 },
   eyeButton: { alignItems: "center", height: 36, justifyContent: "center", width: 36 },
   centerLink: { color: nativeTheme.color.primary, fontSize: 15, fontWeight: "700", textAlign: "center" },
   register: { alignItems: "center", marginTop: 23 }, footerText: { color: "#70788B", fontSize: 11, lineHeight: 16, textAlign: "center" }, footerLink: { color: nativeTheme.color.primary, fontSize: 11, fontWeight: "700", lineHeight: 16 },

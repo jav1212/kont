@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
+import { reactNativeTheme as nativeTheme } from "@kontave/ui";
 import { useAuth } from "../auth/auth-context";
 import { AuthScreen } from "../presentation/auth-screen";
 import { AuthenticatedHome } from "../presentation/home-screen";

@@ -21,13 +21,13 @@ import {
 } from "@kontave/client-feedback/application";
 import {
   Button,
-  CurrencyFlag,
   DatePeriodPicker,
   OptionPicker,
   Skeleton,
   StatusBadge,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { CurrencyFlag } from "../presentation/currency-flag";
+import { presentFeedback } from "../presentation/toast";
 import type {
   DesktopInventoryDashboardSnapshot,
   DesktopInventoryFlowQuery,
@@ -207,12 +207,12 @@ export function InventoryOperationsView({
             appearance="unstyled"
             className="inventory-flows__refresh"
             aria-label={`Actualizar ${title}`}
-            onClick={refresh}
+            onPress={refresh}
           >
             <RefreshCw className={refreshing ? "is-spinning" : undefined} />
           </Button>
           {mode === "operations" && permissions.includes("inventory.create") ? (
-            <Button onClick={() => setCreating(true)}>
+            <Button onPress={() => setCreating(true)}>
               <Plus />
               Nueva operación
             </Button>
@@ -246,7 +246,7 @@ export function InventoryOperationsView({
           {...(presentation
             ? { max: presentation.operationContext.effectiveDate.slice(0, 7) }
             : {})}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setMonth(value);
           }}
@@ -256,7 +256,7 @@ export function InventoryOperationsView({
           value={displayCurrency}
           options={currencyOptions}
           searchable
-          onChange={setDisplayCurrency}
+          onValueChange={setDisplayCurrency}
         />
         <label className="products-search">
           <Search />
@@ -275,7 +275,7 @@ export function InventoryOperationsView({
             { value: "posted", label: "Publicado" },
             { value: "reversed", label: "Reversado" },
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setStatus(value);
           }}
@@ -288,7 +288,7 @@ export function InventoryOperationsView({
             ...REASONS.map((value) => ({ value, label: reasonLabel(value) })),
           ]}
           searchable
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setReason(value);
           }}
@@ -363,7 +363,7 @@ export function InventoryOperationsView({
           <Button
             appearance="text"
             intent="neutral"
-            onClick={() => setCursor(page.nextCursor ?? undefined)}
+            onPress={() => setCursor(page.nextCursor ?? undefined)}
           >
             Cargar más
           </Button>
@@ -577,13 +577,13 @@ function OperationDialog({
           </div>
           <footer>
             {detail.capabilities.canPost ? (
-              <Button onClick={() => void post()}>Publicar operación</Button>
+              <Button onPress={() => void post()}>Publicar operación</Button>
             ) : null}
             {detail.capabilities.canReverse ? (
               <Button
                 appearance="outline"
                 intent="danger"
-                onClick={() => void reverse()}
+                onPress={() => void reverse()}
               >
                 Reversar
               </Button>
@@ -669,7 +669,7 @@ function CreateOperationDialog({
             { value: "stock_count_adjustment", label: "Ajuste por conteo" },
             { value: "self_consumption", label: "Autoconsumo" },
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setReason(value);
             if (value === "self_consumption") setDirection("outbound");
           }}
@@ -683,7 +683,7 @@ function CreateOperationDialog({
             description: product.sku || "Sin SKU",
           }))}
           searchable
-          onChange={(value) => {
+          onValueChange={(value) => {
             setProductId(value);
             const product = products.find((item) => item.id === value);
             if (product) setUnit(product.baseUnit);
@@ -696,13 +696,13 @@ function CreateOperationDialog({
             { value: "inbound", label: "Entrada" },
             { value: "outbound", label: "Salida" },
           ]}
-          onChange={setDirection}
+          onValueChange={setDirection}
         />
         <OptionPicker
           label="Unidad"
           value={unitValue}
           options={UNITS.map((value) => ({ value, label: unit(value) }))}
-          onChange={setUnit}
+          onValueChange={setUnit}
         />
         <label>
           <span>Cantidad</span>
@@ -740,7 +740,7 @@ function CreateOperationDialog({
             type="button"
             appearance="text"
             intent="neutral"
-            onClick={onClose}
+            onPress={onClose}
           >
             Cancelar
           </Button>
@@ -779,7 +779,7 @@ function Dialog({
       >
         <header>
           <h2>{title}</h2>
-          <Button appearance="unstyled" aria-label="Cerrar" onClick={onClose}>
+          <Button appearance="unstyled" aria-label="Cerrar" onPress={onClose}>
             <X />
           </Button>
         </header>

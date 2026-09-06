@@ -151,11 +151,18 @@ Gestionan descubrimiento, conexión, reconexión y eventos de dispositivos. Elec
 
 ### Interfaz
 
+- `@kontave/ui`
 - `@kontave/ui/tokens`
 - `@kontave/brand-assets`
-- `@kontave/ui-dom`
 
-Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, feedback, badges y controles.
+`@kontave/ui` es la entrada única de controles, layout, navegación visual,
+feedback, marca y tokens de presentación. Desktop resuelve su renderer DOM
+mediante el export por defecto. Los componentes reciben propiedades y callbacks;
+no conocen empresas, sesión, rutas ni módulos. Las composiciones que sí conocen
+esos conceptos, como feedback y bloqueo global, viven en `renderer/src/presentation`.
+
+En desarrollo, abra `#ui-catalog` en la ventana Desktop para revisar los
+estados del catálogo. El catálogo no se incluye en builds de producción.
 
 ## Endpoints nativos consumidos
 

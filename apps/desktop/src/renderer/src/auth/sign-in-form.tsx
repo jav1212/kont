@@ -5,10 +5,10 @@ import {
   Card,
   Checkbox,
   LogoFull,
-  presentFeedback,
   Text,
   TextField,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { presentFeedback } from "../presentation/toast";
 import { Eye, EyeOff } from "lucide-react";
 import type { DesktopAuthState } from "../../../renderer-bridge";
 
@@ -72,7 +72,7 @@ export function SignInForm({
           type="email"
           autoComplete="username"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onValueChange={setEmail}
           required
         />
         <TextField
@@ -80,13 +80,13 @@ export function SignInForm({
           type={passwordVisible ? "text" : "password"}
           autoComplete="current-password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onValueChange={setPassword}
           labelAction={
             <Button
               appearance="text"
               size="sm"
               className="auth-text-action"
-              onClick={onForgotPassword}
+              onPress={onForgotPassword}
             >
               ¿Olvidaste tu contraseña?
             </Button>
@@ -100,7 +100,7 @@ export function SignInForm({
                 passwordVisible ? "Ocultar contraseña" : "Mostrar contraseña"
               }
               aria-pressed={passwordVisible}
-              onClick={() => setPasswordVisible((visible) => !visible)}
+              onPress={() => setPasswordVisible((visible) => !visible)}
             >
               {passwordVisible ? (
                 <EyeOff aria-hidden="true" />
@@ -114,7 +114,7 @@ export function SignInForm({
         <Checkbox
           label="Recordarme"
           checked={rememberEmail}
-          onChange={(event) => setRememberEmail(event.target.checked)}
+          onCheckedChange={setRememberEmail}
         />
         <Button type="submit" loading={loading}>
           Continuar
@@ -126,7 +126,7 @@ export function SignInForm({
           appearance="text"
           size="sm"
           className="auth-text-action"
-          onClick={onCreateAccount}
+          onPress={onCreateAccount}
         >
           Crear cuenta
         </Button>

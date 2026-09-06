@@ -28,8 +28,8 @@ import {
   OptionPicker,
   Skeleton,
   StatusBadge,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { presentFeedback } from "../presentation/toast";
 import type { DesktopProductListQuery } from "../../../renderer-bridge";
 import { runExclusiveMutation } from "../client-interaction";
 
@@ -147,12 +147,12 @@ export function ProductsView({
           <Button
             appearance="unstyled"
             aria-label="Actualizar productos"
-            onClick={() => void load()}
+            onPress={() => void load()}
           >
             <RefreshCw className={refreshing ? "is-spinning" : undefined} />
           </Button>
           {permissions.includes("inventory.create") ? (
-            <Button onClick={() => setCreating(true)}>
+            <Button onPress={() => setCreating(true)}>
               <Plus />
               Nuevo producto
             </Button>
@@ -177,7 +177,7 @@ export function ProductsView({
             { value: "inactive", label: "Inactivos" },
             { value: "all", label: "Todos" },
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setStatus(value);
           }}
@@ -191,7 +191,7 @@ export function ProductsView({
             { value: "low", label: "Stock bajo" },
             { value: "out", label: "Agotado" },
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setStock(value);
           }}
@@ -208,7 +208,7 @@ export function ProductsView({
               label: category.name,
             })),
           ]}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setCursor(undefined);
             setCategoryId(value);
           }}
@@ -227,7 +227,7 @@ export function ProductsView({
               { value: "value", label: "Valor" },
               { value: "updatedAt", label: "Actualización" },
             ]}
-            onChange={(value) => {
+            onValueChange={(value) => {
               setCursor(undefined);
               setSort(value);
             }}
@@ -235,7 +235,7 @@ export function ProductsView({
           <Button
             appearance="unstyled"
             aria-label="Cambiar dirección"
-            onClick={() => {
+            onPress={() => {
               setCursor(undefined);
               setDirection((value) => (value === "asc" ? "desc" : "asc"));
             }}
@@ -277,7 +277,7 @@ export function ProductsView({
             <Button
               appearance="text"
               intent="neutral"
-              onClick={() => setCursor(page.nextCursor ?? undefined)}
+              onPress={() => setCursor(page.nextCursor ?? undefined)}
             >
               Cargar más
             </Button>
@@ -532,7 +532,7 @@ function ProductEditor({
             type="button"
             appearance="text"
             intent="neutral"
-            onClick={onClose}
+            onPress={onClose}
           >
             Cancelar
           </Button>
@@ -718,14 +718,14 @@ function ProductDetail({
             <Button
               appearance="text"
               intent="neutral"
-              onClick={() => setEditing(true)}
+              onPress={() => setEditing(true)}
             >
               Editar
             </Button>
             <Button
               appearance="text"
               intent="neutral"
-              onClick={() => void statusChange()}
+              onPress={() => void statusChange()}
             >
               {product.status === "active" ? <Archive /> : <PackagePlus />}
               {product.status === "active" ? "Desactivar" : "Reactivar"}
@@ -811,7 +811,7 @@ function ProductDetail({
             <Button
               appearance="text"
               intent="neutral"
-              onClick={async () => {
+              onPress={async () => {
                 const result = await window.kontave.products.movements(
                   organizationId,
                   companyId,
@@ -917,7 +917,7 @@ function Overlay({
       >
         <header>
           <h2>{title}</h2>
-          <Button appearance="unstyled" aria-label="Cerrar" onClick={onClose}>
+          <Button appearance="unstyled" aria-label="Cerrar" onPress={onClose}>
             <X />
           </Button>
         </header>

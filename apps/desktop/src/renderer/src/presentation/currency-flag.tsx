@@ -1,5 +1,8 @@
-import { classNames } from "./internal/class-names";
 import "flag-icons/css/flag-icons.min.css";
+
+function classNames(...values: ReadonlyArray<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(" ");
+}
 
 export interface CurrencyFlagProps {
   readonly currency: string;
@@ -18,6 +21,11 @@ const currencyCountries: Readonly<Record<string, string>> = Object.freeze({
   VES: "VE", VND: "VN", ZAR: "ZA", USD: "US",
 });
 
+/**
+ * Renders the country flag associated with a currency code.
+ * @param props - Currency code and optional DOM styling hook.
+ * @returns A decorative flag or currency-code fallback.
+ */
 export function CurrencyFlag({ className, currency }: CurrencyFlagProps) {
   const country = currencyCountries[currency.toUpperCase()];
   return <span className={classNames("kt-currency-flag", country && "fi", country && `fi-${country.toLowerCase()}`, className)} aria-hidden="true">

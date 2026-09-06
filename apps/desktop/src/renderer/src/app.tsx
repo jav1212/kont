@@ -44,13 +44,17 @@ import {
   Card,
   StatusBadge,
   Text,
+  UiProvider,
+} from "@kontave/ui";
+import {
   WorkspaceSidebar,
-  presentFeedback,
-  PortalStatusIndicator,
   type WorkspaceSidebarAccountAction,
   type WorkspaceSidebarItem,
   type WorkspaceSidebarModule,
-} from "@kontave/ui-dom";
+} from "./presentation/workspace-sidebar";
+import { PortalStatusIndicator } from "./presentation/portal-status-indicator";
+import { presentFeedback, ToastViewport } from "./presentation/toast";
+import { GlobalInteractionBoundary } from "./presentation/global-interaction-boundary";
 import type {
   DesktopAuthState,
   DesktopBillingPlanState,
@@ -65,6 +69,8 @@ import type { ClientUpdateSnapshot } from "@kontave/client-updates/contracts";
 import { AuthExperience } from "./auth/auth-experience";
 import {
   clientInteractionAvailable,
+  handleGlobalInteractionAction,
+  interactionGate,
   restoreDesktopSession,
   synchronizeAuthenticationInteraction,
   synchronizeWorkspaceBlock,
@@ -194,8 +200,7 @@ export function App() {
     applyDesktopTheme(document.documentElement, theme);
   }, [theme]);
 
-  if (auth.status === "authenticated") {
-    return (
+  const experience = auth.status === "authenticated" ? (
       <DesktopAppShell
         auth={auth}
         billingPlan={billingPlan}
@@ -208,10 +213,14 @@ export function App() {
       >
         <DeviceCard />
       </DesktopAppShell>
-    );
-  }
+    ) : <AuthExperience state={auth} onAuthenticated={setAuth} />;
 
-  return <AuthExperience state={auth} onAuthenticated={setAuth} />;
+  return <UiProvider theme={theme} locale="es-VE">
+    <GlobalInteractionBoundary gate={interactionGate} onAction={handleGlobalInteractionAction}>
+      {experience}
+      <ToastViewport />
+    </GlobalInteractionBoundary>
+  </UiProvider>;
 }
 
 function DesktopAppShell({
@@ -520,7 +529,7 @@ function DesktopAppShell({
               className="desktop-sidebar-toggle"
               aria-label="Abrir navegación"
               aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(true)}
+              onPress={() => setDrawerOpen(true)}
             >
               <Menu />
             </Button>
@@ -529,7 +538,7 @@ function DesktopAppShell({
               appearance="unstyled"
               className="desktop-page-back"
               aria-label="Volver a Productos"
-              onClick={() =>
+              onPress={() =>
                 setActiveNavigationTarget(
                   desktopStaticNavigationTarget("inventory.products"),
                 )
@@ -544,7 +553,7 @@ function DesktopAppShell({
               aria-label={
                 settingsDetail ? "Volver a Configuración" : "Volver al módulo"
               }
-              onClick={() =>
+              onPress={() =>
                 setActiveNavigationTarget(
                   settingsDetail
                     ? desktopStaticNavigationTarget("settings")
@@ -580,7 +589,7 @@ function DesktopAppShell({
               La conexión es inestable. Algunas operaciones pueden tardar más.{" "}
               <Button
                 size="sm"
-                onClick={() => void desktopConnectivityStore.refresh()}
+                onPress={() => void desktopConnectivityStore.refresh()}
               >
                 Reintentar
               </Button>
@@ -700,7 +709,7 @@ function UpdateNotice() {
         Kontave Desktop {state.release.productVersion} está disponible.{" "}
         <Button
           size="sm"
-          onClick={() => void window.kontave.updates.download().then(setState)}
+          onPress={() => void window.kontave.updates.download().then(setState)}
         >
           Descargar
         </Button>
@@ -720,7 +729,7 @@ function UpdateNotice() {
     return (
       <Alert intent="warning">
         La actualización está lista. Guarda tu trabajo antes de reiniciar.{" "}
-        <Button size="sm" onClick={() => void window.kontave.updates.apply()}>
+        <Button size="sm" onPress={() => void window.kontave.updates.apply()}>
           Reiniciar e instalar
         </Button>
       </Alert>
@@ -733,7 +742,7 @@ function UpdateNotice() {
         {state.failure.retryable ? (
           <Button
             size="sm"
-            onClick={() => void retryUpdate(state).then(setState)}
+            onPress={() => void retryUpdate(state).then(setState)}
           >
             Reintentar
           </Button>
@@ -828,7 +837,7 @@ function DeviceCard() {
       </dl>
       {error ? <Alert intent="danger">{error}</Alert> : null}
       <div className="device-actions">
-        <Button loading={connecting} onClick={() => void connect()}>
+        <Button loading={connecting} onPress={() => void connect()}>
           Conectar scanner
         </Button>
       </div>

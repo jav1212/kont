@@ -5,6 +5,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noEmit": true,
+    "customConditions": ["kontave-react-native"],
     "paths": {
       "@/*": ["./src/*"]
     }

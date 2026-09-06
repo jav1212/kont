@@ -3,7 +3,8 @@ import {
   errorFeedback,
   successFeedback,
 } from "@kontave/client-feedback/application";
-import { Button, Card, presentFeedback, TextField } from "@kontave/ui-dom";
+import { Button, Card, TextField } from "@kontave/ui";
+import { presentFeedback } from "../presentation/toast";
 import type { DesktopAuthState } from "../../../renderer-bridge";
 import { PasswordRequirements } from "./password-requirements";
 import { AuthHeading } from "./sign-in-form";
@@ -134,7 +135,7 @@ export function RegistrationForm({
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onValueChange={setEmail}
               required
             />
             <div className="auth-password-grid">
@@ -143,7 +144,7 @@ export function RegistrationForm({
                 type="password"
                 autoComplete="new-password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onValueChange={setPassword}
                 required
               />
               <TextField
@@ -151,7 +152,7 @@ export function RegistrationForm({
                 type="password"
                 autoComplete="new-password"
                 value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
+                onValueChange={setConfirmation}
                 required
               />
             </div>
@@ -176,7 +177,7 @@ export function RegistrationForm({
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onValueChange={setCode}
               required
             />
             <Button type="submit" loading={loading}>
@@ -187,7 +188,7 @@ export function RegistrationForm({
               size="sm"
               className="auth-text-action"
               disabled={loading}
-              onClick={() => void resend()}
+              onPress={() => void resend()}
             >
               Reenviar código
             </Button>
@@ -199,7 +200,7 @@ export function RegistrationForm({
           appearance="text"
           size="sm"
           className="auth-text-action"
-          onClick={onBack}
+          onPress={onBack}
         >
           Volver al inicio de sesión
         </Button>

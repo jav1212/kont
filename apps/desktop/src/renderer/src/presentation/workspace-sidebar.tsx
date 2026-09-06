@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "./button";
-import { LogoFull, LogoMark } from "./logo";
-import { classNames } from "./internal/class-names";
-import { Text } from "./text";
+import { Button, ImageWithFallback, LogoFull, LogoMark, Text } from "@kontave/ui";
 import { SubscriptionPlanBadge } from "./subscription-plan-badge";
-import { ImageWithFallback } from "./image-with-fallback";
 
+function classNames(...values: ReadonlyArray<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(" ");
+}
+
+/** Desktop shell layouts supported by the workspace navigation. */
 export type WorkspaceSidebarPresentation = "persistent" | "collapsed" | "drawer";
 
+/** A module available in the current Desktop workspace. */
 export interface WorkspaceSidebarModule {
   readonly id: string;
   readonly label: string;
@@ -15,6 +17,7 @@ export interface WorkspaceSidebarModule {
   readonly icon?: ReactNode;
 }
 
+/** A company selectable in the authenticated workspace. */
 export interface WorkspaceSidebarCompany {
   readonly id: string;
   readonly name: string;
@@ -22,6 +25,7 @@ export interface WorkspaceSidebarCompany {
   readonly logoUrl?: string;
 }
 
+/** A route-level item rendered in workspace navigation. */
 export interface WorkspaceSidebarItem {
   readonly id: string;
   readonly label: string;
@@ -32,12 +36,14 @@ export interface WorkspaceSidebarItem {
   readonly startsGroup?: boolean;
 }
 
+/** A labeled group of route-level navigation items. */
 export interface WorkspaceSidebarSection {
   readonly id: string;
   readonly label?: string;
   readonly items: readonly WorkspaceSidebarItem[];
 }
 
+/** The signed-in identity rendered in the sidebar account menu. */
 export interface WorkspaceSidebarAccount {
   readonly name: string;
   readonly email?: string;
@@ -49,6 +55,7 @@ export interface WorkspaceSidebarAccount {
   readonly workspaceSectionLabel?: string;
 }
 
+/** A workspace identity available to the signed-in Desktop user. */
 export interface WorkspaceSidebarWorkspace {
   readonly id: string;
   readonly name: string;
@@ -59,6 +66,7 @@ export interface WorkspaceSidebarWorkspace {
   readonly relationship: "personal" | "member" | "delegated";
 }
 
+/** An action offered from the account-menu presentation. */
 export interface WorkspaceSidebarAccountAction {
   readonly id: string;
   readonly label: string;
@@ -68,6 +76,7 @@ export interface WorkspaceSidebarAccountAction {
   readonly indicator?: ReactNode;
 }
 
+/** Inputs that compose Desktop workspace navigation and account presentation. */
 export interface WorkspaceSidebarProps {
   readonly presentation?: WorkspaceSidebarPresentation;
   readonly open?: boolean;
@@ -96,6 +105,11 @@ export interface WorkspaceSidebarProps {
   readonly onThemeChange?: (theme: "light" | "dark") => void;
 }
 
+/**
+ * Renders Desktop navigation for workspace, company, module, and account state.
+ * @param props - Desktop navigation state and selection callbacks.
+ * @returns The Desktop workspace sidebar.
+ */
 export function WorkspaceSidebar({
   account,
   accountActions = [],
@@ -139,7 +153,7 @@ export function WorkspaceSidebar({
         className="kt-workspace-sidebar__brand-toggle"
         aria-label={headerActionLabel}
         title={headerActionLabel}
-        onClick={onHeaderAction}
+        onPress={onHeaderAction}
       >
         <span className="kt-workspace-sidebar__brand-toggle-logo" aria-hidden="true">
           {compact ? <LogoMark size={25} /> : <LogoFull size={25} />}
@@ -150,7 +164,7 @@ export function WorkspaceSidebar({
         appearance="unstyled"
         className="kt-workspace-sidebar__icon-button"
         aria-label="Cerrar navegación"
-        onClick={() => onOpenChange?.(false)}
+        onPress={() => onOpenChange?.(false)}
       >{closeIcon ?? <CloseIcon />}</Button> : null}
     </header>
 
@@ -250,7 +264,7 @@ function Selector<TEntry extends SelectorEntry>({
       className="kt-sidebar-selector__trigger"
       aria-expanded={open}
       aria-haspopup="listbox"
-      onClick={() => setOpen((current) => {
+      onPress={() => setOpen((current) => {
         if (!current) setQuery("");
         return !current;
       })}
@@ -274,7 +288,7 @@ function Selector<TEntry extends SelectorEntry>({
             aria-label={kind === "module" ? "Buscar módulo" : "Buscar empresa"}
           />
         </label>
-        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onClick={() => setOpen(false)}>Esc</Button>
+        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onPress={() => setOpen(false)}>Esc</Button>
       </div>
       <div className="kt-sidebar-menu__options">
       {visibleItems.map((item) => {
@@ -287,7 +301,7 @@ function Selector<TEntry extends SelectorEntry>({
           role="option"
           aria-selected={active}
           key={item.id}
-          onClick={() => {
+          onPress={() => {
             onSelect?.(item.id);
             setOpen(false);
           }}
@@ -345,7 +359,7 @@ function WorkspaceContextSelector({ items, onSelect, selected }: {
       className="kt-workspace-context__trigger"
       aria-expanded={canSwitch ? open : undefined}
       aria-haspopup={canSwitch ? "listbox" : undefined}
-      onClick={() => canSwitch && setOpen((current) => {
+      onPress={() => canSwitch && setOpen((current) => {
         if (!current) setQuery("");
         return !current;
       })}
@@ -363,7 +377,7 @@ function WorkspaceContextSelector({ items, onSelect, selected }: {
           <SearchIcon />
           <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cuenta..." aria-label="Buscar cuenta" />
         </label>
-        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onClick={() => setOpen(false)}>Esc</Button>
+        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onPress={() => setOpen(false)}>Esc</Button>
       </div>
       <div className="kt-workspace-context__options">
         <WorkspaceGroup label="Mi cuenta" items={personal} selectedId={selected?.id} onSelect={(id) => { onSelect?.(id); setOpen(false); }} />
@@ -391,7 +405,7 @@ function WorkspaceGroup({ items, label, onSelect, selectedId }: {
       role="option"
       aria-selected={item.id === selectedId}
       key={item.id}
-      onClick={() => onSelect(item.id)}
+      onPress={() => onSelect(item.id)}
     >
       <WorkspaceAvatar workspace={item} small />
       <Text className="kt-workspace-context__copy" tone="inherit">
@@ -444,7 +458,7 @@ function NavigationItem({ compact, item, onSelect }: {
       className="kt-workspace-sidebar__item"
       data-active={item.active === true}
       data-hierarchy={item.hierarchy ?? "root"}
-      onClick={() => onSelect?.(item.id)}
+      onPress={() => onSelect?.(item.id)}
     >
       {item.active ? <Text className="kt-workspace-sidebar__active-bar" tone="inherit" aria-hidden="true" /> : null}
       <Text className="kt-workspace-sidebar__item-icon" tone="inherit" aria-hidden="true">{item.icon}</Text>
@@ -486,7 +500,7 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
       aria-label={`Cuenta: ${triggerName}. Abrir menú`}
       aria-expanded={open}
       aria-haspopup="menu"
-      onClick={() => setOpen((current) => !current)}
+      onPress={() => setOpen((current) => !current)}
     >
       <Text className="kt-sidebar-account__avatar" tone="inherit" aria-hidden="true">
         <ImageWithFallback alt="" src={triggerAvatarUrl} fallback={triggerInitial} />
@@ -518,7 +532,7 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
             aria-checked={selected}
             data-active={selected}
             key={workspace.id}
-            onClick={() => {
+            onPress={() => {
               onSelectWorkspace?.(workspace.id);
               setOpen(false);
             }}
@@ -539,8 +553,8 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
         <div className="kt-sidebar-account__theme-row">
           <Text tone="inherit">Tema</Text>
           <div className="kt-sidebar-account__theme-controls">
-            <Button appearance="unstyled" aria-label="Usar tema claro" aria-pressed={account.theme === "light"} data-active={account.theme === "light"} onClick={() => onThemeChange?.("light")}><SunIcon /></Button>
-            <Button appearance="unstyled" aria-label="Usar tema oscuro" aria-pressed={account.theme === "dark"} data-active={account.theme === "dark"} onClick={() => onThemeChange?.("dark")}><MoonIcon /></Button>
+            <Button appearance="unstyled" aria-label="Usar tema claro" aria-pressed={account.theme === "light"} data-active={account.theme === "light"} onPress={() => onThemeChange?.("light")}><SunIcon /></Button>
+            <Button appearance="unstyled" aria-label="Usar tema oscuro" aria-pressed={account.theme === "dark"} data-active={account.theme === "dark"} onPress={() => onThemeChange?.("dark")}><MoonIcon /></Button>
           </div>
         </div>
         {menuActions.map((action) => <AccountActionButton action={action} key={action.id} onAction={onAction} close={() => setOpen(false)} />)}
@@ -566,7 +580,7 @@ function AccountActionButton({ action, close, iconOnly = false, onAction }: {
     aria-label={iconOnly ? action.label : undefined}
     data-placement={action.placement ?? "menu"}
     data-tone={action.tone ?? "default"}
-    onClick={() => {
+    onPress={() => {
       onAction?.(action.id);
       close();
     }}

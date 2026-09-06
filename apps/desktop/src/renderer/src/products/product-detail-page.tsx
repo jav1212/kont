@@ -24,13 +24,13 @@ import {
 } from "@kontave/client-feedback/application";
 import {
   Button,
-  CurrencyFlag,
   DatePicker,
   OptionPicker,
   Skeleton,
   StatusBadge,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { CurrencyFlag } from "../presentation/currency-flag";
+import { presentFeedback } from "../presentation/toast";
 import { runExclusiveMutation } from "../client-interaction";
 import type { DesktopInventoryDashboardSnapshot } from "../../../renderer-bridge";
 
@@ -162,7 +162,7 @@ export function ProductDetailPage({
             iconOnly
             aria-label="Actualizar producto"
             title="Actualizar producto"
-            onClick={() => setReload((v) => v + 1)}
+            onPress={() => setReload((v) => v + 1)}
           >
             <RefreshCw />
           </Button>
@@ -171,7 +171,7 @@ export function ProductDetailPage({
               size="sm"
               appearance="outline"
               intent={product.status === "active" ? "danger" : "primary"}
-              onClick={() => void status()}
+              onPress={() => void status()}
             >
               <Archive />
               {product.status === "active" ? "Desactivar" : "Reactivar"}
@@ -366,7 +366,7 @@ function IdentityForm({
                 label: category.name,
               })),
             ]}
-            onChange={setCategoryId}
+            onValueChange={setCategoryId}
           />
         </Field>
         <Field label="Unidad base">
@@ -374,7 +374,7 @@ function IdentityForm({
             label="Unidad base"
             value={baseUnit}
             options={UNITS.map((value) => ({ value, label: unit(value) }))}
-            onChange={setBaseUnit}
+            onValueChange={setBaseUnit}
           />
         </Field>
         <Field label="Descripción">
@@ -458,7 +458,7 @@ function PricingForm({
               { value: "fixed", label: "Monto fijo" },
               { value: "markup", label: "Porcentaje sobre costo" },
             ]}
-            onChange={setMode}
+            onValueChange={setMode}
           />
         </Field>
         {mode !== "none" ? (
@@ -541,14 +541,14 @@ function TaxForm({
               { value: "exonerated", label: "Exonerado" },
               { value: "not_subject", label: "No sujeto" },
             ]}
-            onChange={setTreatment}
+            onValueChange={setTreatment}
           />
         </Field>
         <Field label="Vigente desde">
           <DatePicker
             label="Vigente desde"
             value={effectiveFrom}
-            onChange={setEffectiveFrom}
+            onValueChange={setEffectiveFrom}
           />
         </Field>
         <Field label="Base legal">
@@ -617,7 +617,7 @@ function UnitEconomics({
             options={currencies}
             searchable
             searchPlaceholder="Buscar moneda..."
-            onChange={onCurrency}
+            onValueChange={onCurrency}
           />
           <OptionPicker
             label="Agrupación"
@@ -627,7 +627,7 @@ function UnitEconomics({
               { value: "week", label: "Semana" },
               { value: "month", label: "Mes" },
             ]}
-            onChange={onGranularity}
+            onValueChange={onGranularity}
           />
         </div>
       }

@@ -12,7 +12,9 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `portal-monitoring/`: disponibilidad y tiempos de respuesta de portales públicos externos; no representa la salud interna de Kontave.
 - `capabilities/auth/`: dominio, casos de uso y adaptadores de autenticación.
 - `business/billing/`: facturación, suscripciones, capacidades, consumo y adaptadores organizacionales.
-- `ui/`: contratos visuales, tokens, marca y componentes por tecnología de renderizado.
+- `ui/`: catálogo visual único `@kontave/ui`, contratos y tokens portables,
+  marca y adaptadores internos por renderer. Consulte su
+  [README](ui/README.md) y el [estándar del sistema de diseño](../docs/standards/design-system.md).
 - `history/`: historial Memento portable para borradores y adaptadores de presentación por plataforma.
 - `capabilities/organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
 - `capabilities/delegated-access/`: grants de acceso entre organizaciones, scopes, vigencia, asignaciones y resolución de caminos delegados.

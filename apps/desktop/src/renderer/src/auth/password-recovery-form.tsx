@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { errorFeedback } from "@kontave/client-feedback/application";
-import { Button, Card, presentFeedback, TextField } from "@kontave/ui-dom";
+import { Button, Card, TextField } from "@kontave/ui";
+import { presentFeedback } from "../presentation/toast";
 import { PasswordRequirements } from "./password-requirements";
 import { AuthHeading } from "./sign-in-form";
 
@@ -118,7 +119,7 @@ export function PasswordRecoveryForm({
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onValueChange={setEmail}
               required
             />
             <Button type="submit" loading={loading}>
@@ -142,7 +143,7 @@ export function PasswordRecoveryForm({
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onValueChange={setCode}
               required
             />
             <Button type="submit" loading={loading}>
@@ -169,7 +170,7 @@ export function PasswordRecoveryForm({
                 type="password"
                 autoComplete="new-password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onValueChange={setPassword}
                 required
               />
               <TextField
@@ -177,7 +178,7 @@ export function PasswordRecoveryForm({
                 type="password"
                 autoComplete="new-password"
                 value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
+                onValueChange={setConfirmation}
                 required
               />
             </div>
@@ -196,7 +197,7 @@ export function PasswordRecoveryForm({
             description="Ya puedes iniciar sesión con tu nueva contraseña."
             titleId="recovery-title"
           />
-          <Button onClick={onBack}>Volver al inicio de sesión</Button>
+          <Button onPress={onBack}>Volver al inicio de sesión</Button>
         </div>
       ) : null}
       {stage !== "success" ? (
@@ -205,7 +206,7 @@ export function PasswordRecoveryForm({
             appearance="text"
             size="sm"
             className="auth-text-action"
-            onClick={onBack}
+            onPress={onBack}
           >
             Volver al inicio de sesión
           </Button>

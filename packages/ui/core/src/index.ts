@@ -1,6 +1,9 @@
 export type {
   FieldLoadingState,
+  DatePeriod,
   InteractiveState,
+  IsoDate,
+  OptionPickerEntry,
   SkeletonContract,
   SkeletonVariant,
   SkeletonWidth,

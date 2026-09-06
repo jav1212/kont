@@ -36,7 +36,7 @@ import {
   type NavigationParametersByDestination,
   type NavigationTarget,
 } from "@kontave/navigation";
-import type { WorkspaceSidebarSection } from "@kontave/ui-dom";
+import type { WorkspaceSidebarSection } from "./presentation/workspace-sidebar";
 
 type DynamicDestinationId = keyof NavigationParametersByDestination;
 type StaticDestinationId = Exclude<

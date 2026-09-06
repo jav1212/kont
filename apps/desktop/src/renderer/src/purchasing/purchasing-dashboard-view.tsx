@@ -9,12 +9,12 @@ import {
 } from "lucide-react";
 import {
   Button,
-  CurrencyFlag,
   DatePeriodPicker,
   OptionPicker,
   Skeleton,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { CurrencyFlag } from "../presentation/currency-flag";
+import { presentFeedback } from "../presentation/toast";
 import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type { PurchasingDashboardDayDto } from "@kontave/client-contracts";
 import type {
@@ -146,7 +146,7 @@ export function PurchasingDashboardView({ organizationId, companyId }: Props) {
             label="Período mensual"
             value={month}
             max={operationContext.effectiveDate.slice(0, 7)}
-            onChange={selectMonth}
+            onValueChange={selectMonth}
           />
           <OptionPicker
             label="Moneda de presentación"
@@ -154,13 +154,13 @@ export function PurchasingDashboardView({ organizationId, companyId }: Props) {
             options={options}
             searchable
             searchPlaceholder="Buscar moneda..."
-            onChange={setCurrency}
+            onValueChange={setCurrency}
           />
           <Button
             appearance="unstyled"
             className="inventory-dashboard__refresh"
             aria-label="Actualizar tablero"
-            onClick={() => load(monthQuery(month))}
+            onPress={() => load(monthQuery(month))}
           >
             <RefreshCw />
           </Button>
@@ -440,7 +440,7 @@ function ErrorView({
       {failure?.requestId ? (
         <small>Solicitud: {failure.requestId}</small>
       ) : null}
-      <Button onClick={retry}>Reintentar</Button>
+      <Button onPress={retry}>Reintentar</Button>
     </div>
   );
 }

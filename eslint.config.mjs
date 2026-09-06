@@ -31,6 +31,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "apps/*/out/**",
     "apps/*/release/**",
+    "tooling/*/out/**",
     "next-env.d.ts",
     // Generated service worker — not editable source
     "public/sw.js",

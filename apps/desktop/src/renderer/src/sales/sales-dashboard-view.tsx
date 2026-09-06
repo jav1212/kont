@@ -17,13 +17,13 @@ import {
 } from "@kontave/monetary/domain";
 import {
   Button,
-  CurrencyFlag,
   DatePeriodPicker,
   OptionPicker,
   Skeleton,
   Text,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { CurrencyFlag } from "../presentation/currency-flag";
+import { presentFeedback } from "../presentation/toast";
 import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type {
   SalesDashboardDailyPointDto,
@@ -120,7 +120,7 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
         <Text>
           {error ?? "No fue posible consultar las ventas de esta empresa."}
         </Text>
-        <Button disabled={refreshing} onClick={() => load()}>
+        <Button disabled={refreshing} onPress={() => load()}>
           {refreshing ? "Reintentando…" : "Reintentar"}
         </Button>
       </div>
@@ -161,7 +161,7 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
             label="Período mensual"
             value={month}
             max={operationContext.effectiveDate.slice(0, 7)}
-            onChange={(value) => {
+            onValueChange={(value) => {
               setMonth(value);
               load(monthQuery(value, operationContext.effectiveDate));
             }}
@@ -172,14 +172,14 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
             options={options}
             searchable
             searchPlaceholder="Buscar moneda..."
-            onChange={setDisplayCurrency}
+            onValueChange={setDisplayCurrency}
           />
           <Button
             appearance="unstyled"
             className="inventory-dashboard__refresh"
             aria-label="Actualizar tablero de ventas"
             disabled={refreshing}
-            onClick={() =>
+            onPress={() =>
               load(monthQuery(month, operationContext.effectiveDate))
             }
           >
@@ -192,7 +192,7 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
           <Text>{error}</Text>
           <Button
             size="sm"
-            onClick={() =>
+            onPress={() =>
               load(monthQuery(month, operationContext.effectiveDate))
             }
           >

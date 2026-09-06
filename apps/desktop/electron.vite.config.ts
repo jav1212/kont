@@ -61,5 +61,12 @@ export default defineConfig({
       },
     },
   },
-  renderer: { plugins: [react(), developmentContentSecurityPolicy()] },
+  renderer: {
+    plugins: [react(), developmentContentSecurityPolicy()],
+    resolve: {
+      // Workspace UI is linked during development; ensure it shares Desktop's
+      // React runtime instead of bundling a second copy from its own package.
+      dedupe: ["react", "react-dom"],
+    },
+  },
 });

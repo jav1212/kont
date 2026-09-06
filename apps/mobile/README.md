@@ -4,6 +4,27 @@ Cliente nativo de Kontave construido con Expo, React Native y Expo Router. Consu
 
 La aplicación Web de producción y Desktop no dependen de Mobile.
 
+## Interfaz
+
+Mobile importa sus primitivas desde la única entrada `@kontave/ui`; Metro
+resuelve la condición `kontave-react-native`. `UiProvider` recibe el tema y
+locale que decide la aplicación, mientras que los componentes permanecen
+independientes de sesión, navegación, datos y reglas de negocio.
+
+Los campos controlados comunican texto mediante `onValueChange`, los checkboxes
+mediante `onCheckedChange` y los selectores mediante `onValueChange`. Los
+selectores de fecha mantienen valores calendario `YYYY-MM-DD` y los de período
+`YYYY-MM`, con límites inclusivos opcionales. `DatePicker` usa el control
+nativo en iOS y Android; Expo Web usa el control web incluido en el paquete.
+`DatePeriodPicker` mantiene una cuadrícula de meses en todas las plataformas.
+
+Este cambio de biblioteca no modifica el ejecutable nativo, el proceso de firma
+ni la publicación en tiendas; sólo cambia la resolución del paquete en los
+clientes existentes.
+
+En desarrollo, la ruta `/ui-catalog` permite revisar el catálogo. En builds de
+producción redirige al inicio.
+
 ## Desarrollo
 
 Desde la raíz del monorepo:

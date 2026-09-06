@@ -1,6 +1,6 @@
 # ADR 0038: Núcleo UI portable y adaptadores por renderer
 
-- Estado: aceptado
+- Estado: sustituido por ADR 0040
 - Fecha: 2026-08-28
 
 ## Contexto

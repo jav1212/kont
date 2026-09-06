@@ -1,5 +1,5 @@
 import type { KontaveTheme } from "@kontave/ui/tokens";
-import { applyDesignTokens } from "@kontave/ui-dom";
+import { applyDesignTokens } from "@kontave/ui";
 
 const desktopSansFont =
   '"Darker Grotesque", ui-sans-serif, system-ui, sans-serif';
@@ -16,9 +16,15 @@ export function applyDesktopTheme(
   root: HTMLElement,
   theme: KontaveTheme,
 ): void {
-  applyDesignTokens(root, theme);
-  root.style.setProperty("--kt-font-body", desktopSansFont);
-  root.style.setProperty("--kt-font-display", desktopSansFont);
-  root.style.setProperty("--kt-font-action", desktopSansFont);
-  root.style.setProperty("--kt-font-mono", desktopMonoFont);
+  applyDesktopThemeTokens(root, theme);
+  const providerRoot = root.querySelector<HTMLElement>("[data-kontave-theme]");
+  if (providerRoot) applyDesktopThemeTokens(providerRoot, theme);
+}
+
+function applyDesktopThemeTokens(target: HTMLElement, theme: KontaveTheme): void {
+  applyDesignTokens(target, theme);
+  target.style.setProperty("--kt-font-body", desktopSansFont);
+  target.style.setProperty("--kt-font-display", desktopSansFont);
+  target.style.setProperty("--kt-font-action", desktopSansFont);
+  target.style.setProperty("--kt-font-mono", desktopMonoFont);
 }

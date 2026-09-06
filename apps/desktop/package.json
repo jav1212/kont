@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@fontsource/darker-grotesque": "^5.2.8",
+    "@internationalized/date": "^3.12.0",
     "@kontave/access-control": "workspace:*",
     "@kontave/auth": "workspace:*",
     "@kontave/brand-assets": "workspace:*",
@@ -35,15 +36,17 @@
     "@kontave/delegated-access": "workspace:*",
     "@kontave/organizations": "workspace:*",
     "@kontave/settings": "workspace:*",
-    "@kontave/ui-dom": "workspace:*",
     "@kontave/workspace-context-application": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
     "chart.js": "^4.5.1",
     "electron-updater": "^6.8.9",
+    "flag-icons": "^7.5.0",
     "lucide-react": "^1.7.0",
     "react": "19.2.3",
+    "react-aria-components": "^1.12.0",
     "react-dom": "19.2.3",
-    "serialport": "^13.0.0"
+    "serialport": "^13.0.0",
+    "sonner": "^1.7.4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

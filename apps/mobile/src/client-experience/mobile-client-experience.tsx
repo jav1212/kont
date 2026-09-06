@@ -10,7 +10,7 @@ import { PresentFeedback, codedErrorFeedback, type ClientFeedback, type Feedback
 import { GlobalInteractionGate, type InteractionBlock, type InteractionBlockLease } from "@kontave/client-interaction/application";
 import { ClientUpdateCoordinator, ClientUpdateFailure, type ClientUpdateCheckResult, type ClientUpdateProvider } from "@kontave/client-updates/application";
 import type { ClientUpdateCapabilities, ClientUpdateRelease, ClientUpdateSnapshot, InstalledClientRelease } from "@kontave/client-updates/contracts";
-import { Button, Text, reactNativeTheme as nativeTheme } from "@kontave/ui-react-native";
+import { Button, Text, reactNativeTheme as nativeTheme } from "@kontave/ui";
 
 interface ClientExperienceValue {
   readonly connectivity: ConnectivitySnapshot;
@@ -119,7 +119,7 @@ function feedbackVisual(intent: ClientFeedback["intent"]): { readonly icon: keyo
 
 function InteractionBoundary({ block, retry }: { readonly block: InteractionBlock; readonly retry: () => void }): React.JSX.Element {
   const canRetry = block.actions.some((action) => action.kind === "retry");
-  return <View style={styles.blockingBackdrop}><View style={styles.blockingCard}>{block.state === "working" ? <ActivityIndicator size="large" color={nativeTheme.color.primary} /> : null}<Text style={styles.blockingTitle}>{block.message}</Text>{block.description ? <Text style={styles.blockingDescription}>{block.description}</Text> : null}{canRetry ? <Button label="Reintentar" onPress={retry} /> : null}</View></View>;
+  return <View style={styles.blockingBackdrop}><View style={styles.blockingCard}>{block.state === "working" ? <ActivityIndicator size="large" color={nativeTheme.color.primary} /> : null}<Text style={styles.blockingTitle}>{block.message}</Text>{block.description ? <Text style={styles.blockingDescription}>{block.description}</Text> : null}{canRetry ? <Button onPress={retry}>Reintentar</Button> : null}</View></View>;
 }
 
 function UpdateNotice({ state, coordinator }: { readonly state: ClientUpdateSnapshot; readonly coordinator: ClientUpdateCoordinator }): React.JSX.Element | null {

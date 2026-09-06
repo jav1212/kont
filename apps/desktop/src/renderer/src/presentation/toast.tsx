@@ -8,11 +8,21 @@ import {
 
 type CopyText = (value: string) => void | Promise<void>;
 
+/** Adapts client feedback contracts to the Desktop Sonner viewport. */
 export class SonnerFeedbackPresenter implements FeedbackPresenter {
   private readonly sonnerIds = new Map<FeedbackHandle, string | number>();
 
+  /**
+   * Creates a Desktop feedback presenter.
+   * @param copyText - Safe renderer-side clipboard operation for reference codes.
+   */
   constructor(private readonly copyText: CopyText = copyWithBrowserClipboard) {}
 
+  /**
+   * Displays client feedback in the Desktop viewport.
+   * @param feedback - Classified feedback to show to the user.
+   * @returns A handle that can later dismiss the displayed notification.
+   */
   present(feedback: ClientFeedback): FeedbackHandle {
     const referenceCode = feedback.referenceCode;
     const options = {
@@ -32,6 +42,11 @@ export class SonnerFeedbackPresenter implements FeedbackPresenter {
     return handle;
   }
 
+  /**
+   * Dismisses a previously displayed feedback notification.
+   * @param handle - Handle returned by {@link present}.
+   * @returns Nothing.
+   */
   dismiss(handle: FeedbackHandle): void {
     toast.dismiss(this.sonnerIds.get(handle) ?? handle);
     this.sonnerIds.delete(handle);
@@ -46,6 +61,10 @@ function copyWithBrowserClipboard(value: string): void | Promise<void> {
   return navigator.clipboard.writeText(value);
 }
 
+/**
+ * Renders the shared Desktop feedback viewport.
+ * @returns The Sonner notification viewport.
+ */
 export function ToastViewport() {
   return <Toaster
     position="bottom-right"

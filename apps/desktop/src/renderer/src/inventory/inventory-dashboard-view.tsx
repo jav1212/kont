@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import {
   Button,
-  CurrencyFlag,
   DatePeriodPicker,
   OptionPicker,
   Skeleton,
-  presentFeedback,
-} from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { CurrencyFlag } from "../presentation/currency-flag";
+import { presentFeedback } from "../presentation/toast";
 import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type {
   InventoryDashboardChartPointDto,
@@ -93,7 +93,7 @@ export function InventoryDashboardView({ companyId, organizationId }: InventoryD
         <Boxes />
         <h2>El tablero no está disponible</h2>
         <p>Vuelve a intentarlo para consultar el inventario de esta empresa.</p>
-        <Button onClick={() => load()}>Reintentar</Button>
+        <Button onPress={() => load()}>Reintentar</Button>
       </div>
     );
 
@@ -135,7 +135,7 @@ export function InventoryDashboardView({ companyId, organizationId }: InventoryD
             label="Período mensual"
             value={selectedMonth}
             max={operationContext.effectiveDate.slice(0, 7)}
-            onChange={selectMonth}
+            onValueChange={selectMonth}
           />
           <OptionPicker
             label="Moneda de presentación"
@@ -143,14 +143,14 @@ export function InventoryDashboardView({ companyId, organizationId }: InventoryD
             options={currencyOptions}
             searchable
             searchPlaceholder="Buscar moneda..."
-            onChange={setDisplayCurrency}
+            onValueChange={setDisplayCurrency}
           />
           <Button
             appearance="unstyled"
             className="inventory-dashboard__refresh"
             aria-label="Actualizar tablero"
             title="Actualizar tablero"
-            onClick={() =>
+            onPress={() =>
               load(monthQuery(selectedMonth, operationContext.effectiveDate))
             }
           >

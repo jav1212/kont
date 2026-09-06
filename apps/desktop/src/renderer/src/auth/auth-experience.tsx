@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, LogoFull, PageShell, Text } from "@kontave/ui-dom";
+import { Card, LogoFull, PageShell, Text } from "@kontave/ui";
 import type { DesktopAuthState } from "../../../renderer-bridge";
 import { PasswordRecoveryForm } from "./password-recovery-form";
 import { RegistrationForm } from "./registration-form";

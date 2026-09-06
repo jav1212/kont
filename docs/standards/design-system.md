@@ -1,15 +1,35 @@
 # Estándar del sistema de diseño
 
-## Paquetes
+## Paquete y API pública
 
-- `ui`: contratos, valores portables y temas semánticos, expuestos por `@kontave/ui/contracts` y `@kontave/ui/tokens`.
-- `brand-assets`: fuentes canónicas de identidad.
-- `ui-dom`: primitivas React DOM independientes del cliente para Web, Desktop y otros hosts DOM.
-- `ui-react-native`: primitivas React Native consumidas por Mobile.
+`@kontave/ui` es la única entrada de componentes para Desktop, Mobile y un
+futuro cliente Web. Sus exports condicionales seleccionan React DOM por defecto
+y React Native para las condiciones `kontave-react-native` o `react-native`.
+Las aplicaciones no importan directorios internos ni eligen un adaptador.
+
+`@kontave/ui/contracts` expone contratos portables y `@kontave/ui/tokens`
+expone tokens y tipos de tema. `@kontave/brand-assets` conserva las fuentes
+canónicas de identidad. La decisión y los límites de distribución se describen
+en el [ADR 0040](../adr/0040-unified-ui-package-with-renderer-conditions.md).
 
 ## Selección de capa
 
-Una regla o estado de negocio no pertenece a UI. Un layout específico de una pantalla pertenece a su aplicación. Una primitiva visual reutilizable pertenece al renderer correspondiente. Colores, espaciado, radios, sombras y movimiento pertenecen a tokens.
+Una regla o estado de negocio no pertenece a UI. Un layout específico de una
+pantalla pertenece a su aplicación. Una primitiva visual reutilizable pertenece
+al catálogo `@kontave/ui`. Colores, espaciado, radios, sombras y movimiento
+pertenecen a tokens. Los renderer adapters son internos y sólo conocen su
+plataforma de renderizado.
+
+Los consumidores usan contratos controlados: `Button` recibe contenido por
+`children` y acciones por `onPress`; `TextField` comunica texto con
+`onValueChange`; `Checkbox` comunica selección con `onCheckedChange`; y
+`OptionPicker`, `DatePicker` y `DatePeriodPicker` comunican valor con
+`onValueChange`. `UiProvider` recibe `theme` y `locale`; elegirlos, persistirlos
+o obtenerlos de preferencias es responsabilidad del consumidor.
+
+Las fechas son valores calendario: `DatePicker` usa `YYYY-MM-DD` y
+`DatePeriodPicker` usa `YYYY-MM`. Ambos son controlados, no aplican reglas de
+negocio y respetan los límites inclusivos opcionales `min` y `max`.
 
 ## Criterios de aceptación
 
@@ -17,9 +37,26 @@ Una regla o estado de negocio no pertenece a UI. Un layout específico de una pa
 - HTML semántico y navegación por teclado.
 - Estados de foco, error, carga y deshabilitado.
 - Temas claro y oscuro con las mismas variables semánticas.
-- Sin imports desde aplicaciones.
+- Sin imports desde aplicaciones, rutas, APIs, sesión o estado de negocio.
 - Sin estilos de marca duplicados en consumidores.
-- TypeScript y build de al menos un consumidor real aprobados.
+- TypeScript y build de al menos un consumidor real ejecutados como parte del
+  cambio que afecte la biblioteca.
+
+## Uso en clientes
+
+Desktop y Mobile importan el catálogo de la raíz:
+
+```tsx
+import { Button, TextField, UiProvider } from "@kontave/ui";
+```
+
+Mobile configura Metro para la condición `kontave-react-native`. Expo Web usa
+esa misma rama y el control de fecha web de la biblioteca. React es un peer
+requerido; las dependencias específicas de DOM o React Native son peers
+opcionales que instala el consumidor de esa plataforma. Una dependencia de
+desarrollo de `@kontave/ui` no habilita una plataforma en runtime. La aplicación
+Web de producción conserva HeroUI hasta que un trabajo de migración explícito
+indique lo contrario.
 
 ## Primitivas obligatorias en clientes DOM
 

@@ -19,9 +19,9 @@ import {
   Button,
   FieldSkeleton,
   Skeleton,
-  SubscriptionPlanBadge,
-} from "@kontave/ui-dom";
-import { presentFeedback } from "@kontave/ui-dom";
+} from "@kontave/ui";
+import { SubscriptionPlanBadge } from "../presentation/subscription-plan-badge";
+import { presentFeedback } from "../presentation/toast";
 import type {
   DesktopAuthState,
   DesktopBillingPlanState,
@@ -411,7 +411,7 @@ function SecuritySettings({
         action={
           <Button
             size="sm"
-            onClick={async () => {
+            onPress={async () => {
               const result = await runSettingsMutation(
                 "Cerrando sesiones",
                 () => window.kontave.settings.revokeOtherSessions(),
@@ -445,7 +445,7 @@ function SecuritySettings({
                 <Button
                   size="sm"
                   appearance="unstyled"
-                  onClick={async () => {
+                  onPress={async () => {
                     const result = await runSettingsMutation(
                       "Revocando sesión",
                       () => window.kontave.settings.revokeSession(session.id),

@@ -30,7 +30,6 @@
     "@kontave/navigation": "workspace:*",
     "@kontave/delegated-access": "workspace:*",
     "@kontave/organizations": "workspace:*",
-    "@kontave/ui-react-native": "workspace:*",
     "@kontave/workspace-context-application": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.99.1",
@@ -45,12 +44,14 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "@react-native-community/datetimepicker": "8.4.4",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "@types/react-dom": "~19.1.0",
     "dotenv": "^16.6.1",
     "typescript": "^5.9.2"
   }

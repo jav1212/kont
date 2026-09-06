@@ -2,10 +2,16 @@ import type { CSSProperties, HTMLAttributes } from "react";
 import type { SkeletonContract } from "@kontave/ui/contracts";
 import { classNames } from "./internal/class-names";
 
-export interface SkeletonProps extends SkeletonContract, Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
+export interface SkeletonProps
+  extends SkeletonContract, Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   readonly decorative?: boolean;
 }
 
+/**
+ * Reserves content space while loading, respecting reduced-motion preferences.
+ * @param props - Placeholder shape, dimensions and optional loading semantics.
+ * @returns A decorative or announced loading placeholder.
+ */
 export function Skeleton({
   className,
   decorative = true,
@@ -20,14 +26,20 @@ export function Skeleton({
     width: typeof width === "number" ? `${width}px` : width,
     ...style,
   };
-  return <span
-    {...props}
-    aria-hidden={decorative || undefined}
-    aria-label={decorative ? undefined : props["aria-label"] ?? "Cargando"}
-    role={decorative ? undefined : "status"}
-    className={classNames("kt-skeleton", `kt-skeleton--${variant}`, className)}
-    style={dimensions}
-  />;
+  return (
+    <span
+      {...props}
+      aria-hidden={decorative || undefined}
+      aria-label={decorative ? undefined : (props["aria-label"] ?? "Cargando")}
+      role={decorative ? undefined : "status"}
+      className={classNames(
+        "kt-skeleton",
+        `kt-skeleton--${variant}`,
+        className,
+      )}
+      style={dimensions}
+    />
+  );
 }
 
 export interface FieldSkeletonProps {
@@ -36,12 +48,34 @@ export interface FieldSkeletonProps {
   readonly loadingLabel?: boolean;
 }
 
-export function FieldSkeleton({ hint = false, label, loadingLabel = false }: FieldSkeletonProps) {
-  return <div className="kt-field kt-field--loading" aria-busy="true" aria-label={label ? `Cargando ${label}` : "Cargando campo"} role="status">
-    <div className="kt-field__header">
-      {loadingLabel ? <Skeleton variant="text" width="36%" height={14} /> : label ? <span className="kt-field__label">{label}</span> : <Skeleton variant="text" width="36%" height={14} />}
+/**
+ * Preserves a labeled field layout while its content is loading.
+ * @param props - Label visibility and optional message placeholder.
+ * @returns One announced loading group with decorative placeholders.
+ */
+export function FieldSkeleton({
+  hint = false,
+  label,
+  loadingLabel = false,
+}: FieldSkeletonProps) {
+  return (
+    <div
+      className="kt-field kt-field--loading"
+      aria-busy="true"
+      aria-label={label ? `Cargando ${label}` : "Cargando campo"}
+      role="status"
+    >
+      <div className="kt-field__header">
+        {loadingLabel ? (
+          <Skeleton variant="text" width="36%" height={14} />
+        ) : label ? (
+          <span className="kt-field__label">{label}</span>
+        ) : (
+          <Skeleton variant="text" width="36%" height={14} />
+        )}
+      </div>
+      <Skeleton variant="control" width="100%" />
+      {hint ? <Skeleton variant="text" width="58%" height={12} /> : null}
     </div>
-    <Skeleton variant="control" width="100%" />
-    {hint ? <Skeleton variant="text" width="58%" height={12} /> : null}
-  </div>;
+  );
 }

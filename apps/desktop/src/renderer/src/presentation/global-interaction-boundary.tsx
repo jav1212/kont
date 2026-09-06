@@ -3,11 +3,9 @@ import type {
   GlobalInteractionGate,
   InteractionBlockActionKind,
 } from "@kontave/client-interaction/application";
-import { Button } from "./button";
-import { LogoMark } from "./logo";
-import { Text } from "./text";
+import { Button, LogoMark, Text } from "@kontave/ui";
 
-/** Inputs required to enforce the global interaction gate in a DOM client. */
+/** Inputs required to enforce the global interaction gate in the Desktop renderer. */
 export interface GlobalInteractionBoundaryProps {
   readonly gate: GlobalInteractionGate;
   readonly children: ReactNode;
@@ -55,7 +53,7 @@ export function GlobalInteractionBoundary({ children, gate, onAction }: GlobalIn
           {activeBlock.actions.map((action) => <Button
             intent={action.kind === "exit" ? "neutral" : "primary"}
             key={action.kind}
-            onClick={() => onAction(activeBlock.token, action.kind)}
+            onPress={() => onAction(activeBlock.token, action.kind)}
           >{action.label}</Button>)}
         </div> : null}
       </div>

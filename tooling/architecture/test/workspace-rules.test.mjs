@@ -386,23 +386,149 @@ test("wildcard public subpaths still enforce the resolved target layer", async (
   );
 });
 
-test("UI contracts stay portable while renderer adapters may import React", async () => {
+async function uiFixture(root, overrides = {}, exportOverrides = {}) {
+  const directory = join(root, "packages/ui");
+  const files = {
+    "core/src/contracts/index.ts": "export type Size = 'sm' | 'lg';",
+    "core/src/tokens/index.ts": "export const color = '#fff';",
+    "dom/src/index.ts": 'import "react"; import "react-dom";',
+    "react-native/src/index.ts": 'import "react"; import "react-native";',
+    ...overrides,
+  };
+  await writeFile(
+    join(directory, "package.json"),
+    JSON.stringify({
+      name: "@kontave/ui",
+      exports: {
+        ".": {
+          "kontave-react-native": "./react-native/src/index.ts",
+          "react-native": "./react-native/src/index.ts",
+          default: "./dom/src/index.ts",
+        },
+        "./contracts": "./core/src/contracts/index.ts",
+        "./tokens": "./core/src/tokens/index.ts",
+        ...exportOverrides,
+      },
+    }),
+  );
+  for (const [path, content] of Object.entries(files)) {
+    const destination = join(directory, path);
+    await mkdir(join(destination, ".."), { recursive: true });
+    await writeFile(destination, content);
+  }
+}
+
+test("unified UI allows separate renderer entries and portable subpaths", async () => {
   const root = await fixture();
-  await packageFixture(root, "packages/ui/core", "@kontave/ui", {
-    "index.ts": 'import "react";',
-  });
-  await packageFixture(root, "packages/ui/dom", "@kontave/ui-dom", {
-    "index.ts": 'import "react";',
+  await uiFixture(root);
+  assert.deepEqual(await auditWorkspace(root), []);
+});
+
+test("UI checks all portable export conditions for framework leaks", async () => {
+  const root = await fixture();
+  await uiFixture(
+    root,
+    {
+      "core/src/contracts/native.ts": 'import "react-native";',
+      "core/src/tokens/index.ts": 'export * from "../contracts/native";',
+    },
+    {
+      "./contracts": {
+        "react-native": "./core/src/contracts/native.ts",
+        default: "./core/src/contracts/index.ts",
+      },
+    },
+  );
+  const violations = await auditWorkspace(root);
+  for (const entry of ["./contracts", "./tokens"]) {
+    assert.ok(
+      violations.some((message) =>
+        message.includes(`portable export '${entry}'`),
+      ),
+    );
+  }
+});
+
+test("UI rejects renderer crossings and consumer service dependencies", async () => {
+  const root = await fixture();
+  await uiFixture(root, {
+    "dom/src/index.ts":
+      'import "../../react-native/src"; import "@kontave/client-feedback/application";',
+    "react-native/src/index.ts": 'import "react-dom"; import "../styles.css";',
+    "core/src/contracts/index.ts": 'import "../../../dom/src";',
   });
   const violations = await auditWorkspace(root);
   assert.ok(
     violations.some((message) =>
-      message.includes("packages/ui/core/package.json portable export"),
+      message.includes("UI dom imports another renderer"),
     ),
   );
   assert.ok(
-    !violations.some((message) =>
-      message.includes("packages/ui/dom/package.json portable export"),
+    violations.some((message) =>
+      message.includes("UI core imports another renderer"),
+    ),
+  );
+  assert.ok(
+    violations.some((message) =>
+      message.includes("consumer or business dependency"),
+    ),
+  );
+  assert.ok(
+    violations.some((message) =>
+      message.includes("DOM dependency 'react-dom'"),
+    ),
+  );
+  assert.ok(
+    violations.some((message) =>
+      message.includes("DOM dependency '../styles.css'"),
+    ),
+  );
+});
+
+test("UI rejects exports that select the wrong renderer or shadow native conditions", async () => {
+  const root = await fixture();
+  await uiFixture(
+    root,
+    {},
+    {
+      ".": {
+        default: "./dom/src/index.ts",
+        "react-native": "./dom/src/index.ts",
+      },
+    },
+  );
+  const violations = await auditWorkspace(root);
+  assert.ok(
+    violations.some((message) =>
+      message.includes("'react-native' export must resolve exclusively"),
+    ),
+  );
+  assert.ok(
+    violations.some((message) =>
+      message.includes("default condition must follow native conditions"),
+    ),
+  );
+});
+
+test("consumers cannot import UI implementation paths or leak UI into domain", async () => {
+  const root = await fixture();
+  await uiFixture(root);
+  await packageFixture(root, "packages/example", "@kontave/example", {
+    "domain/model.ts": 'import "@kontave/ui";',
+    "adapters/view.ts": 'import "@kontave/ui/dom/src";',
+    "index.ts": "export {};",
+  });
+  const violations = await auditWorkspace(root);
+  assert.ok(
+    violations.some((message) =>
+      message.includes("private workspace path '@kontave/ui/dom/src'"),
+    ),
+  );
+  assert.ok(
+    violations.some((message) =>
+      message.includes(
+        "domain layer imports adapter or infrastructure workspace export '@kontave/ui'",
+      ),
     ),
   );
 });

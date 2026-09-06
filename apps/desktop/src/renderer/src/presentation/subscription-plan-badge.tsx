@@ -1,11 +1,18 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { classNames } from "./internal/class-names";
+
+function classNames(...values: ReadonlyArray<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(" ");
+}
 
 export interface SubscriptionPlanBadgeProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
   readonly planName: string;
 }
 
-/** Portable account-plan treatment shared by DOM clients. */
+/**
+ * Renders the selected account plan in Desktop account menus.
+ * @param props - Account plan name and standard span properties.
+ * @returns A compact plan badge.
+ */
 export function SubscriptionPlanBadge({ className, planName, ...props }: SubscriptionPlanBadgeProps) {
   return <span {...props} className={classNames("kt-subscription-plan-badge", className)}>
     {sentenceCase(planName)}
