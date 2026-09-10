@@ -79,6 +79,22 @@ Key concepts:
 - `id` references `auth.users`
 - `email`
 
+### `public.system_error_logs`
+
+Purpose:
+- centralized, support-oriented application incident records
+
+Key concepts:
+- `error_code` is the unique support reference shown to a user
+- `user_id` identifies the authenticated reporting user when available
+- technical diagnostics (`technical_message`, `stack_trace`, `metadata`) are administrator-only data
+- `resolution_status` is `pending` or `resolved`; existing records default to `pending`
+- `resolved_at` and `resolved_by` describe the current resolution only; reopening clears both values
+
+Notes:
+- reporter and resolver display data is obtained from `profiles` when present; the log remains valid if a profile is unavailable
+- only the service role can update the resolution columns, after server-side administrator authorization; authenticated users have no direct mutation privilege
+
 ### `public.products`
 
 Purpose:

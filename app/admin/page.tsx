@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
+import { SystemErrorsPanel } from "@/src/modules/system-errors/frontend/components/system-errors-panel";
 
 // ============================================================================
 // TYPES
@@ -174,7 +175,7 @@ function formatDate(iso?: string | null) {
 // ============================================================================
 
 export default function AdminPage() {
-    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans" | "subscriptions" | "inbox">("payments");
+    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans" | "subscriptions" | "inbox" | "errors">("payments");
 
     // Data
     const [summary,  setSummary]  = useState<PlatformSummary | null>(null);
@@ -673,6 +674,9 @@ export default function AdminPage() {
                             </button>
                             <button className={tabBtn(tab === "inbox")} onClick={() => setTab("inbox")}>
                                 Inbox
+                            </button>
+                            <button className={tabBtn(tab === "errors")} onClick={() => setTab("errors")}>
+                                Errores
                             </button>
                         </div>
 
@@ -1830,6 +1834,8 @@ export default function AdminPage() {
                                 </div>
                             </div>
                         )}
+
+                        {tab === "errors" && <SystemErrorsPanel />}
 
                     </>
                 )}

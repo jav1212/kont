@@ -33,7 +33,6 @@ export async function POST(req: Request) {
                 method: body.method,
                 statusCode: body.statusCode,
                 tenantId: validatedTenantId,
-                userId: body.userId,
                 requestId: body.requestId,
                 metadata: body.metadata,
             },

@@ -2,12 +2,19 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
+/** Authenticated platform administrator identity. */
+export interface AdminIdentity {
+    /** Stable Supabase Auth identifier of the administrator. */
+    readonly userId: string;
+}
+
 /**
- * Verifica que el usuario autenticado sea admin.
- * Retorna null si es admin (puede continuar).
- * Retorna un Response 401/403 si no está autenticado o no es admin.
+ * Resolves the authenticated platform administrator for an HTTP request.
+ *
+ * @param _req - Incoming request whose cookie session is verified.
+ * @returns The administrator identity, or a 401/403 response suitable for returning from a route.
  */
-export async function requireAdmin(_req: Request): Promise<Response | null> {
+export async function requireAdminIdentity(_req: Request): Promise<AdminIdentity | Response> {
     const cookieStore = await cookies();
 
     const authClient = createServerClient(
@@ -27,7 +34,6 @@ export async function requireAdmin(_req: Request): Promise<Response | null> {
         return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // Verificar con service role para evitar que RLS bloquee la consulta
     const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -44,5 +50,16 @@ export async function requireAdmin(_req: Request): Promise<Response | null> {
         return Response.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    return null;
+    return { userId: user.id };
+}
+
+/**
+ * Verifies that the request belongs to a platform administrator while preserving the legacy route contract.
+ *
+ * @param _req - Incoming request whose cookie session is verified.
+ * @returns Null for an administrator, or a 401/403 response suitable for returning from a route.
+ */
+export async function requireAdmin(_req: Request): Promise<Response | null> {
+    const identity = await requireAdminIdentity(_req);
+    return identity instanceof Response ? identity : null;
 }
