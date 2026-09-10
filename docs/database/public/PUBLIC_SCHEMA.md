@@ -95,6 +95,21 @@ Notes:
 - reporter and resolver display data is obtained from `profiles` when present; the log remains valid if a profile is unavailable
 - only the service role can update the resolution columns, after server-side administrator authorization; authenticated users have no direct mutation privilege
 
+### `public.shared_document_folders` and `public.shared_documents`
+
+Purpose:
+- shared metadata for document folders and files, owned by both tenant and organization
+
+Key concepts:
+- [224_portable_documents_native.sql](../../../supabase/migrations/224_portable_documents_native.sql) makes `organization_id` required on both tables while retaining `tenant_id` for legacy ownership and compatibility.
+- [251_document_organization_compatibility.sql](../../../supabase/migrations/251_document_organization_compatibility.sql) supplies a missing `organization_id` from `public.organizations.legacy_tenant_id` for existing Web write payloads. Native document RPCs keep their explicit organization value when it matches that tenant.
+- A missing tenant-to-organization mapping or an explicit organization that belongs to a different tenant rejects the write.
+
+Notes:
+- The compatibility trigger runs only before inserts and updates to `tenant_id` or `organization_id`; it does not alter unrelated updates.
+- Its `SECURITY DEFINER` lookup is read-only, uses a fixed catalog search path, and does not bypass table RLS for the write itself.
+- [document-organization-compatibility.sql](../../../test/document-organization-compatibility.sql) covers legacy and native metadata writes, invalid mappings, and RLS denial in a rolled-back transaction; it does not access object storage.
+
 ### `public.products`
 
 Purpose:
