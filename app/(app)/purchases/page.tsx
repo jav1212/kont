@@ -17,6 +17,7 @@ import {
     AlertTriangle,
     Receipt,
     FileCode,
+    Upload,
 } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -263,6 +264,15 @@ export default function EntradasPage() {
                 title="Entradas de Inventario"
                 subtitle={`Tablero · ${purchasePeriodLabel(period)}`}
             >
+                <BaseButton.Root
+                    as={Link}
+                    href="/purchases/import"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Upload size={14} strokeWidth={2} />}
+                >
+                    Importar CSV
+                </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
                     href="/inventory/purchase-ledger"

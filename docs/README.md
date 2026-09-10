@@ -17,6 +17,10 @@ This folder is organized by purpose so project documentation and planning stay e
 
 ## Key files
 
+### Purchasing
+
+- [purchasing-csv-import.md](purchasing-csv-import.md)
+
 ### Project
 
 - [project/PROJECT_DOCUMENTATION.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/project/PROJECT_DOCUMENTATION.md)
