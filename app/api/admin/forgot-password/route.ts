@@ -2,8 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/admin/forgot-password
- * Envía un email de recuperación de contraseña al administrador.
- * No requiere autenticación (la verificación ocurre al hacer clic en el link).
+ * Sends a recovery email whose numeric code is verified in the administrator recovery page.
+ * @param req - Unauthenticated request containing the account email.
+ * @returns A delivery acknowledgement or a validation/provider error response.
+ * The redirect remains available for older email templates containing a link.
  */
 export async function POST(req: Request) {
     let email: string;

@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 // MIDDLEWARE — route protection + role separation + security headers
 //
 // Reglas:
-//   - Usuario con sesión de cliente  → nunca puede ver rutas /admin/*
+//   - Usuario con sesión de cliente  → solo puede ver la recuperación pública de /admin/*
 //   - Usuario con cookie kont-admin  → nunca puede ver rutas de app/públicas
 //   - Sin sesión en /admin/*         → /admin/sign-in
 //   - Sin sesión en app routes       → /sign-in
@@ -86,6 +86,11 @@ function applyNativeApiCors(response: NextResponse, origin: string): NextRespons
     return response;
 }
 
+/**
+ * Applies route access rules, session cookies, and response security headers.
+ * @param request - Incoming navigation or native API request.
+ * @returns The continued request, a redirect, or a native API preflight response.
+ */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const isAdminSession = request.cookies.get('kont-admin')?.value === '1';
@@ -127,13 +132,17 @@ export async function middleware(request: NextRequest) {
     // ── Rutas de administración ───────────────────────────────────────────
     if (isAdminRoute(pathname)) {
         if (isAdminPublic(pathname)) {
+            // Verifying a recovery code creates an Auth session before the user
+            // saves the new password. Keep both recovery pages accessible then.
+            if (pathname === '/admin/forgot-password' || pathname === '/admin/reset-password') {
+                return response;
+            }
             // Admin ya autenticado con cookie → panel
             if (isAdminSession) {
                 return NextResponse.redirect(new URL('/admin', request.url));
             }
             // Cliente con sesión activa intentando ver páginas públicas de admin → app
-            // Excepto reset-password: necesita la sesión de Supabase para cambiar contraseña
-            if (user && pathname !== '/admin/reset-password') {
+            if (user) {
                 return NextResponse.redirect(new URL('/documents', request.url));
             }
             return response;

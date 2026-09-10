@@ -38,8 +38,16 @@ This is enforced through:
 
 Current intent:
 
-- regular app users must not access `/admin/*`
+- regular app users must not access protected `/admin/*` routes
 - admin sessions must not access regular app/public routes as normal users
+
+### Administrator password recovery
+
+`/admin/forgot-password` is an unauthenticated recovery flow. It requests a Supabase recovery message through `POST /api/admin/forgot-password`, verifies the eight-digit recovery code with Supabase Auth, and only then lets the verified account set a new password. A user may enter a code that was already received or request a replacement code.
+
+Code verification creates a temporary Supabase recovery session. Middleware keeps `/admin/forgot-password` and `/admin/reset-password` reachable while that session exists, including when the `kont-admin` routing cookie is present. This exception applies only to those two recovery routes; protected administration pages still require the administrator routing session and continue to redirect anonymous or ordinary authenticated users away from `/admin`.
+
+After a successful password update, the browser Supabase session and `kont-admin` cookie are cleared before returning the user to `/admin/sign-in`. If either cleanup operation fails, the recovery page does not silently redirect and offers a retry. `/admin/reset-password` remains available for recovery email templates that still use a link-based redirect.
 
 ## Authorization model
 
