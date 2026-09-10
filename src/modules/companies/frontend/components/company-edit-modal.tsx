@@ -26,7 +26,7 @@ import type {
 import {
     SECTOR_LABELS, BUSINESS_SECTORS, TAXPAYER_TYPES, TAXPAYER_TYPE_LABELS,
 } from "@/src/modules/companies/backend/domain/company";
-import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { uploadWebImage } from "@/src/shared/frontend/media/upload-image";
 import { notify } from "@/src/shared/frontend/notify";
 
 // ── Options ──────────────────────────────────────────────────────────────────
@@ -155,19 +155,14 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onAp
         }
         setLogoUploading(true);
         setLogoUploadOk(false);
-        const ext = file.name.split(".").pop();
-        const path = `${userId}/${effectiveId}/logo.${ext}`;
-        const { error } = await getSupabaseBrowser().storage
-            .from("logos")
-            .upload(path, file, { upsert: true });
-        if (error) {
+        try {
+            setLogoUrl(await uploadWebImage(file, "logo"));
+        } catch {
             notify.error("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
             setLogoUploading(false);
             if (logoInputRef.current) logoInputRef.current.value = "";
             return;
         }
-        const { data } = getSupabaseBrowser().storage.from("logos").getPublicUrl(path);
-        setLogoUrl(data.publicUrl);
         setLogoUploading(false);
         setLogoUploadOk(true);
         setTimeout(() => setLogoUploadOk(false), 1800);

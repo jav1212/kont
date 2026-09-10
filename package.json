@@ -17,7 +17,10 @@
     "audit:routes": "node scripts/audit-routes.mjs",
     "audit:shared": "node scripts/audit-shared-schema.mjs",
     "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-supabase.ps1",
-    "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
+    "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts",
+    "test:barcode": "node --import tsx --test test/barcode-*.test.ts test/code128-badge.test.ts src/modules/auth/backend/barcode/*.test.ts src/modules/auth/backend/barcode/application/*.test.ts src/shared/backend/barcode/*.test.ts apps/device-bridge/test/access-capture.test.ts apps/device-bridge/test/protocol.test.ts",
+    "test:barcode:sql": "node scripts/test-barcode-access-sql.mjs",
+    "test:barcode:web": "node scripts/test-barcode-web.mjs"
   },
   "dependencies": {
     "@kontave/access-control": "workspace:*",
@@ -70,7 +73,8 @@
     "serwist": "^9.5.7",
     "sonner": "^1.7.4",
     "xlsx": "^0.18.5",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "jsbarcode": "^3.12.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

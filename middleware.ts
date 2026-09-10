@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { barcodeTenantMatches, isBarcodeSessionRecoveryPath, readBarcodeRequestAccess } from '@/src/shared/backend/barcode/barcode-request-guard';
 
 // ============================================================================
 // MIDDLEWARE — route protection + role separation + security headers
@@ -51,6 +52,7 @@ const isAppRoute    = (p: string) =>
     p.startsWith('/billing') ||
     p.startsWith('/documents') ||
     p.startsWith('/settings') ||
+    p.startsWith('/profile') ||
     p.startsWith('/tools');
 const isMarketing   = (p: string) => p.startsWith('/herramientas');
 const isAdminRoute  = (p: string) => p.startsWith('/admin');
@@ -129,6 +131,35 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    // A carnet session remains terminal-bound even when its enrollment cookie is
+    // removed. The provider's verified session_id selects the authoritative record.
+    if (user && (isAppRoute(pathname) || pathname.startsWith('/api/'))) {
+        if (!isBarcodeSessionRecoveryPath(pathname)) {
+            try {
+                const access = await readBarcodeRequestAccess(
+                    supabase, user.id, request.cookies.get('kont_barcode_terminal')?.value,
+                );
+                if (access.registered) {
+                    if (!access.active) {
+                        return pathname.startsWith('/api/')
+                            ? NextResponse.json({ error: 'La sesión está bloqueada. Escanea tu carnet.', errorCode: 'BARCODE_SESSION_LOCKED' }, { status: 401 })
+                            : NextResponse.redirect(new URL('/sign-in?mode=barcode', request.url));
+                    }
+                    if (!barcodeTenantMatches(access, request.headers.get('X-Tenant-Id'), request.nextUrl.searchParams.get('tid'), request.nextUrl.searchParams.get('tenantId'))) {
+                        return NextResponse.json({ error: 'La terminal no tiene acceso a esta empresa.' }, { status: 403 });
+                    }
+                    // Direct PostgREST is intentionally denied to carnet JWTs.
+                    // The session validator already checked the tenant's status and
+                    // membership through a server-owned repository.
+                    response.headers.set('Cache-Control', 'private, no-store');
+                    return response;
+                }
+            } catch {
+                return NextResponse.json({ error: 'No se pudo validar la sesión. Intenta nuevamente.' }, { status: 503 });
+            }
+        }
+    }
+
     // ── Rutas de administración ───────────────────────────────────────────
     if (isAdminRoute(pathname)) {
         if (isAdminPublic(pathname)) {
@@ -186,7 +217,7 @@ export async function middleware(request: NextRequest) {
     // expulsamos al panel hasta que el usuario complete o cancele el cambio
     // de contraseña. /reset-password ya hereda la misma excepción para los
     // correos antiguos con magic-link.
-    if (user && isPublic(pathname) && pathname !== '/reset-password' && pathname !== '/forgot-password') {
+    if (user && isPublic(pathname) && pathname !== '/reset-password' && pathname !== '/forgot-password' && !(pathname === '/sign-in' && request.nextUrl.searchParams.get('mode') === 'barcode')) {
         return NextResponse.redirect(new URL('/payroll', request.url));
     }
 
@@ -241,6 +272,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+    runtime: 'nodejs',
     matcher: [
         '/',
         '/sign-in',
@@ -256,10 +288,11 @@ export const config = {
         '/billing/:path*',
         '/documents/:path*',
         '/settings/:path*',
+        '/profile/:path*',
         '/tools/:path*',
         '/herramientas/:path*',
         '/admin',
         '/admin/:path*',
-        '/api/client/v1/:path*',
+        '/api/:path*',
     ],
 };

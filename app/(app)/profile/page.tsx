@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, ShieldCheck, Mail, User as UserIcon, Phone } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { uploadWebImage } from "@/src/shared/frontend/media/upload-image";
 import { PageHeader }  from "@/src/shared/frontend/components/page-header";
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 import { BaseInput }   from "@/src/shared/frontend/components/base-input";
@@ -59,21 +59,14 @@ export default function ProfilePage() {
         if (!file || !user) return;
         setUploading(true);
 
-        const supabase = getSupabaseBrowser();
-        const ext      = file.name.split(".").pop();
-        const path     = `${user.id}/${Date.now()}.${ext}`;
-
-        const { error: uploadErr } = await supabase.storage
-            .from("avatars")
-            .upload(path, file, { upsert: true });
-
-        if (uploadErr) {
-            notify.error("No se pudo subir la imagen: " + uploadErr.message);
+        let publicUrl: string;
+        try {
+            publicUrl = await uploadWebImage(file, "avatar");
+        } catch (error) {
+            notify.error(error instanceof Error ? error.message : "No se pudo subir la imagen.");
             setUploading(false);
             return;
         }
-
-        const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
 
         const res  = await fetch("/api/users/update", {
             method:  "PATCH",

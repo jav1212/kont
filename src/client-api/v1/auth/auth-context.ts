@@ -6,6 +6,7 @@ import {
 } from "@kontave/auth/domain";
 import { ObserveAuthenticatedSession } from "@kontave/auth/application";
 import { createSupabaseAuthenticatedSessionRegistry } from "@kontave/auth/supabase";
+import { validateBarcodeAccessSession } from "@/src/modules/auth/backend/barcode/barcode-access-service";
 
 export async function authenticateClientRequest(
   request: Request,
@@ -21,6 +22,11 @@ export async function authenticateClientRequest(
     anonKey,
   }).verify(accessToken);
   if (!identity?.sessionId) return null;
+  // Carnet access is scoped to its enrolled Web browser. A copied provider JWT
+  // must never open the independent native API surface.
+  if ((await validateBarcodeAccessSession(identity.userId, identity.sessionId)).registered) {
+    return null;
+  }
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey)
     throw new Error("Native session registry is not configured.");

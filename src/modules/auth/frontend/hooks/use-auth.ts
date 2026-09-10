@@ -169,6 +169,53 @@ async function signOut(): Promise<void> {
     // onAuthStateChange lo limpia automáticamente
 }
 
+/**
+ * Starts a Web session after the server validates a scanned access badge.
+ *
+ * @param barcode - Credential received from the scanner; never persisted by this client.
+ * @returns A display-safe failure message, or null when session cookies were issued.
+ */
+async function signInWithBarcode(barcode: string): Promise<string | null> {
+    dispatch({ type: "LOADING" });
+    try {
+        const { ok, json } = await apiFetch("/api/auth/barcode", { barcode });
+        if (!ok) {
+            const message = typeof json.error === "string" ? json.error : "No se pudo validar el carnet.";
+            dispatch({ type: "SET_ERROR", error: message });
+            return message;
+        }
+        const registryId = json.data?.session?.id;
+        if (typeof registryId === "string" && typeof BroadcastChannel !== "undefined") {
+            const channel = new BroadcastChannel("kontave-barcode-session");
+            channel.postMessage({ type: "session-changed", sessionId: registryId });
+            channel.close();
+        }
+        return null;
+    } catch {
+        const message = "No se pudo conectar para validar el carnet.";
+        dispatch({ type: "SET_ERROR", error: message });
+        return message;
+    }
+}
+
+/**
+ * Ends the active badge session while preserving this browser's terminal enrollment.
+ *
+ * @param expectedSessionId - Registry identity displayed by this tab, preventing stale locks.
+ * @returns A display-safe failure message, or null when the session was locked.
+ */
+async function lockBarcodeSession(expectedSessionId?: string): Promise<string | null> {
+    try {
+        const { ok, json } = await apiFetch("/api/auth/barcode/lock", expectedSessionId ? { sessionId: expectedSessionId } : {});
+        if (!ok) return typeof json.error === "string" ? json.error : "No se pudo bloquear la sesión.";
+        clearTenantSelection();
+        dispatch({ type: "CLEAR_USER" });
+        return null;
+    } catch {
+        return "No se pudo bloquear la sesión.";
+    }
+}
+
 async function resetPassword(email: string): Promise<string | null> {
     const { ok, json } = await apiFetch("/api/auth/reset-password", { email });
     if (!ok) return json.error;
@@ -201,6 +248,8 @@ export function useAuth() {
         signIn:          useCallback((email: string, password: string) => signIn(email, password), []),
         signUp:          useCallback((email: string, password: string, name?: string, phone?: string) => signUp(email, password, name, phone), []),
         signOut:         useCallback(() => signOut(), []),
+        signInWithBarcode: useCallback((barcode: string) => signInWithBarcode(barcode), []),
+        lockBarcodeSession: useCallback((expectedSessionId?: string) => lockBarcodeSession(expectedSessionId), []),
         resetPassword:   useCallback((email: string) => resetPassword(email), []),
         resendConfirmation: useCallback((email: string) => resendConfirmation(email), []),
     };

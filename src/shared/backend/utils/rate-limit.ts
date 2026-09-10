@@ -86,6 +86,10 @@ export type RateLimitOptions = {
     windowSec:  number;
     /** Complemento opcional a la key (ej. userId para cuota por usuario). */
     keyExtra?:  string;
+    /** Sensitive authentication flows deny access if the limiter is unavailable. */
+    failureMode?: 'allow' | 'deny';
+    /** Server-derived identity for limits that must aggregate across source IPs. */
+    identityKey?: string;
 };
 
 /**
@@ -100,9 +104,9 @@ export async function rateLimit(
     opts: RateLimitOptions
 ): Promise<Response | null> {
     const limiter = getLimiter(opts.bucket, opts.limit, opts.windowSec);
-    if (!limiter) return null;
+    if (!limiter) return opts.failureMode === 'deny' ? limiterUnavailable() : null;
 
-    const key = keyFromRequest(req, opts.keyExtra);
+    const key = opts.identityKey ?? keyFromRequest(req, opts.keyExtra);
     const identifier = `${opts.bucket}:${key}`;
 
     try {
@@ -124,8 +128,16 @@ export async function rateLimit(
             }
         );
     } catch (err) {
+        if (opts.failureMode === 'deny') return limiterUnavailable();
         // Si Redis está caído, preferimos fail-open antes que tumbar el login.
         console.error("[rate-limit] error al consultar Upstash:", (err as Error).message);
         return null;
     }
+}
+
+function limiterUnavailable(): Response {
+    return Response.json(
+        { error: 'El acceso no está disponible temporalmente.', code: 'rate_limit_unavailable' },
+        { status: 503, headers: { 'Retry-After': '30', 'Cache-Control': 'no-store' } },
+    );
 }

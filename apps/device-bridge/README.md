@@ -23,6 +23,10 @@ Para enumerar puertos seriales: `pnpm ports`. El Datalogic QW2100 debe estar con
 - Guarda únicamente el hash SHA-256 del token en `%LOCALAPPDATA%\Kontave\Device Manager\config.json`.
 - Versiona el protocolo para detectar incompatibilidades.
 
+## Carnets de acceso
+
+La versión de Device Manager que anuncia la capacidad `barcode.access-capture.v1` puede reservar temporalmente los escaneos `KONT-…` para una sola pantalla Web de acceso. Durante esa concesión, el carnet no se emite por el canal general de productos ni se comparte con otros clientes emparejados. Actualiza el manager antes de usar el Bridge para carnets; lectores USB tipo teclado no requieren esta capacidad. La autorización de la terminal y la sesión se validan en el servidor Web, por lo que el emparejamiento local no autoriza por sí mismo una terminal.
+
 En producción, Kontave usa HTTPS y el gateway debe configurarse con un certificado local confiable (`tlsPfxPath` y `tlsPfxPassphrase`). El instalador final debe firmarse con Authenticode mediante `CSC_LINK` y `CSC_KEY_PASSWORD`.
 
 ## Distribución

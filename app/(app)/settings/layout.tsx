@@ -13,6 +13,7 @@ import {
     Palette,
     Download,
     MonitorCog,
+    ScanBarcode,
     type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
             { href: "/settings/inventory-config", label: "Inventario",  subtitle: "Campos personalizados visibles en productos.", icon: Boxes      },
             { href: "/settings/members",          label: "Miembros",    subtitle: "Roles, invitaciones y accesos de tu cuenta.",  icon: Users      },
             { href: "/settings/roles",             label: "Roles",       subtitle: "Ajusta los permisos de cada rol del sistema.",   icon: ShieldCheck },
+            { href: "/settings/access",            label: "Acceso",      subtitle: "Terminales y carnets para iniciar sesión con lector.", icon: ScanBarcode },
         ],
     },
     {

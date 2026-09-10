@@ -178,6 +178,22 @@ Key concepts:
 - `expires_at`
 - `accepted_at`
 
+### `public.barcode_access_*`
+
+Purpose:
+- server-owned authorization state for Web barcode access
+
+Tables:
+- `barcode_access_terminals`: an enrolled browser terminal, its secret hash and revocation state
+- `barcode_access_badges`: a tenant member's printable credential hash and lifecycle
+- `barcode_access_sessions`: a Supabase session binding to terminal, badge and tenant; it intentionally retains revocation tombstones
+- `barcode_access_audit`: sanitized access lifecycle events
+
+Notes:
+- [254_barcode_access_foundation.sql](../../../supabase/migrations/254_barcode_access_foundation.sql) grants these tables only to `service_role`; browser roles have no direct access.
+- [255_barcode_access_direct_data_guard.sql](../../../supabase/migrations/255_barcode_access_direct_data_guard.sql) blocks direct PostgREST/RPC, Storage and Realtime use by a registered barcode-session JWT. It also supplies the service-only readiness check `public.barcode_access_protection_ready()`.
+- The feature and its rollout constraints are documented in [web-barcode-access.md](../../security/web-barcode-access.md).
+
 ## Security model
 
 The public schema uses RLS for shared platform tables.

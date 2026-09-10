@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { tenantSchemaName } from '../source/infra/tenant-supabase';
 import { ServerSupabaseSource } from '../source/infra/server-supabase';
+import { readBarcodeRequestAccess } from '../barcode/barcode-request-guard';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ export type TenantContext = {
      * pero al exponerlo aquí evitamos que cada repo lo recalcule (y se equivoque).
      */
     effectiveOwnerId: string;
+    /** Present only for a terminal-bound carnet session, already checked server-side. */
+    barcodeSession?: boolean;
 };
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -81,7 +84,15 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
     const userId = user.id;
     const server = new ServerSupabaseSource();
 
-    const targetId = req?.headers.get('X-Tenant-Id') ?? null;
+    const barcode = await readBarcodeRequestAccess(
+        supabase, userId, cookieStore.get('kont_barcode_terminal')?.value,
+    );
+    if (barcode.registered && (!barcode.active || !barcode.tenantId)) throw new TenantAuthError();
+
+    const requestedTenantId = req?.headers.get('X-Tenant-Id') ?? null;
+    if (barcode.registered && requestedTenantId && requestedTenantId !== barcode.tenantId) throw new TenantForbiddenError();
+    const targetId = barcode.registered ? barcode.tenantId! : requestedTenantId;
+    const barcodeMarker = barcode.registered ? { barcodeSession: true } : {};
 
     // ── Caso 1: header ausente o apunta al userId propio ─────────────────
     // Puede ser un owner (tiene fila en public.tenants con id = userId)
@@ -95,6 +106,7 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
 
         if (ownTenant) {
             return {
+                ...barcodeMarker,
                 userId,
                 tenantId:         userId,
                 schemaName:       tenantSchemaName(userId),
@@ -122,6 +134,7 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
 
         const mb = firstMembership as { tenant_id: string; role: string };
         return {
+            ...barcodeMarker,
             userId,
             tenantId:         mb.tenant_id,
             schemaName:       tenantSchemaName(mb.tenant_id),
@@ -146,6 +159,7 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
     }
 
     return {
+        ...barcodeMarker,
         userId,
         tenantId:         targetId,
         schemaName:       tenantSchemaName(targetId),

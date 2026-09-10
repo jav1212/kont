@@ -9,6 +9,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, PasswordField } from "../_components/auth-shell";
+import { BarcodeSignIn } from "@/src/modules/auth/frontend/components/barcode-sign-in";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -175,6 +176,19 @@ function SignInFormContent() {
     );
 }
 
+/** Selects one credential method so badge scans never enter the email form. */
+function SignInMethod() {
+    const searchParams = useSearchParams();
+    const [method, setMethod] = useState<"password" | "barcode">(() => searchParams.get("mode") === "barcode" ? "barcode" : "password");
+    return <>
+        <div className="mb-6 grid grid-cols-2 rounded-xl border border-border-light bg-surface-2 p-1" role="tablist" aria-label="Método de inicio de sesión">
+            <button type="button" role="tab" aria-selected={method === "password"} onClick={() => setMethod("password")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "password" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Correo</button>
+            <button type="button" role="tab" aria-selected={method === "barcode"} onClick={() => setMethod("barcode")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "barcode" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Carnet</button>
+        </div>
+        {method === "password" ? <SignInFormContent /> : <BarcodeSignIn />}
+    </>;
+}
+
 export default function SignInPage() {
     return (
         <AuthShell>
@@ -189,16 +203,10 @@ export default function SignInPage() {
                     Conectando…
                 </div>
             }>
-                <SignInFormContent />
+                <SignInMethod />
             </Suspense>
 
-            <div className="flex items-center gap-3 my-7">
-                <div className="flex-1 h-px bg-border-light" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-disabled font-semibold">o</span>
-                <div className="flex-1 h-px bg-border-light" />
-            </div>
-
-            <p className="font-sans text-[13.5px] text-center text-text-tertiary">
+            <p className="mt-7 font-sans text-[13.5px] text-center text-text-tertiary">
                 ¿Aún no tienes cuenta?{" "}
                 <Link href="/sign-up" className="font-mono text-[12px] uppercase tracking-[0.1em] font-semibold text-primary-500 hover:text-primary-600 hover:underline transition-colors">
                     Crear cuenta gratis
