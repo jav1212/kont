@@ -4,7 +4,7 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { requirePermission, withTenant } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult } from '@/src/shared/backend/utils/handle-result';
 
-const executeSchema = z.object({ companyId: z.string().min(1), mode: z.enum(['draft', 'confirm']), revision: z.number().int().positive() });
+const executeSchema = z.object({ companyId: z.string().min(1), mode: z.enum(['draft', 'confirm']), revision: z.number().int().positive(), targetInvoiceId: z.string().min(1).optional() });
 
 /** Executes a persisted, server-recomputed import and processes accounting for confirmed invoices. */
 export const POST = withTenant(async (req, tenant) => {
@@ -14,9 +14,11 @@ export const POST = withTenant(async (req, tenant) => {
     await requirePermission(tenant, parsed.data.mode === 'confirm' ? 'purchases.confirm' : 'purchases.create', { req });
     const id = new URL(req.url).pathname.split('/').at(-2) ?? '';
     const actions = getPurchasesActions(tenant.tenantId);
-    const staged = await actions.getPurchaseCsvImport.execute({ id, companyId: parsed.data.companyId });
+    const staged = parsed.data.targetInvoiceId
+        ? await actions.getPurchaseCsvImportByInvoice.execute({ invoiceId: parsed.data.targetInvoiceId, companyId: parsed.data.companyId })
+        : await actions.getPurchaseCsvImport.execute({ id, companyId: parsed.data.companyId });
     if (staged.isFailure) return handleResult(staged, 400, req);
-    if (staged.getValue().rows.some(row => row.selected && Object.values(row.productResolutions).some(resolution => resolution.create))) {
+    if (staged.getValue().rows.some(row => row.invoiceStatus !== 'confirmada' && (parsed.data.targetInvoiceId || row.selected) && Object.values(row.productResolutions).some(resolution => resolution.create))) {
         await requirePermission(tenant, 'inventory.create', { req });
     }
     const result = await actions.executePurchaseCsvImport.execute({ id, ...parsed.data });

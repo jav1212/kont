@@ -6,7 +6,7 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, use, useCallback, Fragment } from "react";
-import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock, Receipt } from "lucide-react";
+import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock, Receipt, FileUp } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -130,6 +130,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [showConfirm, setShowConfirm] = useState(false);
     const [unconfirming, setUnconfirming] = useState(false);
     const [justConfirmed, setJustConfirmed] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // ── Purchase return modal ──────────────────────────────────────────────────
     const [showReturnModal, setShowReturnModal] = useState(false);
@@ -430,7 +431,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     async function handleSaveDraft() {
         if (!validate()) return;
         setSaving(true);
-        await savePurchaseInvoice(buildInvoice(), itemsForSave());
+        const saved = await savePurchaseInvoice(buildInvoice(), itemsForSave());
+        if (saved) setHasUnsavedChanges(false);
         setSaving(false);
     }
 
@@ -447,6 +449,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setConfirming(false);
         setShowConfirm(false);
         if (confirmed) setJustConfirmed(true);
+        if (confirmed) setHasUnsavedChanges(false);
     }
 
     async function handleUnconfirm() {
@@ -604,6 +607,11 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const invoice = currentPurchaseInvoice!;
     const displayStatus = justConfirmed ? "confirmada" : invoice.status;
     const isConfirmed = displayStatus === "confirmada";
+    const isImportedEmptyDraft = isDraft && (invoice.items?.length ?? 0) === 0 && invoice.notes.startsWith("[KONT_COMPRA_CSV]");
+    const openImportedDraft = () => {
+        if (hasUnsavedChanges && !window.confirm("Tienes cambios sin guardar. ¿Deseas continuar al importador de productos?")) return;
+        router.push(`/purchases/import?invoiceId=${encodeURIComponent(id)}`);
+    };
     const affectedInvoiceCandidates = purchaseInvoices.filter((candidate) => candidate.id !== id && candidate.status === "confirmada" && candidate.documentType === "factura" && candidate.supplierId === supplierId);
     const handleAffectedInvoiceNumberChange = (value: string) => {
         setAffectedInvoiceNumber(value);
@@ -615,7 +623,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const documentNumberLabel = activeDocumentType === "nota_credito" ? "Nº Nota de crédito" : activeDocumentType === "nota_debito" ? "Nº Nota de débito" : "Nº Factura";
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono max-md:pb-28">
+        <div className="min-h-full bg-surface-2 font-mono max-md:pb-28" onChangeCapture={() => { if (isDraft) setHasUnsavedChanges(true); }}>
             <PageHeader
                 title={`${documentTypeLabel} de Compra`}
                 subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
@@ -632,6 +640,11 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 <BaseButton.Root variant="secondary" size="sm" leftIcon={<ChevronLeft size={14} strokeWidth={2} />} onClick={() => router.back()}>
                     Volver
                 </BaseButton.Root>
+                {isImportedEmptyDraft && (
+                    <BaseButton.Root variant="primary" size="sm" leftIcon={<FileUp size={14} strokeWidth={2} />} onClick={openImportedDraft}>
+                        Importar productos CSV
+                    </BaseButton.Root>
+                )}
             </PageHeader>
 
             {/* Banner: factura confirmada sin items detallados (flujo rápido) */}
@@ -830,14 +843,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                             {isDraft && (
                                 <div className="mb-4">
-                                    <ResponsiveSelect<PurchaseDocumentType> label="Tipo de documento" title="Tipo de documento" value={documentType} onChange={setDocumentType} options={[{ value: "factura", label: "Factura" }, { value: "nota_credito", label: "Nota de crédito" }, { value: "nota_debito", label: "Nota de débito" }]} />
+                                    <ResponsiveSelect<PurchaseDocumentType> label="Tipo de documento" title="Tipo de documento" value={documentType} onChange={value => { setDocumentType(value); setHasUnsavedChanges(true); }} options={[{ value: "factura", label: "Factura" }, { value: "nota_credito", label: "Nota de crédito" }, { value: "nota_debito", label: "Nota de débito" }]} />
                                 </div>
                             )}
 
                             <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     {isDraft ? (
-                                        <ResponsiveSelect label="Proveedor" title="Seleccionar proveedor" subtitle="Busca por nombre o RIF" searchable value={supplierId} placeholder="Seleccionar proveedor…" onChange={setSupplierId} options={suppliers.filter((supplier) => supplier.active && supplier.id).map((supplier) => ({ value: supplier.id!, label: supplier.name, description: supplier.rif }))} />
+                                        <ResponsiveSelect label="Proveedor" title="Seleccionar proveedor" subtitle="Busca por nombre o RIF" searchable value={supplierId} placeholder="Seleccionar proveedor…" onChange={value => { setSupplierId(value); setHasUnsavedChanges(true); }} options={suppliers.filter((supplier) => supplier.active && supplier.id).map((supplier) => ({ value: supplier.id!, label: supplier.name, description: supplier.rif }))} />
                                     ) : (
                                         <><label className={labelCls}>Proveedor</label><div className={readonlyCls + " flex items-center"}>{invoice.supplierName ?? "—"}</div></>
                                     )}
@@ -1043,13 +1056,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             count={items.filter((item) => item.productId).length}
                             subtitle="Productos que ingresan al inventario al confirmar."
                             readOnly={!isDraft}
-                            onAddLine={() => setItems((current) => [...current, emptyItem(invoiceCurrencyCode)])}
+                            onAddLine={() => { setItems((current) => [...current, emptyItem(invoiceCurrencyCode)]); setHasUnsavedChanges(true); }}
                             secondaryAction={isDraft ? <DeviceStatusControl /> : undefined}
                         >
                             <FacturaItemsGrid
                                 items={items}
                                 products={products}
-                                onChange={setItems}
+                                onChange={value => { setItems(value); setHasUnsavedChanges(true); }}
                                 readOnly={!isDraft}
                                 currencyOptions={currencyOptions}
                                 getExchangeRate={getRate}
@@ -1570,6 +1583,3 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         </div>
     );
 }
-
-
-

@@ -26,7 +26,7 @@ export type ImportLine = {
 };
 export type PurchaseImportSession = {
     id?: string; purchases: ImportPurchase[]; lines: ImportLine[]; issues: ImportIssue[];
-    taxCodes: string[]; sourceRif?: string; results?: Array<{ purchaseKey: string; status: "saved" | "confirmed" | "failed"; message?: string }>;
+    taxCodes: string[]; sourceRif?: string; results?: Array<{ purchaseKey: string; status: "saved" | "confirmed" | "skipped" | "failed"; message?: string }>;
 };
 
 type PersistedBatch = PurchaseCsvImportBatch;
@@ -37,7 +37,7 @@ async function readResponse(response: Response): Promise<{ data?: unknown; error
 
 /** Client adapter for the CSV import API. Parsing happens locally with the shared, whitelisted domain parser. */
 function toSession(batch: PersistedBatch): PurchaseImportSession {
-    const calculated = batch.rows.map((row) => calculatePurchaseCsvRow(row, batch.config));
+    const calculated = batch.rows.map((row) => calculatePurchaseCsvRow(row, row.configOverride ?? batch.config));
     return {
         id: batch.id,
         purchases: batch.rows.map((row, index) => ({
@@ -76,7 +76,7 @@ export function usePurchaseImport() {
         setBatch(next); setSession(toSession(next));
     }, []);
 
-    const submitFiles = useCallback(async (stage: "headers" | "details", companyId: string, files: File[], companyRif: string, sessionId?: string) => {
+    const submitFiles = useCallback(async (stage: "headers" | "details", companyId: string, files: File[], companyRif: string, sessionId?: string, targetInvoiceId?: string) => {
         if (files.length === 0) return null;
         const requestGeneration = generation.current;
         setLoading(true); setError(null);
@@ -97,7 +97,9 @@ export function usePurchaseImport() {
             const headers = stage === "headers" ? headerResults.flatMap((result) => result.rows) : [];
             const items = stage === "details" ? itemResults.flatMap((result) => result.rows) : [];
             // Server owns the durable batch. Detail upload reloads existing rows before replacing their associations.
-            const existingBatch = batch?.id === sessionId ? batch : sessionId ? (await apiFetch(`/api/purchases/imports/${encodeURIComponent(sessionId)}?companyId=${encodeURIComponent(companyId)}`).then(readResponse)).data as PersistedBatch | undefined : undefined;
+            const existingBatch = batch?.id === sessionId ? batch : sessionId ? (await apiFetch(targetInvoiceId
+                ? `/api/purchases/imports?companyId=${encodeURIComponent(companyId)}&invoiceId=${encodeURIComponent(targetInvoiceId)}`
+                : `/api/purchases/imports/${encodeURIComponent(sessionId)}?companyId=${encodeURIComponent(companyId)}`).then(readResponse)).data as PersistedBatch | undefined : undefined;
             if (requestGeneration !== generation.current) return null;
             const existingRows = existingBatch?.rows ?? [];
             const sourceHeaders = stage === "headers" ? headers : existingRows.map((row: PurchaseCsvImportRow) => row.header);
@@ -114,7 +116,7 @@ export function usePurchaseImport() {
                 const previous = existingRows.find((row) => row.header.sourceRow === header.sourceRow);
                 return { header, items: associations.assignments[header.sourceRow] ?? [], selected: previous?.selected ?? true, supplierId: previous?.supplierId, productResolutions: previous?.productResolutions ?? {}, acceptDifference: previous?.invoiceStatus === "confirmada" ? previous.acceptDifference : true };
             });
-            const response = await apiFetch("/api/purchases/imports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sessionId, revision: existingBatch?.revision, companyId, fileName: existingBatch?.fileName ?? files.map((file) => file.name).join(", "), companyRif: sourceCompanyRif, rows, config }) });
+            const response = await apiFetch("/api/purchases/imports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sessionId, revision: existingBatch?.revision, companyId, fileName: existingBatch?.fileName ?? files.map((file) => file.name).join(", "), companyRif: sourceCompanyRif, rows, config, ...(targetInvoiceId ? { targetInvoiceId } : {}) }) });
             const json = await readResponse(response);
             if (!response.ok || !json.data) throw new Error(json.error ?? "No se pudo procesar el archivo.");
             const next = json.data as PersistedBatch; commit(next, requestGeneration); return toSession(next);
@@ -125,7 +127,7 @@ export function usePurchaseImport() {
         } finally { if (requestGeneration === generation.current) setLoading(false); }
     }, [batch, commit]);
 
-    const updateSession = useCallback(async (companyId: string, payload: Record<string, unknown>) => {
+    const updateSession = useCallback(async (companyId: string, payload: Record<string, unknown>, targetInvoiceId?: string) => {
         if (!session?.id) return null;
         const requestGeneration = generation.current;
         setLoading(true); setError(null);
@@ -148,7 +150,7 @@ export function usePurchaseImport() {
             });
             const config = { ...batch.config, ...(payload.costIncludesVat === undefined ? {} : { costsIncludeVat: Boolean(payload.costIncludesVat), vatMappings: payload.taxMappings as PurchaseCsvConfig["vatMappings"], reviewed: payload.configReviewed === true }) };
             const response = await apiFetch("/api/purchases/imports", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...batch, revision: batch.revision, companyId, rows, config }),
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...batch, revision: batch.revision, companyId, rows, config, ...(targetInvoiceId ? { targetInvoiceId } : {}) }),
             });
             const json = await readResponse(response);
             if (!response.ok || !json.data) throw new Error(json.error ?? "No se pudo actualizar la importación.");
@@ -160,26 +162,28 @@ export function usePurchaseImport() {
         } finally { if (requestGeneration === generation.current) setLoading(false); }
     }, [batch, commit, session?.id]);
 
-    const execute = useCallback(async (companyId: string, mode: "draft" | "confirm") => {
+    const execute = useCallback(async (companyId: string, mode: "draft" | "confirm", targetInvoiceId?: string) => {
         if (!session?.id) return null;
         const requestGeneration = generation.current;
         setLoading(true); setError(null);
         try {
             const response = await apiFetch(`/api/purchases/imports/${encodeURIComponent(session.id)}/execute`, {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, mode, revision: batch?.revision }),
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, mode, revision: batch?.revision, ...(targetInvoiceId ? { targetInvoiceId } : {}) }),
             });
             const json = await readResponse(response);
             if (!response.ok || !json.data) throw new Error(json.error ?? "No se pudo ejecutar la importación.");
             if (requestGeneration !== generation.current) return null;
             const results = Array.isArray(json.data) ? json.data as PurchaseCsvImportLineExecution[] : [];
-            const refreshed = await apiFetch(`/api/purchases/imports/${encodeURIComponent(session.id)}?companyId=${encodeURIComponent(companyId)}`).then(readResponse);
+            const refreshed = await apiFetch(targetInvoiceId
+                ? `/api/purchases/imports?companyId=${encodeURIComponent(companyId)}&invoiceId=${encodeURIComponent(targetInvoiceId)}`
+                : `/api/purchases/imports/${encodeURIComponent(session.id)}?companyId=${encodeURIComponent(companyId)}`).then(readResponse);
             if (requestGeneration !== generation.current) return null;
             if (refreshed.data) commit(refreshed.data as PersistedBatch, requestGeneration);
             setSession((previous) => previous ? {
                 ...previous,
                 results: results.map((result: PurchaseCsvImportLineExecution & { sourceRow?: number }) => ({
                     purchaseKey: previous.purchases.find((purchase) => purchase.key === String(result.sourceRow))?.document ?? String(result.sourceRow ?? result.lineId ?? "Compra"),
-                    status: result.status === "saved" || result.status === "confirmed" ? (result.status === "confirmed" ? "confirmed" : "saved") : "failed",
+                    status: result.status === "confirmed" && result.idempotent ? "skipped" : result.status === "saved" || result.status === "confirmed" ? (result.status === "confirmed" ? "confirmed" : "saved") : "failed",
                     message: result.error,
                 })),
             } : previous);
@@ -191,6 +195,26 @@ export function usePurchaseImport() {
         } finally { if (requestGeneration === generation.current) setLoading(false); }
     }, [batch?.revision, commit, session?.id]);
 
+    const resume = useCallback(async (companyId: string, invoiceId: string) => {
+        // A route can change invoiceId without unmounting this hook; invalidate the
+        // prior request before loading the newly scoped one.
+        const requestGeneration = ++generation.current;
+        setBatch(null); setSession(null); setLoading(true); setError(null);
+        try {
+            const response = await apiFetch(`/api/purchases/imports?companyId=${encodeURIComponent(companyId)}&invoiceId=${encodeURIComponent(invoiceId)}`);
+            const json = await readResponse(response);
+            if (!response.ok || !json.data) throw new Error(json.error ?? "No se encontró una importación pendiente para esta factura.");
+            if (requestGeneration !== generation.current) return null;
+            const next = json.data as PersistedBatch;
+            commit(next, requestGeneration);
+            return toSession(next);
+        } catch (cause) {
+            if (requestGeneration !== generation.current) return null;
+            setError(cause instanceof Error ? cause.message : "No se pudo reanudar la importación.");
+            return null;
+        } finally { if (requestGeneration === generation.current) setLoading(false); }
+    }, [commit]);
+
     const reset = useCallback(() => { generation.current += 1; setSession(null); setBatch(null); setError(null); setLoading(false); }, []);
-    return { session, batch, loading, error, submitFiles, updateSession, execute, reset };
+    return { session, batch, loading, error, submitFiles, updateSession, execute, resume, reset };
 }

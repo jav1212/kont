@@ -48,8 +48,24 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
         } catch (error) { return Result.fail(error instanceof Error ? error.message : 'Failed to load purchase CSV import'); }
     }
 
+    /** {@inheritDoc IPurchaseCsvImportRepository.getByInvoice} */
+    async getByInvoice(invoiceId: string, companyId: string): Promise<Result<PurchaseCsvImportBatch>> {
+        try {
+            const { data: line, error } = await this.source.instance.from('shared_inventory_purchase_import_lines').select('id,batch_id')
+                .eq('tenant_id', this.tenantId).eq('invoice_id', invoiceId).order('updated_at', { ascending: false }).order('id', { ascending: false }).limit(1).maybeSingle();
+            if (error) return Result.fail(error.message);
+            if (!line) return Result.fail('La factura no fue creada por una importación CSV');
+            const batch = await this.get((line as { batch_id: string }).batch_id, companyId);
+            if (batch.isFailure) return batch;
+            const matched = batch.getValue().rows.find(row => row.invoiceId === invoiceId && row.importLineId === line.id);
+            if (!matched) return Result.fail('La factura no corresponde a esta empresa');
+            const effectiveConfig = matched.configOverride ?? batch.getValue().config;
+            return Result.success({ ...batch.getValue(), config: effectiveConfig, rows: [{ ...matched, selected: true, configOverride: undefined }] });
+        } catch (error) { return Result.fail(error instanceof Error ? error.message : 'Failed to load purchase CSV import draft'); }
+    }
+
     /** {@inheritDoc IPurchaseCsvImportRepository.save} */
-    async save(input: Omit<PurchaseCsvImportBatch, 'status' | 'revision' | 'createdAt' | 'updatedAt'> & { revision?: number }): Promise<Result<PurchaseCsvImportBatch>> {
+    async save(input: Omit<PurchaseCsvImportBatch, 'status' | 'revision' | 'createdAt' | 'updatedAt'> & { revision?: number; targetInvoiceId?: string }): Promise<Result<PurchaseCsvImportBatch>> {
         try {
             const company = await this.source.instance.from('shared_companies').select('id,rif').eq('tenant_id', this.tenantId).eq('id', input.companyId).maybeSingle();
             if (company.error) return Result.fail(company.error.message);
@@ -60,31 +76,41 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
             }
             const period = input.rows[0]?.header.date?.slice(0, 7);
             if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period ?? '')) return Result.fail('Fecha de compra inválida');
-            const { error: saveError } = await this.source.instance.rpc('shared_inventory_purchase_csv_import_save', {
+            const targetInvoiceId = input.targetInvoiceId;
+            const { error: saveError } = await this.source.instance.rpc(targetInvoiceId ? 'shared_inventory_purchase_csv_import_save_target' : 'shared_inventory_purchase_csv_import_save', {
                 p_tenant_id: this.tenantId,
                 p_batch: { id: input.id, revision: input.revision ?? null, companyId: input.companyId, period, fileName: input.fileName, companyRif: input.companyRif, config: input.config },
                 p_rows: input.rows,
+                ...(targetInvoiceId ? { p_target_invoice_id: targetInvoiceId } : {}),
             });
             if (saveError) return Result.fail(saveError.message);
-            return this.get(input.id, input.companyId);
+            return targetInvoiceId ? this.getByInvoice(targetInvoiceId, input.companyId) : this.get(input.id, input.companyId);
         } catch (error) { return Result.fail(error instanceof Error ? error.message : 'Failed to save purchase CSV import'); }
     }
 
     /** {@inheritDoc IPurchaseCsvImportRepository.execute} */
-    async execute(id: string, companyId: string, mode: PurchaseCsvImportMode, revision: number): Promise<Result<PurchaseCsvImportLineExecution[]>> {
-        const batch = await this.get(id, companyId);
+    async execute(id: string, companyId: string, mode: PurchaseCsvImportMode, revision: number, targetInvoiceId?: string): Promise<Result<PurchaseCsvImportLineExecution[]>> {
+        const batch = targetInvoiceId ? await this.getByInvoice(targetInvoiceId, companyId) : await this.get(id, companyId);
         if (batch.isFailure) return Result.fail(batch.getError());
         const value = batch.getValue();
+        if (value.id !== id) return Result.fail('La factura no corresponde a la importación solicitada');
         if (value.revision !== revision) return Result.fail('Importación desactualizada; recarga antes de ejecutar');
         const outcomes: PurchaseCsvImportLineExecution[] = [];
         for (const row of value.rows) {
-            if (!row.selected) continue;
+            if (!targetInvoiceId && !row.selected) continue;
             const sourceRow = row.header.sourceRow;
             const lineId = row.importLineId ?? String(sourceRow);
             if (row.invoiceStatus === 'confirmada' && row.invoiceId) {
                 outcomes.push({ lineId, sourceRow, invoiceId: row.invoiceId, status: 'confirmed', idempotent: true }); continue;
             }
-            const calculated = calculatePurchaseCsvRow(row, value.config);
+            if (!row.invoiceId) {
+                const existing = await this.findExistingInvoice(companyId, row);
+                if (existing?.status === 'confirmada') {
+                    outcomes.push({ lineId, sourceRow, invoiceId: existing.id, status: 'confirmed', idempotent: true }); continue;
+                }
+            }
+            const effectiveConfig = row.configOverride ?? value.config;
+            const calculated = calculatePurchaseCsvRow(row, effectiveConfig);
             const headerOnlyDraft = row.items.length === 0 && calculated.errors.length === 0;
             if ((!calculated.complete && !headerOnlyDraft) || calculated.errors.length > 0 || (mode === 'confirm' && calculated.difference !== '0' && !row.acceptDifference && !headerOnlyDraft)) {
                 outcomes.push({ lineId, sourceRow, status: 'error', error: calculated.errors[0] ?? 'La fila no está completa o requiere aceptar la diferencia' });
@@ -99,13 +125,14 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
                 exchangeRates: row.header.currency !== 'VES' ? [{ currencyCode: row.header.currency, vesPerUnit: Number(row.header.exchangeRate), effectiveDate: row.header.date, source: 'manual', decimals: 4 }] : [],
                 notes: '[KONT_COMPRA_CSV]' + JSON.stringify({
                     batchId: id, sourceRow, reference: row.header.reference, supplierExternalId: row.header.supplierExternalId,
-                    originalTotalBs: row.header.totalBs, config: value.config, acceptedDifference: row.acceptDifference,
+                    originalTotalBs: row.header.totalBs, config: effectiveConfig, acceptedDifference: row.acceptDifference,
                 }),
             };
             const items = calculated.items.map((item) => ({ ...item, code: item.source.code }));
-            const { data, error } = await this.source.instance.rpc('shared_inventory_purchase_csv_import_execute_line', {
+            const { data, error } = await this.source.instance.rpc(targetInvoiceId ? 'shared_inventory_purchase_csv_import_execute_target_line' : 'shared_inventory_purchase_csv_import_execute_resumable_line', {
                 p_tenant_id: this.tenantId, p_batch_id: id, p_line_id: lineId, p_mode: headerOnlyDraft ? 'draft' : mode, p_invoice: invoice,
                 p_items: items, p_supplier: { id: row.supplierId ?? null, rif: row.header.supplierRif, name: row.header.supplierName }, p_products: productPayload.getValue(),
+                ...(targetInvoiceId ? { p_target_invoice_id: targetInvoiceId } : {}),
             });
             if (error) outcomes.push({ lineId, sourceRow, status: 'error', error: error.message });
             else { const response = record(data); outcomes.push({ lineId, sourceRow, invoiceId: typeof response.invoiceId === 'string' ? response.invoiceId : undefined, status: response.status === 'confirmed' ? 'confirmed' : 'saved', idempotent: response.idempotent === true }); }
@@ -121,6 +148,19 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
             products.set(item.code, { code: item.code, id: resolution.productId ?? null, createId: resolution.productId ? null : crypto.randomUUID(), name: resolution.create?.name ?? item.description, measureUnit: resolution.create?.measureUnit ?? 'unidad', valuationMethod: resolution.create?.valuationMethod ?? 'promedio_ponderado', vatType: resolution.create?.vatType ?? 'general', salePricing: resolution.create?.salePricing ?? null });
         }
         return Result.success([...products.values()]);
+    }
+
+    /** Finds an already-posted CSV identity before validating a repeat file's details. */
+    private async findExistingInvoice(companyId: string, row: PurchaseCsvImportRow): Promise<{ id: string; status: string } | undefined> {
+        const { data, error } = await this.source.instance.from('shared_inventory_purchase_invoices').select('id,status,supplier_id')
+            .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('invoice_number', row.header.documentNumber).eq('control_number', row.header.controlNumber);
+        if (error || !data?.length) return undefined;
+        const supplierIds = data.map(invoice => invoice.supplier_id).filter((id): id is string => typeof id === 'string');
+        if (!supplierIds.length) return undefined;
+        const suppliers = await this.source.instance.from('shared_inventory_suppliers').select('id,rif').eq('tenant_id', this.tenantId).eq('company_id', companyId).in('id', supplierIds);
+        if (suppliers.error) return undefined;
+        const matchingIds = new Set((suppliers.data ?? []).filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif)).map(supplier => supplier.id));
+        return data.find(invoice => matchingIds.has(invoice.supplier_id));
     }
 
     private async load(batch: RawBatch): Promise<Result<PurchaseCsvImportBatch>> {
@@ -145,6 +185,7 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
             return { header: record(line.source_header), items: rows(line.source_items), selected: calculation.selected === true,
                 supplierId: typeof calculation.supplierId === 'string' ? calculation.supplierId : undefined,
                 productResolutions: record(calculation.productResolutions), acceptDifference: calculation.acceptDifference === true,
+                configOverride: calculation.configOverride != null ? record(calculation.configOverride) as unknown as PurchaseCsvImportRow['configOverride'] : undefined,
                 importLineId: line.id, invoiceId: line.invoice_id ?? undefined, invoiceStatus: line.invoice_id ? states.get(line.invoice_id) : undefined } as unknown as PurchaseCsvImportRow;
         });
         return Result.success({ id: batch.id, companyId: batch.company_id, fileName: batch.source_file_name, companyRif: batch.source_company_rif ?? '', ...normalizePurchaseCsvImport(record(batch.configuration) as unknown as PurchaseCsvImportBatch['config'], importRows), status: batch.status, revision: batch.revision ?? 1, createdAt: batch.created_at ?? undefined, updatedAt: batch.updated_at ?? undefined });

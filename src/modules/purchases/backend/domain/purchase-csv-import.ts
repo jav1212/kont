@@ -69,6 +69,8 @@ export interface PurchaseCsvImportRow {
     supplierId?: string;
     productResolutions: Record<string, PurchaseCsvProductResolution>;
     acceptDifference: boolean;
+    /** Configuration saved for this line when it was resumed independently from its batch. */
+    configOverride?: PurchaseCsvConfig;
     /** Read-only execution metadata returned by persistence, never trusted on input. */
     invoiceId?: string;
     invoiceStatus?: "borrador" | "confirmada";

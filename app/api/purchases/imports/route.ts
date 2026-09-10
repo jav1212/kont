@@ -12,8 +12,9 @@ const salePricing = z.union([
     z.object({ mode: z.literal('markup'), percentage: z.number().finite(), currency: z.string() }),
 ]);
 const resolution = z.object({ productId: z.string().min(1).optional(), create: z.object({ name: z.string(), measureUnit: z.enum(['unidad', 'kg', 'g', 'm', 'm2', 'm3', 'litro', 'galon', 'caja', 'rollo', 'paquete']), valuationMethod: z.enum(['promedio_ponderado', 'peps']), vatType: z.enum(['exento', 'general']), salePricing: salePricing.optional() }).optional() });
-const row = z.object({ header, items: z.array(item), selected: z.boolean(), supplierId: z.string().min(1).optional(), productResolutions: z.record(z.string(), resolution), acceptDifference: z.boolean() });
-const saveSchema = z.object({ id: z.string().min(1).optional(), revision: z.number().int().positive().optional(), companyId: z.string().min(1), fileName: z.string().min(1).max(255), companyRif: z.string(), rows: z.array(row).min(1).max(10000), config: z.object({ costsIncludeVat: z.boolean(), vatMappings: z.record(z.string(), vatRate), reviewed: z.boolean() }) }).superRefine((value, context) => {
+const config = z.object({ costsIncludeVat: z.boolean(), vatMappings: z.record(z.string(), vatRate), reviewed: z.boolean() });
+const row = z.object({ header, items: z.array(item), selected: z.boolean(), supplierId: z.string().min(1).optional(), productResolutions: z.record(z.string(), resolution), acceptDifference: z.boolean(), configOverride: config.optional() });
+const saveSchema = z.object({ id: z.string().min(1).optional(), revision: z.number().int().positive().optional(), companyId: z.string().min(1), fileName: z.string().min(1).max(255), companyRif: z.string(), rows: z.array(row).min(1).max(10000), config, targetInvoiceId: z.string().min(1).optional() }).superRefine((value, context) => {
     if (value.rows.reduce((count, current) => count + current.items.length, 0) > 10_000) context.addIssue({ code: 'custom', message: 'El máximo es 10.000 detalles por importación' });
 });
 
@@ -24,8 +25,11 @@ const bodyTooLarge = (request: Request): boolean => Number(request.headers.get('
 export const GET = withTenant(async (req, tenant) => {
     await requirePermission(tenant, 'purchases.read', { req });
     const companyId = new URL(req.url).searchParams.get('companyId');
+    const invoiceId = new URL(req.url).searchParams.get('invoiceId');
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
-    return handleResult(await getPurchasesActions(tenant.tenantId).listPurchaseCsvImports.execute({ companyId }), 200, req);
+    const actions = getPurchasesActions(tenant.tenantId);
+    if (invoiceId) return handleResult(await actions.getPurchaseCsvImportByInvoice.execute({ invoiceId, companyId }), 200, req);
+    return handleResult(await actions.listPurchaseCsvImports.execute({ companyId }), 200, req);
 });
 
 /** Stores a client-parsed, strictly whitelisted CSV import snapshot. */

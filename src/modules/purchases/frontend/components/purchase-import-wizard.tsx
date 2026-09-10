@@ -32,6 +32,8 @@ type Props = {
     onUpdate: (payload: Record<string, unknown>) => Promise<unknown>;
     onExecute: (mode: "draft" | "confirm") => void;
     onReset: () => void;
+    /** Limits the session to one already-created imported draft. */
+    targetInvoiceId?: string;
 };
 
 function CsvUpload({ multiple, disabled, onFiles }: { multiple?: boolean; disabled: boolean; onFiles: (files: File[]) => void }) {
@@ -47,7 +49,7 @@ function CsvUpload({ multiple, disabled, onFiles }: { multiple?: boolean; disabl
     );
 }
 
-function PurchaseRows({ rows, duplicates = new Set(), onToggle }: { rows: PurchaseCsvImportRow[]; duplicates?: Set<number>; onToggle?: (key: number, selected: boolean) => void }) {
+function PurchaseRows({ rows, existingStatuses = new Map(), onToggle }: { rows: PurchaseCsvImportRow[]; existingStatuses?: Map<number, "borrador" | "confirmada">; onToggle?: (key: number, selected: boolean) => void }) {
     return (
         <div className="overflow-x-auto rounded-lg border border-border-light">
             <table className="w-full min-w-[720px] text-left text-xs">
@@ -57,13 +59,13 @@ function PurchaseRows({ rows, duplicates = new Set(), onToggle }: { rows: Purcha
                 </tr></thead>
                 <tbody>{rows.map(row => (
                     <tr key={row.header.sourceRow} className="border-t border-border-light">
-                        {onToggle && <td className="p-3"><input type="checkbox" aria-label={`Importar ${row.header.documentNumber}`} disabled={row.invoiceStatus === "confirmada"} checked={row.selected} onChange={event => onToggle(row.header.sourceRow, event.target.checked)} /></td>}
+                        {onToggle && <td className="p-3"><input type="checkbox" aria-label={`Importar ${row.header.documentNumber}`} disabled={row.invoiceStatus === "confirmada" || existingStatuses.get(row.header.sourceRow) === "confirmada"} checked={row.selected} onChange={event => onToggle(row.header.sourceRow, event.target.checked)} /></td>}
                         <td className="p-3">{row.header.documentNumber}<span className="block text-[var(--text-tertiary)]">{row.header.controlNumber}</span></td>
                         <td className="p-3">{row.header.supplierName}<span className="block text-[var(--text-tertiary)]">{row.header.supplierRif}</span></td>
                         <td className="p-3">{row.header.date}</td>
                         <td className="p-3">{row.header.currency} · {row.header.exchangeRate}</td>
                         <td className="p-3 tabular-nums">{fmt(row.header.totalBs)}</td>
-                        <td className="p-3">{row.invoiceStatus === "confirmada" ? "Ya confirmada" : duplicates.has(row.header.sourceRow) ? "Duplicada: desmarca esta compra" : row.items.length ? `${row.items.length} renglones` : "Pendiente de detalle"}</td>
+                        <td className="p-3">{row.invoiceStatus === "confirmada" || existingStatuses.get(row.header.sourceRow) === "confirmada" ? "Ya confirmada · se omitirá" : existingStatuses.get(row.header.sourceRow) === "borrador" ? "Actualizar borrador" : row.items.length ? `${row.items.length} renglones` : "Pendiente de detalle"}</td>
                     </tr>
                 ))}</tbody>
             </table>
@@ -99,11 +101,10 @@ function NewProductEditor({ initial, item, onSave }: { initial: NewProduct; item
     );
 }
 
-function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: { batch: PurchaseCsvImportBatch; products: Product[]; suppliers: Supplier[]; defaults: Defaults; onUpdate: Props["onUpdate"] }) {
-    const selected = batch.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada");
+function CatalogResolution({ batch, rows, products, suppliers, defaults, onUpdate }: { batch: PurchaseCsvImportBatch; rows: PurchaseCsvImportRow[]; products: Product[]; suppliers: Supplier[]; defaults: Defaults; onUpdate: Props["onUpdate"] }) {
     return (
         <div className="space-y-4">
-            {selected.map(row => {
+            {rows.map(row => {
                 const supplierMatches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
                 return <div key={row.header.sourceRow} className="rounded-lg border border-border-light p-4">
                     <p className="mb-2 text-sm font-semibold">Compra {row.header.documentNumber}</p>
@@ -119,7 +120,7 @@ function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: {
                         const saveResolution = (value: PurchaseCsvProductResolution) => onUpdate({ resolutions: { [row.header.sourceRow]: { ...row.productResolutions, [item.code]: value } } });
                         return <div key={item.code} className="mt-4 rounded-lg border border-border-light p-3">
                             <label className="text-xs">{item.code} · {item.description}
-                                <select className={fieldClass} value={resolution?.productId ?? (resolution?.create ? "__new" : "")} onChange={event => saveResolution(event.target.value === "__new" ? { create: newProduct(item, batch.config.vatMappings, defaults) } : { productId: event.target.value })}>
+                                <select className={fieldClass} value={resolution?.productId ?? (resolution?.create ? "__new" : "")} onChange={event => saveResolution(event.target.value === "__new" ? { create: newProduct(item, (row.configOverride ?? batch.config).vatMappings, defaults) } : { productId: event.target.value })}>
                                     <option value="" disabled>Selecciona una coincidencia o crea el producto</option>
                                     {!matches.length && <option value="__new">Crear producto nuevo</option>}
                                     {matches.map(product => <option key={product.id} value={product.id} disabled={!product.active}>{product.name}{!product.active ? " (inactivo)" : ""}</option>)}
@@ -140,25 +141,26 @@ function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: {
  * @param props - Persisted batch, catalogs and company-scoped actions owned by the import hook.
  * @returns Responsive wizard; only the final execution actions create invoices or stock movements.
  */
-export function PurchaseImportWizard({ session, batch, products, suppliers, purchaseInvoices, defaults = {}, loading, error, companyId, onFiles, onUpdate, onExecute, onReset }: Props) {
-    const [step, setStep] = useState(1);
-    const selected = batch?.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada") ?? [];
-    const duplicates = new Set((batch?.rows ?? []).filter(row => purchaseInvoices.some(invoice => {
-        const supplier = suppliers.find(supplier => supplier.id === invoice.supplierId);
-        return invoice.id !== row.invoiceId && invoice.invoiceNumber === row.header.documentNumber &&
-            (invoice.controlNumber ?? "") === row.header.controlNumber && supplier &&
-            normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif);
-    })).map(row => row.header.sourceRow));
-    for (const row of batch?.rows ?? []) {
-        if (batch?.rows.some(other => other.selected && other.header.sourceRow !== row.header.sourceRow &&
-            other.header.documentNumber === row.header.documentNumber && other.header.controlNumber === row.header.controlNumber &&
-            normalizePurchaseRif(other.header.supplierRif) === normalizePurchaseRif(row.header.supplierRif))) duplicates.add(row.header.sourceRow);
-    }
-    const selectedDuplicate = selected.some(row => duplicates.has(row.header.sourceRow));
-    const results = batch ? selected.map(row => ({ row, calculation: calculatePurchaseCsvRow(row, batch.config) })) : [];
+export function PurchaseImportWizard({ session, batch, products, suppliers, purchaseInvoices, defaults = {}, loading, error, companyId, onFiles, onUpdate, onExecute, onReset, targetInvoiceId }: Props) {
+    const targetMode = Boolean(targetInvoiceId);
+    const [step, setStep] = useState(targetMode ? 2 : 1);
+    const visibleSteps = targetMode ? STEPS.slice(1).map((entry, index) => ({ ...entry, id: index + 1 })) : STEPS;
+    const visibleStep = targetMode ? step - 1 : step;
+    const existingStatuses = new Map((batch?.rows ?? []).flatMap(row => {
+        const invoice = purchaseInvoices.find(invoice => {
+            const supplier = suppliers.find(supplier => supplier.id === invoice.supplierId);
+            return invoice.id !== row.invoiceId && invoice.invoiceNumber === row.header.documentNumber &&
+                (invoice.controlNumber ?? "") === row.header.controlNumber && supplier &&
+                normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif);
+        });
+        return invoice?.status ? [[row.header.sourceRow, invoice.status] as const] : [];
+    }));
+    const selected = batch?.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada" && existingStatuses.get(row.header.sourceRow) !== "confirmada") ?? [];
+    const allSelectedAreConfirmed = Boolean(batch && batch.rows.some(row => row.selected) && selected.length === 0);
+    const results = batch ? selected.map(row => ({ row, calculation: calculatePurchaseCsvRow(row, row.configOverride ?? batch.config) })) : [];
     const complete = results.filter(result => result.calculation.complete);
-    const taxCodes = session?.taxCodes ?? [];
-    const proposedMappings: Record<string, VatRate> = { ...batch?.config.vatMappings };
+    const taxCodes = [...new Set(selected.flatMap(row => row.items.flatMap(item => [item.purchaseVatCode, item.saleVatCode]).filter(Boolean)))];
+    const proposedMappings: Record<string, VatRate> = { ...(batch?.config.vatMappings ?? {}) };
     for (const code of taxCodes) {
         const mapping = getPurchaseCsvVatDefault(code);
         if (mapping) proposedMappings[code] = mapping;
@@ -192,20 +194,25 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
         else setStep(step + 1);
     };
     const shell = (title: string, subtitle: string, body: ReactNode, disabled = false) => (
-        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > 1 ? () => setStep(step - 1) : undefined} onNext={nextStep} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
+        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > (targetMode ? 2 : 1) ? () => setStep(step - 1) : undefined} onNext={nextStep} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
     );
     if (!companyId) return <p className="p-6">Selecciona una empresa para importar compras.</p>;
     return <div className="flex min-h-full flex-col bg-background">
-        <GuidedStepperHeader steps={STEPS} currentStep={step} onStepClick={next => { if (!loading && next <= step) setStep(next); }} />
+        <GuidedStepperHeader steps={visibleSteps} currentStep={visibleStep} onStepClick={next => { const actualStep = targetMode ? next + 1 : next; if (!loading && actualStep <= step) setStep(actualStep); }} />
         {error && <div role="alert" className="mx-auto mt-4 flex w-full max-w-4xl gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><AlertTriangle size={16} />{error}</div>}
         {loading && <div role="status" aria-label="Procesando importación" className="fixed inset-0 z-50 grid place-items-center bg-background/60"><LoaderCircle className="animate-spin text-primary-500" /></div>}
-        {step === 1 && shell("Carga las compras", "Selecciona el listado y las compras que deseas importar.", <>
+        {!targetMode && step === 1 && (allSelectedAreConfirmed ? (
+            <GuidedStepShell title="Compras ya importadas" subtitle="El archivo coincide con facturas que ya fueron confirmadas." hideNav>
+                <StepSection title="Sin cambios pendientes"><p className="text-sm text-[var(--text-secondary)]">Todas las facturas ya están confirmadas; se omitieron.</p></StepSection>
+                <BaseButton.Root variant="secondary" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root>
+            </GuidedStepShell>
+        ) : shell("Carga las compras", "Selecciona el listado y las compras que deseas importar.", <>
             <StepSection title="Listado de compras"><CsvUpload disabled={loading || !!batch} onFiles={files => onFiles("headers", files)} />
-                {batch && <div className="mt-4 space-y-3"><p className="text-sm">{batch.fileName} · RIF {batch.companyRif}</p><PurchaseRows rows={batch.rows} duplicates={duplicates} onToggle={(key, selected) => onUpdate({ selections: [{ key: String(key), selected }] })} /></div>}
+                {batch && <div className="mt-4 space-y-3"><p className="text-sm">{batch.fileName} · RIF {batch.companyRif}</p><PurchaseRows rows={batch.rows} existingStatuses={existingStatuses} onToggle={(key, selected) => onUpdate({ selections: [{ key: String(key), selected }] })} /></div>}
             </StepSection>
-        </>, !batch || !selected.length || selectedDuplicate)}
+        </>, !batch || !selected.length))}
         {step === 2 && shell("Relaciona los productos", "Cada archivo se asocia por documento, ID de proveedor y fecha.", <>
-            <StepSection title="Archivos de productos" description="Puedes continuar sin todos los detalles y guardar las compras pendientes como borradores."><CsvUpload multiple disabled={loading} onFiles={files => onFiles("details", files)} /></StepSection>
+            <StepSection title="Archivos de productos" description="Puedes continuar sin todos los detalles y guardar las compras pendientes como borradores."><CsvUpload multiple disabled={loading || (targetMode && !batch)} onFiles={files => onFiles("details", files)} /></StepSection>
             <StepSection title="Compras seleccionadas"><PurchaseRows rows={selected} />
                 <div className="mt-3 flex flex-wrap gap-2">{selected.filter(row => row.items.length).map(row => <BaseButton.Root key={row.header.sourceRow} variant="ghost" size="sm" onClick={() => onUpdate({ clearDetails: row.header.sourceRow })}>Quitar detalle de {row.header.documentNumber} para reemplazar</BaseButton.Root>)}</div>
             </StepSection>
@@ -218,7 +225,7 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
                     <option value="" disabled>Selecciona equivalencia</option><option value="exenta">Exento</option><option value="reducida_8">8%</option><option value="general_16">16%</option>
                 </select></label>)}</div>}
             </StepSection>
-            {batch && <StepSection title="Proveedores y productos" description="Los productos existentes conservan sus precios, IVA de venta y existencias."><CatalogResolution batch={batch} products={products} suppliers={suppliers} defaults={defaults} onUpdate={onUpdate} /></StepSection>}
+            {batch && <StepSection title="Proveedores y productos" description="Los productos existentes conservan sus precios, IVA de venta y existencias."><CatalogResolution batch={batch} rows={selected} products={products} suppliers={suppliers} defaults={defaults} onUpdate={onUpdate} /></StepSection>}
         </>, !batch || unknownTaxCodes.some(code => !proposedMappings[code]))}
         {step === 4 && shell("Previsualiza las compras", "Se usará el total calculado y se conservará el original como referencia.", <>
             {results.map(({ row, calculation }) => <StepSection key={row.header.sourceRow} title={`Compra ${row.header.documentNumber}`} description={`${row.header.supplierName} · ${row.header.currency} · tasa ${row.header.exchangeRate}`}>
@@ -231,8 +238,8 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
         </>, !selected.length)}
         {step === 5 && <GuidedStepShell title="Importa las compras" subtitle="Elige guardar borradores o confirmar las compras completas." onBack={() => setStep(4)} hideNav>
             <StepSection title="Resultado esperado"><p className="text-sm">{complete.length} compras completas, {selected.filter(row => !row.items.length).length} pendientes de detalle y {results.filter(result => result.calculation.errors.length > 0).length} con errores que deben corregirse.</p><p className="mt-2 text-sm">Confirmar aumenta el inventario por las cantidades compradas. Las compras sin detalle quedan como borradores.</p></StepSection>
-            <div className="flex flex-wrap gap-3"><BaseButton.Root variant="secondary" isDisabled={loading || !selected.length} onClick={() => onExecute("draft")} leftIcon={<Save size={16} />}>Guardar borradores</BaseButton.Root><BaseButton.Root isDisabled={loading || !complete.length} onClick={() => onExecute("confirm")} leftIcon={<Send size={16} />}>Importar y confirmar completas</BaseButton.Root><BaseButton.Root variant="ghost" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root></div>
-            {session?.results && <StepSection title="Resultados"><ul className="space-y-2 text-sm">{session.results.map((result, index) => <li key={index} className={result.status === "failed" ? "text-red-700" : "text-emerald-700"}>{result.purchaseKey}: {result.status === "confirmed" ? "Confirmada" : result.status === "saved" ? "Borrador guardado" : "No importada"}{result.message ? ` · ${result.message}` : ""}</li>)}</ul><p className="mt-3 text-xs">Puedes reintentar: las compras confirmadas no se duplican.</p></StepSection>}
+            <div className="flex flex-wrap gap-3"><BaseButton.Root variant="secondary" isDisabled={loading || !selected.length} onClick={() => onExecute("draft")} leftIcon={<Save size={16} />}>{targetMode ? "Guardar borrador" : "Guardar borradores"}</BaseButton.Root><BaseButton.Root isDisabled={loading || !complete.length} onClick={() => onExecute("confirm")} leftIcon={<Send size={16} />}>{targetMode ? "Confirmar factura" : "Importar y confirmar completas"}</BaseButton.Root>{!targetMode && <BaseButton.Root variant="ghost" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root>}</div>
+            {session?.results && <StepSection title="Resultados"><ul className="space-y-2 text-sm">{session.results.map((result, index) => <li key={index} className={result.status === "failed" ? "text-red-700" : "text-emerald-700"}>{result.purchaseKey}: {result.status === "confirmed" ? "Confirmada" : result.status === "saved" ? "Borrador guardado" : result.status === "skipped" ? "Ya confirmada · omitida" : "No importada"}{result.message ? ` · ${result.message}` : ""}</li>)}</ul><p className="mt-3 text-xs">Puedes reintentar: las compras confirmadas no se duplican.</p></StepSection>}
         </GuidedStepShell>}
     </div>;
 }

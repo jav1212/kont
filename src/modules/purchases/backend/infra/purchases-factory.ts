@@ -23,6 +23,7 @@ import { GetIvaRetentionExportUseCase }    from '../app/get-iva-retention-export
 import { GetIslrRetentionsExportUseCase }  from '../app/get-islr-retentions-export.use-case';
 import { ListPurchaseCsvImportsUseCase } from '../app/list-purchase-csv-imports.use-case';
 import { GetPurchaseCsvImportUseCase } from '../app/get-purchase-csv-import.use-case';
+import { GetPurchaseCsvImportByInvoiceUseCase } from '../app/get-purchase-csv-import-by-invoice.use-case';
 import { SavePurchaseCsvImportUseCase } from '../app/save-purchase-csv-import.use-case';
 import { ExecutePurchaseCsvImportUseCase } from '../app/execute-purchase-csv-import.use-case';
 
@@ -59,6 +60,7 @@ export function getPurchasesActions(userId: string) {
         // Guided purchase CSV imports
         listPurchaseCsvImports: new ListPurchaseCsvImportsUseCase(purchaseCsvImportRepo),
         getPurchaseCsvImport: new GetPurchaseCsvImportUseCase(purchaseCsvImportRepo),
+        getPurchaseCsvImportByInvoice: new GetPurchaseCsvImportByInvoiceUseCase(purchaseCsvImportRepo),
         savePurchaseCsvImport: new SavePurchaseCsvImportUseCase(purchaseCsvImportRepo),
         executePurchaseCsvImport: new ExecutePurchaseCsvImportUseCase(purchaseCsvImportRepo),
     };

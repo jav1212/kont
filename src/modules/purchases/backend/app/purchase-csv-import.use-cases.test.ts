@@ -15,6 +15,7 @@ function fixture() {
     const repo: IPurchaseCsvImportRepository = {
         list: async () => Result.success([]),
         get: async () => Result.fail("unused"),
+        getByInvoice: async () => Result.fail("unused"),
         save: async value => {
             saves++;
             saved = { ...value, revision: 1, status: "in_progress" } as PurchaseCsvImportBatch;
@@ -49,4 +50,20 @@ test("execution requires the caller's reviewed revision and a valid mode", async
     assert.equal((await action.execute({ id: "id", companyId: "test", mode: "confirm", revision: 0 })).isFailure, true);
     assert.equal((await action.execute({ id: "id", companyId: "test", mode: "confirm", revision: 3 })).isSuccess, true);
     assert.equal(f.counts().executions, 1);
+});
+
+test("target saves require exactly one row", async () => {
+    const f = fixture();
+    const action = new SavePurchaseCsvImportUseCase(f.repo);
+    const second = { ...f.input.rows[0], header: { ...f.input.rows[0].header, sourceRow: 2 } };
+    const result = await action.execute({ ...f.input, targetInvoiceId: "draft", rows: [f.input.rows[0], second] });
+    assert.equal(result.isFailure, true);
+    assert.equal(f.counts().saves, 0);
+});
+
+test("target save forwards the draft identity to the persistence boundary", async () => {
+    const f = fixture();
+    const action = new SavePurchaseCsvImportUseCase(f.repo);
+    assert.equal((await action.execute({ ...f.input, targetInvoiceId: "draft-id" })).isSuccess, true);
+    assert.equal((f.saved() as PurchaseCsvImportBatch & { targetInvoiceId?: string }).targetInvoiceId, "draft-id");
 });
