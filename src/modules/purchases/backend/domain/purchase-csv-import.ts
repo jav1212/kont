@@ -112,6 +112,49 @@ const normalizeColumn = (value: string) => value.trim().normalize("NFD").replace
 const sameDecimal = (a: string, b: string) => compareDecimal(exactDecimal(a), exactDecimal(b)) === 0;
 
 /**
+ * Applies the importer's standard equivalences to recognized source labels.
+ * @param code - Purchase or sale tax label, with optional surrounding whitespace.
+ * @returns 16% for IVA and numbered IVA labels, zero for EXENTO, or undefined for other labels.
+ */
+export function getPurchaseCsvVatDefault(code: string): VatRate | undefined {
+    if (/^IVA\d*$/i.test(code.trim())) return "general_16";
+    if (/^EXENTO$/i.test(code.trim())) return "exenta";
+    return undefined;
+}
+
+/**
+ * Resolves standard tax labels without a separate review acknowledgement.
+ * @param config - Saved cost interpretation and manually assigned nonstandard tax labels.
+ * @param items - Source details whose purchase and sale labels must be resolved.
+ * @returns A new configuration; unknown labels still require an explicit valid mapping.
+ */
+export function normalizePurchaseCsvConfig(config: PurchaseCsvConfig, items: readonly PurchaseCsvItem[]): PurchaseCsvConfig {
+    const vatMappings = { ...config.vatMappings };
+    const codes = items.flatMap(item => [item.purchaseVatCode, item.saleVatCode]);
+    for (const code of new Set([...Object.keys(vatMappings), ...codes])) {
+        const mapping = getPurchaseCsvVatDefault(code);
+        if (mapping) vatMappings[code] = mapping;
+    }
+    return { ...config, vatMappings, reviewed: codes.every(code => Object.prototype.hasOwnProperty.call(VAT, vatMappings[code] ?? "")) };
+}
+
+/**
+ * Refreshes staged tax defaults and requires renewed acceptance when their rates change.
+ * @param config - Previously stored or submitted import configuration.
+ * @param rows - Staged purchases, including server-provided execution metadata when loading.
+ * @returns Normalized configuration and rows with affected total acceptances cleared; confirmed rows retain their acceptance.
+ */
+export function normalizePurchaseCsvImport(config: PurchaseCsvConfig, rows: PurchaseCsvImportRow[]): { config: PurchaseCsvConfig; rows: PurchaseCsvImportRow[] } {
+    const normalized = normalizePurchaseCsvConfig(config, rows.flatMap(row => row.items));
+    return {
+        config: normalized,
+        rows: rows.map(row => row.invoiceStatus !== "confirmada" && row.items.some(item =>
+            config.vatMappings?.[item.purchaseVatCode] !== normalized.vatMappings[item.purchaseVatCode]
+        ) ? { ...row, acceptDifference: false } : row),
+    };
+}
+
+/**
  * Normalizes a company or supplier RIF for identity comparisons only.
  * @param value - RIF in compact or punctuated notation.
  * @returns Uppercase alphanumeric identity; the displayed source value is retained separately.
@@ -281,7 +324,7 @@ function matchesHeader(header: PurchaseCsvHeader, item: PurchaseCsvItem): boolea
 /**
  * Revalidates source amounts and computes the same canonical Bs bases used for posting.
  * @param row - Header, source details and reviewed catalog resolutions.
- * @param config - Explicit cost/IVA interpretation; no tax meaning is inferred from names.
+ * @param config - Cost interpretation and nonstandard tax mappings; IVA and EXENTO use standard import defaults.
  * @returns Exact serialized fiscal totals, blocking issues and informational differences.
  * @remarks Costs are quantized to 4 decimal places for PostgreSQL persistence, subtotal is
  * rounded to cents, and aggregate IVA is truncated to cents to match the existing purchase book.
@@ -290,6 +333,7 @@ function matchesHeader(header: PurchaseCsvHeader, item: PurchaseCsvItem): boolea
 export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: PurchaseCsvConfig): PurchaseCsvCalculation {
     const result: PurchaseCsvCalculation = { items: [], subtotal: "0", vatAmount: "0", total: "0", difference: "0", errors: [], warnings: [], complete: false };
     try {
+        config = normalizePurchaseCsvConfig(config, row.items);
         const header = row.header;
         if (!validDate(header.date)) result.errors.push("Fecha de compra inválida");
         if (!header.supplierName.trim() || !/^[VEJPG]\d{9}$/.test(normalizePurchaseRif(header.supplierRif))) result.errors.push("Proveedor o RIF inválido");
@@ -301,7 +345,6 @@ export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: Purch
         if ((headerRate.split(".")[1]?.length ?? 0) > 4 || compareDecimal(headerRate, exactDecimal("99999999.9999")) > 0) result.errors.push("La tasa de cabecera admite 8 enteros y 4 decimales");
         currencyCell(header.currency);
         if (header.currency !== "VES" && compareDecimal(headerRate, ZERO) <= 0) result.errors.push("La tasa de cambio debe ser positiva");
-        if (row.items.length && !config.reviewed) result.errors.push("Revisa y confirma la configuración de costos e IVA");
         let subtotal = ZERO, vat = ZERO;
         for (const source of row.items) {
             try {

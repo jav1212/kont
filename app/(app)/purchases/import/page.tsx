@@ -53,7 +53,7 @@ export default function PurchaseImportPage() {
                 error={importer.error}
                 onResume={id => { if (companyId) void importer.resume(companyId, id); }}
                 onFiles={(stage, files) => { if (companyId) void importer.submitFiles(stage, companyId, files, company?.rif || companyId, importer.batch?.id); }}
-                onUpdate={payload => { if (companyId) void importer.updateSession(companyId, payload); }}
+                onUpdate={payload => companyId ? importer.updateSession(companyId, payload) : Promise.resolve(null)}
                 onExecute={mode => {
                     if (companyId) void importer.execute(companyId, mode).then(result => {
                         if (result) {

@@ -1,6 +1,6 @@
 import { UseCase } from '@/src/core/domain/use-case';
 import { Result } from '@/src/core/domain/result';
-import type { PurchaseCsvConfig, PurchaseCsvImportRow } from '../domain/purchase-csv-import';
+import { normalizePurchaseCsvImport, type PurchaseCsvConfig, type PurchaseCsvImportRow } from '../domain/purchase-csv-import';
 import type { IPurchaseCsvImportRepository, PurchaseCsvImportBatch } from '../domain/repository/purchase-csv-import.repository';
 
 export interface SavePurchaseCsvImportInput { id?: string; revision?: number; companyId: string; fileName: string; companyRif: string; rows: PurchaseCsvImportRow[]; config: PurchaseCsvConfig; }
@@ -23,6 +23,6 @@ export class SavePurchaseCsvImportUseCase extends UseCase<SavePurchaseCsvImportI
         if (!input.companyId || !input.fileName?.trim()) return Result.fail('companyId and fileName are required');
         if (!Array.isArray(input.rows) || input.rows.length === 0) return Result.fail('At least one import row is required');
         if (new Set(input.rows.map(row => row.header.sourceRow)).size !== input.rows.length) return Result.fail('Las filas de cabecera deben tener identificadores únicos');
-        return this.repo.save({ id: input.id ?? crypto.randomUUID(), revision: input.revision, companyId: input.companyId, fileName: input.fileName.trim(), companyRif: input.companyRif ?? '', rows: input.rows, config: input.config });
+        return this.repo.save({ id: input.id ?? crypto.randomUUID(), revision: input.revision, companyId: input.companyId, fileName: input.fileName.trim(), companyRif: input.companyRif ?? '', ...normalizePurchaseCsvImport(input.config, input.rows) });
     }
 }

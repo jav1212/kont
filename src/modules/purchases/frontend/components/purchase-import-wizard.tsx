@@ -7,7 +7,7 @@ import { GuidedStepShell, StepSection } from "@/src/modules/payroll/frontend/com
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { PurchaseImportSession } from "../hooks/use-purchase-import";
 import type { PurchaseCsvImportBatch } from "../../backend/domain/repository/purchase-csv-import.repository";
-import { calculatePurchaseCsvRow, normalizePurchaseRif, type PurchaseCsvImportRow, type PurchaseCsvItem, type PurchaseCsvProductResolution } from "../../backend/domain/purchase-csv-import";
+import { calculatePurchaseCsvRow, getPurchaseCsvVatDefault, normalizePurchaseRif, type PurchaseCsvImportRow, type PurchaseCsvItem, type PurchaseCsvProductResolution } from "../../backend/domain/purchase-csv-import";
 import type { Product, MeasureUnit, ValuationMethod } from "@/src/modules/inventory/backend/domain/product";
 import type { VatRate, PurchaseInvoice } from "../../backend/domain/purchase-invoice";
 import type { Supplier } from "../../backend/domain/supplier";
@@ -31,7 +31,7 @@ type Props = {
     defaults?: Defaults;
     onResume: (id: string) => void;
     onFiles: (stage: "headers" | "details", files: File[]) => void;
-    onUpdate: (payload: Record<string, unknown>) => void;
+    onUpdate: (payload: Record<string, unknown>) => Promise<unknown>;
     onExecute: (mode: "draft" | "confirm") => void;
     onReset: () => void;
 };
@@ -103,25 +103,8 @@ function NewProductEditor({ initial, item, onSave }: { initial: NewProduct; item
 
 function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: { batch: PurchaseCsvImportBatch; products: Product[]; suppliers: Supplier[]; defaults: Defaults; onUpdate: Props["onUpdate"] }) {
     const selected = batch.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada");
-    const applyMatches = () => {
-        const resolutions: Record<string, PurchaseCsvImportRow["productResolutions"]> = {};
-        const supplierIds: Record<string, string> = {};
-        for (const row of selected) {
-            resolutions[row.header.sourceRow] = { ...row.productResolutions };
-            for (const item of row.items) {
-                if (row.productResolutions[item.code]) continue;
-                const matches = products.filter(product => product.code === item.code);
-                if (matches.length === 1 && matches[0].active) resolutions[row.header.sourceRow][item.code] = { productId: matches[0].id };
-                else if (!matches.length && batch.config.vatMappings[item.saleVatCode] !== "reducida_8") resolutions[row.header.sourceRow][item.code] = { create: newProduct(item, batch.config.vatMappings, defaults) };
-            }
-            const matches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
-            if (!row.supplierId && matches.length === 1 && matches[0].active && matches[0].id) supplierIds[row.header.sourceRow] = matches[0].id;
-        }
-        onUpdate({ resolutions, suppliers: supplierIds });
-    };
     return (
         <div className="space-y-4">
-            <BaseButton.Root size="sm" variant="secondary" isDisabled={selected.some(row => row.items.length > 0) && !batch.config.reviewed} onClick={applyMatches}>Vincular coincidencias únicas y preparar faltantes</BaseButton.Root>
             {selected.map(row => {
                 const supplierMatches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
                 return <div key={row.header.sourceRow} className="rounded-lg border border-border-light p-4">
@@ -140,7 +123,7 @@ function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: {
                             <label className="text-xs">{item.code} · {item.description}
                                 <select className={fieldClass} value={resolution?.productId ?? (resolution?.create ? "__new" : "")} onChange={event => saveResolution(event.target.value === "__new" ? { create: newProduct(item, batch.config.vatMappings, defaults) } : { productId: event.target.value })}>
                                     <option value="" disabled>Selecciona una coincidencia o crea el producto</option>
-                                    {!matches.length && <option value="__new" disabled={!batch.config.reviewed}>Crear producto nuevo</option>}
+                                    {!matches.length && <option value="__new">Crear producto nuevo</option>}
                                     {matches.map(product => <option key={product.id} value={product.id} disabled={!product.active}>{product.name}{!product.active ? " (inactivo)" : ""}</option>)}
                                 </select>
                             </label>
@@ -180,11 +163,39 @@ export function PurchaseImportWizard({ session, batch, resumable, products, supp
     const taxCodes = session?.taxCodes ?? [];
     const proposedMappings: Record<string, VatRate> = { ...batch?.config.vatMappings };
     for (const code of taxCodes) {
-        if (!proposedMappings[code] && code === "IVA1") proposedMappings[code] = "general_16";
-        if (!proposedMappings[code] && code === "EXENTO") proposedMappings[code] = "exenta";
+        const mapping = getPurchaseCsvVatDefault(code);
+        if (mapping) proposedMappings[code] = mapping;
     }
+    const unknownTaxCodes = taxCodes.filter(code => !getPurchaseCsvVatDefault(code));
+    const applyUniqueMatches = async () => {
+        if (!batch) return false;
+        const resolutions: Record<string, PurchaseCsvImportRow["productResolutions"]> = {};
+        const supplierIds: Record<string, string> = {};
+        for (const row of selected) {
+            const rowResolutions = { ...row.productResolutions };
+            let rowChanged = false;
+            for (const item of row.items) {
+                const existing = rowResolutions[item.code];
+                if (existing?.productId || existing?.create) continue;
+                const matches = products.filter(product => product.code === item.code);
+                if (matches.length === 1 && matches[0].active) {
+                    rowResolutions[item.code] = { productId: matches[0].id };
+                    rowChanged = true;
+                }
+            }
+            if (rowChanged) resolutions[String(row.header.sourceRow)] = rowResolutions;
+            const matches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
+            if (!row.supplierId && matches.length === 1 && matches[0].active && matches[0].id) supplierIds[String(row.header.sourceRow)] = matches[0].id;
+        }
+        if (Object.keys(resolutions).length || Object.keys(supplierIds).length) return Boolean(await onUpdate({ resolutions, suppliers: supplierIds }));
+        return true;
+    };
+    const nextStep = () => {
+        if (step === 3) void applyUniqueMatches().then(saved => { if (saved) setStep(4); });
+        else setStep(step + 1);
+    };
     const shell = (title: string, subtitle: string, body: ReactNode, disabled = false) => (
-        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > 1 ? () => setStep(step - 1) : undefined} onNext={() => setStep(step + 1)} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
+        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > 1 ? () => setStep(step - 1) : undefined} onNext={nextStep} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
     );
     if (!companyId) return <p className="p-6">Selecciona una empresa para importar compras.</p>;
     return <div className="flex min-h-full flex-col bg-background">
@@ -205,14 +216,14 @@ export function PurchaseImportWizard({ session, batch, resumable, products, supp
         </>, !batch)}
         {step === 3 && shell("Configura la importación", "Revisa los costos, las equivalencias de IVA y los productos.", <>
             <StepSection title="Costos e IVA">
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={batch?.config.costsIncludeVat ?? false} onChange={event => onUpdate({ costIncludesVat: event.target.checked, taxMappings: proposedMappings, configReviewed: false })} />Los costos incluyen IVA</label>
-                <div className="my-4 grid gap-3 sm:grid-cols-2">{taxCodes.map(code => <label className="text-xs" key={code}>{code}<select className={fieldClass} value={proposedMappings[code] ?? ""} onChange={event => { const next = { ...proposedMappings }; if (event.target.value) next[code] = event.target.value as VatRate; else delete next[code]; onUpdate({ costIncludesVat: batch?.config.costsIncludeVat ?? false, taxMappings: next, configReviewed: false }); }}>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={batch?.config.costsIncludeVat ?? false} onChange={event => { void onUpdate({ costIncludesVat: event.target.checked, taxMappings: proposedMappings }); }} />Los costos incluyen IVA</label>
+                <p className="mt-4 text-sm text-[var(--text-secondary)]">IVA: 16% · Exento: 0%</p>
+                {unknownTaxCodes.length > 0 && <div className="mt-4 grid gap-3 sm:grid-cols-2">{unknownTaxCodes.map(code => <label className="text-xs" key={code}>{code}<select className={fieldClass} value={proposedMappings[code] ?? ""} onChange={event => { const next = { ...proposedMappings }; if (event.target.value) next[code] = event.target.value as VatRate; else delete next[code]; void onUpdate({ costIncludesVat: batch?.config.costsIncludeVat ?? false, taxMappings: next }); }}>
                     <option value="" disabled>Selecciona equivalencia</option><option value="exenta">Exento</option><option value="reducida_8">8%</option><option value="general_16">16%</option>
-                </select></label>)}</div>
-                <BaseButton.Root variant="secondary" size="sm" isDisabled={taxCodes.some(code => !proposedMappings[code])} onClick={() => onUpdate({ costIncludesVat: batch?.config.costsIncludeVat ?? false, taxMappings: proposedMappings, configReviewed: true })}>{batch?.config.reviewed ? "Configuración revisada" : "Confirmar configuración"}</BaseButton.Root>
+                </select></label>)}</div>}
             </StepSection>
             {batch && <StepSection title="Proveedores y productos" description="Los productos existentes conservan sus precios, IVA de venta y existencias."><CatalogResolution batch={batch} products={products} suppliers={suppliers} defaults={defaults} onUpdate={onUpdate} /></StepSection>}
-        </>, !batch)}
+        </>, !batch || unknownTaxCodes.some(code => !proposedMappings[code]))}
         {step === 4 && shell("Previsualiza las compras", "Revisa cada total y acepta las diferencias antes de confirmar.", <>
             {results.map(({ row, calculation }) => <StepSection key={row.header.sourceRow} title={`Compra ${row.header.documentNumber}`} description={`${row.header.supplierName} · ${row.header.currency} · tasa ${row.header.exchangeRate}`}>
                 <div className="grid gap-3 text-sm sm:grid-cols-3"><p>Total original<strong className="block">Bs. {fmt(row.header.totalBs)}</strong></p><p>Total calculado<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.total)}` : "Pendiente de revisión"}</strong></p><p>Diferencia<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.difference)}` : "—"}</strong></p></div>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-    associatePurchaseItems, calculatePurchaseCsvRow, normalizePurchaseRif,
+    associatePurchaseItems, calculatePurchaseCsvRow, normalizePurchaseCsvImport, normalizePurchaseRif,
     parsePurchaseDecimal, parsePurchaseHeaders, parsePurchaseItems,
     type PurchaseCsvConfig, type PurchaseCsvImportRow, type PurchaseCsvItem,
 } from "./purchase-csv-import";
@@ -102,9 +102,42 @@ test("all-USD imports still calculate from source Bs and truncate aggregate VAT 
     assert.equal(result.complete, true);
 });
 
-test("unknown IVA, unreviewed settings, missing products and inconsistent source cannot confirm", () => {
-    assert.equal(calculatePurchaseCsvRow(row(), { ...config, reviewed: false }).complete, false);
-    assert.match(calculatePurchaseCsvRow(row([source({ purchaseVatCode: "IVA99" })]), config).errors.join(), /Asigna IVA Compra/);
+test("standard IVA and EXENTO calculate without mapping or a review acknowledgement", () => {
+    for (const code of ["IVA", "IVA1", " iva2 "]) {
+        const result = calculatePurchaseCsvRow(row([source({ purchaseVatCode: code, saleVatCode: " exento " })]), { ...config, reviewed: false, vatMappings: {} });
+        assert.equal(result.complete, true);
+        assert.equal(result.vatAmount, "799.66");
+        assert.equal(result.items[0].vatRate, "general_16");
+    }
+    const result = calculatePurchaseCsvRow(row([source({ purchaseVatCode: "EXENTO" })]), { ...config, reviewed: false, vatMappings: {} });
+    assert.equal(result.complete, true);
+    assert.equal(result.vatAmount, "0");
+});
+
+test("resumed drafts use defaults and renew acceptance only when a purchase tax rate changes", () => {
+    const pending = { ...row(), acceptDifference: true };
+    const confirmed = { ...pending, invoiceStatus: "confirmada" as const };
+    const oldConfig: PurchaseCsvConfig = { ...config, reviewed: false, vatMappings: { IVA1: "reducida_8", EXENTO: "exenta" } };
+    const normalized = normalizePurchaseCsvImport(oldConfig, [pending, confirmed]);
+    assert.equal(normalized.config.vatMappings.IVA1, "general_16");
+    assert.equal(normalized.config.reviewed, true);
+    assert.equal(normalized.rows[0].acceptDifference, false);
+    assert.equal(normalized.rows[1].acceptDifference, true);
+    assert.equal(pending.acceptDifference, true);
+    assert.equal(oldConfig.vatMappings.IVA1, "reducida_8");
+    assert.equal(normalizePurchaseCsvImport({ ...config, reviewed: false }, [pending]).rows[0].acceptDifference, true);
+});
+
+test("unknown tax codes still need a manual mapping, but no separate review acknowledgement", () => {
+    const input = row([source({ purchaseVatCode: "IMPUESTO_X" })]);
+    assert.match(calculatePurchaseCsvRow(input, config).errors.join(), /Asigna IVA Compra/);
+    const mapped = calculatePurchaseCsvRow(input, { ...config, reviewed: false, vatMappings: { ...config.vatMappings, IMPUESTO_X: "reducida_8" } });
+    assert.equal(mapped.complete, true);
+    assert.equal(mapped.vatAmount, "399.83");
+    assert.match(calculatePurchaseCsvRow(row([source({ saleVatCode: "DESCONOCIDO" })]), config).errors.join(), /Asigna IVA Venta/);
+});
+
+test("missing products and inconsistent source cannot confirm despite automatic tax defaults", () => {
     assert.match(calculatePurchaseCsvRow({ ...row(), productResolutions: {} }, config).errors.join(), /Resuelve/);
     assert.match(calculatePurchaseCsvRow(row([source({ subtotalBs: "5" })]), config).errors.join(), /no coincide/);
     assert.match(calculatePurchaseCsvRow(row([source({ exchangeRate: "0" })]), config).errors.join(), /positiva/);

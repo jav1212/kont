@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Result } from '@/src/core/domain/result';
 import type { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
-import { calculatePurchaseCsvRow, normalizePurchaseRif, type PurchaseCsvImportRow } from '../../domain/purchase-csv-import';
+import { calculatePurchaseCsvRow, normalizePurchaseCsvImport, normalizePurchaseRif, type PurchaseCsvImportRow } from '../../domain/purchase-csv-import';
 import type { IPurchaseCsvImportRepository, PurchaseCsvImportBatch, PurchaseCsvImportLineExecution, PurchaseCsvImportMode } from '../../domain/repository/purchase-csv-import.repository';
 
 type RawBatch = { id: string; company_id: string; source_file_name: string; source_company_rif: string | null; configuration: unknown; status: string; revision: number | null; created_at: string | null; updated_at: string | null; };
@@ -147,6 +147,6 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
                 productResolutions: record(calculation.productResolutions), acceptDifference: calculation.acceptDifference === true,
                 importLineId: line.id, invoiceId: line.invoice_id ?? undefined, invoiceStatus: line.invoice_id ? states.get(line.invoice_id) : undefined } as unknown as PurchaseCsvImportRow;
         });
-        return Result.success({ id: batch.id, companyId: batch.company_id, fileName: batch.source_file_name, companyRif: batch.source_company_rif ?? '', rows: importRows, config: record(batch.configuration) as unknown as PurchaseCsvImportBatch['config'], status: batch.status, revision: batch.revision ?? 1, createdAt: batch.created_at ?? undefined, updatedAt: batch.updated_at ?? undefined });
+        return Result.success({ id: batch.id, companyId: batch.company_id, fileName: batch.source_file_name, companyRif: batch.source_company_rif ?? '', ...normalizePurchaseCsvImport(record(batch.configuration) as unknown as PurchaseCsvImportBatch['config'], importRows), status: batch.status, revision: batch.revision ?? 1, createdAt: batch.created_at ?? undefined, updatedAt: batch.updated_at ?? undefined });
     }
 }
