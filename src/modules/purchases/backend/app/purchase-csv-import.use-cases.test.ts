@@ -11,14 +11,29 @@ function fixture() {
     const input = { companyId: "test", fileName: "report.csv", companyRif: "J123456789", config: { reviewed: false, costsIncludeVat: false, vatMappings: {} },
         rows: [{ header, items: [], selected: true, productResolutions: {}, acceptDifference: false }] };
     let saves = 0, executions = 0;
+    let saved: PurchaseCsvImportBatch | undefined;
     const repo: IPurchaseCsvImportRepository = {
         list: async () => Result.success([]),
         get: async () => Result.fail("unused"),
-        save: async value => { saves++; return Result.success({ ...value, revision: 1, status: "in_progress" } as PurchaseCsvImportBatch); },
+        save: async value => {
+            saves++;
+            saved = { ...value, revision: 1, status: "in_progress" } as PurchaseCsvImportBatch;
+            return Result.success(saved);
+        },
         execute: async (_id, _companyId, _mode, revision) => { executions++; assert.equal(revision, 3); return Result.success([]); },
     };
-    return { input, repo, counts: () => ({ saves, executions }) };
+    return { input, repo, counts: () => ({ saves, executions }), saved: () => saved };
 }
+
+test("staging automatically accepts the calculated total and keeps the source total as reference", async () => {
+    const f = fixture();
+    const action = new SavePurchaseCsvImportUseCase(f.repo);
+    assert.equal((await action.execute(f.input)).isSuccess, true);
+    assert.equal(f.saved()?.rows[0].acceptDifference, true);
+    assert.equal(f.saved()?.rows[0].header.totalBs, "100");
+    assert.equal(f.input.rows[0].acceptDifference, false);
+    assert.equal(f.input.rows[0].header.totalBs, "100");
+});
 
 test("staging can be saved before tax review; duplicate source row keys cannot overwrite lines", async () => {
     const f = fixture();

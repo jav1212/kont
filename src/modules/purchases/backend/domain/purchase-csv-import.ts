@@ -139,18 +139,16 @@ export function normalizePurchaseCsvConfig(config: PurchaseCsvConfig, items: rea
 }
 
 /**
- * Refreshes staged tax defaults and requires renewed acceptance when their rates change.
+ * Refreshes staged defaults and automatically accepts the calculated total for pending purchases.
  * @param config - Previously stored or submitted import configuration.
  * @param rows - Staged purchases, including server-provided execution metadata when loading.
- * @returns Normalized configuration and rows with affected total acceptances cleared; confirmed rows retain their acceptance.
+ * @returns Normalized configuration and rows whose pending calculated totals are accepted; confirmed audit rows are retained unchanged.
  */
 export function normalizePurchaseCsvImport(config: PurchaseCsvConfig, rows: PurchaseCsvImportRow[]): { config: PurchaseCsvConfig; rows: PurchaseCsvImportRow[] } {
     const normalized = normalizePurchaseCsvConfig(config, rows.flatMap(row => row.items));
     return {
         config: normalized,
-        rows: rows.map(row => row.invoiceStatus !== "confirmada" && row.items.some(item =>
-            config.vatMappings?.[item.purchaseVatCode] !== normalized.vatMappings[item.purchaseVatCode]
-        ) ? { ...row, acceptDifference: false } : row),
+        rows: rows.map(row => row.invoiceStatus === "confirmada" ? row : { ...row, acceptDifference: true }),
     };
 }
 
@@ -328,7 +326,7 @@ function matchesHeader(header: PurchaseCsvHeader, item: PurchaseCsvItem): boolea
  * @returns Exact serialized fiscal totals, blocking issues and informational differences.
  * @remarks Costs are quantized to 4 decimal places for PostgreSQL persistence, subtotal is
  * rounded to cents, and aggregate IVA is truncated to cents to match the existing purchase book.
- * A complete result can still require explicit acceptance of its total difference.
+ * Differences from the original total remain visible as reference for the automatically accepted calculated total.
  */
 export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: PurchaseCsvConfig): PurchaseCsvCalculation {
     const result: PurchaseCsvCalculation = { items: [], subtotal: "0", vatAmount: "0", total: "0", difference: "0", errors: [], warnings: [], complete: false };

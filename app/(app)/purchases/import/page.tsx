@@ -14,23 +14,25 @@ import type { MeasureUnit } from "@/src/modules/inventory/backend/domain/product
 
 /**
  * Provides the active company and catalogs to the guided purchase CSV importer.
- * @returns The authenticated import page with resumable company-scoped batches.
+ * @returns The authenticated import page with a new company-scoped import session.
  */
 export default function PurchaseImportPage() {
     const { companyId, company } = useCompany();
     const importer = usePurchaseImport();
-    const { loadResumable, reset } = importer;
+    const { reset } = importer;
     const { products, loadProducts } = useInventory();
     const { suppliers, loadSuppliers, purchaseInvoices, loadPurchaseInvoices } = usePurchases();
-    useEffect(() => { reset(); }, [companyId, reset]);
+    useEffect(() => {
+        reset();
+        return reset;
+    }, [companyId, reset]);
     useEffect(() => {
         if (companyId) {
             void loadProducts(companyId);
             void loadSuppliers(companyId);
             void loadPurchaseInvoices(companyId);
-            void loadResumable(companyId);
         }
-    }, [companyId, loadResumable, loadProducts, loadSuppliers, loadPurchaseInvoices]);
+    }, [companyId, loadProducts, loadSuppliers, loadPurchaseInvoices]);
     const configuredUnit = company?.inventoryConfig?.defaultMeasureUnit;
     const measureUnit = configuredUnit && ["unidad", "kg", "g", "m", "m2", "m3", "litro", "galon", "caja", "rollo", "paquete"].includes(configuredUnit)
         ? configuredUnit as MeasureUnit : "unidad";
@@ -44,14 +46,12 @@ export default function PurchaseImportPage() {
                 companyId={companyId ?? undefined}
                 session={importer.session}
                 batch={importer.batch}
-                resumable={importer.resumable}
                 products={products}
                 suppliers={suppliers}
                 purchaseInvoices={purchaseInvoices}
                 defaults={{ measureUnit, valuationMethod: company?.inventoryConfig?.defaultValuationMethod === "peps" ? "peps" : "promedio_ponderado" }}
                 loading={importer.loading}
                 error={importer.error}
-                onResume={id => { if (companyId) void importer.resume(companyId, id); }}
                 onFiles={(stage, files) => { if (companyId) void importer.submitFiles(stage, companyId, files, company?.rif || companyId, importer.batch?.id); }}
                 onUpdate={payload => companyId ? importer.updateSession(companyId, payload) : Promise.resolve(null)}
                 onExecute={mode => {

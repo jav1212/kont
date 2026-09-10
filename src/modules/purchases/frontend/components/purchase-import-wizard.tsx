@@ -24,12 +24,10 @@ type Props = {
     error: string | null;
     companyId?: string;
     batch: PurchaseCsvImportBatch | null;
-    resumable: PurchaseCsvImportBatch[];
     products: Product[];
     suppliers: Supplier[];
     purchaseInvoices: PurchaseInvoice[];
     defaults?: Defaults;
-    onResume: (id: string) => void;
     onFiles: (stage: "headers" | "details", files: File[]) => void;
     onUpdate: (payload: Record<string, unknown>) => Promise<unknown>;
     onExecute: (mode: "draft" | "confirm") => void;
@@ -142,7 +140,7 @@ function CatalogResolution({ batch, products, suppliers, defaults, onUpdate }: {
  * @param props - Persisted batch, catalogs and company-scoped actions owned by the import hook.
  * @returns Responsive wizard; only the final execution actions create invoices or stock movements.
  */
-export function PurchaseImportWizard({ session, batch, resumable, products, suppliers, purchaseInvoices, defaults = {}, loading, error, companyId, onResume, onFiles, onUpdate, onExecute, onReset }: Props) {
+export function PurchaseImportWizard({ session, batch, products, suppliers, purchaseInvoices, defaults = {}, loading, error, companyId, onFiles, onUpdate, onExecute, onReset }: Props) {
     const [step, setStep] = useState(1);
     const selected = batch?.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada") ?? [];
     const duplicates = new Set((batch?.rows ?? []).filter(row => purchaseInvoices.some(invoice => {
@@ -159,7 +157,6 @@ export function PurchaseImportWizard({ session, batch, resumable, products, supp
     const selectedDuplicate = selected.some(row => duplicates.has(row.header.sourceRow));
     const results = batch ? selected.map(row => ({ row, calculation: calculatePurchaseCsvRow(row, batch.config) })) : [];
     const complete = results.filter(result => result.calculation.complete);
-    const unaccepted = complete.some(({ row, calculation }) => calculation.difference !== "0" && !row.acceptDifference);
     const taxCodes = session?.taxCodes ?? [];
     const proposedMappings: Record<string, VatRate> = { ...batch?.config.vatMappings };
     for (const code of taxCodes) {
@@ -203,7 +200,6 @@ export function PurchaseImportWizard({ session, batch, resumable, products, supp
         {error && <div role="alert" className="mx-auto mt-4 flex w-full max-w-4xl gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><AlertTriangle size={16} />{error}</div>}
         {loading && <div role="status" aria-label="Procesando importación" className="fixed inset-0 z-50 grid place-items-center bg-background/60"><LoaderCircle className="animate-spin text-primary-500" /></div>}
         {step === 1 && shell("Carga las compras", "Selecciona el listado y las compras que deseas importar.", <>
-            {!batch && resumable.length > 0 && <StepSection title="Reanudar importación" description="Retoma los archivos, borradores y compras guardadas.">{resumable.map(item => <BaseButton.Root key={item.id} className="mb-2 mr-2" size="sm" variant="secondary" onClick={() => onResume(item.id)}>{item.fileName} · {item.rows.length} compras</BaseButton.Root>)}</StepSection>}
             <StepSection title="Listado de compras"><CsvUpload disabled={loading || !!batch} onFiles={files => onFiles("headers", files)} />
                 {batch && <div className="mt-4 space-y-3"><p className="text-sm">{batch.fileName} · RIF {batch.companyRif}</p><PurchaseRows rows={batch.rows} duplicates={duplicates} onToggle={(key, selected) => onUpdate({ selections: [{ key: String(key), selected }] })} /></div>}
             </StepSection>
@@ -224,18 +220,18 @@ export function PurchaseImportWizard({ session, batch, resumable, products, supp
             </StepSection>
             {batch && <StepSection title="Proveedores y productos" description="Los productos existentes conservan sus precios, IVA de venta y existencias."><CatalogResolution batch={batch} products={products} suppliers={suppliers} defaults={defaults} onUpdate={onUpdate} /></StepSection>}
         </>, !batch || unknownTaxCodes.some(code => !proposedMappings[code]))}
-        {step === 4 && shell("Previsualiza las compras", "Revisa cada total y acepta las diferencias antes de confirmar.", <>
+        {step === 4 && shell("Previsualiza las compras", "Se usará el total calculado y se conservará el original como referencia.", <>
             {results.map(({ row, calculation }) => <StepSection key={row.header.sourceRow} title={`Compra ${row.header.documentNumber}`} description={`${row.header.supplierName} · ${row.header.currency} · tasa ${row.header.exchangeRate}`}>
                 <div className="grid gap-3 text-sm sm:grid-cols-3"><p>Total original<strong className="block">Bs. {fmt(row.header.totalBs)}</strong></p><p>Total calculado<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.total)}` : "Pendiente de revisión"}</strong></p><p>Diferencia<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.difference)}` : "—"}</strong></p></div>
                 {calculation.errors.length > 0 && <ul className="mt-3 list-inside list-disc text-sm text-red-700">{calculation.errors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
                 {!row.items.length && <p className="mt-3 text-sm">Falta el archivo de productos. Se guardará como borrador.</p>}
-                {calculation.complete && calculation.difference !== "0" && <label className="mt-4 flex items-start gap-2 text-sm"><input type="checkbox" checked={row.acceptDifference} onChange={event => onUpdate({ acceptances: { [row.header.sourceRow]: event.target.checked } })} />Acepto el total calculado de esta compra y conservar el total original como referencia.</label>}
+                {calculation.complete && calculation.difference !== "0" && <p className="mt-4 text-sm">Se usará el total calculado de esta compra. El total original se conservará como referencia.</p>}
                 {row.items.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead><tr>{["Código / detalle", "Cantidad", "Costo Bs.", "Subtotal Bs.", "IVA", "Moneda / tasa"].map(label => <th className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.items.map((item, index) => <tr className="border-t border-border-light" key={`${item.sourceRow}:${index}`}><td className="p-2">{item.code}<span className="block">{item.description}</span></td><td className="p-2">{item.quantity}</td><td className="p-2">{fmt(item.unitCostBs)}</td><td className="p-2">{fmt(item.subtotalBs)}</td><td className="p-2">{item.purchaseVatCode}</td><td className="p-2">{item.currency} · {item.exchangeRate}</td></tr>)}</tbody></table></div>}
             </StepSection>)}
         </>, !selected.length)}
         {step === 5 && <GuidedStepShell title="Importa las compras" subtitle="Elige guardar borradores o confirmar las compras completas." onBack={() => setStep(4)} hideNav>
-            <StepSection title="Resultado esperado"><p className="text-sm">{complete.length} compras completas, {selected.filter(row => !row.items.length).length} pendientes de detalle y {results.filter(result => result.calculation.errors.length > 0).length} con errores que deben corregirse.</p><p className="mt-2 text-sm">Confirmar aumenta el inventario por las cantidades compradas. Las compras sin detalle quedan como borradores.</p>{unaccepted && <p className="mt-2 text-sm text-amber-700">Regresa a previsualización para aceptar las diferencias.</p>}</StepSection>
-            <div className="flex flex-wrap gap-3"><BaseButton.Root variant="secondary" isDisabled={loading || !selected.length} onClick={() => onExecute("draft")} leftIcon={<Save size={16} />}>Guardar borradores</BaseButton.Root><BaseButton.Root isDisabled={loading || !complete.length || unaccepted} onClick={() => onExecute("confirm")} leftIcon={<Send size={16} />}>Importar y confirmar completas</BaseButton.Root><BaseButton.Root variant="ghost" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root></div>
+            <StepSection title="Resultado esperado"><p className="text-sm">{complete.length} compras completas, {selected.filter(row => !row.items.length).length} pendientes de detalle y {results.filter(result => result.calculation.errors.length > 0).length} con errores que deben corregirse.</p><p className="mt-2 text-sm">Confirmar aumenta el inventario por las cantidades compradas. Las compras sin detalle quedan como borradores.</p></StepSection>
+            <div className="flex flex-wrap gap-3"><BaseButton.Root variant="secondary" isDisabled={loading || !selected.length} onClick={() => onExecute("draft")} leftIcon={<Save size={16} />}>Guardar borradores</BaseButton.Root><BaseButton.Root isDisabled={loading || !complete.length} onClick={() => onExecute("confirm")} leftIcon={<Send size={16} />}>Importar y confirmar completas</BaseButton.Root><BaseButton.Root variant="ghost" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root></div>
             {session?.results && <StepSection title="Resultados"><ul className="space-y-2 text-sm">{session.results.map((result, index) => <li key={index} className={result.status === "failed" ? "text-red-700" : "text-emerald-700"}>{result.purchaseKey}: {result.status === "confirmed" ? "Confirmada" : result.status === "saved" ? "Borrador guardado" : "No importada"}{result.message ? ` · ${result.message}` : ""}</li>)}</ul><p className="mt-3 text-xs">Puedes reintentar: las compras confirmadas no se duplican.</p></StepSection>}
         </GuidedStepShell>}
     </div>;

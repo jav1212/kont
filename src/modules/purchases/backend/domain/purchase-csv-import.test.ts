@@ -114,18 +114,21 @@ test("standard IVA and EXENTO calculate without mapping or a review acknowledgem
     assert.equal(result.vatAmount, "0");
 });
 
-test("resumed drafts use defaults and renew acceptance only when a purchase tax rate changes", () => {
-    const pending = { ...row(), acceptDifference: true };
-    const confirmed = { ...pending, invoiceStatus: "confirmada" as const };
+test("pending imports accept calculated totals by default while confirmed audit rows stay unchanged", () => {
+    const pending = { ...row(), acceptDifference: false };
+    const confirmed = { ...row(), acceptDifference: false, invoiceStatus: "confirmada" as const };
     const oldConfig: PurchaseCsvConfig = { ...config, reviewed: false, vatMappings: { IVA1: "reducida_8", EXENTO: "exenta" } };
     const normalized = normalizePurchaseCsvImport(oldConfig, [pending, confirmed]);
     assert.equal(normalized.config.vatMappings.IVA1, "general_16");
     assert.equal(normalized.config.reviewed, true);
-    assert.equal(normalized.rows[0].acceptDifference, false);
-    assert.equal(normalized.rows[1].acceptDifference, true);
-    assert.equal(pending.acceptDifference, true);
+    assert.equal(normalized.rows[0].acceptDifference, true);
+    assert.equal(normalized.rows[1].acceptDifference, false);
+    assert.equal(normalized.rows[1], confirmed);
+    assert.equal(pending.acceptDifference, false);
     assert.equal(oldConfig.vatMappings.IVA1, "reducida_8");
     assert.equal(normalizePurchaseCsvImport({ ...config, reviewed: false }, [pending]).rows[0].acceptDifference, true);
+    assert.equal(normalized.rows[0].header.totalBs, "134335.02");
+    assert.equal(pending.header.totalBs, "134335.02");
 });
 
 test("unknown tax codes still need a manual mapping, but no separate review acknowledgement", () => {

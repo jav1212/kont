@@ -67,7 +67,6 @@ function toSession(batch: PersistedBatch): PurchaseImportSession {
 export function usePurchaseImport() {
     const [session, setSession] = useState<PurchaseImportSession | null>(null);
     const [batch, setBatch] = useState<PersistedBatch | null>(null);
-    const [resumable, setResumable] = useState<PersistedBatch[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const generation = useRef(0);
@@ -113,7 +112,7 @@ export function usePurchaseImport() {
             const sourceCompanyRif = reportedRifs[0] ?? existingBatch?.companyRif ?? companyRif;
             const rows: PurchaseCsvImportRow[] = sourceHeaders.map((header) => {
                 const previous = existingRows.find((row) => row.header.sourceRow === header.sourceRow);
-                return { header, items: associations.assignments[header.sourceRow] ?? [], selected: previous?.selected ?? true, supplierId: previous?.supplierId, productResolutions: previous?.productResolutions ?? {}, acceptDifference: false };
+                return { header, items: associations.assignments[header.sourceRow] ?? [], selected: previous?.selected ?? true, supplierId: previous?.supplierId, productResolutions: previous?.productResolutions ?? {}, acceptDifference: previous?.invoiceStatus === "confirmada" ? previous.acceptDifference : true };
             });
             const response = await apiFetch("/api/purchases/imports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: sessionId, revision: existingBatch?.revision, companyId, fileName: existingBatch?.fileName ?? files.map((file) => file.name).join(", "), companyRif: sourceCompanyRif, rows, config }) });
             const json = await readResponse(response);
@@ -137,16 +136,14 @@ export function usePurchaseImport() {
                 const chosen = selections?.find((entry) => entry.key === String(row.header.sourceRow));
                 const resolutions = payload.resolutions as Record<string, PurchaseCsvImportRow["productResolutions"]> | undefined;
                 const suppliers = payload.suppliers as Record<string, string> | undefined;
-                const acceptances = payload.acceptances as Record<string, boolean> | undefined;
                 const clearDetail = payload.clearDetails === row.header.sourceRow && row.invoiceStatus !== "confirmada";
                 return {
                     ...row,
-                    ...(clearDetail ? { items: [], productResolutions: {}, acceptDifference: false } : {}),
-                    ...(chosen ? { selected: chosen.selected, acceptDifference: false } : {}),
-                    ...(resolutions?.[String(row.header.sourceRow)] ? { productResolutions: resolutions[String(row.header.sourceRow)], acceptDifference: false } : {}),
-                    ...(suppliers?.[String(row.header.sourceRow)] !== undefined ? { supplierId: suppliers[String(row.header.sourceRow)] || undefined, acceptDifference: false } : {}),
-                    ...(acceptances?.[String(row.header.sourceRow)] !== undefined ? { acceptDifference: acceptances[String(row.header.sourceRow)] } : {}),
-                    ...(payload.costIncludesVat !== undefined ? { acceptDifference: false } : {}),
+                    ...(clearDetail ? { items: [], productResolutions: {} } : {}),
+                    ...(chosen ? { selected: chosen.selected } : {}),
+                    ...(resolutions?.[String(row.header.sourceRow)] ? { productResolutions: resolutions[String(row.header.sourceRow)] } : {}),
+                    ...(suppliers?.[String(row.header.sourceRow)] !== undefined ? { supplierId: suppliers[String(row.header.sourceRow)] || undefined } : {}),
+                    acceptDifference: row.invoiceStatus === "confirmada" ? row.acceptDifference : true,
                 };
             });
             const config = { ...batch.config, ...(payload.costIncludesVat === undefined ? {} : { costsIncludeVat: Boolean(payload.costIncludesVat), vatMappings: payload.taxMappings as PurchaseCsvConfig["vatMappings"], reviewed: payload.configReviewed === true }) };
@@ -194,26 +191,6 @@ export function usePurchaseImport() {
         } finally { if (requestGeneration === generation.current) setLoading(false); }
     }, [batch?.revision, commit, session?.id]);
 
-    const loadResumable = useCallback(async (companyId: string) => {
-        const requestGeneration = generation.current;
-        try {
-            const response = await apiFetch(`/api/purchases/imports?companyId=${encodeURIComponent(companyId)}`);
-            const json = await readResponse(response);
-            if (requestGeneration !== generation.current) return;
-            if (!response.ok) { setError(json.error ?? "No se pudieron cargar las importaciones pendientes."); return; }
-            setResumable(Array.isArray(json.data) ? json.data as PersistedBatch[] : []);
-        } catch (cause) {
-            if (requestGeneration === generation.current) setError(cause instanceof Error ? cause.message : "No se pudieron cargar las importaciones");
-        }
-    }, []);
-    const resume = useCallback(async (companyId: string, id: string) => {
-        const requestGeneration = generation.current;
-        setLoading(true); setError(null);
-        try { const response = await apiFetch(`/api/purchases/imports/${encodeURIComponent(id)}?companyId=${encodeURIComponent(companyId)}`); const json = await readResponse(response); if (!response.ok || !json.data) throw new Error(json.error ?? "No se pudo abrir la importación."); commit(json.data as PersistedBatch, requestGeneration); return json.data as PersistedBatch; }
-        catch (cause) { if (requestGeneration === generation.current) setError(cause instanceof Error ? cause.message : "No se pudo abrir la importación."); return null; }
-        finally { if (requestGeneration === generation.current) setLoading(false); }
-    }, [commit]);
-
-    const reset = useCallback(() => { generation.current += 1; setSession(null); setBatch(null); setResumable([]); setError(null); setLoading(false); }, []);
-    return { session, batch, resumable, loading, error, submitFiles, updateSession, execute, loadResumable, resume, reset };
+    const reset = useCallback(() => { generation.current += 1; setSession(null); setBatch(null); setError(null); setLoading(false); }, []);
+    return { session, batch, loading, error, submitFiles, updateSession, execute, reset };
 }
