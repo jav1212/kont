@@ -7,9 +7,9 @@
 
 import {
     Children,
+    Fragment,
     isValidElement,
     useCallback,
-    useEffect,
     useRef,
     useState,
     type ReactNode,
@@ -44,6 +44,20 @@ function isScreenReaderOnly(node: ReactNode): boolean {
     return node.props.className?.split(/\s+/).includes("sr-only") ?? false;
 }
 
+function isPassiveActionNode(node: ReactNode): boolean {
+    if (!isValidElement<{ className?: string }>(node)) return false;
+    return node.type === "input" || node.props.className?.split(/\s+/).includes("hidden") === true;
+}
+
+function flattenActionNodes(children: ReactNode): ReactNode[] {
+    return Children.toArray(children).flatMap((node) => {
+        if (isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment) {
+            return flattenActionNodes(node.props.children);
+        }
+        return [node];
+    });
+}
+
 function unwrapLegacyActionGroup(nodes: ReactNode[]): ReactNode[] {
     if (nodes.length !== 1) return nodes;
     const onlyNode = nodes[0];
@@ -61,24 +75,7 @@ function ActionOverflow({ children }: { children: ReactNode }) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const close = useCallback(() => setOpen(false), []);
-
-    useEffect(() => {
-        if (!open) return;
-        const onPointerDown = (event: MouseEvent | TouchEvent) => {
-            if (!rootRef.current?.contains(event.target as Node)) close();
-        };
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") close();
-        };
-        window.addEventListener("mousedown", onPointerDown);
-        window.addEventListener("touchstart", onPointerDown);
-        window.addEventListener("keydown", onKeyDown);
-        return () => {
-            window.removeEventListener("mousedown", onPointerDown);
-            window.removeEventListener("touchstart", onPointerDown);
-            window.removeEventListener("keydown", onKeyDown);
-        };
-    }, [open, close]);
+    const actionNodes = flattenActionNodes(children);
 
     return (
         <div ref={rootRef} className="relative 2xl:hidden">
@@ -127,8 +124,11 @@ function ActionOverflow({ children }: { children: ReactNode }) {
                             "[&>div]:w-full [&_svg]:shrink-0",
                         ].join(" ")}
                     >
-                        {Children.map(children, (child) => (
-                            <div className="w-full min-w-0 px-3 [&>*]:!w-full">
+                        {actionNodes.map((child, index) => (
+                            <div
+                                key={isValidElement(child) && child.key !== null ? child.key : index}
+                                className="w-full min-w-0 px-3 [&>*]:!w-full"
+                            >
                                 {child}
                             </div>
                         ))}
@@ -138,9 +138,15 @@ function ActionOverflow({ children }: { children: ReactNode }) {
     );
 }
 
+/**
+ * Renders the authenticated-page action bar and its responsive overflow menu.
+ *
+ * @param props - Page title and optional action slots.
+ * @returns The page header element.
+ */
 export function PageHeader({
     title,
-    subtitle,
+    subtitle: _subtitle,
     children,
     primaryAction,
     secondaryActions,
@@ -149,9 +155,9 @@ export function PageHeader({
     hideOverflow = false,
 }: PageHeaderProps) {
     const currentBcv = useBcvRate();
-    const legacyNodes = unwrapLegacyActionGroup(Children.toArray(children));
-    const passiveNodes = legacyNodes.filter(isScreenReaderOnly);
-    const visibleLegacyNodes = legacyNodes.filter((node) => !isScreenReaderOnly(node));
+    const legacyNodes = unwrapLegacyActionGroup(flattenActionNodes(children));
+    const passiveNodes = legacyNodes.filter((node) => isScreenReaderOnly(node) || isPassiveActionNode(node));
+    const visibleLegacyNodes = legacyNodes.filter((node) => !isScreenReaderOnly(node) && !isPassiveActionNode(node));
     const detectedPrimaryIndex = visibleLegacyNodes.findIndex(isPrimaryAction);
     const resolvedPrimary = primaryAction ?? (
         detectedPrimaryIndex >= 0
@@ -165,7 +171,10 @@ export function PageHeader({
                 index !== (detectedPrimaryIndex >= 0 ? detectedPrimaryIndex : visibleLegacyNodes.length - 1)
             ))
     );
-    const hasSecondary = Children.count(resolvedSecondary) > 0;
+    const secondaryActionNodes = flattenActionNodes(resolvedSecondary).filter(
+        (node) => !isScreenReaderOnly(node) && !isPassiveActionNode(node),
+    );
+    const hasSecondary = secondaryActionNodes.length > 0;
     const hasOverflow = hasSecondary;
     return (
         <>
@@ -231,10 +240,10 @@ export function PageHeader({
 
                         {hasSecondary && (
                             <div className="hidden min-w-0 items-center gap-2 2xl:flex">
-                                {resolvedSecondary}
+                                {secondaryActionNodes}
                             </div>
                         )}
-                        {hasOverflow && !hideOverflow && <ActionOverflow>{resolvedSecondary}</ActionOverflow>}
+                        {hasOverflow && !hideOverflow && <ActionOverflow>{secondaryActionNodes}</ActionOverflow>}
                         {resolvedPrimary && <div className="shrink-0">{resolvedPrimary}</div>}
                         {passiveNodes}
                     </div>
@@ -244,4 +253,3 @@ export function PageHeader({
         </>
     );
 }
-
