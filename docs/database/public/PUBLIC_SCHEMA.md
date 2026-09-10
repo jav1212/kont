@@ -153,7 +153,17 @@ Key concepts:
 Current roles:
 - `owner`
 - `admin`
+- `contador`
 - `contable`
+- `vendedor`
+- `cajero`
+
+Direct member provisioning:
+- [252_direct_member_auth_provisioning.sql](../../../supabase/migrations/252_direct_member_auth_provisioning.sql) adds a password-based provisioning path for a new member of an existing tenant.
+- A trusted Auth-admin payload in `raw_app_meta_data.provisioned_membership` contains exactly `tenant_id`, `role`, and `invited_by`. Client-controlled user metadata cannot enable this path.
+- The `auth.users` trigger `on_auth_user_created` calls `public.handle_new_user()` and creates the profile and one accepted, active membership in the same transaction. A failed membership insert rolls back the Auth user and profile.
+- The provisioned role is `admin`, `contador`, `vendedor`, or `cajero`; the inviter must be an accepted, active `owner` or `admin`, and an `admin` cannot provision another `admin`.
+- A directly provisioned user does not receive a tenant of their own and does not accept any pending invitation. Public registration and the normal invitation path retain their existing behavior.
 
 ### `public.tenant_invitations`
 
@@ -191,6 +201,10 @@ The exact list is large, but the schema includes important RPC helpers for:
 - document access and folder replication
 - admin summaries
 - billing and plan enforcement
+
+### Direct-member provisioning readiness
+
+`public.membership_direct_provisioning_ready()` is a service-role-only readiness check used before creating a direct member. It verifies that exactly one enabled `auth.users` provisioning trigger is attached to `public.handle_new_user()`. The API reports the feature as unavailable when this check is false, so apply migration 252 before deploying an application version that calls this endpoint.
 
 ## Current design observations
 

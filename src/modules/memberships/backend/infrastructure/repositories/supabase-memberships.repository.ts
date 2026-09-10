@@ -4,7 +4,13 @@
 
 import { Result } from "@/src/core/domain/result";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
-import { IMembershipsRepository, InvitationContext, SendInvitationInput } from "../../domain/memberships-repository";
+import {
+    CreatedDirectMember,
+    CreateDirectMemberInput,
+    IMembershipsRepository,
+    InvitationContext,
+    SendInvitationInput,
+} from "../../domain/memberships-repository";
 import { Membership, UserMembership, MemberRole } from "../../domain/membership";
 import { Invitation, AcceptedInvitation } from "../../domain/invitation";
 
@@ -293,5 +299,52 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
         }
 
         return Result.success({ inviterEmail, tenantName });
+    }
+
+    /**
+     * Creates a confirmed Auth identity after verifying that the database trigger can atomically provision it.
+     *
+     * @param input - Tenant-scoped credentials and trusted application metadata.
+     * @returns The created identity, or an expected duplicate/provisioning failure code.
+     * @throws Never throws expected failures; provider faults are returned as Result failures.
+     */
+    async createDirectMember(input: CreateDirectMemberInput): Promise<Result<CreatedDirectMember>> {
+        try {
+            const { data: ready, error: readinessError } = await this.source.instance
+                .rpc('membership_direct_provisioning_ready');
+
+            if (readinessError || ready !== true) {
+                return Result.fail('provisioning_unavailable');
+            }
+
+            const { data, error } = await this.source.instance.auth.admin.createUser({
+                email: input.email,
+                password: input.password,
+                email_confirm: true,
+                app_metadata: {
+                    provisioned_membership: {
+                        tenant_id: input.tenantOwnerId,
+                        role: input.role,
+                        invited_by: input.invitedBy,
+                    },
+                },
+            });
+
+            if (error) {
+                const code = (error as { code?: unknown }).code;
+                if (code === 'email_exists' || code === 'user_already_exists') return Result.fail('email_already_exists');
+                if (code === 'weak_password' || code === 'password_not_allowed') return Result.fail('password_requirements');
+                if (code === 'password_too_short') return Result.fail('invalid_password');
+                if (code === 'email_address_invalid' || code === 'email_invalid' || code === 'invalid_email') return Result.fail('invalid_email');
+                return Result.fail('auth_create_failed');
+            }
+
+            const user = data.user;
+            if (!user?.id || !user.email) return Result.fail('auth_create_failed');
+
+            return Result.success({ id: user.id, email: user.email, role: input.role });
+        } catch {
+            return Result.fail('auth_create_failed');
+        }
     }
 }

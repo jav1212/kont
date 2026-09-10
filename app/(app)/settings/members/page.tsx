@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Modal, ModalBody, ModalContent } from "@heroui/react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
@@ -49,6 +50,11 @@ function PendingBadge() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Renders the active tenant's members, pending invitations, and access-management actions.
+ *
+ * @returns The members settings page.
+ */
 export default function MembersPage() {
     const router = useRouter();
     const { activeTenantRole, isActingOnBehalf, loading: tenantLoading, can } = useActiveTenantContext();
@@ -56,6 +62,7 @@ export default function MembersPage() {
     const [members,    setMembers]    = useState<Member[]>([]);
     const [loading,    setLoading]    = useState(true);
     const [inviteOpen,    setInviteOpen]    = useState(false);
+    const [createOpen,    setCreateOpen]    = useState(false);
     const [revoking,      setRevoking]      = useState<string | null>(null);
     const [revokeTarget,  setRevokeTarget]  = useState<Member | null>(null);
 
@@ -98,22 +105,40 @@ export default function MembersPage() {
     }
 
     const canInvite = can("members.invite");
+    const canCreateMember = canInvite && (activeTenantRole === "owner" || activeTenantRole === "admin");
+
+    useEffect(() => {
+        if (!canCreateMember) setCreateOpen(false);
+    }, [canCreateMember]);
 
     if (tenantLoading || !can("members.read")) return null;
 
     const accepted = members.filter((m) => !m.pending);
     const pending  = members.filter((m) => m.pending);
 
-    const inviteButton = canInvite ? (
-        <BaseButton.Root
-            variant="primary"
-            size="sm"
-            onClick={() => setInviteOpen(true)}
-            leftIcon={<Plus size={13} strokeWidth={2.5} />}
-        >
-            <span className="hidden sm:inline">Invitar miembro</span>
-            <span className="sm:hidden">Invitar</span>
-        </BaseButton.Root>
+    const memberActions = canInvite ? (
+        <div className="flex items-center gap-2">
+            {canCreateMember && (
+                <BaseButton.Root
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateOpen(true)}
+                    leftIcon={<Plus size={13} strokeWidth={2.5} />}
+                >
+                    <span className="hidden sm:inline">Crear miembro</span>
+                    <span className="sm:hidden">Crear</span>
+                </BaseButton.Root>
+            )}
+            <BaseButton.Root
+                variant="primary"
+                size="sm"
+                onClick={() => setInviteOpen(true)}
+                leftIcon={<Plus size={13} strokeWidth={2.5} />}
+            >
+                <span className="hidden sm:inline">Invitar miembro</span>
+                <span className="sm:hidden">Invitar</span>
+            </BaseButton.Root>
+        </div>
     ) : null;
 
     return (
@@ -131,7 +156,7 @@ export default function MembersPage() {
                 <SettingsSection
                     title="Miembros activos"
                     subtitle="Quienes tienen acceso al tenant. Sólo el owner y los admin pueden invitar o revocar."
-                    action={inviteButton}
+                    action={memberActions}
                     flush
                 >
                     <div className="px-6 py-5 space-y-2">
@@ -144,7 +169,7 @@ export default function MembersPage() {
                 <SettingsSection
                     title="Miembros activos"
                     subtitle="Quienes tienen acceso al tenant."
-                    action={inviteButton}
+                    action={memberActions}
                 >
                     <div className="text-center py-10">
                         <MailCheck size={20} className="mx-auto text-[var(--text-tertiary)] mb-2" />
@@ -158,7 +183,7 @@ export default function MembersPage() {
                     <SettingsSection
                         title="Miembros activos"
                         subtitle="Owner, admin y contables con acceso al tenant. El owner no puede revocarse."
-                        action={inviteButton}
+                        action={memberActions}
                         flush
                     >
                         {accepted.length > 0 ? (
@@ -199,6 +224,14 @@ export default function MembersPage() {
                     canInviteAdmin={activeTenantRole === "owner"}
                     onClose={() => setInviteOpen(false)}
                     onSuccess={() => { setInviteOpen(false); fetchMembers(); }}
+                />
+            )}
+
+            {createOpen && canCreateMember && (
+                <CreateMemberModal
+                    canCreateAdmin={activeTenantRole === "owner"}
+                    onClose={() => setCreateOpen(false)}
+                    onSuccess={() => { setCreateOpen(false); fetchMembers(); }}
                 />
             )}
 
@@ -330,6 +363,144 @@ function RevokeConfirmDialog({
                 </div>
             </div>
         </div>
+    );
+}
+
+// ── Create Member Modal ──────────────────────────────────────────────────────
+
+function CreateMemberModal({
+    canCreateAdmin,
+    onClose,
+    onSuccess,
+}: {
+    canCreateAdmin: boolean;
+    onClose:        () => void;
+    onSuccess:      () => void;
+}) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [role, setRole] = useState("contador");
+    const [loading, setLoading] = useState(false);
+    const submitPendingRef = useRef(false);
+
+    function closeModal() {
+        setPassword("");
+        onClose();
+    }
+
+    async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+        e.preventDefault();
+        if (submitPendingRef.current) return;
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            notify.error("Ingresa un correo electrónico válido");
+            return;
+        }
+        if (password.length < 8) {
+            notify.error("La contraseña debe tener al menos 8 caracteres");
+            return;
+        }
+
+        submitPendingRef.current = true;
+        setLoading(true);
+        try {
+            const res = await apiFetch("/api/memberships/members", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: normalizedEmail, password, role }),
+            });
+            const json = await res.json();
+
+            if (!res.ok) {
+                notify.error(
+                    res.status === 409
+                        ? "Este correo ya tiene una cuenta. Usa la invitación para darle acceso al negocio."
+                        : (json.error ?? "No pudimos crear el miembro"),
+                );
+                return;
+            }
+
+            setPassword("");
+            notify.success("Miembro creado. Ya puede iniciar sesión.");
+            onSuccess();
+        } catch {
+            notify.error("No pudimos conectar con el servidor. Intenta nuevamente.");
+        } finally {
+            submitPendingRef.current = false;
+            setLoading(false);
+        }
+    }
+
+    return (
+        <Modal
+            isOpen
+            onOpenChange={(open) => { if (!open && !loading) closeModal(); }}
+            placement="center"
+            isDismissable={!loading}
+            isKeyboardDismissDisabled={loading}
+            hideCloseButton
+            aria-label="Crear miembro"
+            classNames={{
+                base: "rounded-xl border border-border-light bg-surface-1 shadow-xl max-w-sm w-full mx-4",
+                backdrop: "bg-black/50",
+            }}
+        >
+            <ModalContent>
+                <ModalBody className="p-6">
+                    <h2 className="font-mono text-sm font-semibold text-foreground mb-1">Crear miembro</h2>
+                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mb-4">
+                        La persona podrá iniciar sesión de inmediato con esta contraseña.
+                    </p>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <BaseInput.Field
+                            label="Email"
+                            type="email"
+                            autoComplete="email"
+                            isRequired
+                            value={email}
+                            onValueChange={setEmail}
+                            placeholder="correo@ejemplo.com"
+                            isDisabled={loading}
+                        />
+                        <BaseInput.Field
+                            label="Contraseña"
+                            type="password"
+                            autoComplete="new-password"
+                            isRequired
+                            minLength={8}
+                            value={password}
+                            onValueChange={setPassword}
+                            placeholder="Mínimo 8 caracteres"
+                            isDisabled={loading}
+                        />
+                        <div>
+                            <label className="block font-mono text-xs text-foreground/60 mb-1.5" htmlFor="create-member-role">Rol</label>
+                            <select
+                                id="create-member-role"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value)}
+                                disabled={loading}
+                                className="w-full px-3 py-2.5 rounded-lg bg-surface-2 border border-border-light font-mono text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:opacity-50"
+                            >
+                                {canCreateAdmin && <option value="admin">Admin</option>}
+                                <option value="contador">Contador</option>
+                                <option value="vendedor">Vendedor</option>
+                                <option value="cajero">Cajero</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                            <BaseButton.Root type="button" variant="outline" size="md" onClick={closeModal} isDisabled={loading} fullWidth>
+                                Cancelar
+                            </BaseButton.Root>
+                            <BaseButton.Root type="submit" variant="primary" size="md" isDisabled={loading} loading={loading} fullWidth>
+                                {loading ? "Creando…" : "Crear miembro"}
+                            </BaseButton.Root>
+                        </div>
+                    </form>
+                </ModalBody>
+            </ModalContent>
+        </Modal>
     );
 }
 

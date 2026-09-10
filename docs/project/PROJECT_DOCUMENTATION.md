@@ -331,8 +331,15 @@ Responsable de:
 - aceptacion de membresias
 - listado de miembros
 - cambio de tenant activo
+- creacion directa de miembros con correo y contrasena desde Configuracion > Miembros
 
 Es el modulo que hace posible la operacion multi-tenant compartida.
+
+La creacion directa permite a un `owner` o `admin` con `members.invite` crear una cuenta confirmada que puede iniciar sesion de inmediato, sin OTP por correo. Recibe correo, contrasena de al menos ocho caracteres y uno de los roles `admin`, `contador`, `vendedor` o `cajero`; un `admin` no puede crear otro `admin`. No fuerza un cambio de contrasena en el primer acceso.
+
+La API es `POST /api/memberships/members`, con `{ email, password, role }`, y devuelve `201` con `{ data: { id, email, role } }`. Los fallos devuelven un mensaje en espanol y un `code` estable: un correo que ya tiene cuenta devuelve `409` para que se use la invitacion; si la migracion o el trigger de aprovisionamiento no estan listos, devuelve `503`.
+
+El servidor crea la cuenta mediante la API administrativa de Auth con correo confirmado. El trigger descrito en [PUBLIC_SCHEMA.md](../database/public/PUBLIC_SCHEMA.md) crea de forma atomica el perfil y la membresia activa del tenant seleccionado; la cuenta no recibe un negocio propio ni acepta invitaciones pendientes. La invitacion sigue disponible como flujo separado.
 
 ### 11.7 Payroll
 

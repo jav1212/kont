@@ -8,9 +8,15 @@ import { SupabaseMembershipsRepository } from "./infrastructure/repositories/sup
 import { SendMemberInvitationUseCase }   from "./application/commands/send-member-invitation.use-case";
 import { RevokeMembershipUseCase }       from "./application/commands/revoke-membership.use-case";
 import { AcceptInvitationUseCase }       from "./application/commands/accept-invitation.use-case";
+import { CreateDirectMemberUseCase }     from "./application/commands/create-direct-member.use-case";
 import { GetUserMembershipsUseCase }     from "./application/queries/get-user-memberships.use-case";
 import { GetMembersUseCase }             from "./application/queries/get-members.use-case";
 
+/**
+ * Assembles the legacy Web memberships use cases with their service-role adapter.
+ *
+ * @returns The tenant membership commands and queries available to API routes.
+ */
 export function getMembershipsActions() {
     const repo     = new SupabaseMembershipsRepository(new ServerSupabaseSource());
     const eventBus = new LocalEventBus();
@@ -21,5 +27,6 @@ export function getMembershipsActions() {
         sendInvitation:     new SendMemberInvitationUseCase(repo, eventBus),
         revokeMembership:   new RevokeMembershipUseCase(repo, eventBus),
         acceptInvitation:   new AcceptInvitationUseCase(repo, eventBus),
+        createDirectMember: new CreateDirectMemberUseCase(repo),
     };
 }

@@ -104,6 +104,7 @@ Main migrations:
 - `031_documents_storage_rls.sql`
 - `032_documents_rpc_functions.sql`
 - `033_documents_rpc_company_null_fix.sql`
+- `252_direct_member_auth_provisioning.sql`
 
 Focus:
 - tenant collaboration
@@ -111,6 +112,13 @@ Focus:
 - tenant document folders/documents
 - storage access
 - document RPCs
+- direct creation of confirmed, password-based tenant members
+
+### Direct member provisioning rollout
+
+Apply `252_direct_member_auth_provisioning.sql` before deploying the application code that uses `POST /api/memberships/members`. The migration replaces the Auth-user provisioning trigger with the canonical `on_auth_user_created` handler, preserves the ordinary signup and invitation branches, and adds the service-role readiness check `public.membership_direct_provisioning_ready()`.
+
+Run [003_direct_member_creation_checks.sql](../../../supabase/verification/003_direct_member_creation_checks.sql) against a disposable database after migration 252. It rolls back its fixtures and verifies atomic rollback, trusted-metadata validation, allowed roles and caller hierarchy, ordinary signup, pending invitations, and trigger readiness. Password sign-in remains an Auth-provider integration check.
 
 ### Stage 7 - Accounting module
 
