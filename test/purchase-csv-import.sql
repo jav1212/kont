@@ -2,8 +2,8 @@
 begin;
 do $$
 declare
-  t uuid; c text; b text := gen_random_uuid()::text; b2 text := gen_random_uuid()::text;
-  l text; l2 text; inv text; prod text; supp text; ordinary text := gen_random_uuid()::text;
+  t uuid; c text; b text := gen_random_uuid()::text; b2 text := gen_random_uuid()::text; b3 text := gen_random_uuid()::text;
+  l text; l2 text; l3 text; inv text; draft_inv text; prod text; supp text; ordinary text := gen_random_uuid()::text;
   code text := 'CSV-TEST-' || gen_random_uuid()::text;
   rif text := 'J' || lpad((random()*999999999)::bigint::text,9,'0');
   doc text := 'CSV-' || gen_random_uuid()::text;
@@ -68,6 +68,26 @@ begin
     perform public.shared_inventory_purchase_csv_import_execute_line(t,b2,l2,'confirm',payload||jsonb_build_object('companyId','wrong-company'),items,jsonb_build_object('rif',rif,'name','CSV temporary supplier'),products);
     raise exception 'Cross-company execution unexpectedly succeeded';
   exception when others then if sqlerrm not like '%company mismatch%' then raise; end if; end;
+
+  -- Removing a linked draft clears only its optional invoice reference. The
+  -- import line remains tenant-owned and retains its resumable source record.
+  header:=header||jsonb_build_object('documentNumber',doc||'-delete');
+  staged:=jsonb_build_object('header',header,'items','[]'::jsonb,'selected',true,'productResolutions','{}'::jsonb,'acceptDifference',false);
+  batch:=batch||jsonb_build_object('id',b3,'revision',null);
+  perform public.shared_inventory_purchase_csv_import_save(t,batch,jsonb_build_array(staged));
+  select id into l3 from public.shared_inventory_purchase_import_lines where tenant_id=t and batch_id=b3;
+  response:=public.shared_inventory_purchase_csv_import_execute_line(t,b3,l3,'draft',payload||jsonb_build_object('documentNumber',doc||'-delete','revision',1,'subtotal','0','vatAmount','0','total','116'),'[]'::jsonb,
+    jsonb_build_object('rif',rif,'name','CSV temporary supplier'),'[]'::jsonb);
+  draft_inv:=response->>'invoiceId';
+  if draft_inv is null or not exists(select 1 from public.shared_inventory_purchase_import_lines where tenant_id=t and id=l3 and invoice_id=draft_inv) then
+    raise exception 'Draft import line was not linked to its invoice';
+  end if;
+  delete from public.shared_inventory_purchase_invoices where tenant_id=t and id=draft_inv;
+  if not exists(select 1 from public.shared_inventory_purchase_import_lines
+    where tenant_id=t and id=l3 and batch_id=b3 and invoice_id is null
+      and source_header->>'documentNumber'=(doc||'-delete')) then
+    raise exception 'Deleting a draft invoice lost the import tenant or source record';
+  end if;
 
   select supplier_id into supp from public.shared_inventory_purchase_invoices where tenant_id=t and id=inv;
   insert into public.shared_inventory_purchase_invoices(tenant_id,id,company_id,supplier_id,invoice_number,invoice_date,period,status,dollar_rate)
