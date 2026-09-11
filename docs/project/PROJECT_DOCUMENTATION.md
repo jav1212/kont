@@ -260,6 +260,12 @@ Esto muestra que la navegacion de negocio tiene al menos dos niveles:
 - nivel tenant
 - nivel empresa
 
+La compatibilidad legacy resuelve ese tenant por medio de una organización
+activa y autoriza operaciones contra el rol y los permisos canónicos de esa
+organización. El nombre histórico del rol no es una fuente de privilegios. Las
+rutas de interfaz filtran módulos y páginas con el mismo conjunto de permisos,
+pero la autorización efectiva continúa en las API y en sus casos de uso.
+
 ## 11. Modulos del dominio
 
 ### 11.1 Auth
@@ -334,6 +340,11 @@ Responsable de:
 - creacion directa de miembros con correo y contrasena desde Configuracion > Miembros
 
 Es el modulo que hace posible la operacion multi-tenant compartida.
+
+La administración de roles usa roles con alcance de organización. `roles.read`
+permite consultar y `roles.manage` permite cambiar roles personalizados con
+control de versión; los roles del sistema están bloqueados. Esta edición no
+modifica los roles globales legacy.
 
 La creacion directa permite a un `owner` o `admin` con `members.invite` crear una cuenta confirmada que puede iniciar sesion de inmediato, sin OTP por correo. Recibe correo, contrasena de al menos ocho caracteres y uno de los roles `admin`, `contador`, `vendedor` o `cajero`; un `admin` no puede crear otro `admin`. No fuerza un cambio de contrasena en el primer acceso.
 

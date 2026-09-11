@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   MEMBERS_REVOKE: "members.revoke",
   ROLES_READ: "roles.read",
   ROLES_MANAGE: "roles.manage",
+  ACCESS_MANAGE: "access.manage",
   EMPLOYEES_READ: "employees.read",
   EMPLOYEES_CREATE: "employees.create",
   EMPLOYEES_UPDATE: "employees.update",

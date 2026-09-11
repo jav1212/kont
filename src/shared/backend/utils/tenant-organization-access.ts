@@ -6,6 +6,25 @@ export interface LegacyTenantMembershipAccess {
     readonly role: string;
 }
 
+/** Legacy role labels retained by the production Web compatibility boundary. */
+export type LegacyOrganizationRole = 'owner' | 'admin' | 'contador' | 'contable' | 'vendedor' | 'cajero';
+
+/**
+ * Maps an assigned canonical role to the limited legacy role vocabulary.
+ * @param code - Canonical role code from a verified active organization snapshot.
+ * @returns The corresponding legacy label; custom roles never inherit owner/admin authority.
+ */
+export function legacyRoleFromCanonical(code: string): LegacyOrganizationRole {
+    switch (code) {
+        case 'owner': return 'owner';
+        case 'admin': return 'admin';
+        case 'accountant': return 'contador';
+        case 'seller': return 'vendedor';
+        case 'cashier': return 'cajero';
+        default: return 'cajero';
+    }
+}
+
 /**
  * Input used to resolve a legacy tenant only when its organization bridge is active.
  */

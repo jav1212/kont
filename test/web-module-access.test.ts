@@ -7,6 +7,8 @@ import {
   resolveOrganizationRouteAccess,
 } from "../src/modules/organizations/frontend/module-access-policy";
 
+const authenticated = { authStatus: "authenticated" as const, loading: false, error: null };
+
 test("un cajero puede usar inventario y ventas, pero no nómina", () => {
   const permissions = ["inventory.read", "sales.read"];
   assert.equal(hasOrganizationPermission(permissions, getModuleVisibilityPermission("inventory")!), true);
@@ -21,9 +23,9 @@ test("el wildcard de owner autoriza módulos de la organización", () => {
 
 test("carga, error o falta de organización no conceden acceso protegido", () => {
   const protectedRoute = getOrganizationRouteAccess("/inventory");
-  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { loading: true, error: null, permissions: ["inventory.read"] }), "loading");
-  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { loading: false, error: "falló", permissions: ["inventory.read"] }), "denied");
-  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { loading: false, error: null, permissions: null }), "denied");
+  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { ...authenticated, loading: true, permissions: ["inventory.read"] }), "loading");
+  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { ...authenticated, error: "failed", permissions: ["inventory.read"] }), "denied");
+  assert.equal(resolveOrganizationRouteAccess(protectedRoute, { ...authenticated, permissions: null }), "denied");
   assert.equal(hasOrganizationPermission([], "inventory.read"), false);
   assert.equal(getModuleVisibilityPermission("tools"), null);
 });
@@ -44,7 +46,46 @@ test("la ruta de empleados requiere nómina y empleados", () => {
   }
 });
 
-test("los prefijos de ruta no coinciden parcialmente", () => {
-  assert.deepEqual(getOrganizationRouteAccess("/payroll-archive"), { kind: "public" });
-  assert.deepEqual(getOrganizationRouteAccess("/tools"), { kind: "public" });
+test("las rutas desconocidas no heredan permisos del módulo", () => {
+  assert.deepEqual(getOrganizationRouteAccess("/payroll-archive"), { kind: "unknown" });
+  assert.deepEqual(getOrganizationRouteAccess("/sales/example/unregistered-action"), { kind: "unknown" });
+  assert.deepEqual(getOrganizationRouteAccess("/settings/unregistered-page"), { kind: "unknown" });
+  assert.deepEqual(getOrganizationRouteAccess("/tools"), { kind: "authenticated" });
+});
+
+test("las pantallas de creación requieren leer y crear", () => {
+  for (const route of ["/sales/new", "/purchases/new", "/accounting/journal/new"]) {
+    const access = getOrganizationRouteAccess(route);
+    assert.equal(access.kind, "protected");
+    if (access.kind === "protected") {
+      assert.equal(access.permissions.some((permission) => permission.endsWith(".create")), true);
+      assert.equal(resolveOrganizationRouteAccess(access, { ...authenticated, permissions: [access.permissions[0]!] }), "denied");
+    }
+  }
+});
+
+test("cashier cannot open organization administration settings", () => {
+  const cashierPermissions = ["companies.read", "inventory.read", "sales.read", "sales.create"];
+  for (const route of ["/settings/members", "/settings/access", "/settings/billing", "/settings/roles"]) {
+    assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess(route), { ...authenticated, permissions: cashierPermissions }), "denied");
+  }
+});
+
+test("read-only inventory user cannot open a creation workflow", () => {
+  const inventoryCreate = getOrganizationRouteAccess("/inventory/operations/new");
+  assert.equal(resolveOrganizationRouteAccess(inventoryCreate, { ...authenticated, permissions: ["inventory.read"] }), "denied");
+});
+
+test("personal routes require a resolved authenticated session", () => {
+  const personalRoute = getOrganizationRouteAccess("/profile");
+  assert.equal(resolveOrganizationRouteAccess(personalRoute, { authStatus: "loading", loading: false, error: null, permissions: null }), "loading");
+  assert.equal(resolveOrganizationRouteAccess(personalRoute, { authStatus: "unauthenticated", loading: false, error: null, permissions: null }), "denied");
+  assert.equal(resolveOrganizationRouteAccess(personalRoute, { ...authenticated, permissions: null }), "allowed");
+});
+
+test("cashier can use exact personal routes but not business routes", () => {
+  const cashier = ["companies.read", "inventory.read", "sales.read", "sales.create"];
+  assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess("/tools/status/example"), { ...authenticated, permissions: cashier }), "allowed");
+  assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess("/payroll"), { ...authenticated, permissions: cashier }), "denied");
+  assert.deepEqual(getOrganizationRouteAccess("/tools/status/example/nested"), { kind: "unknown" });
 });

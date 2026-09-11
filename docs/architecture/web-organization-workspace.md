@@ -39,9 +39,14 @@ La política de rutas y visibilidad de módulos vive en
 [module-access-policy.ts](../../src/modules/organizations/frontend/module-access-policy.ts).
 Cada ruta operativa requiere todos los permisos de lectura que declara; por
 ejemplo, `/payroll/employees` requiere `payroll.read` y `employees.read`.
-Herramientas y las rutas que no pertenecen a un módulo operativo continúan
-siendo públicas. La suscripción es una decisión separada de la autorización por
-organización.
+La suscripción es una decisión separada de la autorización por organización.
+
+No existe una rama pública dentro de la aplicación autenticada. La política
+clasifica cada página como `protected`, `authenticated` o `unknown`. Las rutas
+personales y de herramientas están enumeradas como `authenticated`: requieren
+una sesión resuelta y no permisos de organización. La carga o ausencia de sesión
+no monta su contenido. Las rutas no registradas se deniegan. Las páginas del
+sitio público bajo `app/(public)` no se incluyen en esta política.
 
 La barra lateral muestra solamente los módulos autorizados por la organización
 activa y filtra sus subrutas con la misma política. Un módulo recordado o
@@ -55,6 +60,13 @@ protegida hasta resolver el acceso. Ante denegación muestra un estado accesible
 en vez de montar la página y dejar que esta inicie sus consultas. Es una frontera
 de presentación: las rutas API siguen siendo responsables de autenticar y
 autorizar cada operación en el servidor.
+
+El registro enumera de forma explícita las páginas operativas y las rutas de
+configuración. Una ruta desconocida se deniega en vez de heredar el permiso de
+su módulo padre. El control de rutas se puede contrastar con `pnpm audit:routes`,
+que recorre páginas, navegación y handlers tenant para exigir una clasificación
+de permiso canónico o autenticado; la auditoría compara rutas exactas antes de
+permitir que una ruta estática coincida con una plantilla dinámica.
 
 ## Propiedad y composición
 
@@ -89,6 +101,19 @@ errores usan `{ error, code }`. Todas llevan `Cache-Control: no-store`.
 | `/api/organizations/:id/members` | GET: membresías e invitaciones | `members.read` |
 | `/api/organizations/:id/roles` | GET: roles de la organización | `roles.read` |
 
+Los handlers Web que aún usan `withTenant` están registrados por método y
+plantilla exactos en
+[web-api-route-access.ts](../../src/modules/organizations/backend/web-api-route-access.ts).
+No hay inferencia genérica por verbo o nombre de módulo: las rutas sensibles
+declaran `withTenantPermission` de forma explícita y las restantes resuelven su
+permiso desde el registro. Una regla `null` significa solamente una sesión con
+membresía activa para metadatos del shell o recordatorios propios; nunca acceso
+anónimo. Las rutas de carnets usan `access.manage`.
+
+`withTenantPermissions` rechaza en configuración una lista vacía. Esto impide
+que una ruta nueva convierta por accidente una declaración de permisos ausente
+en acceso autenticado.
+
 El directorio exige membresía y organización activas, con un rol activo asignado
 a esa misma organización. Además, la organización debe tener un
 `legacy_tenant_id` persistido y el usuario debe poder operar ese tenant como
@@ -102,6 +127,16 @@ archivada o perteneciente a otra organización no concede acceso. El permiso
 global del propietario exige el rol de sistema `owner` asignado correctamente;
 la matriz histórica de permisos por nombre de rol deja de ser la fuente del
 directorio de organizaciones.
+
+La Web de compatibilidad también resuelve el `TenantContext` y cada
+`requirePermission` a través de una instantánea canónica. La etiqueta legacy de
+rol se conserva solamente para las integraciones antiguas; no concede privilegios
+por sí misma. Un rol personalizado o una instantánea incompleta se degradan de
+forma conservadora y cualquier fallo de consulta se deniega.
+
+La pantalla de roles lista con `roles.read` y permite gestionar solo roles
+personalizados con `roles.manage` y `expectedVersion`. Los roles del sistema
+permanecen bloqueados y el editor no escribe las definiciones globales legacy.
 
 ## Puente de tenant operativo
 
@@ -123,9 +158,17 @@ Esta resolución limita el contexto tenant antes de las rutas API. No reemplaza
 la autorización de recursos: cada ruta conserva sus permisos de servidor y sus
 validaciones de pertenencia correspondientes.
 
+Los handlers de escritura que conservan operaciones combinadas requieren todas
+las capacidades que podrían ejercer: actualizar empleados, guardar empresas y
+guardar clientes de ventas exige tanto `create` como `update`. No se creó una
+API nueva para separar esas operaciones; una sesión que puede registrar una
+venta puede seleccionar un cliente existente, pero no guardar uno sin ambos
+permisos.
+
 ## Compatibilidad y verificación
 
-Este corte de organizaciones no agrega migraciones SQL. Una intervención
+La presentación inicial de organizaciones no requirió migraciones SQL nuevas;
+la autorización canónica de carnets añade la migración 257 descrita abajo. Una intervención
 operativa acotada suspendió un espacio accidental que no tenía datos de negocio
 asociados, sin borrar cuentas ni cambiar contraseñas; el espacio de trabajo
 válido y su acceso de cajero se conservaron activos. Esa reparación de datos no
@@ -135,6 +178,12 @@ La suspensión conserva el registro de propietario exigido por la restricción
 del último propietario; no elimina físicamente esa membresía. El código
 actualizado impide que la organización suspendida conceda un contexto operativo
 o aparezca como espacio seleccionable.
+
+[257_organization_access_management_permission.sql](../../supabase/migrations/257_organization_access_management_permission.sql)
+añade `access.manage` al catálogo canónico y lo concede solamente a los roles
+activos de sistema `owner` y `admin`, incluidas las plantillas de organizaciones
+nuevas. No modifica roles personalizados ni los roles base de cajero, vendedor
+o contador. Su aplicación de base de datos no despliega el código Web o API.
 
 La ruta de miembros a la que enlaza depende de
 [256_defer_direct_member_provisioning.sql](../../supabase/migrations/256_defer_direct_member_provisioning.sql):
@@ -155,6 +204,11 @@ La visibilidad de módulos se comprueba en
 [web-module-access.test.ts](../../test/web-module-access.test.ts); la selección
 del tenant activo y el filtro del repositorio de membresías, en
 [web-tenant-organization-access.test.ts](../../test/web-tenant-organization-access.test.ts).
+Las regresiones de autorización Web y la resolución canónica se cubren en
+[web-authorization-regression.test.ts](../../test/web-authorization-regression.test.ts)
+y [web-canonical-authorization.test.ts](../../test/web-canonical-authorization.test.ts);
+la gestión de roles se cubre en
+[las pruebas de gestión de roles de Access Control](../../packages/capabilities/access-control/test/application/role-management.test.ts).
 Su existencia no implica que hayan aprobado en un entorno dado. La integración
 debe validar esos tests, el paquete de organizaciones, TypeScript, lint de los
 archivos afectados y el build Web, además de revisar navegación y cambios de

@@ -2,9 +2,9 @@
 // Stores custom field definitions, visible columns, and sector defaults.
 import { getCompanyActions } from '@/src/modules/companies/backend/infrastructure/company-factory';
 import { handleResult }      from '@/src/shared/backend/utils/handle-result';
-import { withTenant }        from '@/src/shared/backend/utils/require-tenant';
+import { withTenantPermission } from '@/src/shared/backend/utils/require-tenant';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const GET = withTenantPermission('companies.read', async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { searchParams } = new URL(req.url);
         const companyId = searchParams.get('companyId');
@@ -19,7 +19,7 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, 
     }
 });
 
-export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const PATCH = withTenantPermission('companies.update', async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { companyId, config } = await req.json();
         if (!companyId || !config) {

@@ -1,97 +1,78 @@
-import { requirePermission, withTenant } from "@/src/shared/backend/utils/require-tenant";
-import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
+import { AccessControlFailure, permissionCode, roleId } from "@kontave/access-control/domain";
+import { resolveCanonicalTenantAuthorization, withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
 
-const EDITABLE_ROLES = ["admin", "contador", "vendedor", "cajero"] as const;
-type EditableRole = typeof EDITABLE_ROLES[number];
+type RoleUpdateBody = { role?: unknown; permissions?: unknown; expectedVersion?: unknown };
 
-const ROLE_LABELS: Record<string, string> = {
-    owner: "Dueño",
-    admin: "Administrador",
-    contador: "Contador",
-    vendedor: "Vendedor",
-    cajero: "Cajero",
-};
+/**
+ * Lists the selected organization's canonical role catalog for the legacy Web settings page.
+ *
+ * @param request Cookie-authenticated request scoped by the active tenant header.
+ * @returns Organization-local roles and the canonical permission definitions.
+ */
+export const GET = withTenantPermission("roles.read", async (request, tenant) => {
+    const authorization = await resolveCanonicalTenantAuthorization(tenant);
+    if (!authorization) return Response.json({ error: "Sin acceso a la organización." }, { status: 403 });
 
-export const GET = withTenant(async (req, tenant) => {
-    await requirePermission(tenant, "members.read", { req });
-    const source = new ServerSupabaseSource().instance;
-
-    const [{ data: permissions, error: permissionsError }, { data: assignments, error: assignmentsError }] = await Promise.all([
-        source.from("shared_authorization_permissions").select("code, resource, action, description").order("resource").order("action"),
-        source.from("shared_authorization_role_permissions").select("role, permission_code"),
+    const [roles, permissions] = await Promise.all([
+        authorization.actions.listRoles.execute(authorization.organizationId),
+        authorization.actions.listPermissions.execute(),
     ]);
-
-    if (permissionsError || assignmentsError) {
-        return Response.json({ error: permissionsError?.message ?? assignmentsError?.message }, { status: 500 });
-    }
-
-    const assignmentMap: Record<string, string[]> = {};
-    for (const row of (assignments ?? []) as Array<{ role: string; permission_code: string }>) {
-        assignmentMap[row.role] ??= [];
-        assignmentMap[row.role].push(row.permission_code);
-    }
-
-    const permissionCodes = ((permissions ?? []) as Array<{ code: string }>).map((permission) => permission.code);
-    const roles = ["owner", ...EDITABLE_ROLES].map((role) => ({
-        id: role,
-        name: ROLE_LABELS[role],
-        description: role === "owner"
-            ? "Acceso total y control de la empresa."
-            : role === "admin"
-                ? "Gestiona la operación y los accesos del equipo."
-                : role === "contador"
-                    ? "Gestiona contabilidad, nómina y reportes."
-                    : role === "vendedor"
-                        ? "Opera ventas y consulta inventario."
-                        : "Opera ventas en caja.",
-        locked: role === "owner",
-        permissions: role === "owner" ? permissionCodes : assignmentMap[role] ?? [],
-    }));
-
-    return Response.json({ data: { roles, permissions: permissions ?? [] } });
+    return Response.json({
+        data: {
+            roles: roles.map((role) => ({
+                id: role.id,
+                name: role.name,
+                description: role.description,
+                locked: role.kind === "system",
+                kind: role.kind,
+                version: role.version,
+                permissions: [...role.permissions],
+            })),
+            permissions,
+        },
+    }, { headers: { "Cache-Control": "no-store" } });
 });
 
-export const PATCH = withTenant(async (req, tenant) => {
-    await requirePermission(tenant, "members.update", { req, auditAllow: true });
+/**
+ * Replaces permissions on one mutable organization-local role using optimistic concurrency.
+ *
+ * @param request Cookie-authenticated request containing role UUID, permission codes, and version.
+ * @returns The changed role's id, canonical permissions, and new version.
+ */
+export const PATCH = withTenantPermission("roles.manage", async (request, tenant) => {
+    const authorization = await resolveCanonicalTenantAuthorization(tenant);
+    if (!authorization) return Response.json({ error: "Sin acceso a la organización." }, { status: 403 });
 
-    let body: { role?: string; permissions?: unknown };
+    let body: RoleUpdateBody;
     try {
-        body = await req.json();
+        body = await request.json() as RoleUpdateBody;
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });
     }
-
-    if (!body.role || !EDITABLE_ROLES.includes(body.role as EditableRole)) {
-        return Response.json({ error: "El rol no se puede editar" }, { status: 400 });
-    }
-    if (!Array.isArray(body.permissions) || !body.permissions.every((value) => typeof value === "string")) {
-        return Response.json({ error: "permissions debe ser una lista de códigos" }, { status: 400 });
-    }
-
-    const source = new ServerSupabaseSource().instance;
-    const requested = [...new Set(body.permissions as string[])];
-    const { data: validPermissions, error: validError } = await source
-        .from("shared_authorization_permissions")
-        .select("code")
-        .in("code", requested);
-
-    if (validError) return Response.json({ error: validError.message }, { status: 500 });
-    if ((validPermissions ?? []).length !== requested.length) {
-        return Response.json({ error: "La lista contiene permisos inválidos" }, { status: 400 });
+    if (!body || typeof body !== "object" || Array.isArray(body)
+        || typeof body.role !== "string" || !Array.isArray(body.permissions)
+        || !body.permissions.every((permission) => typeof permission === "string")
+        || !Number.isSafeInteger(body.expectedVersion) || (body.expectedVersion as number) < 1) {
+        return Response.json({ error: "role, permissions y expectedVersion son requeridos" }, { status: 400 });
     }
 
-    const { error: deleteError } = await source
-        .from("shared_authorization_role_permissions")
-        .delete()
-        .eq("role", body.role);
-    if (deleteError) return Response.json({ error: deleteError.message }, { status: 500 });
-
-    if (requested.length > 0) {
-        const { error: insertError } = await source
-            .from("shared_authorization_role_permissions")
-            .insert(requested.map((permission_code) => ({ role: body.role, permission_code })));
-        if (insertError) return Response.json({ error: insertError.message }, { status: 500 });
+    try {
+        const updated = await authorization.actions.updateRole.execute({
+            actor: authorization.snapshot,
+            organizationId: authorization.organizationId,
+            roleId: roleId(body.role),
+            permissions: body.permissions.map((permission) => permissionCode(permission)),
+            expectedVersion: body.expectedVersion as number,
+        });
+        return Response.json({
+            data: { role: updated.id, permissions: [...updated.permissions], version: updated.version },
+        }, { headers: { "Cache-Control": "no-store" } });
+    } catch (cause) {
+        if (cause instanceof AccessControlFailure) {
+            const status = cause.code === "ROLE_VERSION_CONFLICT" ? 409 : 400;
+            return Response.json({ error: cause.message, code: cause.code }, { status });
+        }
+        if (cause instanceof TypeError) return Response.json({ error: "Permiso o rol inválido" }, { status: 400 });
+        return Response.json({ error: "No se pudo actualizar el rol" }, { status: 503 });
     }
-
-    return Response.json({ data: { role: body.role, permissions: requested } });
 });

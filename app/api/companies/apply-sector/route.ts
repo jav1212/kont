@@ -2,9 +2,9 @@
 // Creates default departments, sets inventoryConfig, and persists sector.
 import { getCompanyActions } from '@/src/modules/companies/backend/infrastructure/company-factory';
 import { handleResult }      from '@/src/shared/backend/utils/handle-result';
-import { withTenant }        from '@/src/shared/backend/utils/require-tenant';
+import { withTenantPermission } from '@/src/shared/backend/utils/require-tenant';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const POST = withTenantPermission('companies.update', async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { companyId, sector } = await req.json();
         if (!companyId || !sector) {

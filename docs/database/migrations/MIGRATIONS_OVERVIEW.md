@@ -106,6 +106,7 @@ Main migrations:
 - `033_documents_rpc_company_null_fix.sql`
 - `252_direct_member_auth_provisioning.sql`
 - `256_defer_direct_member_provisioning.sql`
+- `257_organization_access_management_permission.sql`
 
 Focus:
 - tenant collaboration
@@ -122,6 +123,10 @@ Apply both `252_direct_member_auth_provisioning.sql` and `256_defer_direct_membe
 Run [004_deferred_direct_member_checks.sql](../../../supabase/verification/004_deferred_direct_member_checks.sql) after migration 256. Its fixtures roll back and it verifies the Auth insert-then-metadata-update ordering, trusted-metadata validation, legacy and canonical organization linkage for every direct-member role, unchanged signup and invitation behavior, and deferred trigger readiness. Password sign-in remains an Auth-provider integration check. Verification 003 remains historical coverage for the earlier migration but is not sufficient rollout evidence for the current trigger timing.
 
 Before release, confirm `public.membership_direct_provisioning_ready()` is true using a service-role connection, and inspect `pg_trigger` for `on_auth_user_created` with `tgdeferrable` and `tginitdeferred` both true. If readiness fails, do not deploy the direct-member Web change; apply or restore migration 256 and rerun verification 004. Rolling back the Web code does not undo accounts or memberships already provisioned.
+
+### Canonical access-management permission rollout
+
+Apply `257_organization_access_management_permission.sql` after the organization role catalog exists. It records `access.manage` in the access-control catalog and grants it only to active system owner and admin roles, including templates. It does not alter custom role grants or cashier, seller, and accountant defaults. Verify the required grant on active system owner/admin roles before enabling the access-settings Web route; applying the migration alone does not deploy that route.
 
 ### Stage 7 - Accounting module
 

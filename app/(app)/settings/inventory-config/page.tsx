@@ -11,6 +11,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { Trash2, Plus } from "lucide-react";
 import { notify } from "@/src/shared/frontend/notify";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
@@ -38,6 +39,8 @@ function generateKey(label: string): string {
 
 export default function InventoryConfigPage() {
     const { company, companyId, getInventoryConfig, saveInventoryConfig } = useCompany();
+    const { can } = useOrganizationModuleAccess("/settings/inventory-config");
+    const canManage = can("companies.update");
 
     const [config,  setConfig]  = useState<InventoryConfig | null>(null);
     const [loading, setLoading] = useState(true);
@@ -62,16 +65,16 @@ export default function InventoryConfigPage() {
     }, [companyId, getInventoryConfig]);
 
     const handleSave = useCallback(async () => {
-        if (!companyId || !config) return;
+        if (!companyId || !config || !canManage) return;
         setSaving(true);
         const err = await saveInventoryConfig(companyId, config);
         setSaving(false);
         if (err) notify.error(err);
         else     notify.success("Configuración guardada correctamente.");
-    }, [companyId, config, saveInventoryConfig]);
+    }, [companyId, config, saveInventoryConfig, canManage]);
 
     const addField = useCallback(() => {
-        if (!newLabel.trim() || !config) return;
+        if (!newLabel.trim() || !config || !canManage) return;
         const key = generateKey(newLabel.trim());
         if (config.customFields.some(f => f.key === key)) {
             notify.error(`Ya existe un campo con la clave "${key}"`);
@@ -89,12 +92,12 @@ export default function InventoryConfigPage() {
         setNewLabel("");
         setNewType("text");
         setNewOptions("");
-    }, [newLabel, newType, newOptions, config]);
+    }, [newLabel, newType, newOptions, config, canManage]);
 
     const removeField = useCallback((key: string) => {
-        if (!config) return;
+        if (!config || !canManage) return;
         setConfig({ ...config, customFields: config.customFields.filter(f => f.key !== key) });
-    }, [config]);
+    }, [config, canManage]);
 
     const sectorLabel = company?.sector ? `Sector: ${company.sector}` : "Sin sector asignado";
 
@@ -143,6 +146,7 @@ export default function InventoryConfigPage() {
                                 <button
                                     onClick={() => removeField(f.key)}
                                     aria-label={`Eliminar campo ${f.label}`}
+                                    disabled={!canManage}
                                     className="p-1.5 rounded-md text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/5 transition-colors"
                                 >
                                     <Trash2 size={14} />
@@ -168,6 +172,7 @@ export default function InventoryConfigPage() {
                         placeholder="Ej: Marca"
                         value={newLabel}
                         onValueChange={setNewLabel}
+                        isDisabled={!canManage}
                     />
                     <div>
                         <label className={labelCls} htmlFor="field-type">Tipo</label>
@@ -176,6 +181,7 @@ export default function InventoryConfigPage() {
                             className={fieldCls}
                             value={newType}
                             onChange={(e) => setNewType(e.target.value as CustomFieldDefinition["type"])}
+                            disabled={!canManage}
                         >
                             {FIELD_TYPES.map(t => (
                                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -189,6 +195,7 @@ export default function InventoryConfigPage() {
                             placeholder="Opción 1, Opción 2"
                             value={newOptions}
                             onValueChange={setNewOptions}
+                            isDisabled={!canManage}
                         />
                     )}
                 </div>
@@ -197,7 +204,7 @@ export default function InventoryConfigPage() {
                         variant="secondary"
                         size="sm"
                         onClick={addField}
-                        isDisabled={!newLabel.trim()}
+                        isDisabled={!newLabel.trim() || !canManage}
                         leftIcon={<Plus size={14} />}
                     >
                         Agregar campo
@@ -211,7 +218,7 @@ export default function InventoryConfigPage() {
                     variant="primary"
                     size="md"
                     onClick={handleSave}
-                    isDisabled={saving}
+                    isDisabled={saving || !canManage}
                     loading={saving}
                 >
                     {saving ? "Guardando…" : "Guardar configuración"}

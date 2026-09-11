@@ -4,6 +4,8 @@ import { ContextLink as Link } from "@/src/shared/frontend/components/context-li
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { getOrganizationRouteAccess } from "@/src/modules/organizations/frontend/module-access-policy";
 import {
     Building2,
     Boxes,
@@ -23,6 +25,7 @@ interface NavLink {
     label:    string;
     subtitle: string;
     icon:     LucideIcon;
+    permission?: `${string}.${string}`;
 }
 
 interface NavGroup {
@@ -35,7 +38,7 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
         label: "Organización",
         items: [
             { href: "/settings/organization",     label: "Información general", subtitle: "Identidad, empresas y personas de tu organización.", icon: Building2 },
-            { href: "/settings/members",          label: "Miembros",    subtitle: "Personas e invitaciones del espacio de trabajo.",  icon: Users      },
+            { href: "/settings/members",          label: "Miembros",    subtitle: "Personas e invitaciones del espacio de trabajo.",  icon: Users, permission: "members.read" },
             { href: "/settings/roles",             label: "Roles",       subtitle: "Ajusta los permisos de cada rol del sistema.",   icon: ShieldCheck },
             { href: "/settings/access",            label: "Acceso",      subtitle: "Terminales y carnets para iniciar sesión con lector.", icon: ScanBarcode },
             { href: "/settings/billing",       label: "Facturación", subtitle: "Plan activo, pagos y solicitudes de suscripción.", icon: CreditCard },
@@ -59,7 +62,6 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     },
 ];
 
-const ALL_LINKS: ReadonlyArray<NavLink> = NAV_GROUPS.flatMap((g) => g.items);
 const FALLBACK_SUBTITLE = "Gestiona tu organización, empresas y preferencias personales.";
 
 /**
@@ -70,7 +72,16 @@ const FALLBACK_SUBTITLE = "Gestiona tu organización, empresas y preferencias pe
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { organization, loading: organizationLoading } = useOrganization();
-    const active   = ALL_LINKS.find(({ href }) => pathname.startsWith(href));
+    const { can } = useOrganizationModuleAccess(pathname);
+    const visibleGroups = NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+            const routeAccess = getOrganizationRouteAccess(item.href);
+            return routeAccess.kind === "authenticated" || (routeAccess.kind === "protected" && routeAccess.permissions.every(can));
+        }),
+    })).filter((group) => group.items.length > 0);
+    const visibleLinks = visibleGroups.flatMap((group) => group.items);
+    const active = visibleLinks.find(({ href }) => pathname.startsWith(href));
 
     return (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-2">
@@ -85,7 +96,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 className="lg:hidden shrink-0 border-b border-border-light bg-surface-1 overflow-x-auto"
             >
                 <ul className="flex items-center gap-1 px-4 py-2 min-w-max">
-                    {ALL_LINKS.map(({ href, label, icon: Icon }) => {
+                    {visibleLinks.map(({ href, label, icon: Icon }) => {
                         const isActive = pathname.startsWith(href);
                         return (
                             <li key={href}>
@@ -125,7 +136,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     className="hidden lg:flex shrink-0 w-[232px] flex-col border-r border-border-light bg-surface-1 overflow-y-auto"
                 >
                     <nav className="flex flex-col gap-6 p-4">
-                        {NAV_GROUPS.map((group) => (
+                        {visibleGroups.map((group) => (
                             <div key={group.label} className="flex flex-col gap-1">
                                 <div className="px-3 pb-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                     {group.label}
@@ -175,7 +186,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 {/* Contenido */}
                 <div className="flex-1 min-w-0 overflow-y-auto">
                     <main className={`${pathname === "/settings/organization" ? "max-w-5xl" : "max-w-3xl"} mx-auto px-4 sm:px-6 lg:px-10 pt-6 lg:pt-10 pb-16`}>
-                        {NAV_GROUPS[0].items.some(({ href }) => pathname.startsWith(href)) && (
+                        {visibleGroups.some((group) => group.items.some(({ href }) => href === "/settings/organization" && pathname.startsWith(href))) && (
                             <div className="mb-6 flex items-center gap-2 text-[var(--text-tertiary)]">
                                 <Building2 size={15} aria-hidden />
                                 <Link href="/settings/organization" className="min-w-0 truncate font-sans text-sm hover:text-primary-500">

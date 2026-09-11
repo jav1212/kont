@@ -4,15 +4,17 @@ import { useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { notify } from "@/src/shared/frontend/notify";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
 export default function CompanySettingsPage() {
     const { company, update } = useCompany();
+    const { can } = useOrganizationModuleAccess("/settings/company");
     const [saving, setSaving] = useState(false);
 
     const showLogoInPdf = company?.showLogoInPdf ?? false;
 
     async function handleToggle() {
-        if (!company) return;
+        if (!company || !can("companies.update")) return;
         setSaving(true);
         const err = await update(company.id, { showLogoInPdf: !showLogoInPdf });
         if (err) notify.error(err);
@@ -45,7 +47,7 @@ export default function CompanySettingsPage() {
                             aria-checked={showLogoInPdf}
                             aria-label="Incluir logo en reportes"
                             onClick={handleToggle}
-                            disabled={saving || !company}
+                            disabled={saving || !company || !can("companies.update")}
                             className={[
                                 "relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-1",

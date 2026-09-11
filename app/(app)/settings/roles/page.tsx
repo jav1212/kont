@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
@@ -21,6 +22,7 @@ interface Role {
     name: string;
     description: string;
     locked: boolean;
+    version: number;
     permissions: string[];
 }
 
@@ -54,7 +56,8 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default function RolesSettingsPage() {
     const router = useRouter();
-    const { loading: tenantLoading, can } = useActiveTenantContext();
+    const { state: accessState, can } = useOrganizationModuleAccess("/settings/roles");
+    const { refresh: refreshOrganization } = useOrganization();
     const [roles, setRoles] = useState<Role[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [selectedRole, setSelectedRole] = useState("admin");
@@ -76,9 +79,9 @@ export default function RolesSettingsPage() {
     }, []);
 
     useEffect(() => {
-        if (!tenantLoading && !can("members.update")) router.replace("/");
-        if (!tenantLoading && can("members.update")) void load();
-    }, [tenantLoading, can, router, load]);
+        if (accessState === "denied") router.replace("/");
+        if (accessState === "allowed") void load();
+    }, [accessState, router, load]);
 
     const role = roles.find((item) => item.id === selectedRole) ?? roles[0];
     const groupedPermissions = useMemo(() => {
@@ -91,7 +94,7 @@ export default function RolesSettingsPage() {
     }, [permissions]);
 
     function togglePermission(code: string) {
-        if (!role || role.locked) return;
+        if (!role || role.locked || !can("roles.manage")) return;
         setRoles((current) => current.map((item) => {
             if (item.id !== role.id) return item;
             const enabled = item.permissions.includes(code);
@@ -100,12 +103,12 @@ export default function RolesSettingsPage() {
     }
 
     async function saveRole() {
-        if (!role || role.locked) return;
+        if (!role || role.locked || !can("roles.manage")) return;
         setSaving(true);
         const response = await apiFetch("/api/authorization/roles", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: role.id, permissions: role.permissions }),
+            body: JSON.stringify({ role: role.id, permissions: role.permissions, expectedVersion: role.version }),
         });
         const json = await response.json() as { error?: string };
         setSaving(false);
@@ -113,10 +116,11 @@ export default function RolesSettingsPage() {
             notify.error(json.error ?? "No se pudieron guardar los permisos");
             return;
         }
+        await Promise.all([load(), refreshOrganization()]);
         notify.success(`Permisos de ${role.name} actualizados`);
     }
 
-    if (tenantLoading || !can("members.update")) return null;
+    if (accessState !== "allowed") return null;
 
     return (
         <div className="space-y-6">
@@ -136,7 +140,7 @@ export default function RolesSettingsPage() {
                                 className={["text-left rounded-lg border px-3 py-3 transition-colors", item.locked ? "border-border-light bg-surface-2/50 cursor-not-allowed" : selectedRole === item.id ? "border-primary-300 bg-primary-50" : "border-border-light hover:bg-surface-2"].join(" ")}
                             >
                                 <p className="font-mono text-[12px] font-bold text-foreground flex items-center gap-1.5">{item.name}{item.locked && <LockKeyhole size={12} className="text-[var(--text-tertiary)]" />}</p>
-                                <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-1 leading-snug">{item.description}</p>
+                                <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-1 leading-snug">{item.locked ? "Rol del sistema: no se puede modificar." : item.description}</p>
                             </button>
                         ))}
                     </div>
@@ -150,7 +154,7 @@ export default function RolesSettingsPage() {
                                     <p className="font-mono text-[13px] font-bold text-foreground">Permisos de {role.name}</p>
                                     <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">Activa solo las operaciones necesarias para este perfil.</p>
                                 </div>
-                                <BaseButton.Root variant="primary" size="sm" onClick={saveRole} isDisabled={saving} loading={saving} leftIcon={<Save size={13} />}>
+                                <BaseButton.Root variant="primary" size="sm" onClick={saveRole} isDisabled={saving || role.locked || !can("roles.manage")} loading={saving} leftIcon={<Save size={13} />}>
                                     Guardar
                                 </BaseButton.Root>
                             </div>

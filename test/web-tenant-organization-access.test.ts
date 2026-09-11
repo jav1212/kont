@@ -74,11 +74,12 @@ function directoryFixture(failOrganizationRead: boolean) {
     const responses: Record<string, unknown[]> = {
         tenant_memberships: [
             { tenant_id: cashier, role: "owner", accepted_at: "2026-01-01T00:00:00Z" },
-            { tenant_id: portalTenant, role: "cajero", accepted_at: "2026-01-02T00:00:00Z" },
+            { tenant_id: portalTenant, role: "owner", accepted_at: "2026-01-02T00:00:00Z" },
         ],
-        organizations: [{ legacy_tenant_id: portalTenant }],
+        organizations: [{ id: "30000000-0000-4000-8000-000000000001", legacy_tenant_id: portalTenant }],
+        organization_memberships: [{ organization_id: "30000000-0000-4000-8000-000000000001", role_id: "40000000-0000-4000-8000-000000000001", status: "active" }],
+        organization_roles: [{ id: "40000000-0000-4000-8000-000000000001", organization_id: "30000000-0000-4000-8000-000000000001", code: "cashier", status: "active", organization_role_permissions: [{ permission_code: "sales.read" }] }],
         profiles: [],
-        shared_authorization_role_permissions: [{ role: "cajero", permission_code: "sales.read" }],
     };
     const source = {
         from(table: string) {

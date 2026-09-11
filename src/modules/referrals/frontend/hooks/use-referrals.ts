@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { notify } from "@/src/shared/frontend/notify";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 interface ReferralStats {
     totalReferrals:      number;
@@ -31,7 +32,7 @@ export function useReferrals() {
 
         const load = () => {
             setState((s) => ({ ...s, loading: true }));
-            fetch("/api/referrals/me")
+            apiFetch("/api/referrals/me")
                 .then(async (res) => ({ ok: res.ok, json: await res.json() }))
                 .then(({ ok, json }) => {
                     if (cancelled) return;
@@ -73,7 +74,7 @@ export function useAvailableCredit() {
         let cancelled = false;
 
         const load = () => {
-            fetch("/api/referrals/available-credit")
+            apiFetch("/api/referrals/available-credit")
                 .then(async (res) => ({ ok: res.ok, json: await res.json() }))
                 .then(({ ok, json }) => {
                     if (cancelled) return;

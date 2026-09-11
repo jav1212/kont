@@ -3,11 +3,15 @@ import { cookies } from 'next/headers';
 import { tenantSchemaName } from '../source/infra/tenant-supabase';
 import { ServerSupabaseSource } from '../source/infra/server-supabase';
 import { readBarcodeRequestAccess } from '../barcode/barcode-request-guard';
-import { resolveActiveLegacyTenant } from './tenant-organization-access';
+import { legacyRoleFromCanonical, resolveActiveLegacyTenant, type LegacyOrganizationRole } from './tenant-organization-access';
+import { AuthorizationSource, permissionCode as canonicalPermissionCode, type AuthorizationSnapshot } from '@kontave/access-control/domain';
+import { createAccessControlActions } from '@/src/client-api/v1/access-control/access-control-actions';
+import { resolveWebApiPermission } from '@/src/modules/organizations/backend/web-api-route-access';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type TenantRole = 'owner' | 'admin' | 'contador' | 'contable' | 'vendedor' | 'cajero';
+export type TenantRole = LegacyOrganizationRole;
+export { legacyRoleFromCanonical } from './tenant-organization-access';
 export type PermissionCode = `${string}.${string}`;
 export type ActingAs = { ownerId: string; role: TenantRole };
 
@@ -99,31 +103,59 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
         activeOrganizationTenantIds,
     });
     if (!resolved) throw new TenantForbiddenError();
-    return {
+    const legacyContext: TenantContext = {
         ...(barcode.registered ? { barcodeSession: true } : {}), userId, tenantId: resolved.tenantId,
         schemaName: tenantSchemaName(resolved.tenantId),
         actingAs: resolved.isOwner ? null : { ownerId: resolved.tenantId, role: resolved.role as TenantRole },
         role: resolved.role as TenantRole, effectiveOwnerId: resolved.tenantId,
     };
+    const authorization = await resolveCanonicalTenantAuthorization(legacyContext);
+    if (!authorization || authorization.snapshot.membershipStatus !== 'active'
+        || authorization.snapshot.organizationStatus !== 'active' || !authorization.snapshot.role.isActive()) {
+        throw new TenantForbiddenError();
+    }
+    const role = legacyRoleFromCanonical(authorization.snapshot.role.code);
+    return {
+        ...legacyContext,
+        role,
+        actingAs: role === 'owner' ? null : { ownerId: legacyContext.tenantId, role },
+    };
 }
 
+/**
+ * Requires one canonical organization permission for an already resolved legacy tenant.
+ *
+ * @param context Active legacy tenant context whose organization bridge is verified server-side.
+ * @param permission Canonical permission required by the operation.
+ * @param options Optional request and audit metadata.
+ * @returns Nothing when the active canonical role grants the permission.
+ * @throws PermissionDeniedError when the organization, membership, role, or permission is invalid.
+ */
 export async function requirePermission(
     context: TenantContext,
     permission: PermissionCode,
     options?: { req?: Request; resourceType?: string; resourceId?: string; auditAllow?: boolean },
 ): Promise<void> {
-    const normalizedRole = context.role === 'contable' ? 'contador' : context.role;
-    let allowed = normalizedRole === 'owner';
-
-    if (!allowed) {
-        const server = new ServerSupabaseSource();
-        const { data, error } = await server.instance
-            .from('shared_authorization_role_permissions')
-            .select('permission_code')
-            .eq('role', normalizedRole)
-            .eq('permission_code', permission)
-            .maybeSingle();
-        allowed = !error && !!data;
+    const authorization = await resolveCanonicalTenantAuthorization(context);
+    let allowed = false;
+    try {
+        if (authorization) {
+            await authorization.actions.require.execute({
+                actor: { userId: context.userId, organizationId: authorization.organizationId },
+                permission: canonicalPermissionCode(permission),
+                resource: {
+                    type: options?.resourceType ?? 'legacy-web',
+                    id: options?.resourceId,
+                    organizationId: authorization.organizationId,
+                },
+                context: { requestId: crypto.randomUUID(), source: AuthorizationSource.Web, occurredAt: new Date().toISOString() },
+            });
+            allowed = true;
+        }
+    } catch {
+        // An unavailable, malformed, suspended, or unauthorized canonical
+        // snapshot is deliberately indistinguishable from a permission deny.
+        allowed = false;
     }
 
     if (!allowed) {
@@ -132,6 +164,42 @@ export async function requirePermission(
     }
 
     if (options?.auditAllow) await writeAuthorizationAudit(context, permission, 'allow', options);
+}
+
+type CanonicalTenantAuthorization = {
+    readonly organizationId: string;
+    readonly snapshot: AuthorizationSnapshot;
+    readonly actions: ReturnType<typeof createAccessControlActions>;
+};
+
+/**
+ * Resolves the canonical active organization authorization snapshot associated
+ * with a legacy tenant context.
+ *
+ * @param context Legacy tenant already authenticated for this request.
+ * @returns The matching active organization snapshot, or null when the bridge is incomplete.
+ * @throws Never throws expected failures; infrastructure failures resolve to null and callers fail closed.
+ */
+export async function resolveCanonicalTenantAuthorization(
+    context: TenantContext,
+): Promise<CanonicalTenantAuthorization | null> {
+    try {
+        const source = new ServerSupabaseSource().instance;
+        const { data: organization, error } = await source
+            .from('organizations')
+            .select('id, legacy_tenant_id, status')
+            .eq('legacy_tenant_id', context.tenantId)
+            .eq('status', 'active')
+            .maybeSingle();
+        if (error || !organization || organization.legacy_tenant_id !== context.tenantId) return null;
+
+        const actions = createAccessControlActions();
+        const snapshot = await actions.repository.findSnapshot(context.userId, organization.id);
+        if (!snapshot) return null;
+        return { organizationId: organization.id, snapshot, actions };
+    } catch {
+        return null;
+    }
 }
 
 async function writeAuthorizationAudit(
@@ -158,26 +226,55 @@ async function writeAuthorizationAudit(
     }
 }
 
+/**
+ * Wraps a route with one explicit canonical permission and disables inferred compatibility permissions.
+ *
+ * @param permission Canonical permission required by the route.
+ * @param handler Handler invoked only after authentication and authorization.
+ * @returns A route handler that turns expected authorization failures into HTTP responses.
+ * @throws Never throws expected authorization failures.
+ */
 export function withTenantPermission(
     permission: PermissionCode,
     handler: (req: Request, tenant: TenantContext) => Promise<Response>,
 ) {
+    return withTenantPermissions([permission], handler);
+}
+
+/**
+ * Wraps a route with every explicitly listed canonical permission and no
+ * secondary inferred compatibility permission.
+ *
+ * @param permissions All capabilities required by the operation.
+ * @param handler Route handler that receives the authorized context.
+ * @returns A Next route-compatible handler.
+ * @throws TypeError when the route does not declare any permission.
+ * Expected authorization failures become HTTP responses.
+ */
+export function withTenantPermissions(
+    permissions: readonly PermissionCode[],
+    handler: (req: Request, tenant: TenantContext) => Promise<Response>,
+) {
+    if (permissions.length === 0) throw new TypeError('An organization route must declare at least one permission.');
     return withTenant(async (req, tenant) => {
-        await requirePermission(tenant, permission, { req });
+        for (const permission of permissions) {
+            await requirePermission(tenant, permission, { req });
+        }
         return handler(req, tenant);
-    });
+    }, { inferPermission: false });
 }
 
 // ── withTenant wrapper ────────────────────────────────────────────────────────
 
 /** Envuelve una API route con auth automática e inyección de TenantContext */
 export function withTenant(
-    handler: (req: Request, tenant: TenantContext) => Promise<Response>
+    handler: (req: Request, tenant: TenantContext) => Promise<Response>,
+    options?: { readonly inferPermission?: boolean },
 ) {
     return async (req: Request): Promise<Response> => {
         try {
             const tenant = await requireTenant(req);
-            const inferredPermission = inferPermissionFromRequest(req);
+            const inferredPermission = options?.inferPermission === false ? null : inferPermissionFromRequest(req);
             if (inferredPermission) {
                 await requirePermission(tenant, inferredPermission, { req });
             }
@@ -198,45 +295,11 @@ export function withTenant(
 }
 
 /**
- * Safety net for routes that have not yet been converted to an explicit
- * withTenantPermission declaration. Every tenant-aware API route is still
- * deny-by-default at module/action level.
+ * Classifies a legacy Web API request into one canonical permission code.
+ *
+ * @param req Request whose pathname and method identify the operation.
+ * @returns A canonical permission, null for documented metadata endpoints, or a deny sentinel.
  */
-function inferPermissionFromRequest(req: Request): PermissionCode | null {
-    const path = new URL(req.url).pathname.split('/').filter(Boolean);
-    const apiIndex = path.indexOf('api');
-    const moduleName = apiIndex >= 0 ? path[apiIndex + 1] : undefined;
-    const resources = new Set(['companies', 'employees', 'payroll', 'inventory', 'purchases', 'sales', 'accounting', 'billing', 'memberships', 'documents']);
-    if (!moduleName || !resources.has(moduleName)) return null;
-
-    const operation = path.slice(apiIndex + 2);
-    if (moduleName === 'memberships') {
-        if (operation.includes('invite')) return 'members.invite';
-        if (operation.includes('members')) return 'members.read';
-        return req.method === 'DELETE' ? 'members.revoke' : 'members.read';
-    }
-    if (moduleName === 'billing') {
-        // The shell needs read-only billing metadata to decide which paid
-        // modules to render. These endpoints do not expose billing actions or
-        // payment data, so any active tenant member may query them.
-        const isReadOnlyMetadataRequest =
-            req.method === 'GET' &&
-            (operation.includes('subscriptions') ||
-                operation.includes('tenant') ||
-                operation.includes('capacity'));
-        if (isReadOnlyMetadataRequest) return null;
-        if (req.method !== 'GET') return 'billing.manage';
-    }
-    let action: string;
-    if (operation.includes('confirm')) action = 'confirm';
-    else if (operation.includes('unconfirm') || operation.includes('cancel')) action = moduleName === 'payroll' ? 'delete' : 'cancel';
-    else if (operation.includes('close')) action = 'close';
-    else if (operation.includes('post')) action = 'post';
-    else if (req.method === 'GET') action = 'read';
-    else if (req.method === 'POST') action = 'create';
-    else if (req.method === 'PATCH' || req.method === 'PUT') action = 'update';
-    else if (req.method === 'DELETE') action = 'delete';
-    else action = 'read';
-
-    return `${moduleName}.${action}` as PermissionCode;
+export function inferPermissionFromRequest(req: Request): PermissionCode | null {
+    return resolveWebApiPermission(req);
 }

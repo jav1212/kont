@@ -15,7 +15,7 @@ import { useOrganizationModuleAccess } from "../use-organization-module-access";
  */
 export function OrganizationRouteGuard({ pathname, children }: { pathname: string; children: ReactNode }): React.JSX.Element {
   const access = useOrganizationModuleAccess(pathname);
-  if (access.state === "public" || access.state === "allowed") return <>{children}</>;
+  if (access.state === "allowed") return <>{children}</>;
   if (access.state === "loading") {
     return <div className="flex flex-1 items-center justify-center p-6" aria-live="polite"><p className="font-sans text-sm text-[var(--text-secondary)]">Verificando acceso a la organización…</p></div>;
   }

@@ -1,5 +1,5 @@
 import { getSalesActions } from '@/src/modules/sales/backend/infra/sales-factory';
-import { withTenant }      from '@/src/shared/backend/utils/require-tenant';
+import { withTenant, withTenantPermissions } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }    from '@/src/shared/backend/utils/handle-result';
 
 export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
@@ -11,7 +11,7 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, 
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const POST = withTenantPermissions(['sales.create', 'sales.update'], async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json();
     if (!body) return Response.json({ error: 'body es requerido' }, { status: 400 });
     const ownerId = effectiveOwnerId;

@@ -21,6 +21,8 @@ import { useAvailableCredit } from "@/src/modules/referrals/frontend/hooks/use-r
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 // ============================================================================
 // TYPES
@@ -135,6 +137,8 @@ const PLAN_ORDER = ["Gratuito", "Estudiante", "Emprendedor", "Contable", "Empres
 // ============================================================================
 
 export default function BillingPage() {
+    const { can } = useOrganizationModuleAccess("/settings/billing");
+    const canManageBilling = can("billing.manage");
     const { capacity } = useCapacity();
     const { availableUsd, reload: reloadCredit } = useAvailableCredit();
 
@@ -162,9 +166,9 @@ export default function BillingPage() {
         setDataError(null);
         try {
             const [tenantRes, plansRes, histRes] = await Promise.all([
-                fetch("/api/billing/tenant"),
-                fetch("/api/billing/plans"),
-                fetch("/api/billing/payment-requests"),
+                apiFetch("/api/billing/tenant"),
+                apiFetch("/api/billing/plans"),
+                apiFetch("/api/billing/payment-requests"),
             ]);
             const [t, p, h] = await Promise.all([
                 tenantRes.json(),
@@ -202,6 +206,7 @@ export default function BillingPage() {
     const fullyCovered = amount > 0 && total === 0;
 
     const openFormForPlan = (planId: string) => {
+        if (!canManageBilling) return;
         setSelPlanId(planId);
         setSelCycle("monthly");
         setSubmitError(null);
@@ -213,10 +218,10 @@ export default function BillingPage() {
     };
 
     const handleSubmit = useCallback(async () => {
-        if (!selPlanId) return;
+        if (!selPlanId || !canManageBilling) return;
         setSubmitting(true);
         setSubmitError(null);
-        const res = await fetch("/api/billing/payment-requests", {
+        const res = await apiFetch("/api/billing/payment-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -238,7 +243,7 @@ export default function BillingPage() {
             await Promise.all([loadAll(), reloadCredit()]);
             setTimeout(() => setSubmitOk(false), 4000);
         }
-    }, [selPlanId, selCycle, amount, payMethod, receiptUrl, loadAll, reloadCredit]);
+    }, [selPlanId, selCycle, amount, payMethod, receiptUrl, loadAll, reloadCredit, canManageBilling]);
 
     // ── Render ─────────────────────────────────────────────────────────────
 
@@ -391,6 +396,7 @@ export default function BillingPage() {
                                                         variant="primary"
                                                         size="sm"
                                                         onClick={() => openFormForPlan(plan.id)}
+                                                        disabled={!canManageBilling}
                                                         className="w-full"
                                                     >
                                                         Seleccionar
@@ -629,7 +635,7 @@ export default function BillingPage() {
                                     </BaseButton.Root>
                                     <BaseButton.Root
                                         onClick={handleSubmit}
-                                        disabled={submitting || !selPlanId}
+                                        disabled={submitting || !selPlanId || !canManageBilling}
                                         loading={submitting}
                                         variant="primary"
                                         size="md"

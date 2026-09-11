@@ -179,6 +179,21 @@ Key concepts:
 - `expires_at`
 - `accepted_at`
 
+### Canonical organization authorization
+
+`public.organizations`, `public.organization_memberships`,
+`public.organization_roles` and `public.organization_role_permissions` are the
+canonical authorization source for an operational workspace. A legacy tenant
+role is compatibility data; it does not independently grant a Web capability.
+The active organization membership, its active scoped role, and its assigned
+permission grants must agree before server authorization succeeds.
+
+[257_organization_access_management_permission.sql](../../../supabase/migrations/257_organization_access_management_permission.sql)
+adds `access.manage` for terminal and badge administration. It grants that
+permission only to active system `owner` and `admin` roles, including role
+templates used for future organizations. It intentionally leaves custom and
+cashier, seller, and accountant default roles unchanged.
+
 ### `public.barcode_access_*`
 
 Purpose:

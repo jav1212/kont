@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, Plus, Printer, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
@@ -18,7 +19,8 @@ interface IssuedBadge { badge: BadgeEntry; barcode: string }
 
 /** Manages browser terminals and one-time printable access credentials. */
 export default function AccessSettingsPage() {
-    const { activeTenantId, activeTenantRole, can, loading: tenantLoading } = useActiveTenantContext();
+    const { activeTenantId, activeTenantRole } = useActiveTenantContext();
+    const { state: accessState, can } = useOrganizationModuleAccess("/settings/access");
     const { user } = useAuth();
     const [terminals, setTerminals] = useState<TerminalEntry[]>([]);
     const [badges, setBadges] = useState<BadgeEntry[]>([]);
@@ -28,7 +30,7 @@ export default function AccessSettingsPage() {
     const [memberId, setMemberId] = useState("");
     const [issued, setIssued] = useState<IssuedBadge | null>(null);
     const [working, setWorking] = useState<string | null>(null);
-    const permitted = can("members.update");
+    const permitted = can("access.manage");
 
     const reload = useCallback(async () => {
         if (!activeTenantId || !permitted) return;
@@ -55,7 +57,7 @@ export default function AccessSettingsPage() {
         finally { setLoading(false); }
     }, [activeTenantId, activeTenantRole, permitted, user]);
 
-    useEffect(() => { if (!tenantLoading) void reload(); }, [reload, tenantLoading]);
+    useEffect(() => { if (accessState === "allowed") void reload(); }, [reload, accessState]);
 
     async function installTerminal() {
         const name = terminalName.trim();
@@ -91,7 +93,7 @@ export default function AccessSettingsPage() {
         } finally { setWorking(null); }
     }
 
-    if (tenantLoading || !permitted) return null;
+    if (accessState !== "allowed" || !permitted) return null;
     return <div className="space-y-6">
         <SettingsSection title="Terminales de acceso" subtitle="Habilita este navegador para que los carnets puedan iniciar sesión." flush>
             <div className="flex flex-col gap-3 border-b border-border-light p-5 sm:flex-row">

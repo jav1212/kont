@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, ModalBody, ModalContent } from "@heroui/react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -57,7 +58,8 @@ function PendingBadge() {
  */
 export default function MembersPage() {
     const router = useRouter();
-    const { activeTenantRole, isActingOnBehalf, loading: tenantLoading, can } = useActiveTenantContext();
+    const { activeTenantRole, isActingOnBehalf } = useActiveTenantContext();
+    const { state: accessState, can } = useOrganizationModuleAccess("/settings/members");
 
     const [members,    setMembers]    = useState<Member[]>([]);
     const [loading,    setLoading]    = useState(true);
@@ -68,9 +70,9 @@ export default function MembersPage() {
 
     // Redirect contables away
     useEffect(() => {
-        if (tenantLoading) return;
+        if (accessState === "loading") return;
         if (!can("members.read")) router.replace("/");
-    }, [activeTenantRole, tenantLoading, router, can]);
+    }, [accessState, router, can]);
 
     const fetchMembers = useCallback(async () => {
         setLoading(true);
@@ -85,8 +87,8 @@ export default function MembersPage() {
     }, []);
 
     useEffect(() => {
-        if (!tenantLoading) fetchMembers();
-    }, [tenantLoading, fetchMembers]);
+        if (accessState === "allowed") void fetchMembers();
+    }, [accessState, fetchMembers]);
 
     async function handleRevoke(member: Member) {
         setRevokeTarget(member);
@@ -111,7 +113,7 @@ export default function MembersPage() {
         if (!canCreateMember) setCreateOpen(false);
     }, [canCreateMember]);
 
-    if (tenantLoading || !can("members.read")) return null;
+    if (accessState !== "allowed") return null;
 
     const accepted = members.filter((m) => !m.pending);
     const pending  = members.filter((m) => m.pending);

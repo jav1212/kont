@@ -36,7 +36,7 @@ import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
-import { getOrganizationRouteAccess, getModuleVisibilityPermission } from "@/src/modules/organizations/frontend/module-access-policy";
+import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -104,6 +104,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
     const organizationAccess = useOrganizationModuleAccess(pathname);
+    const settingsHref = buildContextHref(organizationAccess.can("organizations.read") ? "/settings/organization" : "/settings/apariencia");
     // ── Module selection ──────────────────────────────────────────────────────
     const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
 
@@ -132,6 +133,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         APP_MODULES
             .filter((mod) => {
                 if ("parentId" in mod) return false;
+                if (!isKnownOrganizationModule(mod.id)) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
                 const permission = getModuleVisibilityPermission(mod.id);
                 if (permission && !organizationAccess.can(permission)) return false;
@@ -144,7 +146,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const resolvedModuleId = selectableModules.some((module) => module.id === requestedModuleId) ? requestedModuleId : null;
     const subnav = useMemo(() => (resolvedModuleId ? (MODULE_SUBNAV[resolvedModuleId] ?? []).filter((entry) => {
         const requirement = getOrganizationRouteAccess(entry.href);
-        return requirement.kind === "public" || requirement.permissions.every(organizationAccess.can);
+        return requirement.kind === "authenticated" || (requirement.kind === "protected" && requirement.permissions.every(organizationAccess.can));
     }) : []), [organizationAccess.can, resolvedModuleId]);
 
     function handleSelectModule(id: string, href: string) {
@@ -231,7 +233,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 <SidebarUpdateBanner />
                 <div className="flex flex-col gap-0.5">
                     <UtilityShortcut
-                        href={buildContextHref("/settings/organization")}
+                        href={settingsHref}
                         active={pathname.startsWith("/settings")}
                         label="Configuración"
                         icon={<Settings size={17} strokeWidth={1.8} />}
@@ -253,6 +255,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     helpHref={buildContextHref("/help")}
                     statusHref={buildContextHref("/tools/status")}
                     billingHref={buildContextHref("/settings/billing")}
+                    canViewBilling={organizationAccess.can("billing.read")}
                 />
             </div>
         </aside>
@@ -298,9 +301,10 @@ interface AccountCardProps {
     helpHref:     string;
     statusHref:   string;
     billingHref:  string;
+    canViewBilling: boolean;
 }
 
-function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref, helpHref, statusHref, billingHref }: AccountCardProps) {
+function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref, helpHref, statusHref, billingHref, canViewBilling }: AccountCardProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -363,6 +367,7 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
                     onHelpClick={() => { setOpen(false); router.push(helpHref); }}
                     onStatusClick={() => { setOpen(false); router.push(statusHref); }}
                     onBillingClick={() => { setOpen(false); router.push(billingHref); }}
+                    canViewBilling={canViewBilling}
                     onSignOut={async () => { setOpen(false); await onSignOut(); }}
                 />
             </PortalMenu>
@@ -418,10 +423,11 @@ interface AccountMenuProps {
     onHelpClick:    () => void;
     onStatusClick:  () => void;
     onBillingClick: () => void;
+    canViewBilling: boolean;
     onSignOut:      () => void;
 }
 
-function AccountMenu({ className, email, displayName, planName, allTenants, activeTenantId, onSwitchTenant, onProfileClick, onHelpClick, onStatusClick, onBillingClick, onSignOut }: AccountMenuProps) {
+function AccountMenu({ className, email, displayName, planName, allTenants, activeTenantId, onSwitchTenant, onProfileClick, onHelpClick, onStatusClick, onBillingClick, canViewBilling, onSignOut }: AccountMenuProps) {
     const hasMultipleTenants = allTenants.length > 1;
     const { theme, setTheme } = useTheme();
 
@@ -555,7 +561,7 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                 </button>
             </div>
 
-            <div className="p-2 border-b border-sidebar-border">
+            {canViewBilling && <div className="p-2 border-b border-sidebar-border">
                 <button
                     type="button"
                     onClick={onBillingClick}
@@ -564,7 +570,7 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                     <CreditCard size={15} strokeWidth={1.8} />
                     Facturación y plan
                 </button>
-            </div>
+            </div>}
 
             <button
                 type="button"

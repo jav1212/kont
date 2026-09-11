@@ -4,7 +4,9 @@ import { AuthorizationSource, PERMISSIONS, SameOrganizationPolicy, permissionCod
 
 test("permission catalog rejects unknown and misspelled permissions", () => {
   assert.equal(permissionCode(PERMISSIONS.BILLING_READ), "billing.read");
+  assert.equal(permissionCode(PERMISSIONS.ACCESS_MANAGE), "access.manage");
   assert.throws(() => permissionCode("billing.delet"), /Unknown permission/);
+  assert.throws(() => permissionCode("access.read"), /Unknown permission/);
 });
 test("resource policy rejects cross-organization access", () => {
   const result = new SameOrganizationPolicy().evaluate({ actor: { userId: "u", organizationId: "a" }, permission: permissionCode(PERMISSIONS.BILLING_READ), resource: { type: "billing", organizationId: "b" }, context: { requestId: "r", source: AuthorizationSource.Desktop, occurredAt: new Date(0).toISOString() } });

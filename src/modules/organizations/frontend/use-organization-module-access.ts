@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useOrganization } from "./context/organization-context";
+import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getOrganizationRouteAccess, hasOrganizationPermission, resolveOrganizationRouteAccess, type OrganizationRouteAccess, type OrganizationRouteAccessState } from "./module-access-policy";
 
 export type OrganizationAccessState = OrganizationRouteAccessState;
@@ -21,10 +22,11 @@ export function useOrganizationModuleAccess(pathname: string): {
   readonly can: (permission: `${string}.${string}`) => boolean;
 } {
   const { organization, loading, error } = useOrganization();
+  const { status: authStatus } = useAuth();
   const routeAccess = useMemo(() => getOrganizationRouteAccess(pathname), [pathname]);
   const can = useCallback((permission: `${string}.${string}`): boolean =>
-    !!organization && !loading && !error && hasOrganizationPermission(organization.permissions, permission),
-  [error, loading, organization]);
-  const state = resolveOrganizationRouteAccess(routeAccess, { loading, error, permissions: organization?.permissions ?? null });
+    authStatus === "authenticated" && !!organization && !loading && !error && hasOrganizationPermission(organization.permissions, permission),
+  [authStatus, error, loading, organization]);
+  const state = resolveOrganizationRouteAccess(routeAccess, { authStatus, loading, error, permissions: organization?.permissions ?? null });
   return { routeAccess, state, organizationName: organization?.name ?? null, can };
 }

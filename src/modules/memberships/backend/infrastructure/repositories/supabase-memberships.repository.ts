@@ -4,6 +4,7 @@
 
 import { Result } from "@/src/core/domain/result";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
+import { legacyRoleFromCanonical } from "@/src/shared/backend/utils/tenant-organization-access";
 import {
     CreatedDirectMember,
     CreateDirectMemberInput,
@@ -88,7 +89,7 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             ? { data: [], error: null }
             : await this.source.instance
                 .from('organizations')
-                .select('legacy_tenant_id')
+                .select('id, legacy_tenant_id')
                 .in('legacy_tenant_id', tenantIds)
                 .eq('status', 'active');
         if (organizationsError) return Result.fail(organizationsError.message);
@@ -96,12 +97,50 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
         // The Web tenant bridge is authoritative only while its organization is
         // active. Unknown and suspended mappings intentionally disappear from
         // the directory so they cannot be restored from browser storage.
-        const activeTenantIds = new Set(
-            ((organizations ?? []) as Array<{ legacy_tenant_id: string | null }>)
-                .map((organization) => organization.legacy_tenant_id)
-                .filter((tenantId): tenantId is string => tenantId !== null),
+        const organizationByTenantId = new Map(
+            ((organizations ?? []) as Array<{ id: string; legacy_tenant_id: string | null }>)
+                .filter((organization): organization is { id: string; legacy_tenant_id: string } => organization.legacy_tenant_id !== null)
+                .map((organization) => [organization.legacy_tenant_id, organization.id]),
         );
-        const activeRows = rows.filter((row) => activeTenantIds.has(row.tenant_id));
+        const bridgedRows = rows.filter((row) => organizationByTenantId.has(row.tenant_id));
+        const organizationIds = [...new Set(bridgedRows.map((row) => organizationByTenantId.get(row.tenant_id)!))];
+        const { data: organizationMemberships, error: organizationMembershipsError } = organizationIds.length === 0
+            ? { data: [], error: null }
+            : await this.source.instance
+                .from('organization_memberships')
+                .select('organization_id, role_id, status')
+                .eq('user_id', userId)
+                .eq('status', 'active')
+                .in('organization_id', organizationIds);
+        if (organizationMembershipsError) return Result.fail(organizationMembershipsError.message);
+
+        const membershipByOrganizationId = new Map(
+            ((organizationMemberships ?? []) as Array<{ organization_id: string; role_id: string | null; status: string }>)
+                .filter((membership): membership is { organization_id: string; role_id: string; status: string } => membership.status === 'active' && membership.role_id !== null)
+                .map((membership) => [membership.organization_id, membership]),
+        );
+        const roleIds = [...new Set([...membershipByOrganizationId.values()].map((membership) => membership.role_id))];
+        const { data: organizationRoles, error: organizationRolesError } = roleIds.length === 0
+            ? { data: [], error: null }
+            : await this.source.instance
+                .from('organization_roles')
+                .select('id, organization_id, code, status, organization_role_permissions(permission_code)')
+                .eq('status', 'active')
+                .in('id', roleIds);
+        if (organizationRolesError) return Result.fail(organizationRolesError.message);
+
+        const rolesByOrganizationId = new Map(
+            ((organizationRoles ?? []) as Array<{ id: string; organization_id: string; code: string; status: string; organization_role_permissions: Array<{ permission_code: string }> }>)
+                .filter((role) => role.status === 'active' && membershipByOrganizationId.get(role.organization_id)?.role_id === role.id)
+                .map((role) => [role.organization_id, {
+                    role: legacyRoleFromCanonical(role.code),
+                    permissions: role.organization_role_permissions.map((permission) => permission.permission_code),
+                }]),
+        );
+        const activeRows = bridgedRows.filter((row) => {
+            const organizationId = organizationByTenantId.get(row.tenant_id)!;
+            return rolesByOrganizationId.has(organizationId);
+        });
 
         const emailMap: Record<string, string> = {};
         for (const row of activeRows) {
@@ -123,29 +162,13 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             }
         }
 
-        const roleNames = Array.from(new Set(activeRows.map((row) => row.role === 'contable' ? 'contador' : row.role)));
-        const permissionMap: Record<string, string[]> = {};
-        if (roleNames.length > 0) {
-            const { data: permissions } = await this.source.instance
-                .from('shared_authorization_role_permissions')
-                .select('role, permission_code')
-                .in('role', roleNames);
-            for (const permission of ((permissions ?? []) as Array<{ role: string; permission_code: string }>)) {
-                const role = permission.role === 'contador' ? 'contable' : permission.role;
-                permissionMap[role] ??= [];
-                permissionMap[role].push(permission.permission_code);
-            }
-        }
-
         const result: UserMembership[] = activeRows.map((row) => ({
             tenantId:        row.tenant_id,
-            role:            row.role as MemberRole,
+            role:            rolesByOrganizationId.get(organizationByTenantId.get(row.tenant_id)!)!.role,
             tenantEmail:     emailMap[row.tenant_id] ?? row.tenant_id,
             tenantAvatarUrl: avatarMap[row.tenant_id] ?? null,
             isOwn:           row.tenant_id === userId,
-            permissions:     row.role === 'owner'
-                ? ['*']
-                : permissionMap[row.role === 'contador' ? 'contable' : row.role] ?? [],
+            permissions:     rolesByOrganizationId.get(organizationByTenantId.get(row.tenant_id)!)!.permissions,
         }));
 
         result.sort((a, b) => {
