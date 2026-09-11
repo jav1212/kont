@@ -105,6 +105,7 @@ Main migrations:
 - `032_documents_rpc_functions.sql`
 - `033_documents_rpc_company_null_fix.sql`
 - `252_direct_member_auth_provisioning.sql`
+- `256_defer_direct_member_provisioning.sql`
 
 Focus:
 - tenant collaboration
@@ -116,9 +117,11 @@ Focus:
 
 ### Direct member provisioning rollout
 
-Apply `252_direct_member_auth_provisioning.sql` before deploying the application code that uses `POST /api/memberships/members`. The migration replaces the Auth-user provisioning trigger with the canonical `on_auth_user_created` handler, preserves the ordinary signup and invitation branches, and adds the service-role readiness check `public.membership_direct_provisioning_ready()`.
+Apply both `252_direct_member_auth_provisioning.sql` and `256_defer_direct_member_provisioning.sql` before deploying the application code that uses `POST /api/memberships/members`. Migration 256 supersedes the insert-only trigger timing introduced by 252: Supabase Auth inserts a user and then writes trusted app metadata in the same transaction, so the canonical `on_auth_user_created` handler must be a deferred, initially deferred constraint trigger that reads the final user row. It preserves the ordinary signup and invitation branches at commit and retains the existing organization synchronization.
 
-Run [003_direct_member_creation_checks.sql](../../../supabase/verification/003_direct_member_creation_checks.sql) against a disposable database after migration 252. It rolls back its fixtures and verifies atomic rollback, trusted-metadata validation, allowed roles and caller hierarchy, ordinary signup, pending invitations, and trigger readiness. Password sign-in remains an Auth-provider integration check.
+Run [004_deferred_direct_member_checks.sql](../../../supabase/verification/004_deferred_direct_member_checks.sql) after migration 256. Its fixtures roll back and it verifies the Auth insert-then-metadata-update ordering, trusted-metadata validation, legacy and canonical organization linkage for every direct-member role, unchanged signup and invitation behavior, and deferred trigger readiness. Password sign-in remains an Auth-provider integration check. Verification 003 remains historical coverage for the earlier migration but is not sufficient rollout evidence for the current trigger timing.
+
+Before release, confirm `public.membership_direct_provisioning_ready()` is true using a service-role connection, and inspect `pg_trigger` for `on_auth_user_created` with `tgdeferrable` and `tginitdeferred` both true. If readiness fails, do not deploy the direct-member Web change; apply or restore migration 256 and rerun verification 004. Rolling back the Web code does not undo accounts or memberships already provisioned.
 
 ### Stage 7 - Accounting module
 

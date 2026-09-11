@@ -16,12 +16,12 @@ import {
   type OrganizationAccess,
   type OrganizationCompany,
   type OrganizationId,
-  type Permission,
   type UserId,
 } from "../../domain";
 import { z } from "zod";
 import {
   companyRowSchema,
+  assignedOrganizationRoleSchema,
   membershipRowSchema,
   organizationOwnerRowSchema,
   organizationPresentationRowSchema,
@@ -62,11 +62,17 @@ export function createOrganizationsDirectory(
 class SupabaseOrganizationDirectory implements OrganizationRepository, OrganizationPresentationDirectory {
   constructor(private readonly client: SupabaseClient) {}
 
+  /**
+   * Resolves memberships against their assigned, organization-scoped role grants.
+   * @param targetUserId Authenticated user whose memberships should be inspected.
+   * @returns Memberships with active assigned roles; unresolved roles fail closed.
+   * @throws OrganizationFailure when persistence or row validation fails.
+   */
   async listAccessForUser(targetUserId: UserId): Promise<readonly OrganizationAccess[]> {
     try {
       const { data: membershipData, error: membershipError } = await this.client
         .from("organization_memberships")
-        .select("organization_id,user_id,role,status")
+        .select("organization_id,user_id,role,role_id,status")
         .eq("user_id", targetUserId)
         .eq("status", "active");
       if (membershipError) throw membershipError;
@@ -79,12 +85,26 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
         .in("id", memberships.map((membership) => membership.organization_id));
       if (organizationError) throw organizationError;
       const organizations = new Map(organizationRowSchema.array().parse(organizationData ?? []).map((row) => [row.id, row]));
-      const permissions = await this.loadPermissions(memberships.map((membership) => membership.role));
+      const assignedRoleIds = memberships.flatMap((membership) => membership.role_id ? [membership.role_id] : []);
+      if (assignedRoleIds.length === 0) return [];
+      const { data: roleData, error: roleError } = await this.client
+        .from("organization_roles")
+        .select("id,organization_id,code,kind,status,organization_role_permissions(permission_code)")
+        .in("id", [...new Set(assignedRoleIds)]);
+      if (roleError) throw roleError;
+      const assignedRoles = new Map(assignedOrganizationRoleSchema.array().parse(roleData ?? []).map((role) => [role.id, role]));
 
       return memberships.flatMap((membership): OrganizationAccess[] => {
         const organization = organizations.get(membership.organization_id);
         if (!organization) return [];
+        const assignedRole = membership.role_id ? assignedRoles.get(membership.role_id) : undefined;
+        // Access follows the assigned role in this organization, never the
+        // legacy role-permission matrix shared by unrelated organizations.
+        if (!assignedRole || assignedRole.status !== "active"
+          || assignedRole.organization_id !== membership.organization_id) return [];
         const role = mapRole(membership.role);
+        const isAssignedOwner = role === OrganizationRole.Owner
+          && assignedRole.kind === "system" && assignedRole.code === "owner";
         return [{
           relationship: organization.legacy_tenant_id === targetUserId
             ? DirectOrganizationRelationship.Personal
@@ -102,7 +122,7 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
             userId: userId(membership.user_id),
             role,
             status: membership.status,
-            permissions: role === OrganizationRole.Owner ? ["*"] : permissions.get(role) ?? [],
+            permissions: isAssignedOwner ? ["*"] : assignedRole.organization_role_permissions.map((permission) => permission.permission_code),
           },
         }];
       });
@@ -212,23 +232,6 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
     }
   }
 
-  private async loadPermissions(databaseRoles: readonly string[]): Promise<Map<OrganizationRole, readonly Permission[]>> {
-    const legacyRoles = [...new Set(databaseRoles.map(mapRole).filter((role) => role !== OrganizationRole.Owner).map(toLegacyRole))];
-    if (legacyRoles.length === 0) return new Map();
-    const { data, error } = await this.client
-      .from("shared_authorization_role_permissions")
-      .select("role,permission_code")
-      .in("role", legacyRoles);
-    if (error) throw error;
-    const result = new Map<OrganizationRole, Permission[]>();
-    for (const row of (data ?? []) as Array<{ role: string; permission_code: string }>) {
-      const role = mapRole(row.role);
-      const current = result.get(role) ?? [];
-      current.push(row.permission_code as Permission);
-      result.set(role, current);
-    }
-    return result;
-  }
 }
 
 export class SupabaseOrganizationLogoStorage implements OrganizationLogoStorage {
@@ -261,8 +264,6 @@ function mapRole(role: string): OrganizationRole {
 }
 
 const DATABASE_ROLE_MAP = new Map<string, OrganizationRole>([["owner",OrganizationRole.Owner],["admin",OrganizationRole.Admin],["accountant",OrganizationRole.Accountant],["contador",OrganizationRole.Accountant],["contable",OrganizationRole.Accountant],["seller",OrganizationRole.Seller],["vendedor",OrganizationRole.Seller],["cashier",OrganizationRole.Cashier],["cajero",OrganizationRole.Cashier]]);
-const LEGACY_ROLE_MAP = new Map<OrganizationRole,string>([[OrganizationRole.Owner,"owner"],[OrganizationRole.Admin,"admin"],[OrganizationRole.Accountant,"contador"],[OrganizationRole.Seller,"vendedor"],[OrganizationRole.Cashier,"cajero"]]);
-function toLegacyRole(role: OrganizationRole): string { const mapped=LEGACY_ROLE_MAP.get(role); if (!mapped) throw new OrganizationFailure("ORGANIZATION_REPOSITORY_UNAVAILABLE", "No existe traducción para el rol."); return mapped; }
 
 function repositoryFailure(cause: unknown): OrganizationFailure {
   if (cause instanceof OrganizationFailure) return cause;

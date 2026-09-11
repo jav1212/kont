@@ -147,7 +147,7 @@ export default function MembersPage() {
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-light bg-surface-1">
                     <UserCog size={13} className="text-[var(--text-tertiary)]" />
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-                        Gestionando tenant de cliente
+                        Gestionando el espacio de trabajo seleccionado
                     </p>
                 </div>
             )}
@@ -155,7 +155,7 @@ export default function MembersPage() {
             {loading ? (
                 <SettingsSection
                     title="Miembros activos"
-                    subtitle="Quienes tienen acceso al tenant. Sólo el owner y los admin pueden invitar o revocar."
+                    subtitle="Personas con acceso a este espacio de trabajo. Las acciones disponibles dependen de tu rol."
                     action={memberActions}
                     flush
                 >
@@ -168,13 +168,13 @@ export default function MembersPage() {
             ) : members.length === 0 ? (
                 <SettingsSection
                     title="Miembros activos"
-                    subtitle="Quienes tienen acceso al tenant."
+                    subtitle="Personas con acceso a este espacio de trabajo."
                     action={memberActions}
                 >
                     <div className="text-center py-10">
                         <MailCheck size={20} className="mx-auto text-[var(--text-tertiary)] mb-2" />
                         <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
-                            Aún no has invitado a nadie a tu tenant.
+                            Aún no has invitado a nadie a este espacio de trabajo.
                         </p>
                     </div>
                 </SettingsSection>
@@ -182,7 +182,7 @@ export default function MembersPage() {
                 <>
                     <SettingsSection
                         title="Miembros activos"
-                        subtitle="Owner, admin y contables con acceso al tenant. El owner no puede revocarse."
+                        subtitle="Personas con acceso a este espacio de trabajo. El propietario no puede revocarse."
                         action={memberActions}
                         flush
                     >

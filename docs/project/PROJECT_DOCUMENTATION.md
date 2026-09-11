@@ -339,7 +339,11 @@ La creacion directa permite a un `owner` o `admin` con `members.invite` crear un
 
 La API es `POST /api/memberships/members`, con `{ email, password, role }`, y devuelve `201` con `{ data: { id, email, role } }`. Los fallos devuelven un mensaje en espanol y un `code` estable: un correo que ya tiene cuenta devuelve `409` para que se use la invitacion; si la migracion o el trigger de aprovisionamiento no estan listos, devuelve `503`.
 
-El servidor crea la cuenta mediante la API administrativa de Auth con correo confirmado. El trigger descrito en [PUBLIC_SCHEMA.md](../database/public/PUBLIC_SCHEMA.md) crea de forma atomica el perfil y la membresia activa del tenant seleccionado; la cuenta no recibe un negocio propio ni acepta invitaciones pendientes. La invitacion sigue disponible como flujo separado.
+El servidor crea la cuenta mediante la API administrativa de Auth con correo confirmado. Auth inserta la identidad y actualiza sus metadatos de aplicacion confiables en la misma transaccion; por eso el trigger diferido descrito en [PUBLIC_SCHEMA.md](../database/public/PUBLIC_SCHEMA.md) lee la fila final al confirmar la transaccion. Crea de forma atomica el perfil, la membresia activa del tenant seleccionado y la membresia activa de la organizacion canonica; la cuenta no recibe un negocio propio ni acepta invitaciones pendientes. La invitacion sigue disponible como flujo separado.
+
+Antes de responder `201`, el repositorio comprueba esas dos vinculaciones persistidas. Si Auth creo la cuenta pero no puede confirmar una de ellas, la API devuelve `503` con `provisioning_incomplete` y no elimina la cuenta automaticamente. La correccion se hace mediante revision operativa acotada de los registros de acceso, sin alterar contrasenas, cuentas ni organizaciones ajenas.
+
+El despliegue de este flujo requiere las migraciones 252 y 256, y ejecutar la verificacion 004 descrita en [MIGRATIONS_OVERVIEW.md](../database/migrations/MIGRATIONS_OVERVIEW.md). La correccion de base de datos puede estar aplicada sin que los cambios Web esten desplegados; no debe asumirse la disponibilidad de la UI solo por la presencia de la migracion.
 
 ### 11.7 Payroll
 

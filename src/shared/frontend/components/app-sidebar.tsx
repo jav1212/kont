@@ -26,7 +26,6 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess, usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
-import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
@@ -35,6 +34,10 @@ import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
 import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-update-banner";
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
+import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
+import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
+import { getOrganizationRouteAccess, getModuleVisibilityPermission } from "@/src/modules/organizations/frontend/module-access-policy";
+import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -97,10 +100,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { hasAccess: hasInventory  } = useModuleAccess("inventory");
     const { hasAccess: hasPayroll    } = useModuleAccess("payroll");
     const { hasAccess: hasAccounting } = useModuleAccess("accounting");
-    const { can } = useActiveTenantContext();
     const { buildContextHref } = useUrlContext();
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
+    const organizationAccess = useOrganizationModuleAccess(pathname);
     // ── Module selection ──────────────────────────────────────────────────────
     const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
 
@@ -112,8 +115,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         return match?.id ?? null;
     }, [pathname]);
 
-    const resolvedModuleId = derivedModuleId ?? storedModuleId;
-    const subnav = resolvedModuleId ? MODULE_SUBNAV[resolvedModuleId] : undefined;
+    const requestedModuleId = derivedModuleId ?? storedModuleId;
 
     // `purchases` hereda el acceso de `inventory` por ahora — mismo plan,
     // mismas tablas (inventario_facturas_compra, inventario_proveedores). Si
@@ -131,14 +133,19 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
-                const permissionResource = mod.id;
-                if (["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents"].includes(permissionResource)
-                    && !can(`${permissionResource}.read`)) return false;
+                const permission = getModuleVisibilityPermission(mod.id);
+                if (permission && !organizationAccess.can(permission)) return false;
                 return true;
             })
             .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [hasPayroll, hasInventory, hasAccounting, can]);
+        [hasPayroll, hasInventory, hasAccounting, organizationAccess.can]);
+
+    const resolvedModuleId = selectableModules.some((module) => module.id === requestedModuleId) ? requestedModuleId : null;
+    const subnav = useMemo(() => (resolvedModuleId ? (MODULE_SUBNAV[resolvedModuleId] ?? []).filter((entry) => {
+        const requirement = getOrganizationRouteAccess(entry.href);
+        return requirement.kind === "public" || requirement.permissions.every(organizationAccess.can);
+    }) : []), [organizationAccess.can, resolvedModuleId]);
 
     function handleSelectModule(id: string, href: string) {
         setStoredModuleId(id);
@@ -192,18 +199,20 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             </header>
 
             <div className="px-3 py-3 border-b border-sidebar-border flex flex-col gap-2">
-                <SidebarModuleSelector
-                    modules={selectableModules}
-                    activeModuleId={resolvedModuleId}
-                    onSelect={handleSelectModule}
-                    subtitle={moduleSubtitle}
-                />
+                <OrganizationSwitcher />
+                <p className="px-1 pt-1 font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-sidebar-label">Empresa</p>
                 <SidebarCompanySelector
                     companies={companies}
                     selectedId={companyId}
                     loading={companyLoading}
                     onSelect={selectCompany}
                     companiesHref={buildContextHref("/companies")}
+                />
+                <SidebarModuleSelector
+                    modules={selectableModules}
+                    activeModuleId={resolvedModuleId}
+                    onSelect={handleSelectModule}
+                    subtitle={moduleSubtitle}
                 />
             </div>
 
@@ -212,7 +221,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 style={{ scrollbarGutter: "stable" }}
                 aria-label="Secciones del módulo"
             >
-                <SidebarSubnav subnav={subnav ?? []} pathname={pathname} />
+                <SidebarSubnav subnav={subnav} pathname={pathname} />
             </nav>
 
             <div
@@ -222,7 +231,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 <SidebarUpdateBanner />
                 <div className="flex flex-col gap-0.5">
                     <UtilityShortcut
-                        href={buildContextHref("/settings/members")}
+                        href={buildContextHref("/settings/organization")}
                         active={pathname.startsWith("/settings")}
                         label="Configuración"
                         icon={<Settings size={17} strokeWidth={1.8} />}
@@ -295,7 +304,7 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
-    const { allTenants, activeTenantId, switchTenant } = useActiveTenantContext();
+    const { organizations, organization, selectOrganization } = useOrganization();
     const router = useRouter();
 
     const initial = (name?.[0] ?? email?.[0] ?? "?").toUpperCase();
@@ -347,9 +356,9 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
                     email={email}
                     displayName={displayName}
                     planName={planName}
-                    allTenants={allTenants}
-                    activeTenantId={activeTenantId}
-                    onSwitchTenant={(id) => { switchTenant(id); setOpen(false); router.refresh(); }}
+                    allTenants={organizations.map((entry) => ({ tenantId: entry.id, tenantEmail: entry.name, tenantAvatarUrl: entry.logoUrl, isOwn: false, role: entry.role }))}
+                    activeTenantId={organization?.id ?? null}
+                    onSwitchTenant={(id) => { selectOrganization(id); setOpen(false); }}
                     onProfileClick={() => { setOpen(false); router.push(profileHref); }}
                     onHelpClick={() => { setOpen(false); router.push(helpHref); }}
                     onStatusClick={() => { setOpen(false); router.push(statusHref); }}
@@ -450,7 +459,7 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
             {hasMultipleTenants && (
                 <div className="p-1.5 border-b border-sidebar-border">
                     <p className="px-2 pt-1 pb-1.5 font-sans text-[12px] font-semibold text-sidebar-label">
-                        Cambiar cuenta
+                        Cambiar organización
                     </p>
                     <ul>
                         {allTenants.map((t) => {

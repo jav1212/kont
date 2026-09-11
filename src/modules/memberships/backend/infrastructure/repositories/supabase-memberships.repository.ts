@@ -39,6 +39,35 @@ interface RawUserMembershipRow {
     accepted_at: string;
 }
 
+interface DirectMemberLegacyMembershipRow {
+    tenant_id: string;
+    member_id: string;
+    role: string;
+    accepted_at: string | null;
+    revoked_at: string | null;
+}
+
+interface DirectMemberOrganizationRow {
+    id: string;
+    legacy_tenant_id: string | null;
+    status: string;
+}
+
+interface DirectMemberOrganizationMembershipRow {
+    organization_id: string;
+    user_id: string;
+    role: string;
+    role_id: string | null;
+    status: string;
+}
+
+interface DirectMemberOrganizationRoleRow {
+    id: string;
+    organization_id: string | null;
+    code: string;
+    status: string;
+}
+
 export class SupabaseMembershipsRepository implements IMembershipsRepository {
     constructor(private readonly source: ServerSupabaseSource) {}
 
@@ -54,9 +83,28 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
         if (error) return Result.fail(error.message);
 
         const rows = (data ?? []) as unknown as RawUserMembershipRow[];
+        const tenantIds = rows.map((row) => row.tenant_id);
+        const { data: organizations, error: organizationsError } = tenantIds.length === 0
+            ? { data: [], error: null }
+            : await this.source.instance
+                .from('organizations')
+                .select('legacy_tenant_id')
+                .in('legacy_tenant_id', tenantIds)
+                .eq('status', 'active');
+        if (organizationsError) return Result.fail(organizationsError.message);
+
+        // The Web tenant bridge is authoritative only while its organization is
+        // active. Unknown and suspended mappings intentionally disappear from
+        // the directory so they cannot be restored from browser storage.
+        const activeTenantIds = new Set(
+            ((organizations ?? []) as Array<{ legacy_tenant_id: string | null }>)
+                .map((organization) => organization.legacy_tenant_id)
+                .filter((tenantId): tenantId is string => tenantId !== null),
+        );
+        const activeRows = rows.filter((row) => activeTenantIds.has(row.tenant_id));
 
         const emailMap: Record<string, string> = {};
-        for (const row of rows) {
+        for (const row of activeRows) {
             const { data: userData } = await this.source.instance.auth.admin.getUserById(row.tenant_id);
             if (userData?.user?.email) {
                 emailMap[row.tenant_id] = userData.user.email;
@@ -64,18 +112,18 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
         }
 
         const avatarMap: Record<string, string | null> = {};
-        const tenantIds = rows.map((r) => r.tenant_id);
-        if (tenantIds.length > 0) {
+        const activeTenantIdList = activeRows.map((row) => row.tenant_id);
+        if (activeTenantIdList.length > 0) {
             const { data: profiles } = await this.source.instance
                 .from("profiles")
                 .select("id, avatar_url")
-                .in("id", tenantIds);
+                .in("id", activeTenantIdList);
             for (const p of ((profiles ?? []) as Array<{ id: string; avatar_url: string | null }>)) {
                 avatarMap[p.id] = p.avatar_url;
             }
         }
 
-        const roleNames = Array.from(new Set(rows.map((row) => row.role === 'contable' ? 'contador' : row.role)));
+        const roleNames = Array.from(new Set(activeRows.map((row) => row.role === 'contable' ? 'contador' : row.role)));
         const permissionMap: Record<string, string[]> = {};
         if (roleNames.length > 0) {
             const { data: permissions } = await this.source.instance
@@ -89,7 +137,7 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             }
         }
 
-        const result: UserMembership[] = rows.map((row) => ({
+        const result: UserMembership[] = activeRows.map((row) => ({
             tenantId:        row.tenant_id,
             role:            row.role as MemberRole,
             tenantEmail:     emailMap[row.tenant_id] ?? row.tenant_id,
@@ -302,7 +350,7 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
     }
 
     /**
-     * Creates a confirmed Auth identity after verifying that the database trigger can atomically provision it.
+     * Creates a confirmed Auth identity and confirms its complete legacy and organization access linkage.
      *
      * @param input - Tenant-scoped credentials and trusted application metadata.
      * @returns The created identity, or an expected duplicate/provisioning failure code.
@@ -342,9 +390,105 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             const user = data.user;
             if (!user?.id || !user.email) return Result.fail('auth_create_failed');
 
+            const linked = await this.hasVerifiedDirectMemberLinkage(user.id, input);
+            if (!linked) return Result.fail('provisioning_incomplete');
+
             return Result.success({ id: user.id, email: user.email, role: input.role });
         } catch {
             return Result.fail('auth_create_failed');
         }
+    }
+
+    /**
+     * Checks the durable access rows that must exist before a direct member can be reported as created.
+     *
+     * @param memberId - Auth identity returned by the trusted Auth admin API.
+     * @param input - Expected legacy tenant, organization role, and inviting actor context.
+     * @returns True only when the exact active legacy membership and its canonical organization role are present.
+     * @throws Never throws expected failures; unavailable or malformed persistence reads return false.
+     */
+    private async hasVerifiedDirectMemberLinkage(
+        memberId: string,
+        input: CreateDirectMemberInput,
+    ): Promise<boolean> {
+        try {
+            const { data: legacyMembership, error: legacyError } = await this.source.instance
+                .from('tenant_memberships')
+                .select('tenant_id, member_id, role, accepted_at, revoked_at')
+                .eq('tenant_id', input.tenantOwnerId)
+                .eq('member_id', memberId)
+                .eq('role', input.role)
+                .not('accepted_at', 'is', null)
+                .is('revoked_at', null)
+                .maybeSingle();
+            const legacy = legacyMembership as DirectMemberLegacyMembershipRow | null;
+            if (legacyError || !legacy
+                || legacy.tenant_id !== input.tenantOwnerId
+                || legacy.member_id !== memberId
+                || legacy.role !== input.role
+                || !legacy.accepted_at
+                || legacy.revoked_at !== null) return false;
+
+            const { data: organizationData, error: organizationError } = await this.source.instance
+                .from('organizations')
+                .select('id, legacy_tenant_id, status')
+                .eq('legacy_tenant_id', input.tenantOwnerId)
+                .eq('status', 'active')
+                .maybeSingle();
+            const organization = organizationData as DirectMemberOrganizationRow | null;
+            if (organizationError || !organization
+                || organization.legacy_tenant_id !== input.tenantOwnerId
+                || organization.status !== 'active') return false;
+
+            const expectedRole = directMemberOrganizationRole(input.role);
+            const { data: organizationMembershipData, error: organizationMembershipError } = await this.source.instance
+                .from('organization_memberships')
+                .select('organization_id, user_id, role, role_id, status')
+                .eq('organization_id', organization.id)
+                .eq('user_id', memberId)
+                .eq('role', expectedRole)
+                .eq('status', 'active')
+                .maybeSingle();
+            const organizationMembership = organizationMembershipData as DirectMemberOrganizationMembershipRow | null;
+            if (organizationMembershipError || !organizationMembership
+                || organizationMembership.organization_id !== organization.id
+                || organizationMembership.user_id !== memberId
+                || organizationMembership.role !== expectedRole
+                || organizationMembership.status !== 'active'
+                || !organizationMembership.role_id) return false;
+
+            const { data: roleData, error: roleError } = await this.source.instance
+                .from('organization_roles')
+                .select('id, organization_id, code, status')
+                .eq('id', organizationMembership.role_id)
+                .eq('organization_id', organization.id)
+                .eq('code', expectedRole)
+                .eq('status', 'active')
+                .maybeSingle();
+            const role = roleData as DirectMemberOrganizationRoleRow | null;
+            return !roleError
+                && role?.id === organizationMembership.role_id
+                && role.organization_id === organization.id
+                && role.code === expectedRole
+                && role.status === 'active';
+        } catch {
+            return false;
+        }
+    }
+}
+
+/**
+ * Maps the legacy Web direct-member roles to their canonical organization role codes.
+ *
+ * @param role - Validated legacy role accepted by the direct-member command.
+ * @returns The equivalent organization-scoped role code.
+ * @throws Never throws because the application layer validates the role before persistence.
+ */
+function directMemberOrganizationRole(role: CreateDirectMemberInput['role']): string {
+    switch (role) {
+        case 'contador': return 'accountant';
+        case 'vendedor': return 'seller';
+        case 'cajero': return 'cashier';
+        case 'admin': return 'admin';
     }
 }

@@ -74,7 +74,7 @@ test('normalizes permitted roles before passing credentials to the repository', 
 });
 
 test('preserves duplicate, password, and Auth provisioning failures for HTTP mapping', async () => {
-    for (const failure of ['email_already_exists', 'password_requirements', 'auth_create_failed'] as const) {
+    for (const failure of ['email_already_exists', 'password_requirements', 'auth_create_failed', 'provisioning_incomplete'] as const) {
         const { repo } = repository(Result.fail(failure));
         const result = await new CreateDirectMemberUseCase(repo).execute(input());
         assert.equal(result.isFailure, true);

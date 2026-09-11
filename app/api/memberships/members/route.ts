@@ -77,6 +77,7 @@ function directMemberFailureResponse(code: string): { status: number; error: str
         case 'password_requirements': return { status: 400, error: 'La contraseña no cumple los requisitos de seguridad. Usa una contraseña más fuerte.' };
         case 'invalid_role': return { status: 400, error: 'El rol seleccionado no es válido.' };
         case 'provisioning_unavailable': return { status: 503, error: 'El servicio para crear miembros no está disponible. Intenta nuevamente.' };
+        case 'provisioning_incomplete': return { status: 503, error: 'La cuenta fue creada, pero no pudimos confirmar que quedara vinculada a la organización. No la crees nuevamente; revisa los miembros o contacta soporte.' };
         default: return { status: 500, error: 'No pudimos crear el miembro. Intenta nuevamente.' };
     }
 }

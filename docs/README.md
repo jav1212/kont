@@ -41,6 +41,7 @@ This folder is organized by purpose so project documentation and planning stay e
 
 - [architecture/MODULES_CATALOG.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/architecture/MODULES_CATALOG.md)
 - [architecture/portable-package-hardening.md](architecture/portable-package-hardening.md)
+- [Organizaciones en la Web](architecture/web-organization-workspace.md)
 - [Acceso por carnet en Web](architecture/web-barcode-access-plan.md)
 - [Seguridad y operación del acceso por carnet](security/web-barcode-access.md)
 

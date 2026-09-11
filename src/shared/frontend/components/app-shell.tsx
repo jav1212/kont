@@ -6,11 +6,14 @@
 // rendered there so this file only deals with interactive chrome.
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AppSidebar }    from "@/src/shared/frontend/components/app-sidebar";
 import { MobileTopBar }  from "@/src/shared/frontend/components/mobile-topbar";
+import { OrganizationRouteGuard } from "@/src/modules/organizations/frontend/components/organization-route-guard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const pathname = usePathname();
 
     // Close drawer automatically when viewport enters desktop (xl) breakpoint
     useEffect(() => {
@@ -40,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
                 <MobileTopBar onMenuClick={() => setSidebarOpen(true)} />
                 <main className="flex-1 min-w-0 overflow-y-auto flex flex-col">
-                    {children}
+                    <OrganizationRouteGuard pathname={pathname}>{children}</OrganizationRouteGuard>
                 </main>
             </div>
 

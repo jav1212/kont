@@ -8,6 +8,7 @@ import { AppShell }              from "@/src/shared/frontend/components/app-shel
 import { CompanyProvider }       from "@/src/modules/companies/frontend/components/company-provider";
 import { ActiveTenantProvider }  from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { BarcodeSessionGuard } from "@/src/modules/auth/frontend/components/barcode-session-guard";
+import { OrganizationProvider } from "@/src/modules/organizations/frontend/context/organization-context";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Suspense boundary required because useSearchParams() is used inside
@@ -15,9 +16,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <Suspense>
             <ActiveTenantProvider>
+              <OrganizationProvider>
                 <CompanyProvider>
                     <BarcodeSessionGuard><AppShell>{children}</AppShell></BarcodeSessionGuard>
                 </CompanyProvider>
+              </OrganizationProvider>
             </ActiveTenantProvider>
         </Suspense>
     );

@@ -46,7 +46,7 @@ export interface IMembershipsRepository {
     acceptInvitation(input: { token: string; userId: string; userEmail: string }): Promise<Result<AcceptedInvitation>>;
     getInvitationContext(tenantOwnerId: string, inviterId: string): Promise<Result<InvitationContext>>;
     /**
-     * Creates a confirmed Auth account whose database trigger provisions one active membership.
+     * Creates a confirmed Auth account and reports success only after verifying its legacy and canonical organization memberships.
      *
      * @param input - Trusted tenant, actor, credentials, and role supplied by the application layer.
      * @returns The provisioned member, or a stable expected failure code.

@@ -160,8 +160,9 @@ Current roles:
 
 Direct member provisioning:
 - [252_direct_member_auth_provisioning.sql](../../../supabase/migrations/252_direct_member_auth_provisioning.sql) adds a password-based provisioning path for a new member of an existing tenant.
+- [256_defer_direct_member_provisioning.sql](../../../supabase/migrations/256_defer_direct_member_provisioning.sql) is required by the current path. It makes the Auth provisioning trigger a deferred constraint trigger, so it reads the final trusted metadata row at transaction commit rather than the initial Auth insert.
 - A trusted Auth-admin payload in `raw_app_meta_data.provisioned_membership` contains exactly `tenant_id`, `role`, and `invited_by`. Client-controlled user metadata cannot enable this path.
-- The `auth.users` trigger `on_auth_user_created` calls `public.handle_new_user()` and creates the profile and one accepted, active membership in the same transaction. A failed membership insert rolls back the Auth user and profile.
+- Supabase Auth creates the row and then updates trusted application metadata in its transaction. The deferred `auth.users` trigger `on_auth_user_created` calls `public.handle_new_user()` after that update, creating the profile, one accepted active legacy membership, and its canonical active organization membership in the same transaction. A failed linkage rolls back the Auth user and profile.
 - The provisioned role is `admin`, `contador`, `vendedor`, or `cajero`; the inviter must be an accepted, active `owner` or `admin`, and an `admin` cannot provision another `admin`.
 - A directly provisioned user does not receive a tenant of their own and does not accept any pending invitation. Public registration and the normal invitation path retain their existing behavior.
 
@@ -220,7 +221,9 @@ The exact list is large, but the schema includes important RPC helpers for:
 
 ### Direct-member provisioning readiness
 
-`public.membership_direct_provisioning_ready()` is a service-role-only readiness check used before creating a direct member. It verifies that exactly one enabled `auth.users` provisioning trigger is attached to `public.handle_new_user()`. The API reports the feature as unavailable when this check is false, so apply migration 252 before deploying an application version that calls this endpoint.
+`public.membership_direct_provisioning_ready()` is a service-role-only readiness check used before creating a direct member. It verifies that exactly one enabled deferred, initially deferred constraint trigger on `auth.users` is attached to `public.handle_new_user()`. The API reports the feature as unavailable when this check is false, so apply migration 256 before deploying an application version that calls this endpoint.
+
+After Auth reports a created user, the application independently checks the exact active legacy membership and canonical organization role before returning HTTP 201. If either is absent or mismatched it returns `503` with `provisioning_incomplete`; it does not delete the Auth account automatically. This preserves the record for safe operator review rather than risking an incorrect deletion.
 
 ## Current design observations
 

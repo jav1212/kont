@@ -3,6 +3,7 @@
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import {
     Building2,
     Boxes,
@@ -31,20 +32,26 @@ interface NavGroup {
 
 const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     {
-        label: "Empresa",
+        label: "Organización",
         items: [
-            { href: "/settings/company",          label: "Empresa",     subtitle: "Datos y opciones de los reportes PDF.",        icon: Building2 },
-            { href: "/settings/inventory-config", label: "Inventario",  subtitle: "Campos personalizados visibles en productos.", icon: Boxes      },
-            { href: "/settings/members",          label: "Miembros",    subtitle: "Roles, invitaciones y accesos de tu cuenta.",  icon: Users      },
+            { href: "/settings/organization",     label: "Información general", subtitle: "Identidad, empresas y personas de tu organización.", icon: Building2 },
+            { href: "/settings/members",          label: "Miembros",    subtitle: "Personas e invitaciones del espacio de trabajo.",  icon: Users      },
             { href: "/settings/roles",             label: "Roles",       subtitle: "Ajusta los permisos de cada rol del sistema.",   icon: ShieldCheck },
             { href: "/settings/access",            label: "Acceso",      subtitle: "Terminales y carnets para iniciar sesión con lector.", icon: ScanBarcode },
+            { href: "/settings/billing",       label: "Facturación", subtitle: "Plan activo, pagos y solicitudes de suscripción.", icon: CreditCard },
+            { href: "/settings/referrals",     label: "Referidos",   subtitle: "Invita a otros profesionales y gana crédito.",     icon: Gift       },
         ],
     },
     {
-        label: "Cuenta",
+        label: "Empresa",
         items: [
-            { href: "/settings/billing",       label: "Facturación", subtitle: "Plan activo, pagos y solicitudes de suscripción.", icon: CreditCard },
-            { href: "/settings/referrals",     label: "Referidos",   subtitle: "Invita a otros profesionales y gana crédito.",     icon: Gift       },
+            { href: "/settings/company",          label: "Datos de empresa", subtitle: "Datos fiscales y opciones de los reportes PDF.", icon: Building2 },
+            { href: "/settings/inventory-config", label: "Inventario",  subtitle: "Campos personalizados visibles en productos.", icon: Boxes },
+        ],
+    },
+    {
+        label: "Cuenta personal",
+        items: [
             { href: "/settings/apariencia",    label: "Apariencia",  subtitle: "Tema y preferencias visuales (este navegador).",   icon: Palette    },
             { href: "/settings/instalar-app",  label: "Instalar app", subtitle: "Cómo agregar Konta a Windows, macOS, Android o iOS.", icon: Download },
             { href: "/settings/devices",       label: "Dispositivos", subtitle: "Conecta lectores y equipos locales con Kontave.", icon: MonitorCog },
@@ -53,10 +60,16 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
 ];
 
 const ALL_LINKS: ReadonlyArray<NavLink> = NAV_GROUPS.flatMap((g) => g.items);
-const FALLBACK_SUBTITLE = "Gestiona tu empresa, miembros y preferencias personales.";
+const FALLBACK_SUBTITLE = "Gestiona tu organización, empresas y preferencias personales.";
 
+/**
+ * Groups workspace administration separately from company and personal settings.
+ * @param props - The selected settings page.
+ * @returns Responsive settings navigation with the current organization identity.
+ */
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const { organization, loading: organizationLoading } = useOrganization();
     const active   = ALL_LINKS.find(({ href }) => pathname.startsWith(href));
 
     return (
@@ -161,7 +174,15 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
                 {/* Contenido */}
                 <div className="flex-1 min-w-0 overflow-y-auto">
-                    <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 lg:pt-10 pb-16">
+                    <main className={`${pathname === "/settings/organization" ? "max-w-5xl" : "max-w-3xl"} mx-auto px-4 sm:px-6 lg:px-10 pt-6 lg:pt-10 pb-16`}>
+                        {NAV_GROUPS[0].items.some(({ href }) => pathname.startsWith(href)) && (
+                            <div className="mb-6 flex items-center gap-2 text-[var(--text-tertiary)]">
+                                <Building2 size={15} aria-hidden />
+                                <Link href="/settings/organization" className="min-w-0 truncate font-sans text-sm hover:text-primary-500">
+                                    {organizationLoading ? "Cargando organización…" : organization?.name ?? "Organización no disponible"}
+                                </Link>
+                            </div>
+                        )}
                         {children}
                     </main>
                 </div>

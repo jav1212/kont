@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { tenantSchemaName } from '../source/infra/tenant-supabase';
 import { ServerSupabaseSource } from '../source/infra/server-supabase';
 import { readBarcodeRequestAccess } from '../barcode/barcode-request-guard';
+import { resolveActiveLegacyTenant } from './tenant-organization-access';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,115 +58,52 @@ export function requireTenantRole(context: Pick<TenantContext, 'role'>, ...allow
 }
 
 /**
- * Devuelve TenantContext del usuario autenticado en una API route.
- * Si el header X-Tenant-Id está presente y difiere del userId propio,
- * verifica la membresía en public.tenant_memberships e inyecta actingAs.
+ * Resolves the authenticated Web tenant through an active organization bridge.
+ * @param req Optional request carrying the tenant header.
+ * @returns The active tenant context for the signed-in user.
+ * @throws TenantAuthError for no authenticated user and TenantForbiddenError for denied access.
  */
 export async function requireTenant(req?: Request): Promise<TenantContext> {
     const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-
+    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} },
+    });
     const { data: { user }, error } = await supabase.auth.getUser();
-
-    if (error || !user) {
-        throw new TenantAuthError();
-    }
-
+    if (error || !user) throw new TenantAuthError();
     const userId = user.id;
     const server = new ServerSupabaseSource();
-
-    const barcode = await readBarcodeRequestAccess(
-        supabase, userId, cookieStore.get('kont_barcode_terminal')?.value,
-    );
+    const barcode = await readBarcodeRequestAccess(supabase, userId, cookieStore.get('kont_barcode_terminal')?.value);
     if (barcode.registered && (!barcode.active || !barcode.tenantId)) throw new TenantAuthError();
-
     const requestedTenantId = req?.headers.get('X-Tenant-Id') ?? null;
     if (barcode.registered && requestedTenantId && requestedTenantId !== barcode.tenantId) throw new TenantForbiddenError();
-    const targetId = barcode.registered ? barcode.tenantId! : requestedTenantId;
-    const barcodeMarker = barcode.registered ? { barcodeSession: true } : {};
 
-    // ── Caso 1: header ausente o apunta al userId propio ─────────────────
-    // Puede ser un owner (tiene fila en public.tenants con id = userId)
-    // o un invitado sin tenant propio (sólo existe como miembro en otros).
-    if (!targetId || targetId === userId) {
-        const { data: ownTenant } = await server.instance
-            .from('tenants')
-            .select('id')
-            .eq('id', userId)
-            .maybeSingle();
-
-        if (ownTenant) {
-            return {
-                ...barcodeMarker,
-                userId,
-                tenantId:         userId,
-                schemaName:       tenantSchemaName(userId),
-                actingAs:         null,
-                role:             'owner',
-                effectiveOwnerId: userId,
-            };
-        }
-
-        // Invitado sin tenant propio → actuar sobre el primer tenant del
-        // que es miembro activo (el dueño que lo invitó).
-        const { data: firstMembership } = await server.instance
-            .from('tenant_memberships')
-            .select('tenant_id, role')
-            .eq('member_id', userId)
-            .not('accepted_at', 'is', null)
-            .is('revoked_at', null)
-            .order('created_at', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-        if (!firstMembership) {
-            throw new TenantForbiddenError();
-        }
-
-        const mb = firstMembership as { tenant_id: string; role: string };
-        return {
-            ...barcodeMarker,
-            userId,
-            tenantId:         mb.tenant_id,
-            schemaName:       tenantSchemaName(mb.tenant_id),
-            actingAs:         { ownerId: mb.tenant_id, role: mb.role as ActingAs['role'] },
-            role:             mb.role as ActingAs['role'],
-            effectiveOwnerId: mb.tenant_id,
-        };
-    }
-
-    // ── Caso 2: header apunta a otro tenant → verificar membresía ────────
-    const { data: membership, error: mbError } = await server.instance
-        .from('tenant_memberships')
-        .select('role')
-        .eq('tenant_id', targetId)
-        .eq('member_id', userId)
-        .not('accepted_at', 'is', null)
-        .is('revoked_at', null)
-        .single();
-
-    if (mbError || !membership) {
-        throw new TenantForbiddenError();
-    }
-
+    const [ownTenantResult, membershipsResult] = await Promise.all([
+        server.instance.from('tenants').select('id').eq('id', userId).maybeSingle(),
+        server.instance.from('tenant_memberships').select('tenant_id, role').eq('member_id', userId)
+            .not('accepted_at', 'is', null).is('revoked_at', null).order('created_at', { ascending: true }),
+    ]);
+    if (ownTenantResult.error || membershipsResult.error) throw new TenantForbiddenError();
+    const memberships = (membershipsResult.data ?? []) as Array<{ tenant_id: string; role: string }>;
+    const candidateTenantIds = [...new Set([userId, ...memberships.map((membership) => membership.tenant_id)])];
+    const { data: organizations, error: organizationsError } = await server.instance.from('organizations')
+        .select('legacy_tenant_id').in('legacy_tenant_id', candidateTenantIds).eq('status', 'active');
+    if (organizationsError) throw new TenantForbiddenError();
+    const activeOrganizationTenantIds = new Set(
+        ((organizations ?? []) as Array<{ legacy_tenant_id: string | null }>).map((organization) => organization.legacy_tenant_id)
+            .filter((tenantId): tenantId is string => tenantId !== null),
+    );
+    const resolved = resolveActiveLegacyTenant({
+        userId, requestedTenantId, barcodeTenantId: barcode.registered ? barcode.tenantId! : null,
+        ownsRequestedTenant: !!ownTenantResult.data,
+        memberships: memberships.map((membership) => ({ tenantId: membership.tenant_id, role: membership.role })),
+        activeOrganizationTenantIds,
+    });
+    if (!resolved) throw new TenantForbiddenError();
     return {
-        ...barcodeMarker,
-        userId,
-        tenantId:         targetId,
-        schemaName:       tenantSchemaName(targetId),
-        actingAs:         { ownerId: targetId, role: membership.role as ActingAs['role'] },
-        role:             membership.role as ActingAs['role'],
-        effectiveOwnerId: targetId,
+        ...(barcode.registered ? { barcodeSession: true } : {}), userId, tenantId: resolved.tenantId,
+        schemaName: tenantSchemaName(resolved.tenantId),
+        actingAs: resolved.isOwner ? null : { ownerId: resolved.tenantId, role: resolved.role as TenantRole },
+        role: resolved.role as TenantRole, effectiveOwnerId: resolved.tenantId,
     };
 }
 
