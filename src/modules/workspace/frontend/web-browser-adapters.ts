@@ -1,4 +1,7 @@
-import { RemoteConnectivityProbe } from "@kontave/client-remote";
+import {
+  RemoteConnectivityProbe,
+  type KontaveRequest,
+} from "@kontave/client-remote";
 import type { ModuleCode } from "@kontave/modules/domain";
 import {
   WebApplicationController,
@@ -14,6 +17,43 @@ const STORAGE_KEYS = [
   "sidebar-module",
   "kont-session-user-id",
 ] as const;
+
+/** Browser capabilities used to establish whether the Web application can reach its API. */
+export interface BrowserConnectivityEnvironment {
+  /** Current document location used to resolve the Client API endpoint. */
+  readonly location: Pick<Location, "origin">;
+  /** Browser-provided network hint, read anew for each probe. */
+  readonly navigator: Pick<Navigator, "onLine">;
+  /** Fetch implementation supplied by the browser. */
+  readonly fetch: KontaveRequest;
+}
+
+/** Creates the Web reachability probe with a receiver-bound browser fetch implementation.
+ * @param environment - Browser network primitives for the active document.
+ * @param timeoutMs - Maximum time allowed for the reachability request.
+ * @returns A connectivity probe that distinguishes offline browser state from API reachability.
+ */
+export function createBrowserConnectivityProbe(
+  environment: BrowserConnectivityEnvironment,
+  timeoutMs?: number,
+): { readonly check: () => ReturnType<RemoteConnectivityProbe["check"]> } {
+  return {
+    check: () => {
+      if (!environment.navigator.onLine)
+        return Promise.resolve({
+          reachable: false as const,
+          reason: "network_unreachable" as const,
+        });
+      // Browsers may require Window as fetch's receiver. RemoteConnectivityProbe
+      // stores the request function, so pass a bound function rather than window.fetch.
+      return new RemoteConnectivityProbe(
+        environment.location.origin,
+        environment.fetch.bind(environment),
+        timeoutMs,
+      ).check();
+    },
+  };
+}
 
 /** Creates browser-specific adapters for one authenticated actor.
  * @param actorId - Session identity, never read from remembered browser selection.
@@ -70,15 +110,7 @@ export function createBrowserApplication(
     },
     clearSelection: () =>
       STORAGE_KEYS.forEach((key) => localStorage.removeItem(key)),
-    probe: {
-      check: () =>
-        navigator.onLine
-          ? new RemoteConnectivityProbe(window.location.origin).check()
-          : Promise.resolve({
-              reachable: false,
-              reason: "network_unreachable",
-            }),
-    },
+    probe: createBrowserConnectivityProbe(window),
     createOperationContext: createWebOperationContext,
   });
 }
