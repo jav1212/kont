@@ -13,6 +13,19 @@ solo espacio disponible. La empresa seleccionada y la cuenta personal siguen
 siendo conceptos distintos. Configuración agrupa sus entradas en Organización,
 Empresa y Cuenta personal.
 
+Cuando hay varias organizaciones, el selector abre un directorio buscable y
+agrupa las cuentas propias (`owner`) bajo **Mi cuenta** y las demás membresías
+directas bajo **Otras cuentas**; identifica la organización activa. Con una sola
+organización, conserva visible su identidad pero no abre el directorio. El
+acceso a **Gestionar organización** se muestra solamente si la comprobación
+canónica de acceso al módulo para `/settings/organization` lo permite; no es una
+concesión adicional de permisos. La implementación es exclusivamente de
+interfaz: no cambia rutas, contratos HTTP ni datos persistidos.
+
+El escaneo de clases de HeroUI se declara en
+[globals.css](../../app/globals.css) con una ruta `@source` relativa a esa hoja
+de estilos, para incluir las clases de superposición del tema instalado.
+
 `/settings/organization` muestra nombre, logo y rol del usuario. Sus secciones
 de empresas, miembros e invitaciones y roles consultan las proyecciones de la
 organización según los permisos efectivos del usuario. Los errores de consulta
@@ -213,6 +226,13 @@ Su existencia no implica que hayan aprobado en un entorno dado. La integración
 debe validar esos tests, el paquete de organizaciones, TypeScript, lint de los
 archivos afectados y el build Web, además de revisar navegación y cambios de
 organización con una sesión autorizada.
+
+Para el ajuste del selector y del escaneo de HeroUI, se informaron 25 pruebas
+de autorización y estilos aprobadas, incluida
+[web-heroui-styles.test.ts](../../test/web-heroui-styles.test.ts), junto con
+`audit:routes` (82 páginas, 55 elementos de navegación y 151 handlers). La
+verificación visual en navegador no se realizó porque no había un navegador
+habilitado; tampoco constituye una declaración de despliegue de producción.
 
 La reversión del código no exige borrar organizaciones ni membresías: la
 integración mantiene los identificadores y rutas operativas históricas. Los
