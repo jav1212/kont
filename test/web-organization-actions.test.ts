@@ -8,8 +8,10 @@ const organizationA = "30000000-0000-4000-8000-000000000001";
 const organizationB = "30000000-0000-4000-8000-000000000002";
 const roleA = "40000000-0000-4000-8000-000000000001";
 const roleB = "40000000-0000-4000-8000-000000000002";
+let organizationBAvatarUrl: string | null = "https://avatar.test/b-explicit.png";
+let legacyOwnerBAvatarUrl: string | null = "https://avatar.test/b.png";
 
-const requests: Array<{ readonly method: string; readonly path: string }> = [];
+const requests: Array<{ readonly method: string; readonly path: string; readonly search: string }> = [];
 
 /**
  * Serves the exact Supabase projections used by the Web organization boundary.
@@ -23,7 +25,7 @@ const requests: Array<{ readonly method: string; readonly path: string }> = [];
 const supabaseFetch: typeof fetch = async (input, init) => {
   const request = input instanceof Request ? input : new Request(input, init);
   const url = new URL(request.url);
-  requests.push({ method: request.method, path: url.pathname });
+  requests.push({ method: request.method, path: url.pathname, search: url.search });
 
   const table = url.pathname.split("/").at(-1);
   if (table === "organization_memberships") {
@@ -33,6 +35,10 @@ const supabaseFetch: typeof fetch = async (input, init) => {
       const row = snapshot(organizationId === organizationB ? organizationB : organizationA);
       return Response.json(row);
     }
+    if (url.searchParams.get("role") === "eq.owner") return Response.json([
+      { organization_id: organizationA, user_id: "60000000-0000-4000-8000-000000000001" },
+      { organization_id: organizationB, user_id: "60000000-0000-4000-8000-000000000002" },
+    ]);
     return Response.json([
       membership(organizationA, roleA),
       membership(organizationB, roleB),
@@ -44,6 +50,10 @@ const supabaseFetch: typeof fetch = async (input, init) => {
       organization(organizationB, tenantB),
     ]);
   }
+  if (table === "profiles") return Response.json([
+    { id: "60000000-0000-4000-8000-000000000001", avatar_url: "https://avatar.test/a.png" },
+    { id: "60000000-0000-4000-8000-000000000002", avatar_url: legacyOwnerBAvatarUrl },
+  ]);
   if (table === "organization_roles") {
     return Response.json([
       assignedRole(organizationA, roleA),
@@ -65,6 +75,7 @@ globalThis.fetch = supabaseFetch;
 
 const { createWebOrganizationActions } = await import("../src/modules/organizations/backend/web-organization-actions");
 const { TenantForbiddenError } = await import("../src/shared/backend/utils/require-tenant");
+const { workspaceSchema } = await import("../src/modules/organizations/contracts");
 type TenantContext = import("../src/shared/backend/utils/require-tenant").TenantContext;
 
 /**
@@ -103,7 +114,15 @@ function membership(organizationId: string, roleId: string) {
  * @returns Persisted organization data.
  */
 function organization(id: string, legacyTenantId: string) {
-  return { id, legacy_tenant_id: legacyTenantId, name: `Organization ${id}`, slug: `organization-${id.slice(0, 8)}`, status: "active", avatar_url: null, version: 1 };
+  return {
+    id,
+    legacy_tenant_id: legacyTenantId,
+    name: `Organization ${id}`,
+    slug: `organization-${id.slice(0, 8)}`,
+    status: "active",
+    avatar_url: id === organizationB ? organizationBAvatarUrl : null,
+    version: 1,
+  };
 }
 
 /**
@@ -140,6 +159,11 @@ test("a barcode session lists only its enrolled tenant organization and denies a
 
   const workspaces = await actions.list();
   assert.deepEqual(workspaces.map((workspace) => workspace.id), [organizationA]);
+  assert.equal(workspaces[0]?.avatarUrl, "https://avatar.test/a.png");
+  const presentationQuery = requests.find((request) => request.path.endsWith("/organizations") && request.search.includes("select=id%2Cavatar_url"));
+  assert.ok(presentationQuery);
+  assert.match(presentationQuery.search, new RegExp(encodeURIComponent(organizationA)));
+  assert.doesNotMatch(presentationQuery.search, new RegExp(encodeURIComponent(organizationB)));
   await assert.rejects(() => actions.workspace(organizationB), TenantForbiddenError);
 });
 
@@ -159,5 +183,40 @@ test("a normal session can enumerate its organizations but cannot operate on an 
 
   const workspaces = await actions.list();
   assert.deepEqual(workspaces.map((workspace) => workspace.id), [organizationA, organizationB]);
+  assert.deepEqual(workspaces.map((workspace) => workspace.avatarUrl), [
+    "https://avatar.test/a.png",
+    "https://avatar.test/b-explicit.png",
+  ]);
   await assert.rejects(() => actions.workspace(organizationB), TenantForbiddenError);
+});
+
+test("the additive workspace avatar remains compatible with responses produced before presentation support", () => {
+  const legacyWorkspace = workspaceSchema.parse({
+    id: organizationA,
+    name: "Organization A",
+    slug: "organization-a",
+    logoUrl: null,
+    version: 1,
+    role: "cashier",
+    permissions: [],
+    legacyTenantId: tenantA,
+  });
+
+  assert.equal(legacyWorkspace.avatarUrl, undefined);
+});
+
+test("an organization with neither branding nor a legacy owner avatar keeps a null presentation", async () => {
+  organizationBAvatarUrl = null;
+  legacyOwnerBAvatarUrl = null;
+  try {
+    const actions = createWebOrganizationActions(new Request("https://web.test/api/organizations"), {
+      ...barcodeTenantContext(),
+      barcodeSession: false,
+    });
+    const workspaces = await actions.list();
+    assert.equal(workspaces.find((workspace) => workspace.id === organizationB)?.avatarUrl, null);
+  } finally {
+    organizationBAvatarUrl = "https://avatar.test/b-explicit.png";
+    legacyOwnerBAvatarUrl = "https://avatar.test/b.png";
+  }
 });

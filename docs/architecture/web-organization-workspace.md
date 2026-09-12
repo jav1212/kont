@@ -20,7 +20,25 @@ organización, conserva visible su identidad pero no abre el directorio. El
 acceso a **Gestionar organización** se muestra solamente si la comprobación
 canónica de acceso al módulo para `/settings/organization` lo permite; no es una
 concesión adicional de permisos. La implementación es exclusivamente de
-interfaz: no cambia rutas, contratos HTTP ni datos persistidos.
+interfaz: no cambia rutas ni datos persistidos; amplía de forma compatible la
+proyección de espacio que consume.
+
+Cada espacio puede incluir opcionalmente `avatarUrl` como dato aditivo de
+presentación. La composición Web lo obtiene del directorio existente de
+Organizations (`organizations.directory.listByOrganizationIds`) solo después de
+filtrar el espacio por el puente tenant y la autorización canónica. El
+directorio prefiere el avatar explícito de la organización y, cuando este falta,
+conserva la presentación histórica usando el avatar del perfil del propietario
+legacy; si ninguno existe, devuelve `null`. `logoUrl` sigue siendo la marca de
+organización editable desde Configuración y no se reemplaza por este fallback.
+Las mutaciones de nombre y logo vuelven a resolver la presentación antes de
+devolver el espacio actualizado.
+
+El selector usa `avatarUrl` antes de `logoUrl` y muestra la inicial del nombre
+si la imagen no existe o no puede cargarse. Su campo de búsqueda expone el slot
+`organization-search` para la normalización de la entrada. En escritorio la
+barra lateral se apila por encima del panel de contenido para que el directorio
+abierto no quede pintado debajo de la navegación de Configuración.
 
 El escaneo de clases de HeroUI se declara en
 [globals.css](../../app/globals.css) con una ruta `@source` relativa a esa hoja

@@ -5,6 +5,9 @@ export const workspaceSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1),
   slug: z.string().min(1),
+  /** Presentation avatar resolved from organization branding or its legacy owner profile. */
+  avatarUrl: z.string().nullable().optional(),
+  /** Explicit organization branding managed from organization settings. */
   logoUrl: z.string().nullable(),
   version: z.number().int().positive(),
   role: z.string().min(1),

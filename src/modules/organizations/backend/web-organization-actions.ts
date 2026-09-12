@@ -27,6 +27,18 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
   const server = new ServerSupabaseSource();
 
   /**
+   * Resolves the Desktop-compatible presentation for an already authorized workspace.
+   * @param workspace Authorized workspace whose organization identity is safe to read.
+   * @returns The workspace with a current presentation avatar.
+   * @throws OrganizationFailure when the presentation directory cannot be read.
+   */
+  async function withPresentation(workspace: OrganizationWorkspace): Promise<OrganizationWorkspace> {
+    const presentations = await organizations.directory.listByOrganizationIds([organizationId(workspace.id)]);
+    const avatarUrl = presentations.find((presentation) => presentation.organizationId === workspace.id)?.avatarUrl ?? null;
+    return workspaceSchema.parse({ ...workspace, avatarUrl });
+  }
+
+  /**
    * Lists active organizations that retain operational access in the Web.
    * @returns Workspaces authorized by both organization and tenant membership.
    * @throws OrganizationFailure or persistence errors when access cannot be verified.
@@ -48,7 +60,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     ]);
     const links = accessibleWebOrganizationLinks(linkSchema.array().parse(linksResult.data), allowedTenantIds, tenant.barcodeSession ? tenant.tenantId : undefined);
     const byId = new Map(links.map((link) => [link.id, link]));
-    const workspaces = await Promise.all(accesses.map(async (access) => {
+    const unresolvedWorkspaces = await Promise.all(accesses.map(async (access) => {
       const link = byId.get(access.organization.id);
       if (!link?.legacy_tenant_id) return null;
       const snapshot = await authorization.repository.findSnapshot(tenant.userId, access.organization.id);
@@ -57,12 +69,25 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
         || snapshot.role.organizationId !== access.organization.id) return null;
       return workspaceSchema.parse({
         ...access.organization,
+        avatarUrl: null,
         role: snapshot.role.code,
         permissions: snapshot.role.permissions,
         legacyTenantId: link.legacy_tenant_id,
       });
     }));
-    return workspaces.filter((workspace) => workspace !== null);
+    const workspaces = unresolvedWorkspaces.filter((workspace): workspace is OrganizationWorkspace => workspace !== null);
+    if (workspaces.length === 0) return [];
+
+    // Presentation lookup happens only after the legacy tenant bridge and the
+    // canonical authorization snapshot have admitted the workspace. The
+    // adapter preserves the Desktop fallback to the legacy owner's avatar;
+    // `logoUrl` remains the explicitly managed organization branding value.
+    const presentations = await organizations.directory.listByOrganizationIds(workspaces.map((workspace) => organizationId(workspace.id)));
+    const avatarByOrganizationId = new Map(presentations.map((presentation) => [presentation.organizationId, presentation.avatarUrl]));
+    return workspaces.map((workspace) => workspaceSchema.parse({
+      ...workspace,
+      avatarUrl: avatarByOrganizationId.get(organizationId(workspace.id)) ?? null,
+    }));
   }
 
   /**
@@ -101,7 +126,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async update(id: string, input: { name: string; expectedVersion: number }): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.updateOrganization.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), ...input });
-      return workspaceSchema.parse({ ...selected, ...updated });
+      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Uploads branding with the shared storage lifecycle and concurrency checks.
@@ -114,7 +139,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async uploadLogo(id: string, file: File, expectedVersion: number): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.uploadLogo.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), expectedVersion, logo: { bytes: new Uint8Array(await file.arrayBuffer()), contentType: file.type } });
-      return workspaceSchema.parse({ ...selected, ...updated });
+      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Removes branding through the shared versioned organization use case.
@@ -126,7 +151,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async deleteLogo(id: string, expectedVersion: number): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.deleteLogo.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), expectedVersion });
-      return workspaceSchema.parse({ ...selected, ...updated });
+      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Reads operational companies from the owning organization's shared projection.

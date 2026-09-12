@@ -134,6 +134,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
             <label className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-bg px-3 text-sidebar-label focus-within:border-sidebar-active-border focus-within:ring-2 focus-within:ring-sidebar-active-border/20">
               <Search size={17} aria-hidden />
               <input
+                data-slot="organization-search"
                 ref={searchRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -250,7 +251,7 @@ function OrganizationGroup({
 }
 
 interface OrganizationAvatarProps {
-  readonly organization: Pick<OrganizationWorkspace, "logoUrl" | "name"> | null;
+  readonly organization: Pick<OrganizationWorkspace, "avatarUrl" | "logoUrl" | "name"> | null;
   readonly small?: boolean;
 }
 
@@ -266,20 +267,23 @@ function OrganizationAvatar({
 }: OrganizationAvatarProps): React.JSX.Element {
   const initial = organization?.name.trim().charAt(0).toLocaleUpperCase("es") ?? "?";
   const dimension = small ? "h-8 w-8" : "h-9 w-9";
+  const imageUrl = organization?.avatarUrl ?? organization?.logoUrl ?? null;
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
 
   return (
     <span
       className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary-500/20 bg-primary-500/10 font-sans text-xs font-bold text-primary-500 ${dimension}`}
       aria-hidden
     >
-      {organization?.logoUrl ? (
+      {imageUrl && failedImageUrl !== imageUrl ? (
         <Image
-          src={organization.logoUrl}
+          src={imageUrl}
           alt=""
           fill
           unoptimized
           sizes={small ? "32px" : "36px"}
           className="object-cover"
+          onError={() => setFailedImageUrl(imageUrl)}
         />
       ) : organization ? initial : <Building2 size={small ? 16 : 19} />}
     </span>

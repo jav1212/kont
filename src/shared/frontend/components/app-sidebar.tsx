@@ -182,7 +182,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-visible",
                 "fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-24px))] transition-transform duration-300 ease-in-out",
                 open ? "translate-x-0" : "-translate-x-full",
-                "xl:relative xl:inset-auto xl:z-auto xl:translate-x-0",
+                // The organization directory may extend into the content pane.
+                // Keep the desktop sidebar above that sibling pane so the
+                // directory is not painted underneath settings navigation.
+                "xl:relative xl:inset-auto xl:z-30 xl:translate-x-0",
             ].join(" ")}
         >
             <header
