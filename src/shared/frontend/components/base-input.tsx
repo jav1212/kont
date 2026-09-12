@@ -59,10 +59,17 @@ const INPUT_STYLES = {
     ].join(" "),
 
     input: [
-        "w-full outline-none bg-transparent",
+        // The wrapper is the sole owner of the border and focus ring. Keeping
+        // the native input visually neutral prevents Chrome autofill/focus
+        // styling from creating a second, inset outline inside the control.
+        "w-full !border-0 !rounded-none !bg-transparent !shadow-none !outline-none",
+        "focus:!border-0 focus:!shadow-none focus:!outline-none",
         "font-sans text-[14px] leading-5 text-foreground",
         "placeholder:text-[var(--control-placeholder)]",
         "placeholder:font-sans placeholder:text-[14px]",
+        "[&:-webkit-autofill]:[-webkit-box-shadow:0_0_0_1000px_var(--surface-1)_inset]",
+        "[&:-webkit-autofill]:[-webkit-text-fill-color:var(--text-primary)]",
+        "[&:-webkit-autofill]:[caret-color:var(--text-primary)]",
         "transition-colors duration-150",
         "tabular-nums",
     ].join(" "),
