@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Building2, Check, ChevronDown, Search, Settings, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import type { OrganizationWorkspace } from "../../contracts";
@@ -98,14 +98,20 @@ export function OrganizationSwitcher(): React.JSX.Element {
         aria-haspopup={canSwitch ? "dialog" : undefined}
         disabled={loading}
         onClick={toggle}
-        className="flex min-h-14 w-full items-center gap-2.5 rounded-xl bg-sidebar-bg-hover/60 px-2.5 py-2 text-left text-sidebar-fg transition-colors hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border disabled:cursor-wait disabled:opacity-70"
+        className={[
+          "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border disabled:cursor-wait disabled:opacity-70",
+          open
+            ? "bg-sidebar-bg-hover border-border-medium"
+            : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
+        ].join(" ")}
       >
         <OrganizationAvatar organization={organization} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-sans text-sm font-semibold text-sidebar-fg-hover">
+          <span className="block truncate font-sans text-[15px] font-bold text-sidebar-fg-hover">
             {loading ? "Cargando organización…" : organization?.name ?? "Sin organización"}
           </span>
-          <span className="mt-0.5 block truncate font-sans text-[11px] font-medium text-sidebar-label">
+          <span className="mt-0.5 block truncate font-mono text-[10px] tracking-[0.02em] text-sidebar-label">
             {organization?.role === "owner" ? "Mi cuenta" : "Membresía directa"}
           </span>
         </span>
@@ -128,31 +134,29 @@ export function OrganizationSwitcher(): React.JSX.Element {
               close(true);
             }
           }}
-          className="absolute left-0 top-[calc(100%+0.25rem)] z-[70] flex max-h-[min(32rem,calc(100dvh-12rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar-bg text-sidebar-fg shadow-xl"
+          className="absolute left-0 top-[calc(100%+0.25rem)] z-[70] flex max-h-[min(32rem,calc(100dvh-12rem))] w-[min(388px,calc(100vw-16px))] flex-col overflow-hidden rounded-xl border border-sidebar-border bg-sidebar-bg text-sidebar-fg shadow-lg"
         >
-          <div className="flex items-center gap-2 border-b border-sidebar-border p-3">
-            <label className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-bg px-3 text-sidebar-label focus-within:border-sidebar-active-border focus-within:ring-2 focus-within:ring-sidebar-active-border/20">
-              <Search size={17} aria-hidden />
-              <input
-                data-slot="organization-search"
-                ref={searchRef}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar cuenta…"
-                aria-label="Buscar cuenta"
-                className="min-w-0 flex-1 bg-transparent text-sm text-sidebar-fg-hover outline-none placeholder:text-sidebar-label"
-              />
-            </label>
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
+            <input
+              data-slot="organization-search"
+              type="search"
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar cuenta…"
+              aria-label="Buscar cuenta"
+              className="h-[var(--control-height-md)] min-h-[var(--control-height-md)] min-w-0 flex-1 rounded-[var(--control-radius)] border border-[var(--control-border)] bg-[var(--surface-1)] px-3 font-[family-name:var(--font-darker-grotesque)] text-[14px] leading-5 text-[var(--text-primary)] shadow-[0_1px_2px_rgb(0_0_0_/_0.02)] transition-[border-color,box-shadow,background-color] placeholder:text-[var(--control-placeholder)] hover:border-[var(--control-border-hover)] focus:border-[var(--control-border-focus)] focus:shadow-[var(--control-focus-shadow)] focus:outline-none"
+            />
             <button
               type="button"
               onClick={() => close(true)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-bg-hover text-sidebar-label hover:text-sidebar-fg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+              className="shrink-0 rounded-md border border-sidebar-border bg-sidebar-bg-hover/50 px-1.5 py-0.5 font-sans text-[11px] text-sidebar-label hover:text-sidebar-fg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
               aria-label="Cerrar selector de organización"
             >
-              <X size={16} aria-hidden />
+              Esc
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div className="min-h-0 max-h-80 flex-1 overflow-y-auto p-1.5">
             <OrganizationGroup
               label="Mi cuenta"
               entries={personalOrganizations}
@@ -171,22 +175,24 @@ export function OrganizationSwitcher(): React.JSX.Element {
                 No hay cuentas que coincidan.
               </p>
             ) : null}
-            {canManageOrganization ? (
-              <div className="mt-2 border-t border-sidebar-border pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    close();
-                    router.push(buildContextHref("/settings/organization"));
-                  }}
-                  className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
-                >
-                  <Settings size={16} className="text-sidebar-label" aria-hidden />
-                  Gestionar organización
-                </button>
-              </div>
-            ) : null}
           </div>
+          {canManageOrganization ? (
+            <div className="mx-2 shrink-0 border-t border-sidebar-border px-0 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  router.push(buildContextHref("/settings/organization"));
+                }}
+                className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-left text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+              >
+                <span className="shrink-0 inline-flex items-center justify-center text-sidebar-label">
+                  <Settings size={16} strokeWidth={1.8} aria-hidden />
+                </span>
+                <span className="min-w-0 font-mono text-[15px] font-bold tracking-[0.02em]">Gestionar organización</span>
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
