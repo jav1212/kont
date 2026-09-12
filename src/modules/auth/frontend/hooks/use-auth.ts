@@ -15,7 +15,7 @@ import { useEffect, useReducer, useCallback } from "react";
 import type { Auth } from "@/src/modules/auth/backend/domain/auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 
-const TENANT_STORAGE_KEYS = ["kont-active-tenant-id", "kont-company-id", "kont-session-user-id"] as const;
+const TENANT_STORAGE_KEYS = ["kont-active-tenant-id", "kont-company-id", "kont-active-module", "sidebar-module", "kont-session-user-id"] as const;
 
 function clearTenantSelection(): void {
     if (typeof window === "undefined") return;

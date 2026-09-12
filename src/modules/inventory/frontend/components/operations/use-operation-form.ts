@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useWebApplication } from "@/src/modules/workspace/frontend/web-application-provider";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
@@ -65,6 +66,7 @@ export interface ResolvedDirection {
 
 export function useOperationForm(config: OperationConfig) {
     const { companyId } = useCompany();
+    const { snapshot: webApplication } = useWebApplication();
     const router = useRouter();
     const searchParams = useSearchParams();
     const draftIdParam = searchParams.get("draft");
@@ -76,7 +78,11 @@ export function useOperationForm(config: OperationConfig) {
 
     const draftKind: MovementDraftKind = config.kind;
 
-    const [date, setDate] = useState(getTodayIsoDate());
+    // The global boundary resolves defaults before mounting this workflow.
+    // Restoring a draft still replaces this initial value with its own date.
+    const [date, setDate] = useState(() => !draftIdParam && webApplication.operationContext.status === "ready"
+        ? webApplication.operationContext.value.effectiveDate
+        : getTodayIsoDate());
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
     const [items, setItems] = useState<OperationItem[]>([emptyItem()]);
     const [context, setContext] = useState<Record<ContextFieldKind, string>>(emptyContext());

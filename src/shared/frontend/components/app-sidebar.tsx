@@ -25,7 +25,9 @@ import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useModuleAccess, usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { useWebApplication } from "@/src/modules/workspace/frontend/web-application-provider";
+import type { ModuleCode } from "@kontave/modules/domain";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
@@ -40,8 +42,6 @@ import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrgan
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
-
-const STORAGE_MODULE    = "sidebar-module";
 
 // ── Size constants ────────────────────────────────────────────────────────────
 
@@ -80,6 +80,10 @@ function sentenceCase(value: string): string {
     return normalized ? normalized[0].toLocaleUpperCase("es") + normalized.slice(1) : value;
 }
 
+function subscriptionAllows(status: string | undefined): boolean {
+    return status === "active" || status === "trial";
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -97,17 +101,13 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { signOut } = useAuth();
     useTheme();
     const { companies, companyId, selectCompany, loading: companyLoading } = useCompany();
-    const { hasAccess: hasInventory  } = useModuleAccess("inventory");
-    const { hasAccess: hasPayroll    } = useModuleAccess("payroll");
-    const { hasAccess: hasAccounting } = useModuleAccess("accounting");
+    const { controller: workspaceController, snapshot: workspaceApplication } = useWebApplication();
     const { buildContextHref } = useUrlContext();
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
     const organizationAccess = useOrganizationModuleAccess(pathname);
     const settingsHref = buildContextHref(organizationAccess.can("organizations.read") ? "/settings/organization" : "/settings/apariencia");
     // ── Module selection ──────────────────────────────────────────────────────
-    const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
-
     const derivedModuleId = useMemo(() => {
         const match = APP_MODULES.find((mod) => {
             const base = "/" + mod.href.split("/").filter(Boolean)[0];
@@ -116,32 +116,40 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         return match?.id ?? null;
     }, [pathname]);
 
-    const requestedModuleId = derivedModuleId ?? storedModuleId;
+    const activeModuleId = workspaceApplication.workspace.activeModule?.code ?? null;
+    const requestedModuleId = activeModuleId ?? derivedModuleId;
+    const availableModuleCodes = useMemo(
+        () => new Set(workspaceApplication.workspace.modules.map((module) => module.code)),
+        [workspaceApplication.workspace.modules],
+    );
+    const subscriptionAccess = useMemo(() => new Map(
+        workspaceApplication.subscriptions.map((subscription) => [subscription.product?.slug, subscription.status]),
+    ), [workspaceApplication.subscriptions]);
 
     // `purchases` hereda el acceso de `inventory` por ahora — mismo plan,
     // mismas tablas (inventario_facturas_compra, inventario_proveedores). Si
     // más adelante se separa la suscripción se reemplaza por su propio slug.
-    const paidAccess: Record<string, boolean> = {
-        payroll: hasPayroll,
-        inventory: hasInventory,
-        purchases: hasInventory,
-        sales:     hasInventory,   // shares plan with inventory until billed separately
-        accounting: hasAccounting,
-    };
+    const paidAccess = useMemo<Record<string, boolean>>(() => ({
+        payroll: subscriptionAllows(subscriptionAccess.get("payroll")),
+        inventory: subscriptionAllows(subscriptionAccess.get("inventory")),
+        purchases: subscriptionAllows(subscriptionAccess.get("inventory")),
+        sales:     subscriptionAllows(subscriptionAccess.get("inventory")),
+        accounting: subscriptionAllows(subscriptionAccess.get("accounting")),
+    }), [subscriptionAccess]);
 
     const selectableModules = useMemo(() =>
         APP_MODULES
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (!isKnownOrganizationModule(mod.id)) return false;
+                if (workspaceApplication.status !== "ready" || !availableModuleCodes.has(mod.id as ModuleCode)) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
                 const permission = getModuleVisibilityPermission(mod.id);
                 if (permission && !organizationAccess.can(permission)) return false;
                 return true;
             })
             .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [hasPayroll, hasInventory, hasAccounting, organizationAccess.can]);
+        [availableModuleCodes, organizationAccess, paidAccess, workspaceApplication.status]);
 
     const resolvedModuleId = selectableModules.some((module) => module.id === requestedModuleId) ? requestedModuleId : null;
     const subnav = useMemo(() => (resolvedModuleId ? (MODULE_SUBNAV[resolvedModuleId] ?? []).filter((entry) => {
@@ -149,16 +157,13 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         return requirement.kind === "authenticated" || (requirement.kind === "protected" && requirement.permissions.every(organizationAccess.can));
     }) : []), [organizationAccess.can, resolvedModuleId]);
 
-    function handleSelectModule(id: string, href: string) {
-        setStoredModuleId(id);
-        localStorage.setItem(STORAGE_MODULE, id);
-        router.push(buildContextHref(href));
+    async function handleSelectModule(id: string, href: string) {
+        const tenantId = workspaceController.getSnapshot().tenantId;
+        await workspaceController.selectModule(id as ModuleCode);
+        const committed = workspaceController.getSnapshot();
+        if (committed.status === "ready" && committed.tenantId === tenantId && committed.workspace.activeModule?.code === id) router.push(buildContextHref(href));
     }
 
-    useEffect(() => {
-        const savedModule = localStorage.getItem(STORAGE_MODULE);
-        if (savedModule !== null) setStoredModuleId(savedModule);
-    }, []);
 
     // ── Drawer auto-close on route change (mobile) ────────────────────────────
     const onCloseRef = useRef(onClose);

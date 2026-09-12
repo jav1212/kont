@@ -38,9 +38,21 @@ importers:
       '@kontave/billing':
         specifier: workspace:*
         version: link:packages/business/billing
+      '@kontave/client-connectivity':
+        specifier: workspace:*
+        version: link:packages/platform/connectivity
       '@kontave/client-contracts':
         specifier: workspace:*
         version: link:packages/kernel/contracts
+      '@kontave/client-interaction':
+        specifier: workspace:*
+        version: link:packages/experience/interaction
+      '@kontave/client-remote':
+        specifier: workspace:*
+        version: link:packages/kernel/remote
+      '@kontave/client-runtime':
+        specifier: workspace:*
+        version: link:packages/kernel/runtime
       '@kontave/companies':
         specifier: workspace:*
         version: link:packages/business/companies

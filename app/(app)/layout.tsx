@@ -5,23 +5,14 @@
 
 import { Suspense } from "react";
 import { AppShell }              from "@/src/shared/frontend/components/app-shell";
-import { CompanyProvider }       from "@/src/modules/companies/frontend/components/company-provider";
-import { ActiveTenantProvider }  from "@/src/modules/memberships/frontend/context/active-tenant-context";
-import { BarcodeSessionGuard } from "@/src/modules/auth/frontend/components/barcode-session-guard";
-import { OrganizationProvider } from "@/src/modules/organizations/frontend/context/organization-context";
+import { WebApplicationProvider } from "@/src/modules/workspace/frontend/web-application-provider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Suspense boundary required because useSearchParams() is used inside
-    // ActiveTenantProvider and CompanyProvider for URL-based context params.
+    // WebApplicationProvider for URL-based context parameters.
     return (
         <Suspense>
-            <ActiveTenantProvider>
-              <OrganizationProvider>
-                <CompanyProvider>
-                    <BarcodeSessionGuard><AppShell>{children}</AppShell></BarcodeSessionGuard>
-                </CompanyProvider>
-              </OrganizationProvider>
-            </ActiveTenantProvider>
+            <WebApplicationProvider><AppShell>{children}</AppShell></WebApplicationProvider>
         </Suspense>
     );
 }

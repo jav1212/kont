@@ -103,15 +103,62 @@ permitir que una ruta estática coincida con una plantilla dinámica.
 
 - [Organizations](../../packages/capabilities/organizations) conserva el dominio,
   los casos de uso y los adaptadores de persistencia y almacenamiento.
-- [La composición Web](../../src/modules/organizations/backend/web-organization-actions.ts)
+- [La composición Web de organizaciones](../../src/modules/organizations/backend/web-organization-actions.ts)
   reutiliza las factorías existentes de Organizations, Members y Access Control.
   Agrega autenticación por cookie y compatibilidad con el tenant operativo.
 - [Los contratos HTTP](../../src/modules/organizations/contracts.ts) validan las
   proyecciones y las entradas de la Web; no sustituyen los contratos del dominio.
-- [OrganizationProvider](../../src/modules/organizations/frontend/context/organization-context.tsx)
-  expone el directorio y la selección, cancela lecturas reemplazadas y remonta el
-  contenido al cambiar de usuario o tenant. Cambiar de organización elimina la
-  empresa persistida en `kont-company-id` y usa la selección de tenant existente.
+
+### Runtime de workspace Web
+
+[WebApplicationController](../../src/modules/workspace/frontend/web-application-controller.ts)
+es la única autoridad de selección de organización, empresa y módulo en la
+aplicación autenticada. Compone un cliente portable mediante
+`createKontaveClient`, pero registra únicamente las capacidades que este host
+necesita: `workspace`, `operationContext` y `connectivity`. No construye el
+cliente de aplicación completo empleado por Desktop ni convierte al kernel en
+propietario de los dominios que consume.
+
+El controlador restaura primero un directorio autorizado y luego crea un
+`WorkspaceContextCoordinator` con proyecciones de organización, empresa y
+módulo. Las entradas de `tid`, `cid`, almacenamiento del navegador y módulo
+recordado son solo pistas: la selección se valida contra el directorio actual
+antes de confirmarse. Al confirmar, actualiza la compatibilidad de navegador
+(`kont-active-tenant-id`, `kont-company-id` y módulo) y conserva los demás
+parámetros de la URL. Los providers históricos de tenant, organización y empresa
+leen la instantánea confirmada; no mantienen una segunda selección.
+
+La proyección Web de módulos conserva la política existente: permisos y rol
+efectivo deciden la autorización, y la suscripción decide por separado si un
+módulo de pago está disponible. Una organización sin `companies.read` puede
+seguir exponiendo sus páginas personales autorizadas, aunque no tenga empresas
+operativas para seleccionar.
+
+Cada carga de workspace aborta la anterior y usa una revisión monotónica para
+que una respuesta tardía no pueda confirmar una organización anterior. El
+contenido de negocio se desmonta mientras el contexto está cargando, falla o
+cambia de empresa; únicamente vuelve a montarse después de confirmar la última
+selección válida. Al cerrar sesión se cancelan las solicitudes, se liberan los
+recursos del runtime y se eliminan las pistas locales, sin eliminar datos de
+negocio.
+
+[GlobalInteractionBoundary](../../src/shared/frontend/components/global-interaction-boundary.tsx)
+presenta los bloqueos del `GlobalInteractionGate` por encima de ese contenido.
+Workspace, contexto operativo y conectividad adquieren leases independientes;
+el bloqueo activo es el de mayor prioridad y liberar uno no libera los demás.
+Los errores recuperables muestran una acción de reintento ligada al token del
+bloque visible, para que un control obsoleto no vuelva a ejecutar otra
+transición. La frontera bloquea la interacción y, cuando el flujo lo requiere,
+desmonta el contenido protegido. El estado de conectividad se supervisa por
+separado y no se confunde con una carga de workspace.
+
+El contexto operativo conserva su propiedad en
+[`@kontave/operation-context`](../../packages/operation-context). En este corte
+se resuelve bajo demanda solo para `/inventory/operations/new`, después de que
+una empresa y los permisos de creación de inventario estén confirmados. Su
+fecha efectiva inicial se aplica al formulario nuevo; al restaurar un borrador,
+este conserva su propia fecha. Las fórmulas monetarias históricas no se migran
+ni se sustituyen en este cambio.
 
 La separación entre usuario, organización, membresía y empresa corresponde al
 [ADR 0008](../adr/0008-organizations-as-workspaces.md). Esta integración no cambia
@@ -131,6 +178,8 @@ errores usan `{ error, code }`. Todas llevan `Cache-Control: no-store`.
 | `/api/organizations/:id/companies` | GET: empresas de la organización | `companies.read` |
 | `/api/organizations/:id/members` | GET: membresías e invitaciones | `members.read` |
 | `/api/organizations/:id/roles` | GET: roles de la organización | `roles.read` |
+| `/api/organizations/:organizationId/companies/:companyId/operation-context` | GET: defaults operativos; PATCH: actualización versionada | Al menos uno de `inventory.read`, `sales.read` o `purchases.read`, más organización y empresa autorizadas |
+| `/api/organizations/:organizationId/companies/:companyId/operation-context/exchange-rates?date=YYYY-MM-DD` | GET: tasas oficiales para la fecha local | El mismo alcance operativo autorizado |
 
 Los handlers Web que aún usan `withTenant` están registrados por método y
 plantilla exactos en
@@ -164,6 +213,13 @@ La Web de compatibilidad también resuelve el `TenantContext` y cada
 rol se conserva solamente para las integraciones antiguas; no concede privilegios
 por sí misma. Un rol personalizado o una instantánea incompleta se degradan de
 forma conservadora y cualquier fallo de consulta se deniega.
+
+Los endpoints de contexto operativo usan la misma sesión por cookie y el tenant
+seleccionado. Antes de leer, actualizar o resolver tasas, comprueban la
+organización solicitada, la pertenencia de la empresa y al menos una capacidad
+operativa. Las actualizaciones usan `expectedVersion`; una versión que ya no
+coincide devuelve conflicto y exige recargar el contexto. La resolución de
+tasas no crea una vía de acceso alternativa al contexto operativo.
 
 La pantalla de roles lista con `roles.read` y permite gestionar solo roles
 personalizados con `roles.manage` y `expectedVersion`. Los roles del sistema
@@ -240,10 +296,15 @@ Las regresiones de autorización Web y la resolución canónica se cubren en
 y [web-canonical-authorization.test.ts](../../test/web-canonical-authorization.test.ts);
 la gestión de roles se cubre en
 [las pruebas de gestión de roles de Access Control](../../packages/capabilities/access-control/test/application/role-management.test.ts).
-Su existencia no implica que hayan aprobado en un entorno dado. La integración
-debe validar esos tests, el paquete de organizaciones, TypeScript, lint de los
-archivos afectados y el build Web, además de revisar navegación y cambios de
-organización con una sesión autorizada.
+La integración del runtime se cubre en
+[web-application-controller.test.ts](../../test/web-application-controller.test.ts),
+[web-workspace-source.test.ts](../../test/web-workspace-source.test.ts),
+[web-operation-context.test.ts](../../test/web-operation-context.test.ts) y
+[web-global-interaction.test.tsx](../../test/web-global-interaction.test.tsx).
+La validación local aprobó los tests focalizados, la auditoría de arquitectura y
+rutas, el build de producción y el lockfile congelado. La verificación visual
+en navegador de este flujo no se realizó porque no había navegador disponible;
+esta evidencia no acredita un despliegue de producción.
 
 Para el ajuste del selector y del escaneo de HeroUI, se informaron 25 pruebas
 de autorización y estilos aprobadas, incluida
@@ -256,3 +317,8 @@ La reversión del código no exige borrar organizaciones ni membresías: la
 integración mantiene los identificadores y rutas operativas históricas. Los
 cambios de nombre y logo realizados mediante la nueva API son datos persistidos
 y no se deshacen al revertir una versión de la aplicación.
+
+La migración del runtime Web tampoco requiere migración de datos. Al revertirla,
+las claves de selección de navegador pueden permanecer como pistas compatibles;
+el host anterior debe continuar validando cualquier contexto restaurado. Esta
+documentación describe el código del repositorio y no acredita un despliegue.

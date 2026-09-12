@@ -1,14 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { invalidateModuleAccessCache } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { useActiveTenantContext } from "../context/active-tenant-context";
 import type { MemberRole } from "../../backend/domain/membership";
-
-const STORAGE_KEY = "kont-active-tenant-id";
-const COMPANY_STORAGE_KEY = "kont-company-id";
-const SESSION_USER_KEY = "kont-session-user-id";
-const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface TenantEntry {
     tenantId:        string;
@@ -31,141 +24,11 @@ export interface UseActiveTenantResult {
     clearActiveTenant: () => void;
 }
 
-// urlTenantId — when present, takes priority over localStorage for resolution.
-// This enables URL-based context sharing (e.g. ?tid=xxx).
-export function useActiveTenant(urlTenantId?: string | null): UseActiveTenantResult {
-    const { user, isAuthenticated } = useAuth();
-    const userId = user?.id ?? null;
-
-    const [allTenants, setAllTenants]           = useState<TenantEntry[]>([]);
-    const [activeTenantId, setActiveTenantId]   = useState<string | null>(null);
-    const [loading, setLoading]                 = useState(true);
-
-    const notifyTenantChange = useCallback(() => {
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event(TENANT_EVENT));
-        }
-    }, []);
-
-    // If a different user signs in on the same browser, wipe tenant/company
-    // selections from the previous session before any tenant-aware fetch runs.
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        if (!isAuthenticated || !userId) {
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(COMPANY_STORAGE_KEY);
-            localStorage.removeItem(SESSION_USER_KEY);
-            return;
-        }
-
-        const previousUserId = localStorage.getItem(SESSION_USER_KEY);
-        if (previousUserId && previousUserId !== userId) {
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(COMPANY_STORAGE_KEY);
-            invalidateModuleAccessCache();
-            notifyTenantChange();
-            setActiveTenantId(null);
-            setAllTenants([]);
-        }
-
-        localStorage.setItem(SESSION_USER_KEY, userId);
-    }, [isAuthenticated, userId, notifyTenantChange]);
-
-    // Fetch all accessible tenants
-    useEffect(() => {
-        if (!isAuthenticated || !userId) {
-            // Clear stale tenant selection on sign-out so the next user starts fresh
-            if (typeof window !== "undefined") {
-                localStorage.removeItem(STORAGE_KEY);
-                localStorage.removeItem(COMPANY_STORAGE_KEY);
-                localStorage.removeItem(SESSION_USER_KEY);
-            }
-            setAllTenants([]);
-            setActiveTenantId(null);
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-
-        async function fetchTenants() {
-            setLoading(true);
-            try {
-                const res  = await fetch("/api/memberships");
-                if (!res.ok) return;
-                const json = await res.json();
-                const list: TenantEntry[] = json.data ?? [];
-
-                if (cancelled) return;
-
-                setAllTenants(list);
-
-                // Resolution order: URL param > localStorage > own tenant > first membership
-                const fromUrl = urlTenantId && list.some((t) => t.tenantId === urlTenantId)
-                    ? urlTenantId : null;
-
-                const stored = typeof window !== "undefined"
-                    ? localStorage.getItem(STORAGE_KEY)
-                    : null;
-                const fromStorage = stored && list.some((t) => t.tenantId === stored)
-                    ? stored : null;
-
-                const ownEntry = list.find((t) => t.isOwn);
-                const resolved = fromUrl ?? fromStorage ?? ownEntry?.tenantId ?? list[0]?.tenantId ?? null;
-
-                if (resolved) {
-                    localStorage.setItem(STORAGE_KEY, resolved);
-                } else if (typeof window !== "undefined") {
-                    localStorage.removeItem(STORAGE_KEY);
-                }
-                setActiveTenantId(resolved);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
-        fetchTenants();
-        return () => { cancelled = true; };
-    }, [isAuthenticated, userId, urlTenantId]);
-
-    const switchTenant = useCallback((tenantId: string) => {
-        setActiveTenantId(tenantId);
-        if (typeof window !== "undefined") {
-            localStorage.setItem(STORAGE_KEY, tenantId);
-        }
-        invalidateModuleAccessCache();
-        notifyTenantChange();
-    }, [notifyTenantChange]);
-
-    const clearActiveTenant = useCallback(() => {
-        // Reset to own tenant if the user has one; otherwise first membership.
-        const ownEntry = allTenants.find((t) => t.isOwn);
-        const fallback = ownEntry?.tenantId ?? allTenants[0]?.tenantId ?? null;
-
-        setActiveTenantId(fallback);
-        if (typeof window !== "undefined") {
-            if (fallback) localStorage.setItem(STORAGE_KEY, fallback);
-            else          localStorage.removeItem(STORAGE_KEY);
-        }
-        invalidateModuleAccessCache();
-        notifyTenantChange();
-    }, [notifyTenantChange, allTenants]);
-
-    const activeTenant    = allTenants.find((t) => t.tenantId === activeTenantId) ?? null;
-    const isActingOnBehalf = !!activeTenantId && activeTenantId !== user?.id;
-    const activePermissions = activeTenant?.permissions ?? [];
-    const can = useCallback((permission: string) => activePermissions.includes('*') || activePermissions.includes(permission), [activePermissions]);
-
-    return {
-        allTenants,
-        activeTenantId,
-        activeTenantRole: activeTenant?.role ?? null,
-        activePermissions,
-        can,
-        isActingOnBehalf,
-        loading,
-        switchTenant,
-        clearActiveTenant,
-    };
+/** Compatibility hook for the committed workspace's legacy tenant projection.
+ * @param _urlTenantId - Retained for callers; URL selection is centrally coordinated.
+ * @returns Canonical permissions and tenant selection commands.
+ * @throws Error when called outside WebApplicationProvider.
+ */
+export function useActiveTenant(_urlTenantId?: string | null): UseActiveTenantResult {
+    return useActiveTenantContext();
 }
