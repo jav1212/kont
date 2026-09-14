@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { LogOut, Timer } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
@@ -28,10 +28,17 @@ type GuardState = "checking" | "ordinary" | "active" | "expired";
  * Guards barcode sessions after server-side validation and reports real user
  * activity to the server. Ordinary email/password sessions stay unaffected.
  *
- * @param props - Authenticated application content.
- * @returns Content only after the session's first server validation completes.
+ * @param props - Protected application content and the caller-owned pending feedback.
+ * @returns Pending feedback while validation or redirection suppresses content; otherwise protected content.
  */
-export function BarcodeSessionGuard({ children }: { children: React.ReactNode }) {
+export function BarcodeSessionGuard({
+    children,
+    pendingFeedback,
+}: {
+    readonly children: ReactNode;
+    /** Existing application feedback shown while protected content is suppressed. */
+    readonly pendingFeedback: ReactNode;
+}) {
     const { isAuthenticated, isLoading, lockBarcodeSession } = useAuth();
     const [state, setState] = useState<GuardState>("checking");
     const [session, setSession] = useState<BarcodeSession | null>(null);
@@ -154,7 +161,7 @@ export function BarcodeSessionGuard({ children }: { children: React.ReactNode })
         };
     }, [lock, session?.idleExpiresAt, session?.sessionId, state]);
 
-    if (signedOut || state === "checking" || state === "expired") return <div className="min-h-screen bg-surface-2" aria-busy="true" />;
+    if (signedOut || state === "checking" || state === "expired") return pendingFeedback;
 
     return <>
         {children}

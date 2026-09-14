@@ -6,12 +6,13 @@
 import { Suspense } from "react";
 import { AppShell }              from "@/src/shared/frontend/components/app-shell";
 import { WebApplicationProvider } from "@/src/modules/workspace/frontend/web-application-provider";
+import { WebApplicationStartupBoundary } from "@/src/modules/workspace/frontend/web-application-startup-boundary";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Suspense boundary required because useSearchParams() is used inside
     // WebApplicationProvider for URL-based context parameters.
     return (
-        <Suspense>
+        <Suspense fallback={<WebApplicationStartupBoundary />}>
             <WebApplicationProvider><AppShell>{children}</AppShell></WebApplicationProvider>
         </Suspense>
     );

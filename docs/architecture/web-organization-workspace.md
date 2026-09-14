@@ -172,6 +172,20 @@ transición. La frontera bloquea la interacción y, cuando el flujo lo requiere,
 desmonta el contenido protegido. El estado de conectividad se supervisa por
 separado y no se confunde con una carga de workspace.
 
+La composición inicial de servidor, `Suspense` y comprobaciones de sesión usa
+[WebApplicationStartupBoundary](../../src/modules/workspace/frontend/web-application-startup-boundary.tsx)
+solo como puerta de composición. Esta frontera delega el único renderizado
+visual en `GlobalInteractionBoundary`; no introduce una pantalla de carga
+adicional. [BarcodeSessionGuard](../../src/modules/auth/frontend/components/barcode-session-guard.tsx)
+recibe ese feedback pendiente del padre y mantiene el contenido protegido
+suprimido hasta que valida la sesión, de modo que el arranque no expone un
+destello de contenido sin contexto ni duplica el feedback.
+Una ruta temporal bajo el layout real confirmó localmente, en Chromium a 390 y
+1280 px y en temas claro y oscuro, que la carga inicial y la recarga muestran
+un solo diálogo global existente y ningún contenido protegido. Los scripts de
+Next y React se bloquearon durante esa comprobación; la ruta temporal se
+eliminó después. Esta evidencia no acredita un despliegue de producción.
+
 El contexto operativo conserva su propiedad en
 [`@kontave/operation-context`](../../packages/operation-context). En este corte
 se resuelve bajo demanda solo para `/inventory/operations/new`, después de que
@@ -320,11 +334,15 @@ La integración del runtime se cubre en
 [web-application-controller.test.ts](../../test/web-application-controller.test.ts),
 [web-workspace-source.test.ts](../../test/web-workspace-source.test.ts),
 [web-operation-context.test.ts](../../test/web-operation-context.test.ts) y
-[web-global-interaction.test.tsx](../../test/web-global-interaction.test.tsx).
+[web-global-interaction.test.tsx](../../test/web-global-interaction.test.tsx),
+que incluye regresiones SSR para el arranque inicial y la suspensión antes de
+la hidratación. El conjunto focalizado de nueve pruebas, junto con
+`barcode-session-policy`, fue aprobado.
 La validación local aprobó los tests focalizados, la auditoría de arquitectura y
-rutas, el build de producción y el lockfile congelado. La verificación visual
-en navegador de este flujo no se realizó porque no había navegador disponible;
-esta evidencia no acredita un despliegue de producción.
+rutas, el build de producción y el lockfile congelado. Para la implementación
+original de workspace, la verificación visual en navegador no se realizó porque
+no había navegador disponible; esta evidencia no acredita un despliegue de
+producción.
 
 Para el ajuste del selector y del escaneo de HeroUI, se informaron 25 pruebas
 de autorización y estilos aprobadas, incluida

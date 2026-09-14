@@ -4,6 +4,9 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GlobalInteractionGate } from "@kontave/client-interaction/application";
 import { GlobalInteractionBoundary } from "../src/shared/frontend/components/global-interaction-boundary";
+import { BarcodeSessionGuard } from "../src/modules/auth/frontend/components/barcode-session-guard";
+import { WebApplicationProvider } from "../src/modules/workspace/frontend/web-application-provider";
+import { WebApplicationStartupBoundary } from "../src/modules/workspace/frontend/web-application-startup-boundary";
 
 test("Web interaction boundary renders an accessible branded failure with recovery", () => {
   const gate = new GlobalInteractionGate();
@@ -49,4 +52,40 @@ test("Web interaction boundary can unmount stale content while blocked", () => {
   );
   assert.doesNotMatch(markup, /Contenido previo/);
   assert.match(markup, /Restaurando/);
+});
+
+test("initial session verification renders global feedback before effects without exposing protected content", () => {
+  const markup = renderToStaticMarkup(
+    <BarcodeSessionGuard pendingFeedback={<WebApplicationStartupBoundary />}>
+      <main>Contenido protegido</main>
+    </BarcodeSessionGuard>,
+  );
+  assert.match(markup, /Preparando Kontave/);
+  assert.match(markup, /Estamos restaurando tu sesión/);
+  assert.match(markup, /aria-label="Cargando"/);
+  assert.equal((markup.match(/role="dialog"/g) ?? []).length, 1);
+  assert.doesNotMatch(markup, /Contenido protegido/);
+});
+
+test("Web provider supplies the global feedback during server-rendered startup", () => {
+  const markup = renderToStaticMarkup(
+    <WebApplicationProvider><main>Contenido protegido</main></WebApplicationProvider>,
+  );
+  assert.match(markup, /Preparando Kontave/);
+  assert.equal((markup.match(/role="dialog"/g) ?? []).length, 1);
+  assert.doesNotMatch(markup, /Contenido protegido/);
+});
+
+test("a suspended application uses the same global feedback before hydration", () => {
+  function PendingApplication(): React.JSX.Element {
+    throw new Promise(() => undefined);
+  }
+  const markup = renderToStaticMarkup(
+    <React.Suspense fallback={<WebApplicationStartupBoundary />}>
+      <PendingApplication />
+    </React.Suspense>,
+  );
+  assert.match(markup, /Preparando Kontave/);
+  assert.equal((markup.match(/role="dialog"/g) ?? []).length, 1);
+  assert.match(markup, /aria-label="Cargando"/);
 });

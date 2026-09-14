@@ -11,7 +11,6 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ModuleCode } from "@kontave/modules/domain";
-import { GlobalInteractionGate } from "@kontave/client-interaction";
 import { useAuth } from "../../auth/frontend/hooks/use-auth";
 import { BarcodeSessionGuard } from "../../auth/frontend/components/barcode-session-guard";
 import { ActiveTenantContext } from "../../memberships/frontend/context/active-tenant-context";
@@ -19,6 +18,7 @@ import { OrganizationContext } from "../../organizations/frontend/context/organi
 import { CompanyContext } from "../../companies/frontend/hooks/use-companies";
 import { GlobalInteractionBoundary } from "@/src/shared/frontend/components/global-interaction-boundary";
 import { createBrowserApplication } from "./web-browser-adapters";
+import { WebApplicationStartupBoundary } from "./web-application-startup-boundary";
 import { useWebCompanyActions } from "./web-company-actions";
 import type {
   WebApplicationController,
@@ -44,31 +44,15 @@ export function WebApplicationProvider({
   readonly children: ReactNode;
 }): React.JSX.Element {
   const { user, status } = useAuth();
-  const [startup] = useState(() => {
-    const gate = new GlobalInteractionGate();
-    gate.acquire({
-      kind: "startup",
-      state: "working",
-      priority: 700,
-      message: "Preparando Kontave",
-      description: "Estamos restaurando tu sesión.",
-    });
-    return gate;
-  });
+  const startupFeedback = <WebApplicationStartupBoundary />;
   return (
-    <BarcodeSessionGuard>
+    <BarcodeSessionGuard pendingFeedback={startupFeedback}>
       {status === "authenticated" && user ? (
         <AuthenticatedApplication key={user.id} actorId={user.id}>
           {children}
         </AuthenticatedApplication>
       ) : (
-        <GlobalInteractionBoundary
-          gate={startup}
-          onAction={() => undefined}
-          unmountContent
-        >
-          {null}
-        </GlobalInteractionBoundary>
+        startupFeedback
       )}
     </BarcodeSessionGuard>
   );
