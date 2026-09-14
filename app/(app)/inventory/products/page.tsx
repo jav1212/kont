@@ -358,7 +358,7 @@ export default function ProductosPage() {
     }
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full shrink-0 bg-surface-2 font-mono">
             <PageHeader title="Productos" subtitle="Catálogo · existencias · IVA">
                 {/* Desktop (md+): all secondary actions inline */}
                 <>
