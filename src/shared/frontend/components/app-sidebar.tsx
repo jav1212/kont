@@ -41,6 +41,7 @@ import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
 import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { Tooltip } from "@heroui/react";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -253,25 +254,32 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     collapsed ? "xl:justify-center xl:px-3" : "xl:px-5",
                 ].join(" ")}
             >
-                <button
-                    type="button"
-                    onClick={toggleSidebarPinned}
-                    aria-label={sidebarActionLabel}
-                    aria-expanded={sidebarPinned}
-                    title={sidebarActionLabel}
-                    className={[
-                        "group relative hidden xl:grid min-w-8 min-h-8 place-items-start rounded-lg text-sidebar-fg-hover",
-                        "hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
-                        collapsed && "place-items-center",
-                    ].filter(Boolean).join(" ")}
+                <Tooltip
+                    content={sidebarActionLabel}
+                    placement="right"
+                    delay={150}
+                    closeDelay={0}
+                    isDisabled={!collapsed}
                 >
-                    <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex items-center transition-all duration-150 motion-reduce:transition-none group-hover:scale-95 group-hover:opacity-0 group-focus-visible:scale-95 group-focus-visible:opacity-0">
-                        {collapsed ? <LogoMark size={25} /> : <LogoFull size={25} />}
-                    </span>
-                    <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex w-8 h-8 items-center justify-center opacity-0 scale-90 transition-all duration-150 motion-reduce:transition-none group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 group-focus-visible:scale-100">
-                        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-                    </span>
-                </button>
+                    <button
+                        type="button"
+                        onClick={toggleSidebarPinned}
+                        aria-label={sidebarActionLabel}
+                        aria-expanded={sidebarPinned}
+                        className={[
+                            "group relative hidden xl:grid min-w-8 min-h-8 place-items-start rounded-lg text-sidebar-fg-hover",
+                            "hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+                            collapsed && "place-items-center",
+                        ].filter(Boolean).join(" ")}
+                    >
+                        <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex items-center transition-all duration-150 motion-reduce:transition-none group-hover:scale-95 group-hover:opacity-0 group-focus-visible:scale-95 group-focus-visible:opacity-0">
+                            {collapsed ? <LogoMark size={25} /> : <LogoFull size={25} />}
+                        </span>
+                        <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex w-8 h-8 items-center justify-center opacity-0 scale-90 transition-all duration-150 motion-reduce:transition-none group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 group-focus-visible:scale-100">
+                            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                        </span>
+                    </button>
+                </Tooltip>
                 <LogoFull size={25} className="xl:hidden text-sidebar-fg-hover" />
                 <button
                     type="button"
@@ -353,12 +361,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 // ────────────────────────────────────────────────────────────────────────────
 
 function UtilityShortcut({ href, active, label, icon, compact }: { href: string; active: boolean; label: string; icon: React.ReactNode; compact: boolean }) {
-    return (
+    const shortcut = (
         <Link
             href={href}
             aria-current={active ? "page" : undefined}
             aria-label={compact ? label : undefined}
-            title={compact ? label : undefined}
             className={[
                 "group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150",
                 "font-sans text-[15px] font-semibold",
@@ -374,6 +381,12 @@ function UtilityShortcut({ href, active, label, icon, compact }: { href: string;
             {!compact && <span>{label}</span>}
         </Link>
     );
+
+    return compact ? (
+        <Tooltip content={label} placement="right" delay={150} closeDelay={0}>
+            {shortcut}
+        </Tooltip>
+    ) : shortcut;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -403,42 +416,49 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
     const initial = (name?.[0] ?? email?.[0] ?? "?").toUpperCase();
     const displayName = name ?? email?.split("@")[0] ?? "Usuario";
 
-    return (
-        <div className="relative" ref={ref}>
-            <button
-                onClick={() => setOpen((v) => !v)}
-                aria-label={`Cuenta: ${displayName}. Abrir menú`}
-                title={compact ? `Cuenta: ${displayName}` : undefined}
-                aria-expanded={open}
-                aria-haspopup="menu"
-                className={[
-                    "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
-                    compact && "xl:justify-center xl:px-2",
-                    open
-                        ? "bg-sidebar-bg-hover border-border-medium"
-                        : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
-                ].join(" ")}
-            >
-                <span className="shrink-0">
-                    <Avatar avatarUrl={avatarUrl} initial={initial} size={32} />
+    const accountButton = (
+        <button
+            onClick={() => setOpen((v) => !v)}
+            aria-label={`Cuenta: ${displayName}. Abrir menú`}
+            aria-expanded={open}
+            aria-haspopup="menu"
+            className={[
+                "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+                compact && "xl:justify-center xl:px-2",
+                open
+                    ? "bg-sidebar-bg-hover border-border-medium"
+                    : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
+            ].join(" ")}
+        >
+            <span className="shrink-0">
+                <Avatar avatarUrl={avatarUrl} initial={initial} size={32} />
+            </span>
+
+            {!compact && <>
+                <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
+                        {displayName}
+                    </span>
+                    {email && email !== displayName && (
+                        <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                            {email}
+                        </span>
+                    )}
                 </span>
 
-                {!compact && <>
-                    <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                        <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
-                            {displayName}
-                        </span>
-                        {email && email !== displayName && (
-                            <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
-                                {email}
-                            </span>
-                        )}
-                    </span>
+                <UpChevron />
+            </>}
+        </button>
+    );
 
-                    <UpChevron />
-                </>}
-            </button>
+    return (
+        <div className="relative" ref={ref}>
+            {compact ? (
+                <Tooltip content={`Cuenta: ${displayName}`} placement="right" delay={150} closeDelay={0} isDisabled={open}>
+                    {accountButton}
+                </Tooltip>
+            ) : accountButton}
 
             <PortalMenu
                 open={open}

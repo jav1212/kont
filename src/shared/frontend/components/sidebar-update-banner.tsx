@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { Modal, ModalContent, ModalBody } from "@heroui/react";
+import { Modal, ModalContent, ModalBody, Tooltip } from "@heroui/react";
 
 import { useServiceWorkerUpdate } from "@/src/shared/frontend/hooks/use-sw-update";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -33,19 +33,20 @@ export function SidebarUpdateBanner({ collapsed = false }: Props) {
     if (collapsed) {
         return (
             <>
-                <button
-                    type="button"
-                    onClick={() => setConfirmOpen(true)}
-                    aria-label="Nueva versión disponible. Actualizar app"
-                    title="Nueva versión disponible"
-                    className="relative flex items-center justify-center w-9 h-9 rounded-md bg-sidebar-bg-hover/60 border border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border text-primary-500"
-                >
-                    <RefreshCw size={16} strokeWidth={2} />
-                    <span
-                        aria-hidden="true"
-                        className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary-500 ring-2 ring-sidebar-bg"
-                    />
-                </button>
+                <Tooltip content="Nueva versión disponible" placement="right" delay={150} closeDelay={0}>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmOpen(true)}
+                        aria-label="Nueva versión disponible. Actualizar app"
+                        className="relative flex items-center justify-center w-9 h-9 rounded-md bg-sidebar-bg-hover/60 border border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border text-primary-500"
+                    >
+                        <RefreshCw size={16} strokeWidth={2} />
+                        <span
+                            aria-hidden="true"
+                            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary-500 ring-2 ring-sidebar-bg"
+                        />
+                    </button>
+                </Tooltip>
                 <UpdateConfirmDialog
                     isOpen={confirmOpen}
                     onClose={() => setConfirmOpen(false)}

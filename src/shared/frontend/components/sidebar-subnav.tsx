@@ -60,6 +60,7 @@ import {
 import type { SubNavItem } from "@/src/shared/frontend/navigation";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { BetaBadge } from "@/src/shared/frontend/components/beta-badge";
+import { Tooltip } from "@heroui/react";
 
 // ── ActiveBar — 2 px orange left edge, always flush with the sidebar gutter ──
 
@@ -185,6 +186,28 @@ export function SidebarSubnav({ subnav, pathname, compact = false }: SidebarSubn
                     ? (isActive ? ROOT_ACTIVE : ROOT_IDLE)
                     : (isActive ? SUB_ACTIVE  : SUB_IDLE);
 
+                const navigationItem = (
+                    <Link
+                        href={buildContextHref(href)}
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={compact ? label : undefined}
+                        className={[ITEM_BASE, tone, FOCUS_RING, compact && "xl:justify-center xl:px-2"].filter(Boolean).join(" ")}
+                    >
+                        <ActiveBar visible={isActive} />
+                        <span
+                            aria-hidden="true"
+                            className={[
+                                "w-4 h-4 shrink-0 flex items-center justify-center",
+                                isActive ? "text-sidebar-active-fg" : "text-sidebar-label group-hover:text-sidebar-fg-hover",
+                            ].join(" ")}
+                        >
+                            <Icon size={16} strokeWidth={1.75} />
+                        </span>
+                        {!compact && <span className="truncate flex-1">{label}</span>}
+                        {!compact && beta && <BetaBadge />}
+                    </Link>
+                );
+
                 return (
                     <div key={href} className="flex flex-col">
                         {showGroup && !compact && (
@@ -201,26 +224,15 @@ export function SidebarSubnav({ subnav, pathname, compact = false }: SidebarSubn
                                 {showGroupLabel ? group : null}
                             </div>
                         )}
-                        <Link
-                            href={buildContextHref(href)}
-                            aria-current={isActive ? "page" : undefined}
-                            aria-label={compact ? label : undefined}
-                            title={compact ? label : undefined}
-                            className={[ITEM_BASE, tone, FOCUS_RING, compact && "xl:justify-center xl:px-2"].filter(Boolean).join(" ")}
+                        <Tooltip
+                            content={label}
+                            placement="right"
+                            delay={150}
+                            closeDelay={0}
+                            isDisabled={!compact}
                         >
-                            <ActiveBar visible={isActive} />
-                            <span
-                                aria-hidden="true"
-                                className={[
-                                    "w-4 h-4 shrink-0 flex items-center justify-center",
-                                    isActive ? "text-sidebar-active-fg" : "text-sidebar-label group-hover:text-sidebar-fg-hover",
-                                ].join(" ")}
-                            >
-                                <Icon size={16} strokeWidth={1.75} />
-                            </span>
-                            {!compact && <span className="truncate flex-1">{label}</span>}
-                            {!compact && beta && <BetaBadge />}
-                        </Link>
+                            {navigationItem}
+                        </Tooltip>
                     </div>
                 );
             })}
