@@ -6,12 +6,12 @@ Fecha: 2026-09-10. Estado: implementación preparada en el repositorio; no despl
 
 Un usuario de la Web inicia sesión al escanear un carnet, sin PIN. El carnet es una credencial reutilizable y copiable por decisión de producto; no demuestra presencia física ni identidad de hardware. El primer alcance es únicamente la Web: no incluye Desktop, Mobile, asistencia laboral ni control de acceso físico.
 
-Se conserva el inicio de sesión convencional para recuperación y administración. El detalle de seguridad, operación y activación está en [Acceso por carnet en la Web](../security/web-barcode-access.md).
+Se conserva el inicio de sesión convencional para recuperación. El detalle de seguridad, operación y activación está en [Acceso por carnet en la Web](../security/web-barcode-access.md).
 
 ## Implementado en el código pendiente de despliegue
 
 - Un perfil de navegador se enrola como terminal para un tenant. Su secreto aleatorio se guarda sólo en una cookie `HttpOnly`, `Secure` en producción y `SameSite=Strict`; la terminal no equivale a una prueba de hardware.
-- Un propietario o administrador con el permiso `access.manage` puede gestionar terminales y carnets en `/settings/access`. Una sesión de carnet no puede administrar esos recursos.
+- Un propietario o administrador con el permiso canónico `access.manage` puede gestionar terminales y carnets en `/settings/access` desde una sesión por carnet o convencional; las guardas de validez de sesión y tenant se mantienen.
 - Cada carnet usa un valor `KONT-…` compatible con Code 128 y 128 bits de entropía. Sólo se almacena su hash; el valor completo se devuelve una vez al emitirlo para imprimirlo. Reemplazar o revocar el carnet revoca sus sesiones.
 - `POST /api/auth/barcode` valida terminal y carnet y genera una sesión Supabase real para el titular. El servidor la registra con su tenant, terminal y carnet; no acepta un usuario elegido por el navegador.
 - La sesión de carnet vence tras cinco minutos sin actividad real o al cabo de ocho horas. El middleware y las rutas con tenant vuelven a validarla y fijan su tenant, aun si llegan cabeceras o parámetros distintos.
@@ -24,7 +24,7 @@ Las migraciones [254](../../supabase/migrations/254_barcode_access_foundation.sq
 
 | Ruta | Uso |
 | --- | --- |
-| `GET`/`POST /api/access/terminals` | Listar o enrolar la terminal del navegador con sesión convencional autorizada. |
+| `GET`/`POST /api/access/terminals` | Listar o enrolar la terminal del navegador con una sesión de tenant autorizada. |
 | `POST /api/access/terminals/:id/revoke` | Revocar una terminal y sus sesiones de carnet. |
 | `GET`/`POST /api/access/badges` | Listar o emitir/reemplazar un carnet; la respuesta de emisión contiene el código sólo esa vez. |
 | `POST /api/access/badges/:id/revoke` | Revocar un carnet y sus sesiones. |

@@ -32,19 +32,44 @@ export default function AccessSettingsPage() {
     const [working, setWorking] = useState<string | null>(null);
     const issuedBadgeRef = useRef<HTMLDivElement>(null);
     const mutationInFlight = useRef(false);
+    const reloadRequestId = useRef(0);
+    const reloadAbortController = useRef<AbortController | null>(null);
+    const mounted = useRef(false);
+    const activeScope = useRef("");
     const permitted = can("access.manage");
+    const userId = user?.id ?? null;
+    const userEmail = user?.email ?? null;
+    const scope = `${activeTenantId ?? ""}:${activeTenantRole ?? ""}:${permitted}:${userId ?? ""}`;
     const issuingBadge = working === "badge-issue" || working?.startsWith("badge-reissue-") === true;
 
+    useEffect(() => {
+        mounted.current = true;
+        activeScope.current = scope;
+        return () => {
+            mounted.current = false;
+            activeScope.current = "";
+        };
+    }, [scope]);
+
     const reload = useCallback(async () => {
-        if (!activeTenantId || !permitted) return;
+        if (!mounted.current || activeScope.current !== scope || !activeTenantId || !permitted) return;
+        reloadAbortController.current?.abort();
+        const controller = new AbortController();
+        reloadAbortController.current = controller;
+        const requestId = ++reloadRequestId.current;
+        const isCurrent = () => requestId === reloadRequestId.current
+            && !controller.signal.aborted
+            && mounted.current
+            && activeScope.current === scope;
         setLoading(true);
         try {
             const [terminalsResponse, badgesResponse, membersResponse] = await Promise.all([
-                apiFetch("/api/access/terminals"), apiFetch("/api/access/badges"), apiFetch("/api/memberships/members"),
+                apiFetch("/api/access/terminals", { signal: controller.signal }), apiFetch("/api/access/badges", { signal: controller.signal }), apiFetch("/api/memberships/members", { signal: controller.signal }),
             ]);
             const [terminalBody, badgeBody, memberBody] = await Promise.all([
                 terminalsResponse.json(), badgesResponse.json(), membersResponse.json(),
             ]) as Array<{ data?: { terminals?: TerminalEntry[]; badges?: BadgeEntry[] } | Member[] }>;
+            if (!isCurrent()) return;
             if (!terminalsResponse.ok || !badgesResponse.ok) {
                 notify.error("No se pudo cargar la configuración de acceso.");
                 return;
@@ -52,15 +77,25 @@ export default function AccessSettingsPage() {
             setTerminals((terminalBody.data as { terminals?: TerminalEntry[] } | undefined)?.terminals ?? []);
             setBadges((badgeBody.data as { badges?: BadgeEntry[] } | undefined)?.badges ?? []);
             const listedMembers = membersResponse.ok ? ((memberBody.data as Member[] | undefined) ?? []).filter((member) => !member.pending) : [];
-            if (activeTenantRole === "owner" && user && !listedMembers.some((member) => (member.memberId ?? member.id) === user.id)) {
-                listedMembers.unshift({ id: user.id, memberId: user.id, email: user.email, pending: false });
+            if (activeTenantRole === "owner" && userId && !listedMembers.some((member) => (member.memberId ?? member.id) === userId)) {
+                listedMembers.unshift({ id: userId, memberId: userId, email: userEmail ?? userId, pending: false });
             }
             setMembers(listedMembers);
-        } catch { notify.error("No se pudo conectar con el servidor."); }
-        finally { setLoading(false); }
-    }, [activeTenantId, activeTenantRole, permitted, user]);
+        } catch {
+            if (isCurrent()) notify.error("No se pudo conectar con el servidor.");
+        } finally {
+            if (isCurrent()) setLoading(false);
+        }
+    }, [activeTenantId, activeTenantRole, permitted, scope, userEmail, userId]);
 
-    useEffect(() => { if (accessState === "allowed") void reload(); }, [reload, accessState]);
+    useEffect(() => {
+        if (accessState === "allowed") void reload();
+        return () => {
+            reloadRequestId.current += 1;
+            reloadAbortController.current?.abort();
+            reloadAbortController.current = null;
+        };
+    }, [reload, accessState]);
 
     useEffect(() => {
         if (!issued) return;
