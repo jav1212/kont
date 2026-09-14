@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Plus, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, RefreshCw, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
@@ -30,7 +30,10 @@ export default function AccessSettingsPage() {
     const [memberId, setMemberId] = useState("");
     const [issued, setIssued] = useState<IssuedBadge | null>(null);
     const [working, setWorking] = useState<string | null>(null);
+    const issuedBadgeRef = useRef<HTMLDivElement>(null);
+    const mutationInFlight = useRef(false);
     const permitted = can("access.manage");
+    const issuingBadge = working === "badge-issue" || working?.startsWith("badge-reissue-") === true;
 
     const reload = useCallback(async () => {
         if (!activeTenantId || !permitted) return;
@@ -59,9 +62,17 @@ export default function AccessSettingsPage() {
 
     useEffect(() => { if (accessState === "allowed") void reload(); }, [reload, accessState]);
 
+    useEffect(() => {
+        if (!issued) return;
+        issuedBadgeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        issuedBadgeRef.current?.focus({ preventScroll: true });
+    }, [issued]);
+
     async function installTerminal() {
+        if (mutationInFlight.current) return;
         const name = terminalName.trim();
         if (!name) { notify.error("Asigna un nombre a esta terminal."); return; }
+        mutationInFlight.current = true;
         setWorking("terminal");
         try {
             const response = await apiFetch("/api/access/terminals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, install: true }) });
@@ -84,37 +95,54 @@ export default function AccessSettingsPage() {
             await reload();
         } catch {
             notify.error("No se pudo conectar con el servidor.");
-        } finally { setWorking(null); }
+        } finally { mutationInFlight.current = false; setWorking(null); }
     }
 
-    async function issueBadge() {
-        if (!memberId) { notify.error("Selecciona un miembro."); return; }
-        setWorking("badge");
+    async function issueBadge(userId: string, reissueBadge?: BadgeEntry) {
+        if (mutationInFlight.current) return;
+        if (!userId) { notify.error("Selecciona un miembro."); return; }
+        const existingBadge = badges.find((badge) => badge.userId === userId && badge.status === "active");
+        const holder = reissueBadge?.email ?? members.find((member) => (member.memberId ?? member.id) === userId)?.email ?? "este miembro";
+        const isReissue = Boolean(reissueBadge);
+        if (isReissue && !window.confirm(`¿Reemitir el carnet de ${holder}? El carnet anterior y sus sesiones dejarán de funcionar.`)) return;
+        if (!isReissue && existingBadge && !window.confirm(`Este miembro ya tiene un carnet activo. Al emitir uno nuevo, el carnet anterior y sus sesiones dejarán de funcionar. ¿Continuar?`)) return;
+        mutationInFlight.current = true;
+
+        // The former barcode may already be revoked if the request reached the server,
+        // even when the response is lost. Never keep a potentially invalid preview.
+        setIssued(null);
+        setWorking(reissueBadge ? `badge-reissue-${reissueBadge.id}` : "badge-issue");
         try {
-            const response = await apiFetch("/api/access/badges", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: memberId }) });
+            const response = await apiFetch("/api/access/badges", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
             const body = await response.json() as { data?: IssuedBadge; error?: string };
             if (!response.ok || !body.data) { notify.error(body.error ?? "No se pudo emitir el carnet."); return; }
-            setIssued(body.data); setMemberId(""); await reload();
-        } finally { setWorking(null); }
+            setIssued(body.data);
+            setMemberId("");
+            await reload();
+        } catch {
+            notify.error("No se pudo conectar con el servidor. El carnet anterior podría haber sido invalidado; verifica el listado antes de intentar nuevamente.");
+        } finally { mutationInFlight.current = false; setWorking(null); }
     }
 
     async function revoke(kind: "terminal" | "badge", id: string) {
+        if (mutationInFlight.current) return;
         if (!window.confirm("¿Revocar este acceso? Las sesiones vinculadas dejarán de funcionar.")) return;
+        mutationInFlight.current = true;
         setWorking(id);
         try {
             const response = await apiFetch(`/api/access/${kind}s/${id}/revoke`, { method: "POST" });
             const body = await response.json() as { error?: string };
             if (!response.ok) { notify.error(body.error ?? "No se pudo revocar."); return; }
             await reload();
-        } finally { setWorking(null); }
+        } finally { mutationInFlight.current = false; setWorking(null); }
     }
 
     if (accessState !== "allowed" || !permitted) return null;
     return <div className="space-y-6">
         <SettingsSection title="Terminales de acceso" subtitle="Habilita este navegador para que los carnets puedan iniciar sesión." flush>
-            <div className="flex flex-col gap-3 border-b border-border-light p-5 sm:flex-row">
-                <BaseInput.Field label="Nombre de esta terminal" value={terminalName} onValueChange={setTerminalName} placeholder="Caja principal" />
-                <BaseButton.Root className="self-end" variant="primary" disabled={working === "terminal"} onClick={() => void installTerminal()} leftIcon={<Terminal size={14} />}>
+            <div className="grid grid-cols-1 items-end gap-3 border-b border-border-light p-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+                <BaseInput.Field className="min-w-0" label="Nombre de esta terminal" value={terminalName} onValueChange={setTerminalName} placeholder="Caja principal" />
+                <BaseButton.Root className="h-auto min-h-10 w-full shrink-0 whitespace-normal px-4 py-2 xl:w-auto [&>span]:whitespace-normal" variant="primary" isDisabled={working !== null} loading={working === "terminal"} onClick={() => void installTerminal()} leftIcon={<Terminal size={14} />}>
                     Habilitar este navegador
                 </BaseButton.Root>
             </div>
@@ -122,28 +150,31 @@ export default function AccessSettingsPage() {
         </SettingsSection>
 
         <SettingsSection title="Carnets de acceso" subtitle="Emite un carnet por miembro. El código sólo se muestra una vez; imprímelo o entrégalo de inmediato." flush>
-            <div className="flex flex-col gap-3 border-b border-border-light p-5 sm:flex-row">
-                <label className="flex-1 font-mono text-[11px] uppercase tracking-[0.1em] text-text-tertiary">Miembro
+            <div className="grid grid-cols-1 items-end gap-3 border-b border-border-light p-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="min-w-0 font-mono text-[11px] uppercase tracking-[0.1em] text-text-tertiary">Miembro
                     <select className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-3 font-sans text-sm text-foreground" value={memberId} onChange={(event) => setMemberId(event.target.value)}>
                         <option value="">Selecciona un miembro</option>
                         {members.map((member) => <option key={member.memberId ?? member.id} value={member.memberId ?? member.id}>{member.email}</option>)}
                     </select>
                 </label>
-                <BaseButton.Root className="self-end" variant="primary" disabled={working === "badge"} onClick={() => void issueBadge()} leftIcon={<Plus size={14} />}>Emitir carnet</BaseButton.Root>
+                <BaseButton.Root className="h-auto min-h-10 w-full shrink-0 whitespace-normal px-4 py-2 xl:w-auto [&>span]:whitespace-normal" variant="primary" isDisabled={working !== null} loading={working === "badge-issue"} onClick={() => void issueBadge(memberId)} leftIcon={<Plus size={14} />}>Emitir carnet</BaseButton.Root>
             </div>
-            <AccessRows entries={badges} empty="No hay carnets emitidos." working={working} onRevoke={(id) => void revoke("badge", id)} />
+            <AccessRows entries={badges} empty="No hay carnets emitidos." working={working} disableRevoke={issuingBadge} onRevoke={(id) => void revoke("badge", id)} onReissue={(badge) => void issueBadge(badge.userId, badge)} />
         </SettingsSection>
 
-        {issued && <IssuedBadgeCard barcode={issued.barcode} email={issued.badge.email} onClose={() => setIssued(null)} />}
+        {issued && <div ref={issuedBadgeRef} tabIndex={-1} className="scroll-mt-6 outline-none"><IssuedBadgeCard barcode={issued.barcode} email={issued.badge.email} onClose={() => setIssued(null)} /></div>}
         {loading && <p className="font-sans text-sm text-text-tertiary">Cargando accesos…</p>}
     </div>;
 }
 
-function AccessRows({ entries, empty, working, onRevoke }: { entries: Array<TerminalEntry | BadgeEntry>; empty: string; working: string | null; onRevoke: (id: string) => void }) {
+function AccessRows({ entries, empty, working, disableRevoke = false, onRevoke, onReissue }: { entries: Array<TerminalEntry | BadgeEntry>; empty: string; working: string | null; disableRevoke?: boolean; onRevoke: (id: string) => void; onReissue?: (badge: BadgeEntry) => void }) {
     if (!entries.length) return <p className="p-6 text-sm text-text-tertiary">{empty}</p>;
-    return <ul className="divide-y divide-border-light">{entries.map((entry) => <li key={entry.id} className="flex items-center gap-3 p-4">
+    return <ul className="divide-y divide-border-light">{entries.map((entry) => <li key={entry.id} className="flex flex-wrap items-center gap-3 p-4">
         <ScanBarcode className="h-4 w-4 shrink-0 text-primary-500" aria-hidden />
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground">{"email" in entry ? entry.email : entry.name}</p><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-tertiary">{entry.status}{"lastUsedAt" in entry && entry.lastUsedAt ? ` · Último uso ${new Date(entry.lastUsedAt).toLocaleDateString("es-VE")}` : ""}</p></div>
-        {entry.status !== "revoked" && <BaseButton.Root size="sm" variant="ghost" disabled={working === entry.id} onClick={() => onRevoke(entry.id)} leftIcon={<ShieldOff size={13} />}>Revocar</BaseButton.Root>}
+        <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
+            {"userId" in entry && entry.status !== "revoked" && onReissue && <BaseButton.Root size="sm" variant="ghost" isDisabled={working !== null} loading={working === `badge-reissue-${entry.id}`} onClick={() => onReissue(entry)} leftIcon={<RefreshCw size={13} />}>Reemitir</BaseButton.Root>}
+            {entry.status !== "revoked" && <BaseButton.Root size="sm" variant="ghost" isDisabled={disableRevoke || working !== null} onClick={() => onRevoke(entry.id)} leftIcon={<ShieldOff size={13} />}>Revocar</BaseButton.Root>}
+        </div>
     </li>)}</ul>;
 }

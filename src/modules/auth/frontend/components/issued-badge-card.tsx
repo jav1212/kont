@@ -1,7 +1,9 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
+import { useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { notify } from "@/src/shared/frontend/notify";
 import { Code128Barcode } from "@/src/modules/auth/frontend/components/code128-barcode";
 
 interface IssuedBadgeCardProps {
@@ -20,6 +22,21 @@ interface IssuedBadgeCardProps {
  * @returns A printable access card and controls that are excluded from printing.
  */
 export function IssuedBadgeCard({ barcode, email, onClose }: IssuedBadgeCardProps) {
+    const [downloading, setDownloading] = useState(false);
+
+    async function downloadPdf() {
+        setDownloading(true);
+        try {
+            const { createAccessBadgePdf } = await import("../access-badge-pdf");
+            const document = await createAccessBadgePdf({ barcode, email });
+            document.save("carnet-acceso.pdf");
+        } catch {
+            notify.error("No se pudo generar el PDF del carnet.");
+        } finally {
+            setDownloading(false);
+        }
+    }
+
     return <section className="mx-auto w-full max-w-[34rem]" aria-live="polite">
         <style>{`
             @media print {
@@ -62,6 +79,6 @@ export function IssuedBadgeCard({ barcode, email, onClose }: IssuedBadgeCardProp
                 </div>
             </div>
         </article>
-        <div className="mt-4 flex flex-wrap gap-2 print:hidden"><BaseButton.Root variant="primary" onClick={() => window.print()} leftIcon={<Printer size={13} />}>Imprimir</BaseButton.Root><BaseButton.Root variant="ghost" onClick={onClose}>Cerrar</BaseButton.Root></div>
+        <div className="mt-4 flex flex-wrap gap-2 print:hidden"><BaseButton.Root variant="primary" onClick={() => window.print()} leftIcon={<Printer size={13} />}>Imprimir</BaseButton.Root><BaseButton.Root variant="secondary" isDisabled={downloading} loading={downloading} onClick={() => void downloadPdf()} leftIcon={<Download size={13} />}>Descargar PDF</BaseButton.Root><BaseButton.Root variant="ghost" isDisabled={downloading} onClick={onClose}>Cerrar</BaseButton.Root></div>
     </section>;
 }
