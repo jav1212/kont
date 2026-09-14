@@ -96,7 +96,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/tools/status",            label: "Estatus Portales",  group: "Monitoreo"      },
     ],
     settings: [
-        { href: "/settings/organization", label: "Información general", group: "Organización", icon: "building", subtitle: "Identidad, empresas y personas de tu organización." },
+        { href: "/settings/organization", label: "Configuración general", group: "Organización", icon: "building", subtitle: "Administra la identidad, empresas y personas de tu organización." },
         { href: "/settings/members", label: "Miembros", group: "Organización", icon: "users", subtitle: "Personas e invitaciones del espacio de trabajo." },
         { href: "/settings/roles", label: "Roles", group: "Organización", icon: "shield", subtitle: "Ajusta los permisos de cada rol del sistema." },
         { href: "/settings/access", label: "Acceso", group: "Organización", icon: "barcode", subtitle: "Terminales y carnets para iniciar sesión con lector." },
@@ -104,6 +104,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/settings/referrals", label: "Referidos", group: "Organización", icon: "gift", subtitle: "Invita a otros profesionales y gana crédito." },
         { href: "/settings/company", label: "Datos de empresa", group: "Empresa", icon: "building", subtitle: "Datos fiscales y opciones de los reportes PDF." },
         { href: "/settings/inventory-config", label: "Inventario", group: "Empresa", icon: "boxes", subtitle: "Campos personalizados visibles en productos." },
+        { href: "/profile", label: "Mi perfil", group: "Cuenta personal", icon: "user", subtitle: "Tus datos personales y el estado de tu cuenta." },
         { href: "/settings/apariencia", label: "Apariencia", group: "Cuenta personal", icon: "palette", subtitle: "Tema y preferencias visuales de este navegador." },
         { href: "/settings/instalar-app", label: "Instalar app", group: "Cuenta personal", icon: "download", subtitle: "Cómo agregar Konta a Windows, macOS, Android o iOS." },
         { href: "/settings/devices", label: "Dispositivos", group: "Cuenta personal", icon: "monitor", subtitle: "Conecta lectores y equipos locales con Kontave." },

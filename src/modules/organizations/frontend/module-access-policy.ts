@@ -21,7 +21,7 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/payroll", ["payroll.read"]], ["/payroll/ari", ["payroll.read"]], ["/payroll/employees", ["payroll.read", "employees.read"]], ["/payroll/history", ["payroll.read"]], ["/payroll/liquidations", ["payroll.read"]], ["/payroll/profit-sharing", ["payroll.read"]], ["/payroll/settings", ["payroll.read"]], ["/payroll/social-benefits", ["payroll.read"]], ["/payroll/tablero", ["payroll.read"]], ["/payroll/vacations", ["payroll.read"]],
   ["/purchases", ["purchases.read"]], ["/purchases/[id]", ["purchases.read"]], ["/purchases/archive", ["purchases.read"]], ["/purchases/import", ["purchases.read", "purchases.create", "inventory.create"]], ["/purchases/import-book", ["purchases.read", "purchases.create"]], ["/purchases/new", ["purchases.read", "purchases.create"]], ["/purchases/new/quick", ["purchases.read", "purchases.create"]], ["/purchases/new-manual", ["purchases.read", "purchases.create"]], ["/purchases/suppliers", ["purchases.read"]], ["/purchases/suppliers/[id]", ["purchases.read"]],
   ["/sales", ["sales.read"]], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
-  ["/settings/organization", ["organizations.read"]],
+  ["/settings/organization", ["organizations.update"]],
   ["/settings/members", ["members.read"]],
   ["/settings/roles", ["roles.read"]],
   ["/settings/access", ["access.manage"]],

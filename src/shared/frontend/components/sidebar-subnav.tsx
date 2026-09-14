@@ -150,6 +150,7 @@ const SETTINGS_ITEM_ICONS: Record<string, LucideIcon> = {
     palette: Palette,
     download: Download,
     monitor: MonitorCog,
+    user: UserRound,
 };
 
 interface SidebarSubnavProps {

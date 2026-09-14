@@ -88,18 +88,21 @@ export default function ProfilePage() {
     return (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-surface-2">
             <PageHeader
-                title="Mi Perfil"
-                subtitle="Información personal y preferencias de cuenta"
+                title="Mi perfil"
+                subtitle="Administra tus datos de cuenta personal. Esto no cambia los datos de tu organización."
             />
 
             <div className="flex-1 overflow-y-auto px-6 py-8">
+                <p className="max-w-5xl mx-auto mb-6 text-sm text-[var(--text-secondary)]">
+                    Administra tus datos de cuenta personal. Esto no cambia los datos de tu organización.
+                </p>
                 <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                     {/* ── Datos personales ────────────────────────────── */}
                     <section className="lg:col-span-2 border border-border-light rounded-xl bg-surface-1 shadow-sm overflow-hidden">
                         <header className="px-5 py-3 border-b border-border-light bg-surface-2">
                             <h2 className="font-mono text-[12px] font-semibold text-foreground/70 uppercase tracking-[0.14em]">
-                                Datos personales
+                                Datos de tu perfil
                             </h2>
                         </header>
 
@@ -196,7 +199,7 @@ export default function ProfilePage() {
                     <section className="border border-border-light rounded-xl bg-surface-1 shadow-sm overflow-hidden self-start">
                         <header className="px-5 py-3 border-b border-border-light bg-surface-2 flex items-center justify-between">
                             <h2 className="font-mono text-[12px] font-semibold text-foreground/70 uppercase tracking-[0.14em]">
-                                Cuenta
+                                Estado de tu cuenta
                             </h2>
                             <BaseBadge variant="success" dot>Activa</BaseBadge>
                         </header>
@@ -232,7 +235,7 @@ export default function ProfilePage() {
 
                         <div className="px-5 py-3 border-t border-border-light bg-surface-2">
                             <p className="font-sans text-[12px] text-foreground/50 leading-snug">
-                                Tu perfil es privado y solo visible para ti en Kontave.
+                                Cada usuario administra sus datos desde su cuenta personal.
                             </p>
                         </div>
                     </section>

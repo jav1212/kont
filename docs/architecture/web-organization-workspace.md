@@ -10,23 +10,37 @@ no acredita un despliegue de los cambios Web o API.
 
 En la barra lateral Web de escritorio (`>=1280 px`), el selector de
 organización aparece en el modo expandido incluso cuando hay un solo espacio
-disponible. La empresa seleccionada y la cuenta personal siguen
-siendo conceptos distintos. Configuración es una superficie Web de la
+disponible. El perfil personal, la organización y la empresa seleccionada son
+conceptos distintos. Configuración es una superficie Web de la
 navegación principal: aparece junto a los módulos disponibles, sin entrar en
 el catálogo portable de módulos del espacio de trabajo ni poder seleccionarse
 como tal. Sus entradas se agrupan en Organización, Empresa y Cuenta personal;
-las rutas directas de `/settings/*` activan esa superficie sin cambiar el
-módulo operativo confirmado. El acceso **Configuración** del pie de la barra,
-encima de **Ayuda**, activa esa misma navegación. Su contenido aprovecha el
-ancho disponible y conserva márgenes laterales adaptables.
+las rutas directas de `/settings/*` y `/profile` activan esa superficie sin
+cambiar el módulo operativo confirmado. El acceso **Configuración** del pie de
+la barra, encima de **Ayuda**, abre la administración de organización para
+quien tenga `organizations.update` (o `*`) y el perfil personal en los demás
+casos. Su contenido aprovecha el ancho disponible y conserva márgenes laterales
+adaptables.
+
+`/profile` conserva su URL y sus datos de usuario: nombre, foto, correo y
+teléfono pertenecen exclusivamente a la cuenta que inició sesión. Se presenta
+como **Mi perfil** dentro de **Cuenta personal** y declara expresamente que sus
+cambios no modifican los datos de la organización. La identidad de la
+organización (nombre y logo) se administra en `/settings/organization`; esa
+pantalla requiere `organizations.update` o el comodín de propietario. Los otros
+subpaneles de Configuración conservan sus permisos propios. La API de lectura
+de identidad de organización continúa autorizando a los miembros con acceso
+autorizado al espacio y al tenant seleccionado; el requisito de edición aplica
+a la pantalla y a las mutaciones.
 
 El cambio de organización se realiza únicamente desde el selector superior de
 la barra lateral; el menú de cuenta no replica ese directorio.
 
 Cuando hay varias organizaciones, el selector abre un directorio buscable y
-agrupa las cuentas propias (`owner`) bajo **Mi cuenta** y las demás membresías
-directas bajo **Otras cuentas**; identifica la organización activa. Con una sola
-organización, conserva visible su identidad pero no abre el directorio. El
+agrupa las organizaciones propias (`owner`) bajo **Mis organizaciones** y las
+demás membresías directas bajo **Otras organizaciones**; identifica la
+organización activa como **Organización propia** o **Membresía directa**. Con
+una sola organización, conserva visible su identidad pero no abre el directorio. El
 acceso a **Gestionar organización** se muestra solamente si la comprobación
 canónica de acceso al módulo para `/settings/organization` lo permite; no es una
 concesión adicional de permisos. La implementación es exclusivamente de
@@ -34,15 +48,13 @@ interfaz: no cambia rutas ni datos persistidos; amplía de forma compatible la
 proyección de espacio que consume.
 
 Cada espacio puede incluir opcionalmente `avatarUrl` como dato aditivo de
-presentación. La composición Web lo obtiene del directorio existente de
-Organizations (`organizations.directory.listByOrganizationIds`) solo después de
-filtrar el espacio por el puente tenant y la autorización canónica. El
-directorio prefiere el avatar explícito de la organización y, cuando este falta,
-conserva la presentación histórica usando el avatar del perfil del propietario
-legacy; si ninguno existe, devuelve `null`. `logoUrl` sigue siendo la marca de
-organización editable desde Configuración y no se reemplaza por este fallback.
-Las mutaciones de nombre y logo vuelven a resolver la presentación antes de
-devolver el espacio actualizado.
+presentación. Después de autorizar el espacio mediante el puente tenant y la
+autorización canónica, la composición Web lo deriva explícitamente de `logoUrl`:
+es su mismo valor, o `null` cuando la organización no tiene logo. Nunca usa la
+foto de perfil del propietario como fallback. `logoUrl` sigue siendo la marca
+de organización editable desde Configuración. Las mutaciones de nombre y logo
+vuelven a resolver la presentación antes de devolver el espacio actualizado.
+Los paquetes nativos no cambian con esta separación.
 
 El selector usa `avatarUrl` antes de `logoUrl` y muestra la inicial del nombre
 si la imagen no existe o no puede cargarse. Su campo de búsqueda expone el slot
@@ -336,25 +348,25 @@ La integración del runtime se cubre en
 [web-operation-context.test.ts](../../test/web-operation-context.test.ts) y
 [web-global-interaction.test.tsx](../../test/web-global-interaction.test.tsx),
 que incluye regresiones SSR para el arranque inicial y la suspensión antes de
-la hidratación. El conjunto focalizado de nueve pruebas, junto con
-`barcode-session-policy`, fue aprobado.
-La validación local aprobó los tests focalizados, la auditoría de arquitectura y
-rutas, el build de producción y el lockfile congelado. Para la implementación
-original de workspace, la verificación visual en navegador no se realizó porque
-no había navegador disponible; esta evidencia no acredita un despliegue de
-producción.
+la hidratación.
 
-Para el ajuste del selector y del escaneo de HeroUI, se informaron 25 pruebas
-de autorización y estilos aprobadas, incluida
-[web-heroui-styles.test.ts](../../test/web-heroui-styles.test.ts), junto con
-`audit:routes` (82 páginas, 55 elementos de navegación y 151 handlers). La
-verificación visual en navegador no se realizó porque no había un navegador
-habilitado; tampoco constituye una declaración de despliegue de producción.
+Para esta separación se aprobaron 39 pruebas focalizadas combinadas de acceso
+a módulos, acciones y directorio de organizaciones, presentación del selector,
+regresiones de autorización y fuente de workspace. `audit:routes` registró 82
+páginas, 67 entradas de navegación y 151 handlers. El lint focalizado de las
+superficies modificadas y `pnpm build` aprobaron; el lint global conserva 18
+errores y 339 advertencias ajenos a este cambio en inventario, nómina,
+documentos y contabilidad. No hubo navegador conectado para una comprobación
+visual. Esta evidencia no acredita un despliegue de producción.
 
 La reversión del código no exige borrar organizaciones ni membresías: la
 integración mantiene los identificadores y rutas operativas históricas. Los
 cambios de nombre y logo realizados mediante la nueva API son datos persistidos
 y no se deshacen al revertir una versión de la aplicación.
+
+La separación no migra ni renombra automáticamente organizaciones existentes;
+los nombres guardados continúan siendo datos de organización administrables por
+quien tenga el permiso correspondiente.
 
 La migración del runtime Web tampoco requiere migración de datos. Al revertirla,
 las claves de selección de navegador pueden permanecer como pistas compatibles;

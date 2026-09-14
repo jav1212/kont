@@ -66,9 +66,17 @@ test("las pantallas de creación requieren leer y crear", () => {
 
 test("cashier cannot open organization administration settings", () => {
   const cashierPermissions = ["companies.read", "inventory.read", "sales.read", "sales.create"];
-  for (const route of ["/settings/members", "/settings/access", "/settings/billing", "/settings/roles"]) {
+  for (const route of ["/settings/organization", "/settings/members", "/settings/access", "/settings/billing", "/settings/roles"]) {
     assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess(route), { ...authenticated, permissions: cashierPermissions }), "denied");
   }
+});
+
+test("organization configuration requires update permission", () => {
+  const configuration = getOrganizationRouteAccess("/settings/organization");
+  assert.deepEqual(configuration, { kind: "protected", permissions: ["organizations.update"] });
+  assert.equal(resolveOrganizationRouteAccess(configuration, { ...authenticated, permissions: ["organizations.read"] }), "denied");
+  assert.equal(resolveOrganizationRouteAccess(configuration, { ...authenticated, permissions: ["organizations.update"] }), "allowed");
+  assert.equal(resolveOrganizationRouteAccess(configuration, { ...authenticated, permissions: ["*"] }), "allowed");
 });
 
 test("read-only inventory user cannot open a creation workflow", () => {

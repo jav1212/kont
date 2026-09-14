@@ -139,7 +139,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
     const organizationAccess = useOrganizationModuleAccess(pathname);
-    const settingsHref = buildContextHref(organizationAccess.can("organizations.read") ? "/settings/organization" : "/settings/apariencia");
+    const settingsHref = buildContextHref(organizationAccess.can("organizations.update") ? "/settings/organization" : "/profile");
 
     function toggleSidebarPinned() {
         const nextPinned = !sidebarPinned;
@@ -160,7 +160,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     }, [pathname]);
 
     const activeModuleId = workspaceApplication.workspace.activeModule?.code ?? null;
-    const isSettingsRoute = pathname === "/settings" || pathname.startsWith("/settings/");
+    const isSettingsRoute = pathname === "/profile" || pathname === "/settings" || pathname.startsWith("/settings/");
     const requestedModuleId = isSettingsRoute ? WEB_SETTINGS_MODULE.id : activeModuleId ?? derivedModuleId;
     const availableModuleCodes = useMemo(
         () => new Set(workspaceApplication.workspace.modules.map((module) => module.code)),

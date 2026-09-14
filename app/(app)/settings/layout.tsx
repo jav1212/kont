@@ -6,7 +6,7 @@ import { MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { getOrganizationRouteAccess } from "@/src/modules/organizations/frontend/module-access-policy";
 
-const FALLBACK_SUBTITLE = "Gestiona tu organización, empresas y preferencias personales.";
+const FALLBACK_SUBTITLE = "Gestiona la organización, sus empresas y las preferencias de este espacio de trabajo.";
 
 /**
  * Renders settings content within the application shell's primary navigation.

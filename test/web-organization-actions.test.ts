@@ -9,7 +9,6 @@ const organizationB = "30000000-0000-4000-8000-000000000002";
 const roleA = "40000000-0000-4000-8000-000000000001";
 const roleB = "40000000-0000-4000-8000-000000000002";
 let organizationBAvatarUrl: string | null = "https://avatar.test/b-explicit.png";
-let legacyOwnerBAvatarUrl: string | null = "https://avatar.test/b.png";
 
 const requests: Array<{ readonly method: string; readonly path: string; readonly search: string }> = [];
 
@@ -50,10 +49,7 @@ const supabaseFetch: typeof fetch = async (input, init) => {
       organization(organizationB, tenantB),
     ]);
   }
-  if (table === "profiles") return Response.json([
-    { id: "60000000-0000-4000-8000-000000000001", avatar_url: "https://avatar.test/a.png" },
-    { id: "60000000-0000-4000-8000-000000000002", avatar_url: legacyOwnerBAvatarUrl },
-  ]);
+  if (table === "profiles") throw new Error("Web organization projections must not query personal profiles.");
   if (table === "organization_roles") {
     return Response.json([
       assignedRole(organizationA, roleA),
@@ -63,6 +59,17 @@ const supabaseFetch: typeof fetch = async (input, init) => {
   if (table === "tenants") return Response.json([]);
   if (table === "tenant_memberships") return Response.json([{ tenant_id: tenantA }, { tenant_id: tenantB }]);
   if (table === "organization_authorization_audit") return Response.json(null, { status: 201 });
+  if (table === "update_organization_native") {
+    const body = typeof init?.body === "string" ? JSON.parse(init.body) as { p_organization_id: string; p_name?: string; p_logo_url?: string | null; p_update_name: boolean; p_update_logo_url: boolean } : null;
+    if (!body) throw new Error("Organization updates must include their command payload.");
+    const current = organization(body.p_organization_id, tenantB);
+    return Response.json({
+      ...current,
+      name: body.p_update_name ? body.p_name : current.name,
+      avatar_url: body.p_update_logo_url ? body.p_logo_url : current.avatar_url,
+      version: 2,
+    });
+  }
   if (table === "list_organization_members_native") {
     throw new Error("The member RPC must not run without members.read.");
   }
@@ -133,7 +140,20 @@ function organization(id: string, legacyTenantId: string) {
  * @returns An active role intentionally lacking members.read.
  */
 function assignedRole(organizationId: string, id: string) {
-  return { id, organization_id: organizationId, code: "cashier", name: "Cajero", description: "", kind: "system", status: "active", version: 1, organization_role_permissions: [{ permission_code: "companies.read" }] };
+  return {
+    id,
+    organization_id: organizationId,
+    code: "cashier",
+    name: "Cajero",
+    description: "",
+    kind: "system",
+    status: "active",
+    version: 1,
+    organization_role_permissions: [
+      { permission_code: "companies.read" },
+      ...(organizationId === organizationB ? [{ permission_code: "organizations.update" }] : []),
+    ],
+  };
 }
 
 /**
@@ -159,11 +179,8 @@ test("a barcode session lists only its enrolled tenant organization and denies a
 
   const workspaces = await actions.list();
   assert.deepEqual(workspaces.map((workspace) => workspace.id), [organizationA]);
-  assert.equal(workspaces[0]?.avatarUrl, "https://avatar.test/a.png");
-  const presentationQuery = requests.find((request) => request.path.endsWith("/organizations") && request.search.includes("select=id%2Cavatar_url"));
-  assert.ok(presentationQuery);
-  assert.match(presentationQuery.search, new RegExp(encodeURIComponent(organizationA)));
-  assert.doesNotMatch(presentationQuery.search, new RegExp(encodeURIComponent(organizationB)));
+  assert.equal(workspaces[0]?.avatarUrl, null);
+  assert.equal(requests.some((request) => request.path.endsWith("/profiles")), false);
   await assert.rejects(() => actions.workspace(organizationB), TenantForbiddenError);
 });
 
@@ -184,9 +201,10 @@ test("a normal session can enumerate its organizations but cannot operate on an 
   const workspaces = await actions.list();
   assert.deepEqual(workspaces.map((workspace) => workspace.id), [organizationA, organizationB]);
   assert.deepEqual(workspaces.map((workspace) => workspace.avatarUrl), [
-    "https://avatar.test/a.png",
+    null,
     "https://avatar.test/b-explicit.png",
   ]);
+  assert.equal(requests.some((request) => request.path.endsWith("/profiles")), false);
   await assert.rejects(() => actions.workspace(organizationB), TenantForbiddenError);
 });
 
@@ -205,9 +223,8 @@ test("the additive workspace avatar remains compatible with responses produced b
   assert.equal(legacyWorkspace.avatarUrl, undefined);
 });
 
-test("an organization with neither branding nor a legacy owner avatar keeps a null presentation", async () => {
+test("an organization without explicit branding keeps a null presentation even when its owner has a personal image", async () => {
   organizationBAvatarUrl = null;
-  legacyOwnerBAvatarUrl = null;
   try {
     const actions = createWebOrganizationActions(new Request("https://web.test/api/organizations"), {
       ...barcodeTenantContext(),
@@ -217,6 +234,22 @@ test("an organization with neither branding nor a legacy owner avatar keeps a nu
     assert.equal(workspaces.find((workspace) => workspace.id === organizationB)?.avatarUrl, null);
   } finally {
     organizationBAvatarUrl = "https://avatar.test/b-explicit.png";
-    legacyOwnerBAvatarUrl = "https://avatar.test/b.png";
   }
+});
+
+test("organization writes keep the Web avatar synchronized with explicit branding", async () => {
+  const actions = createWebOrganizationActions(new Request("https://web.test/api/organizations"), {
+    ...barcodeTenantContext(),
+    tenantId: tenantB,
+    barcodeSession: true,
+  });
+
+  const renamed = await actions.update(organizationB, { name: "Updated organization", expectedVersion: 1 });
+  assert.equal(renamed.logoUrl, "https://avatar.test/b-explicit.png");
+  assert.equal(renamed.avatarUrl, renamed.logoUrl);
+
+  const withoutLogo = await actions.deleteLogo(organizationB, 1);
+  assert.equal(withoutLogo.logoUrl, null);
+  assert.equal(withoutLogo.avatarUrl, null);
+  assert.equal(requests.some((request) => request.path.endsWith("/profiles")), false);
 });

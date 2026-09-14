@@ -27,15 +27,13 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
   const server = new ServerSupabaseSource();
 
   /**
-   * Resolves the Desktop-compatible presentation for an already authorized workspace.
-   * @param workspace Authorized workspace whose organization identity is safe to read.
-   * @returns The workspace with a current presentation avatar.
-   * @throws OrganizationFailure when the presentation directory cannot be read.
+   * Projects the explicit organization branding into the legacy Web avatar field.
+   * Personal profile images never represent an organization in the Web.
+   * @param workspace Authorized workspace containing its managed branding.
+   * @returns The workspace with an avatar matching its explicit logo or null.
    */
-  async function withPresentation(workspace: OrganizationWorkspace): Promise<OrganizationWorkspace> {
-    const presentations = await organizations.directory.listByOrganizationIds([organizationId(workspace.id)]);
-    const avatarUrl = presentations.find((presentation) => presentation.organizationId === workspace.id)?.avatarUrl ?? null;
-    return workspaceSchema.parse({ ...workspace, avatarUrl });
+  function withPresentation(workspace: OrganizationWorkspace): OrganizationWorkspace {
+    return workspaceSchema.parse({ ...workspace, avatarUrl: workspace.logoUrl });
   }
 
   /**
@@ -78,16 +76,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     const workspaces = unresolvedWorkspaces.filter((workspace): workspace is OrganizationWorkspace => workspace !== null);
     if (workspaces.length === 0) return [];
 
-    // Presentation lookup happens only after the legacy tenant bridge and the
-    // canonical authorization snapshot have admitted the workspace. The
-    // adapter preserves the Desktop fallback to the legacy owner's avatar;
-    // `logoUrl` remains the explicitly managed organization branding value.
-    const presentations = await organizations.directory.listByOrganizationIds(workspaces.map((workspace) => organizationId(workspace.id)));
-    const avatarByOrganizationId = new Map(presentations.map((presentation) => [presentation.organizationId, presentation.avatarUrl]));
-    return workspaces.map((workspace) => workspaceSchema.parse({
-      ...workspace,
-      avatarUrl: avatarByOrganizationId.get(organizationId(workspace.id)) ?? null,
-    }));
+    return workspaces.map(withPresentation);
   }
 
   /**

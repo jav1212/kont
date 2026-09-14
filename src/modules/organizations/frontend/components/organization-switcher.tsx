@@ -33,7 +33,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
       : organizations,
     [normalizedQuery, organizations],
   );
-  const personalOrganizations = visibleOrganizations.filter((entry) => entry.role === "owner");
+  const ownedOrganizations = visibleOrganizations.filter((entry) => entry.role === "owner");
   const memberOrganizations = visibleOrganizations.filter((entry) => entry.role !== "owner");
   const canManageOrganization = organizationSettingsAccess.state === "allowed";
   const canSwitch = organizations.length > 1;
@@ -88,7 +88,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
       className={`relative px-0.5 pb-1 ${open ? "z-[70]" : "z-0"}`}
     >
       <p className="mb-1 ml-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-sidebar-label">
-        Trabajando en
+        Organización
       </p>
       <button
         ref={triggerRef}
@@ -112,7 +112,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
             {loading ? "Cargando organización…" : organization?.name ?? "Sin organización"}
           </span>
           <span className="mt-0.5 block truncate font-mono text-[10px] tracking-[0.02em] text-sidebar-label">
-            {organization?.role === "owner" ? "Mi cuenta" : "Membresía directa"}
+            {organization?.role === "owner" ? "Organización propia" : "Membresía directa"}
           </span>
         </span>
         {canSwitch ? (
@@ -127,7 +127,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
       {open ? (
         <div
           role="dialog"
-          aria-label="Cuentas disponibles"
+          aria-label="Organizaciones disponibles"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -143,8 +143,8 @@ export function OrganizationSwitcher(): React.JSX.Element {
               ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar cuenta…"
-              aria-label="Buscar cuenta"
+              placeholder="Buscar organización…"
+              aria-label="Buscar organización"
               className="h-[var(--control-height-md)] min-h-[var(--control-height-md)] min-w-0 flex-1 rounded-[var(--control-radius)] border border-[var(--control-border)] bg-[var(--surface-1)] px-3 font-[family-name:var(--font-darker-grotesque)] text-[14px] leading-5 text-[var(--text-primary)] shadow-[0_1px_2px_rgb(0_0_0_/_0.02)] transition-[border-color,box-shadow,background-color] placeholder:text-[var(--control-placeholder)] hover:border-[var(--control-border-hover)] focus:border-[var(--control-border-focus)] focus:shadow-[var(--control-focus-shadow)] focus:outline-none"
             />
             <button
@@ -158,17 +158,17 @@ export function OrganizationSwitcher(): React.JSX.Element {
           </div>
           <div className="min-h-0 max-h-80 flex-1 overflow-y-auto p-1.5">
             <OrganizationGroup
-              label="Mi cuenta"
-              entries={personalOrganizations}
+              label="Mis organizaciones"
+              entries={ownedOrganizations}
               selectedId={organization?.id}
               onSelect={choose}
             />
             <OrganizationGroup
-              label="Otras cuentas"
+              label="Otras organizaciones"
               entries={memberOrganizations}
               selectedId={organization?.id}
               onSelect={choose}
-              separated={personalOrganizations.length > 0}
+              separated={ownedOrganizations.length > 0}
             />
             {visibleOrganizations.length === 0 ? (
               <p className="px-3 py-5 text-center text-sm text-sidebar-label">
@@ -243,7 +243,7 @@ function OrganizationGroup({
                 {entry.name}
               </span>
               <span className="mt-0.5 block truncate font-sans text-[11px] font-medium text-sidebar-label">
-                {entry.role === "owner" ? "Mi cuenta" : "Membresía directa"}
+                {entry.role === "owner" ? "Organización propia" : "Membresía directa"}
               </span>
             </span>
             {selected ? (

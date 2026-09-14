@@ -82,7 +82,7 @@ function useOrganizationResource<T>(path: string, schema: z.ZodType<T>, allowed:
 }
 
 /**
- * Displays organization settings without conflating the workspace with a personal account.
+ * Displays organization administration without conflating the workspace with a personal account.
  * Organization changes remount all child state to isolate requests and unsaved drafts.
  *
  * @returns Identity controls and permission-aware organization projections.
@@ -91,12 +91,12 @@ function useOrganizationResource<T>(path: string, schema: z.ZodType<T>, allowed:
 export function OrganizationSettings() {
     const { organization, loading, error, refresh } = useOrganization();
 
-    if (loading) return <LoadingState label="Cargando organización…" />;
+    if (loading) return <LoadingState label="Cargando configuración de la organización…" />;
     if (error) {
         return (
-            <SettingsSection title="Organización">
+            <SettingsSection title="Configuración de la organización">
                 <div className="space-y-4">
-                    <p className="text-sm text-[var(--text-secondary)]">No se pudo cargar tu organización.</p>
+                    <p className="text-sm text-[var(--text-secondary)]">No se pudo cargar la configuración de la organización.</p>
                     <BaseButton.Root variant="outline" size="sm" onClick={() => void refresh()}>
                         Volver a intentar
                     </BaseButton.Root>
@@ -106,9 +106,9 @@ export function OrganizationSettings() {
     }
     if (!organization) {
         return (
-            <SettingsSection title="Organización">
+            <SettingsSection title="Configuración de la organización">
                 <p className="text-sm text-[var(--text-secondary)]">
-                    No tienes una organización disponible en este espacio de trabajo.
+                    No tienes una organización disponible para configurar en este espacio de trabajo.
                 </p>
             </SettingsSection>
         );
@@ -155,7 +155,7 @@ function OrganizationOverview({ organization, refresh }: {
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Tu organización</h1>
                     <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
                         Aquí se agrupan tus empresas, las personas que trabajan contigo y sus permisos.
-                        Tu cuenta personal tiene sus propias preferencias.
+                        Tu perfil personal se administra por separado.
                     </p>
                 </div>
                 <BaseButton.Root variant="ghost" size="sm" leftIcon={<RefreshCw size={14} aria-hidden />} onClick={() => void refresh()}>
