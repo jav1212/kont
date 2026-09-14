@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { LogOut, Timer } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { mustLeaveForBarcodeSession, reconcileBarcodeSession, shouldReportBarcodeActivity } from "@/src/modules/auth/frontend/barcode-session-policy";
 
 const CHANNEL_NAME = "kontave-barcode-session";
@@ -42,7 +40,6 @@ export function BarcodeSessionGuard({
     const { isAuthenticated, isLoading, lockBarcodeSession } = useAuth();
     const [state, setState] = useState<GuardState>("checking");
     const [session, setSession] = useState<BarcodeSession | null>(null);
-    const [locking, setLocking] = useState(false);
     const lockingReference = useRef(false);
     const channel = useRef<BroadcastChannel | null>(null);
     const lastHeartbeatAt = useRef(0);
@@ -55,7 +52,6 @@ export function BarcodeSessionGuard({
     const lock = useCallback(async (expectedSessionId: string, announce: boolean) => {
         if (lockingReference.current) return;
         lockingReference.current = true;
-        setLocking(true);
         setState("expired");
         if (announce) channel.current?.postMessage({ type: "lock", sessionId: expectedSessionId });
         await lockBarcodeSession(expectedSessionId);
@@ -163,16 +159,5 @@ export function BarcodeSessionGuard({
 
     if (signedOut || state === "checking" || state === "expired") return pendingFeedback;
 
-    return <>
-        {children}
-        {state === "active" && session?.sessionId && (
-            <div className="fixed bottom-4 right-4 z-[60] rounded-xl border border-border-light bg-surface-1 p-2 shadow-lg">
-                <div className="flex items-center gap-2">
-                    <Timer className="h-4 w-4 text-primary-500" aria-hidden />
-                    <span className="hidden max-w-40 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-text-tertiary sm:inline">{session.terminal?.name ?? "Terminal"}</span>
-                    <BaseButton.Root size="sm" variant="secondary" disabled={locking} onClick={() => void lock(session.sessionId!, true)} leftIcon={<LogOut size={13} />}>Cambiar usuario</BaseButton.Root>
-                </div>
-            </div>
-        )}
-    </>;
+    return <>{children}</>;
 }

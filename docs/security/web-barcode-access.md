@@ -22,7 +22,7 @@ Al emitir un carnet, la vista muestra el titular y las barras Code 128, sin text
 
 Ante pérdida de un carnet, revocarlo desde esa página y emitir uno nuevo. Ante pérdida de una terminal o navegador, revocar la terminal. Ambos casos se registran en `barcode_access_audit` sin almacenar el código, token, cookie ni enlace temporal.
 
-La sesión deja de estar activa después de cinco minutos sin interacción humana registrada o tras ocho horas desde su creación. El botón de bloqueo y el cierre de sesión convencional bloquean el registro servidor. El bloqueo identifica la sesión exacta para que una pestaña antigua no cierre una sesión más nueva; las pestañas se avisan entre sí y vuelven a comprobar el servidor.
+La sesión deja de estar activa después de cinco minutos sin interacción humana registrada o tras ocho horas desde su creación. No hay un control flotante para bloquearla ni para cambiar de usuario; el cierre de sesión convencional bloquea el registro servidor. El bloqueo identifica la sesión exacta para que una pestaña antigua no cierre una sesión más nueva; las pestañas se avisan entre sí y vuelven a comprobar el servidor.
 
 ### Diagnóstico después de cerrar sesión
 
