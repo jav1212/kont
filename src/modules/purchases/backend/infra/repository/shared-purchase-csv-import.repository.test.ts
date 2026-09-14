@@ -128,3 +128,18 @@ test("an equal document number from a different supplier is not skipped", async 
     assert.equal(f.calls.length, 1);
     assert.equal(result.getValue()[0].invoiceId, "draft");
 });
+
+test("complete reports do not skip a confirmed invoice when supplier-name resolution is ambiguous", async () => {
+    const f = fixture({
+        shared_inventory_purchase_invoices: [{ id: "posted", status: "confirmada", supplier_id: "supplier", invoice_date: "2026-09-05" }],
+        shared_inventory_suppliers: [{ id: "supplier", rif: "J123456789", name: "Proveedor, C.A.", active: true }, { id: "same-name", rif: "J987654321", name: "Proveedor C A", active: true }],
+    });
+    f.row.header = { ...f.row.header, supplierRif: "", controlNumber: "", supplierExternalId: "", sourceFormat: "complete" };
+    f.row.items = f.row.items.map(item => ({ ...item, supplierExternalId: "", saleVatCode: "" }));
+    f.row.supplierId = undefined;
+    f.row.invoiceId = undefined;
+    f.row.invoiceStatus = undefined;
+    const result = await f.repo.execute("batch", "company", "draft", 3);
+    assert.equal(result.isSuccess, true);
+    assert.equal(f.calls.length, 1);
+});

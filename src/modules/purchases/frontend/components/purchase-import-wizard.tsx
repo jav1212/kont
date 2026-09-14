@@ -7,7 +7,7 @@ import { GuidedStepShell, StepSection } from "@/src/modules/payroll/frontend/com
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { PurchaseImportSession } from "../hooks/use-purchase-import";
 import type { PurchaseCsvImportBatch } from "../../backend/domain/repository/purchase-csv-import.repository";
-import { calculatePurchaseCsvRow, getPurchaseCsvVatDefault, normalizePurchaseRif, type PurchaseCsvImportRow, type PurchaseCsvItem, type PurchaseCsvProductResolution } from "../../backend/domain/purchase-csv-import";
+import { calculatePurchaseCsvRow, getPurchaseCsvVatDefault, normalizePurchaseRif, normalizePurchaseSupplierName, type PurchaseCsvImportRow, type PurchaseCsvItem, type PurchaseCsvProductResolution } from "../../backend/domain/purchase-csv-import";
 import type { Product, MeasureUnit, ValuationMethod } from "@/src/modules/inventory/backend/domain/product";
 import type { VatRate, PurchaseInvoice } from "../../backend/domain/purchase-invoice";
 import type { Supplier } from "../../backend/domain/supplier";
@@ -28,7 +28,7 @@ type Props = {
     suppliers: Supplier[];
     purchaseInvoices: PurchaseInvoice[];
     defaults?: Defaults;
-    onFiles: (stage: "headers" | "details", files: File[]) => void;
+    onFiles: (stage: "complete" | "headers" | "details", files: File[]) => void;
     onUpdate: (payload: Record<string, unknown>) => Promise<unknown>;
     onExecute: (mode: "draft" | "confirm") => void;
     onReset: () => void;
@@ -36,13 +36,20 @@ type Props = {
     targetInvoiceId?: string;
 };
 
+/** Matches the report identity without treating absent fiscal RIFs as equal. */
+function matchingSuppliers(row: PurchaseCsvImportRow, suppliers: Supplier[]): Supplier[] {
+    return suppliers.filter(supplier => row.header.sourceFormat === "complete"
+        ? normalizePurchaseSupplierName(supplier.name) === normalizePurchaseSupplierName(row.header.supplierName)
+        : normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
+}
+
 function CsvUpload({ multiple, disabled, onFiles }: { multiple?: boolean; disabled: boolean; onFiles: (files: File[]) => void }) {
     const input = useRef<HTMLInputElement>(null);
     return (
         <div className="rounded-xl border-2 border-dashed border-border-medium bg-surface-1 p-6 text-center">
             <FileUp className="mx-auto mb-3 text-primary-500" size={30} aria-hidden />
-            <p className="text-sm">{multiple ? "Selecciona los archivos de productos de tus compras" : "Selecciona el listado de compras"}</p>
-            <input ref={input} className="sr-only" aria-label={multiple ? "CSV de productos" : "CSV de compras"} type="file" accept=".csv,text/csv" multiple={multiple} disabled={disabled}
+            <p className="text-sm">{multiple ? "Selecciona los archivos de productos de tus compras" : "Selecciona el archivo de compras completas"}</p>
+            <input ref={input} className="sr-only" aria-label={multiple ? "CSV de productos" : "CSV de compras completas"} type="file" accept=".csv,text/csv" multiple={multiple} disabled={disabled}
                 onChange={event => { onFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = ""; }} />
             <BaseButton.Root className="mt-4" variant="secondary" size="sm" isDisabled={disabled} onClick={() => input.current?.click()} leftIcon={<Upload size={14} />}>Seleccionar CSV</BaseButton.Root>
         </div>
@@ -55,7 +62,7 @@ function PurchaseRows({ rows, existingStatuses = new Map(), onToggle }: { rows: 
             <table className="w-full min-w-[720px] text-left text-xs">
                 <thead className="bg-surface-2"><tr>
                     {onToggle && <th className="p-3">Importar</th>}
-                    {["Documento / control", "Proveedor", "Fecha", "Moneda / tasa", "Total Bs.", "Productos"].map(label => <th className="p-3" key={label}>{label}</th>)}
+                    {["Documento / control", "Proveedor", "Fecha", "Moneda / tasa", "Importe del archivo Bs.", "Productos"].map(label => <th className="p-3" key={label}>{label}</th>)}
                 </tr></thead>
                 <tbody>{rows.map(row => (
                     <tr key={row.header.sourceRow} className="border-t border-border-light">
@@ -94,7 +101,7 @@ function NewProductEditor({ initial, item, onSave }: { initial: NewProduct; item
             <label className="text-xs">Unidad<select className={fieldClass} value={form.measureUnit} onChange={event => setForm({ ...form, measureUnit: event.target.value as MeasureUnit })}>{units.map(unit => <option key={unit}>{unit}</option>)}</select></label>
             <label className="text-xs">Valuación<select className={fieldClass} value={form.valuationMethod} onChange={event => setForm({ ...form, valuationMethod: event.target.value as ValuationMethod })}><option value="promedio_ponderado">Promedio ponderado</option><option value="peps">PEPS</option></select></label>
             <label className="text-xs">IVA de venta<select className={fieldClass} value={form.vatType} onChange={event => setForm({ ...form, vatType: event.target.value as Product["vatType"] })}><option value="general">General</option><option value="exento">Exento</option></select></label>
-            <label className="text-xs">Precio de venta opcional<input className={fieldClass} inputMode="decimal" value={price} placeholder={`Referencia CSV: ${item.salePrice}`} onChange={event => setPrice(event.target.value)} /></label>
+            <label className="text-xs">Precio de venta opcional<input className={fieldClass} inputMode="decimal" value={price} placeholder={item.salePrice !== "0" ? `Referencia CSV: ${item.salePrice}` : "Opcional"} onChange={event => setPrice(event.target.value)} /></label>
             <label className="text-xs">Moneda del precio<input className={fieldClass} value={currency} maxLength={3} onChange={event => setCurrency(event.target.value.toUpperCase())} /></label>
             <BaseButton.Root size="sm" variant="secondary" isDisabled={!valid} onClick={() => onSave({ ...form, name: form.name.trim(), salePricing: price ? { mode: "fixed", amount: priceValue, currency } : undefined })}>Guardar datos del producto nuevo</BaseButton.Root>
         </div>
@@ -105,15 +112,16 @@ function CatalogResolution({ batch, rows, products, suppliers, defaults, onUpdat
     return (
         <div className="space-y-4">
             {rows.map(row => {
-                const supplierMatches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
+                const supplierMatches = matchingSuppliers(row, suppliers);
                 return <div key={row.header.sourceRow} className="rounded-lg border border-border-light p-4">
                     <p className="mb-2 text-sm font-semibold">Compra {row.header.documentNumber}</p>
-                    <label className="block text-xs">Proveedor
+                    <label className="block text-xs">Proveedor · {row.header.supplierName}
                         <select className={fieldClass} value={row.supplierId ?? ""} onChange={event => onUpdate({ suppliers: { [row.header.sourceRow]: event.target.value } })}>
-                            <option value="">{supplierMatches.length ? "Selecciona el proveedor coincidente" : `Crear ${row.header.supplierName} al importar`}</option>
-                            {supplierMatches.map(supplier => <option key={supplier.id} value={supplier.id} disabled={!supplier.active}>{supplier.name}{!supplier.active ? " (inactivo)" : ""}</option>)}
+                            <option value="">{row.header.sourceFormat === "complete" ? "Selecciona el proveedor de esta compra" : supplierMatches.length ? "Selecciona el proveedor coincidente" : `Crear ${row.header.supplierName} al importar`}</option>
+                            {(row.header.sourceFormat === "complete" ? suppliers : supplierMatches).map(supplier => <option key={supplier.id} value={supplier.id} disabled={!supplier.active}>{supplier.name} · {supplier.rif}{!supplier.active ? " (inactivo)" : ""}</option>)}
                         </select>
                     </label>
+                    {row.header.sourceFormat === "complete" && !row.supplierId && <p className="mt-2 text-xs text-[var(--text-secondary)]">El archivo solo incluye el nombre del proveedor. Selecciona uno existente; si falta, regístralo en Proveedores y vuelve a cargar la importación.</p>}
                     {[...new Map(row.items.map(item => [item.code, item])).values()].map(item => {
                         const matches = products.filter(product => product.code === item.code);
                         const resolution = row.productResolutions[item.code];
@@ -127,7 +135,7 @@ function CatalogResolution({ batch, rows, products, suppliers, defaults, onUpdat
                                 </select>
                             </label>
                             {resolution?.create && <NewProductEditor key={`${batch.id}:${item.code}:${row.header.sourceRow}`} initial={resolution.create} item={item} onSave={value => saveResolution({ create: value })} />}
-                            <details className="mt-2 text-xs text-[var(--text-tertiary)]"><summary className="cursor-pointer">Referencias del CSV</summary><p className="mt-2">Existencia: {item.sourceStock} · Precio 1: {item.salePrice} {item.currency} · Porcentaje: {item.markupPercent}% · IVA venta: {item.saleVatCode} · Costo full Bs.: {item.fullCostBs} · Costo *: {item.currencyCost} · Subtotal *: {item.currencySubtotal} · Costo full *: {item.currencyFullCost}</p></details>
+                            <details className="mt-2 text-xs text-[var(--text-tertiary)]"><summary className="cursor-pointer">Referencias del CSV</summary>{row.header.sourceFormat === "complete" ? <p className="mt-2">Costo full Bs.: {item.fullCostBs} · Subtotal otra moneda: {item.currencySubtotal}</p> : <p className="mt-2">Existencia: {item.sourceStock} · Precio 1: {item.salePrice} {item.currency} · Porcentaje: {item.markupPercent}% · IVA venta: {item.saleVatCode} · Costo full Bs.: {item.fullCostBs} · Costo *: {item.currencyCost} · Subtotal *: {item.currencySubtotal} · Costo full *: {item.currencyFullCost}</p>}</details>
                         </div>;
                     })}
                 </div>;
@@ -137,22 +145,25 @@ function CatalogResolution({ batch, rows, products, suppliers, defaults, onUpdat
 }
 
 /**
- * Presents staged purchases as five revisitable steps with explicit fiscal review.
+ * Presents a single CSV upload followed by catalog, fiscal and execution review.
  * @param props - Persisted batch, catalogs and company-scoped actions owned by the import hook.
  * @returns Responsive wizard; only the final execution actions create invoices or stock movements.
  */
 export function PurchaseImportWizard({ session, batch, products, suppliers, purchaseInvoices, defaults = {}, loading, error, companyId, onFiles, onUpdate, onExecute, onReset, targetInvoiceId }: Props) {
     const targetMode = Boolean(targetInvoiceId);
     const [step, setStep] = useState(targetMode ? 2 : 1);
-    const visibleSteps = targetMode ? STEPS.slice(1).map((entry, index) => ({ ...entry, id: index + 1 })) : STEPS;
-    const visibleStep = targetMode ? step - 1 : step;
+    const stageSteps = targetMode ? STEPS.slice(1) : STEPS.filter(entry => entry.id !== 2);
+    const visibleSteps = stageSteps.map((entry, index) => ({ ...entry, id: index + 1 }));
+    const visibleStep = stageSteps.findIndex(entry => entry.id === step) + 1;
     const existingStatuses = new Map((batch?.rows ?? []).flatMap(row => {
-        const invoice = purchaseInvoices.find(invoice => {
-            const supplier = suppliers.find(supplier => supplier.id === invoice.supplierId);
-            return invoice.id !== row.invoiceId && invoice.invoiceNumber === row.header.documentNumber &&
-                (invoice.controlNumber ?? "") === row.header.controlNumber && supplier &&
-                normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif);
-        });
+        const supplierCandidates = row.supplierId ? suppliers.filter(supplier => supplier.id === row.supplierId)
+            : matchingSuppliers(row, suppliers);
+        const matches = supplierCandidates.length === 1 ? purchaseInvoices.filter(invoice =>
+            invoice.id !== row.invoiceId && invoice.invoiceNumber === row.header.documentNumber &&
+            invoice.supplierId === supplierCandidates[0].id &&
+            (row.header.sourceFormat === "complete" || (invoice.controlNumber ?? "") === row.header.controlNumber),
+        ) : [];
+        const invoice = matches.length === 1 ? matches[0] : undefined;
         return invoice?.status ? [[row.header.sourceRow, invoice.status] as const] : [];
     }));
     const selected = batch?.rows.filter(row => row.selected && row.invoiceStatus !== "confirmada" && existingStatuses.get(row.header.sourceRow) !== "confirmada") ?? [];
@@ -183,22 +194,22 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
                 }
             }
             if (rowChanged) resolutions[String(row.header.sourceRow)] = rowResolutions;
-            const matches = suppliers.filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif));
+            const matches = matchingSuppliers(row, suppliers);
             if (!row.supplierId && matches.length === 1 && matches[0].active && matches[0].id) supplierIds[String(row.header.sourceRow)] = matches[0].id;
         }
         if (Object.keys(resolutions).length || Object.keys(supplierIds).length) return Boolean(await onUpdate({ resolutions, suppliers: supplierIds }));
         return true;
     };
     const nextStep = () => {
-        if (step === 3) void applyUniqueMatches().then(saved => { if (saved) setStep(4); });
+        if (step === 3 || (!targetMode && step === 1)) void applyUniqueMatches().then(saved => { if (saved) setStep(step === 1 ? 3 : 4); });
         else setStep(step + 1);
     };
     const shell = (title: string, subtitle: string, body: ReactNode, disabled = false) => (
-        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > (targetMode ? 2 : 1) ? () => setStep(step - 1) : undefined} onNext={nextStep} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
+        <GuidedStepShell title={title} subtitle={subtitle} onBack={step > (targetMode ? 2 : 1) ? () => setStep(!targetMode && step === 3 ? 1 : step - 1) : undefined} onNext={nextStep} nextDisabled={disabled || loading}>{body}</GuidedStepShell>
     );
     if (!companyId) return <p className="p-6">Selecciona una empresa para importar compras.</p>;
     return <div className="flex min-h-full flex-col bg-background">
-        <GuidedStepperHeader steps={visibleSteps} currentStep={visibleStep} onStepClick={next => { const actualStep = targetMode ? next + 1 : next; if (!loading && actualStep <= step) setStep(actualStep); }} />
+        <GuidedStepperHeader steps={visibleSteps} currentStep={visibleStep} onStepClick={next => { const actualStep = stageSteps[next - 1]?.id ?? step; if (!loading && actualStep <= step) setStep(actualStep); }} />
         {error && <div role="alert" className="mx-auto mt-4 flex w-full max-w-4xl gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><AlertTriangle size={16} />{error}</div>}
         {loading && <div role="status" aria-label="Procesando importación" className="fixed inset-0 z-50 grid place-items-center bg-background/60"><LoaderCircle className="animate-spin text-primary-500" /></div>}
         {!targetMode && step === 1 && (allSelectedAreConfirmed ? (
@@ -206,12 +217,12 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
                 <StepSection title="Sin cambios pendientes"><p className="text-sm text-[var(--text-secondary)]">Todas las facturas ya están confirmadas; se omitieron.</p></StepSection>
                 <BaseButton.Root variant="secondary" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root>
             </GuidedStepShell>
-        ) : shell("Carga las compras", "Selecciona el listado y las compras que deseas importar.", <>
-            <StepSection title="Listado de compras"><CsvUpload disabled={loading || !!batch} onFiles={files => onFiles("headers", files)} />
-                {batch && <div className="mt-4 space-y-3"><p className="text-sm">{batch.fileName} · RIF {batch.companyRif}</p><PurchaseRows rows={batch.rows} existingStatuses={existingStatuses} onToggle={(key, selected) => onUpdate({ selections: [{ key: String(key), selected }] })} /></div>}
+        ) : shell("Carga las compras completas", "Un solo CSV contiene las facturas y sus productos. Los borradores existentes se actualizan y las compras confirmadas se omiten.", <>
+            <StepSection title="Archivo de compras completas"><CsvUpload disabled={loading || !!batch} onFiles={files => onFiles("complete", files)} />
+                {batch && <div className="mt-4 space-y-3"><BaseButton.Root variant="ghost" size="sm" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Cambiar archivo</BaseButton.Root><p className="text-sm">{batch.fileName} · RIF {batch.companyRif}</p><PurchaseRows rows={batch.rows} existingStatuses={existingStatuses} onToggle={(key, selected) => onUpdate({ selections: [{ key: String(key), selected }] })} /></div>}
             </StepSection>
         </>, !batch || !selected.length))}
-        {step === 2 && shell("Relaciona los productos", "Cada archivo se asocia por documento, ID de proveedor y fecha.", <>
+        {targetMode && step === 2 && shell("Relaciona los productos", "Cada archivo se asocia por documento, ID de proveedor y fecha.", <>
             <StepSection title="Archivos de productos" description="Puedes continuar sin todos los detalles y guardar las compras pendientes como borradores."><CsvUpload multiple disabled={loading || (targetMode && !batch)} onFiles={files => onFiles("details", files)} /></StepSection>
             <StepSection title="Compras seleccionadas"><PurchaseRows rows={selected} />
                 <div className="mt-3 flex flex-wrap gap-2">{selected.filter(row => row.items.length).map(row => <BaseButton.Root key={row.header.sourceRow} variant="ghost" size="sm" onClick={() => onUpdate({ clearDetails: row.header.sourceRow })}>Quitar detalle de {row.header.documentNumber} para reemplazar</BaseButton.Root>)}</div>
@@ -229,14 +240,14 @@ export function PurchaseImportWizard({ session, batch, products, suppliers, purc
         </>, !batch || unknownTaxCodes.some(code => !proposedMappings[code]))}
         {step === 4 && shell("Previsualiza las compras", "Se usará el total calculado y se conservará el original como referencia.", <>
             {results.map(({ row, calculation }) => <StepSection key={row.header.sourceRow} title={`Compra ${row.header.documentNumber}`} description={`${row.header.supplierName} · ${row.header.currency} · tasa ${row.header.exchangeRate}`}>
-                <div className="grid gap-3 text-sm sm:grid-cols-3"><p>Total original<strong className="block">Bs. {fmt(row.header.totalBs)}</strong></p><p>Total calculado<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.total)}` : "Pendiente de revisión"}</strong></p><p>Diferencia<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.difference)}` : "—"}</strong></p></div>
+                <div className="grid gap-3 text-sm sm:grid-cols-3"><p>{row.header.sourceFormat === "complete" ? "Suma de subtotales del archivo" : "Total original"}<strong className="block">Bs. {fmt(row.header.totalBs)}</strong></p><p>Total calculado<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.total)}` : "Pendiente de revisión"}</strong></p>{row.header.sourceFormat !== "complete" && <p>Diferencia<strong className="block">{calculation.complete ? `Bs. ${fmt(calculation.difference)}` : "—"}</strong></p>}</div>
                 {calculation.errors.length > 0 && <ul className="mt-3 list-inside list-disc text-sm text-red-700">{calculation.errors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
                 {!row.items.length && <p className="mt-3 text-sm">Falta el archivo de productos. Se guardará como borrador.</p>}
-                {calculation.complete && calculation.difference !== "0" && <p className="mt-4 text-sm">Se usará el total calculado de esta compra. El total original se conservará como referencia.</p>}
+                {calculation.complete && calculation.difference !== "0" && row.header.sourceFormat !== "complete" && <p className="mt-4 text-sm">Se usará el total calculado de esta compra. El total original se conservará como referencia.</p>}
                 {row.items.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead><tr>{["Código / detalle", "Cantidad", "Costo Bs.", "Subtotal Bs.", "IVA", "Moneda / tasa"].map(label => <th className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.items.map((item, index) => <tr className="border-t border-border-light" key={`${item.sourceRow}:${index}`}><td className="p-2">{item.code}<span className="block">{item.description}</span></td><td className="p-2">{item.quantity}</td><td className="p-2">{fmt(item.unitCostBs)}</td><td className="p-2">{fmt(item.subtotalBs)}</td><td className="p-2">{item.purchaseVatCode}</td><td className="p-2">{item.currency} · {item.exchangeRate}</td></tr>)}</tbody></table></div>}
             </StepSection>)}
         </>, !selected.length)}
-        {step === 5 && <GuidedStepShell title="Importa las compras" subtitle="Elige guardar borradores o confirmar las compras completas." onBack={() => setStep(4)} hideNav>
+        {step === 5 && <GuidedStepShell title="Importa las compras" subtitle="Guarda las compras nuevas y actualiza los borradores existentes, o confirma las compras completas." onBack={() => setStep(4)} hideNav>
             <StepSection title="Resultado esperado"><p className="text-sm">{complete.length} compras completas, {selected.filter(row => !row.items.length).length} pendientes de detalle y {results.filter(result => result.calculation.errors.length > 0).length} con errores que deben corregirse.</p><p className="mt-2 text-sm">Confirmar aumenta el inventario por las cantidades compradas. Las compras sin detalle quedan como borradores.</p></StepSection>
             <div className="flex flex-wrap gap-3"><BaseButton.Root variant="secondary" isDisabled={loading || !selected.length} onClick={() => onExecute("draft")} leftIcon={<Save size={16} />}>{targetMode ? "Guardar borrador" : "Guardar borradores"}</BaseButton.Root><BaseButton.Root isDisabled={loading || !complete.length} onClick={() => onExecute("confirm")} leftIcon={<Send size={16} />}>{targetMode ? "Confirmar factura" : "Importar y confirmar completas"}</BaseButton.Root>{!targetMode && <BaseButton.Root variant="ghost" isDisabled={loading} onClick={() => { onReset(); setStep(1); }} leftIcon={<RotateCcw size={14} />}>Nueva importación</BaseButton.Root>}</div>
             {session?.results && <StepSection title="Resultados"><ul className="space-y-2 text-sm">{session.results.map((result, index) => <li key={index} className={result.status === "failed" ? "text-red-700" : "text-emerald-700"}>{result.purchaseKey}: {result.status === "confirmed" ? "Confirmada" : result.status === "saved" ? "Borrador guardado" : result.status === "skipped" ? "Ya confirmada · omitida" : "No importada"}{result.message ? ` · ${result.message}` : ""}</li>)}</ul><p className="mt-3 text-xs">Puedes reintentar: las compras confirmadas no se duplican.</p></StepSection>}

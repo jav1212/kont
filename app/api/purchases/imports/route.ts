@@ -5,7 +5,7 @@ import { handleResult } from '@/src/shared/backend/utils/handle-result';
 
 const decimal = z.string().regex(/^[+-]?\d{1,12}(?:\.\d{1,12})?$/);
 const vatRate = z.enum(['exenta', 'reducida_8', 'general_16']);
-const header = z.object({ sourceRow: z.number().int().positive(), date: z.string(), supplierName: z.string(), supplierRif: z.string(), documentNumber: z.string(), controlNumber: z.string(), reference: z.string(), supplierExternalId: z.string(), currency: z.string(), totalBs: decimal, documentType: z.string(), exchangeRate: decimal });
+const header = z.object({ sourceRow: z.number().int().positive(), date: z.string(), supplierName: z.string(), supplierRif: z.string(), documentNumber: z.string(), controlNumber: z.string(), reference: z.string(), supplierExternalId: z.string(), currency: z.string(), totalBs: decimal, documentType: z.string(), exchangeRate: decimal, sourceFormat: z.literal('complete').optional() });
 const item = z.object({ sourceRow: z.number().int().positive(), quantity: decimal, code: z.string(), description: z.string(), unitCostBs: decimal, subtotalBs: decimal, fullCostBs: decimal, currencyCost: decimal, currencySubtotal: decimal, currencyFullCost: decimal, salePrice: decimal, markupPercent: decimal, currency: z.string(), exchangeRate: decimal, purchaseVatCode: z.string(), date: z.string(), documentNumber: z.string(), supplierExternalId: z.string(), sourceStock: decimal, saleVatCode: z.string() });
 const salePricing = z.union([
     z.object({ mode: z.literal('fixed'), amount: z.number().finite(), currency: z.string() }),

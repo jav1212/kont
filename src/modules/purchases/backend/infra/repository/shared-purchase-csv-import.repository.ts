@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Result } from '@/src/core/domain/result';
 import type { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
-import { calculatePurchaseCsvRow, normalizePurchaseCsvImport, normalizePurchaseRif, type PurchaseCsvImportRow } from '../../domain/purchase-csv-import';
+import { calculatePurchaseCsvRow, normalizePurchaseCsvImport, normalizePurchaseRif, normalizePurchaseSupplierName, type PurchaseCsvImportRow } from '../../domain/purchase-csv-import';
 import type { IPurchaseCsvImportRepository, PurchaseCsvImportBatch, PurchaseCsvImportLineExecution, PurchaseCsvImportMode } from '../../domain/repository/purchase-csv-import.repository';
 
 type RawBatch = { id: string; company_id: string; source_file_name: string; source_company_rif: string | null; configuration: unknown; status: string; revision: number | null; created_at: string | null; updated_at: string | null; };
@@ -131,7 +131,7 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
             const items = calculated.items.map((item) => ({ ...item, code: item.source.code }));
             const { data, error } = await this.source.instance.rpc(targetInvoiceId ? 'shared_inventory_purchase_csv_import_execute_target_line' : 'shared_inventory_purchase_csv_import_execute_resumable_line', {
                 p_tenant_id: this.tenantId, p_batch_id: id, p_line_id: lineId, p_mode: headerOnlyDraft ? 'draft' : mode, p_invoice: invoice,
-                p_items: items, p_supplier: { id: row.supplierId ?? null, rif: row.header.supplierRif, name: row.header.supplierName }, p_products: productPayload.getValue(),
+                p_items: items, p_supplier: { id: row.supplierId ?? null, rif: row.header.supplierRif, name: row.header.supplierName, sourceFormat: row.header.sourceFormat ?? null }, p_products: productPayload.getValue(),
                 ...(targetInvoiceId ? { p_target_invoice_id: targetInvoiceId } : {}),
             });
             if (error) outcomes.push({ lineId, sourceRow, status: 'error', error: error.message });
@@ -152,12 +152,24 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
 
     /** Finds an already-posted CSV identity before validating a repeat file's details. */
     private async findExistingInvoice(companyId: string, row: PurchaseCsvImportRow): Promise<{ id: string; status: string } | undefined> {
-        const { data, error } = await this.source.instance.from('shared_inventory_purchase_invoices').select('id,status,supplier_id')
-            .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('invoice_number', row.header.documentNumber).eq('control_number', row.header.controlNumber);
+        const invoices = this.source.instance.from('shared_inventory_purchase_invoices').select('id,status,supplier_id,invoice_date')
+            .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('invoice_number', row.header.documentNumber);
+        const { data, error } = row.header.sourceFormat === 'complete' ? await invoices : await invoices.eq('control_number', row.header.controlNumber);
         if (error || !data?.length) return undefined;
+        if (row.header.sourceFormat === 'complete') {
+            const suppliers = await this.source.instance.from('shared_inventory_suppliers').select('id,name,active').eq('tenant_id', this.tenantId).eq('company_id', companyId);
+            if (suppliers.error) return undefined;
+            const candidates = (suppliers.data ?? []).filter((supplier) => {
+                const candidate = supplier as { id?: string; name?: string; active?: boolean | null };
+                return candidate.active !== false && (row.supplierId ? candidate.id === row.supplierId : normalizePurchaseSupplierName(candidate.name ?? '') === normalizePurchaseSupplierName(row.header.supplierName));
+            });
+            if (candidates.length !== 1) return undefined;
+            const matches = data.filter((invoice) => invoice.supplier_id === candidates[0].id);
+            return matches.length === 1 ? matches[0] : undefined;
+        }
         const supplierIds = data.map(invoice => invoice.supplier_id).filter((id): id is string => typeof id === 'string');
         if (!supplierIds.length) return undefined;
-        const suppliers = await this.source.instance.from('shared_inventory_suppliers').select('id,rif').eq('tenant_id', this.tenantId).eq('company_id', companyId).in('id', supplierIds);
+        const suppliers = await this.source.instance.from('shared_inventory_suppliers').select('id,rif,name,active').eq('tenant_id', this.tenantId).eq('company_id', companyId).in('id', supplierIds);
         if (suppliers.error) return undefined;
         const matchingIds = new Set((suppliers.data ?? []).filter(supplier => normalizePurchaseRif(supplier.rif) === normalizePurchaseRif(row.header.supplierRif)).map(supplier => supplier.id));
         return data.find(invoice => matchingIds.has(invoice.supplier_id));

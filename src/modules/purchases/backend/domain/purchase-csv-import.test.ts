@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
     associatePurchaseItems, calculatePurchaseCsvRow, normalizePurchaseCsvImport, normalizePurchaseRif,
-    parsePurchaseDecimal, parsePurchaseHeaders, parsePurchaseItems,
+    normalizePurchaseSupplierName, parseCompletePurchaseCsv, parsePurchaseDecimal, parsePurchaseHeaders, parsePurchaseItems,
     type PurchaseCsvConfig, type PurchaseCsvImportRow, type PurchaseCsvItem,
 } from "./purchase-csv-import";
 
@@ -45,6 +45,34 @@ test("quoted details, duplicate irrelevant columns and trimmed headings parse co
     assert.equal(parsed.rows[0].code, "0001");
     assert.equal(parsed.rows[0].description, 'Producto; con "comillas"\ny salto');
     assert.equal(Object.keys(parsed.rows[0]).length, 20);
+});
+
+test("complete purchase reports group lines and retain declared VES subtotals despite unit rounding", () => {
+    const csv = `Empresa\nJ003634352\n\nDepartamento;Fecha Aplicación;Tipo Documento;Cantidad;Codigo;Detalle;Desc %;IVA Compra;Costo Bs.;Sub Total Bs.;Costo Full Bs.;Fecha;Documento;Proveedor;Unid. Derivadas;Tasa Cambio Bs.;S. Total Otra Moneda;% Costo Ind;% Costo Dir.;\nA;09/09/2026;Factura;12;0007;Producto;0;IVA1;1.358,50;16.301,95;1.361,37;08/09/2026;00123;Proveedor, C.A.;1;820,1018;19,92;0,00;0,00;\nA;09/09/2026;Factura;1;0008;Otro;0;IVA1;2,00;2,00;2,00;08/09/2026;00123;Proveedor C.A.;1;820,1018;0;0,00;0,00;\n`;
+    const parsed = parseCompletePurchaseCsv(csv);
+    assert.deepEqual(parsed.errors, []);
+    assert.equal(parsed.companyRif, "J003634352");
+    assert.equal(parsed.rows.length, 1);
+    assert.equal(parsed.rows[0].header.sourceFormat, "complete");
+    assert.equal(parsed.rows[0].header.documentNumber, "00123");
+    assert.equal(parsed.rows[0].items[0].code, "0007");
+    assert.equal(parsed.rows[0].header.totalBs, "16303.95");
+    const result = calculatePurchaseCsvRow({ ...parsed.rows[0], productResolutions: { "0007": { productId: "p1" }, "0008": { productId: "p2" } } }, config);
+    assert.equal(result.errors.length, 0);
+    assert.equal(result.subtotal, "16303.95");
+    assert.equal(normalizePurchaseSupplierName("Proveedor, C.A."), normalizePurchaseSupplierName("PROVEEDOR C A"));
+    assert.notEqual(normalizePurchaseSupplierName("AB C"), normalizePurchaseSupplierName("A BC"));
+});
+
+test("complete reports reject conflicting invoice fields and negative authoritative subtotals", () => {
+    const headings = "Departamento;Fecha Aplicación;Tipo Documento;Cantidad;Codigo;Detalle;IVA Compra;Costo Bs.;Sub Total Bs.;Costo Full Bs.;Fecha;Documento;Proveedor;Tasa Cambio Bs.;S. Total Otra Moneda;";
+    const line = (date: string, type = "Factura", rate = "1", subtotal = "10") => `A;09/09/2026;${type};1;001;Producto;EXENTO;10;${subtotal};10;${date};001;Proveedor;${rate};0;`;
+    assert.match(parseCompletePurchaseCsv(`${headings}\n${line("08/09/2026")}\n${line("09/09/2026")}`).errors.join(), /Fecha no coincide/);
+    assert.match(parseCompletePurchaseCsv(`${headings}\n${line("08/09/2026")}\n${line("08/09/2026", "Nota de crédito")}`).errors.join(), /Tipo Documento no coincide/);
+    assert.match(parseCompletePurchaseCsv(`${headings}\n${line("08/09/2026")}\n${line("08/09/2026", "Factura", "2")}`).errors.join(), /Tasa Cambio Bs. no coincide/);
+    const negative = parseCompletePurchaseCsv(`${headings}\n${line("08/09/2026", "Factura", "1", "-10")}`).rows[0];
+    const calculation = calculatePurchaseCsvRow({ ...negative, productResolutions: { "001": { productId: "product" } } }, config);
+    assert.match(calculation.errors.join(), /Sub Total Bs. no puede ser negativo/);
 });
 
 test("malformed CSV, duplicated selected headers, impossible dates and missing cells are visible", () => {
@@ -138,6 +166,10 @@ test("unknown tax codes still need a manual mapping, but no separate review ackn
     assert.equal(mapped.complete, true);
     assert.equal(mapped.vatAmount, "399.83");
     assert.match(calculatePurchaseCsvRow(row([source({ saleVatCode: "DESCONOCIDO" })]), config).errors.join(), /Asigna IVA Venta/);
+});
+
+test("legacy items still require an IVA Venta mapping when their source cell is blank", () => {
+    assert.match(calculatePurchaseCsvRow(row([source({ saleVatCode: "" })]), config).errors.join(), /Asigna IVA Venta/);
 });
 
 test("missing products and inconsistent source cannot confirm despite automatic tax defaults", () => {

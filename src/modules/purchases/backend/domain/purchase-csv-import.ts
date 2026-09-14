@@ -19,6 +19,8 @@ export interface PurchaseCsvHeader {
     totalBs: string;
     documentType: string;
     exchangeRate: string;
+    /** Identifies reports whose supplier identity has no fiscal RIF or control number. */
+    sourceFormat?: "complete";
 }
 
 /** Source values stay independent from catalog values and posted stock. */
@@ -164,6 +166,15 @@ export function normalizePurchaseRif(value: string): string {
 }
 
 /**
+ * Produces a stable, display-independent supplier name key for complete reports.
+ * @param value - Supplier name as supplied by a report or catalog record.
+ * @returns Uppercase name with accents, punctuation, and repeated whitespace removed.
+ */
+export function normalizePurchaseSupplierName(value: string): string {
+    return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+/**
  * Parses a Venezuelan numeric cell without floating-point conversion.
  * @param value - Number using comma decimals and optional dot thousands grouping.
  * @returns Canonical exact decimal text.
@@ -300,6 +311,62 @@ export function parsePurchaseItems(text: string): PurchaseCsvParseResult<Purchas
     }));
 }
 
+const COMPLETE_COLUMNS = ["Departamento", "Fecha Aplicación", "Tipo Documento", "Cantidad", "Codigo", "Detalle", "IVA Compra", "Costo Bs.", "Sub Total Bs.", "Costo Full Bs.", "Fecha", "Documento", "Proveedor", "Tasa Cambio Bs.", "S. Total Otra Moneda"];
+
+/**
+ * Parses the one-file historic-purchases report and groups its details into invoices.
+ * @param text - UTF-8 decoded semicolon report, optionally with a BOM and report preamble.
+ * @returns Company RIF, one complete import row per supplier/document/date identity, and parse errors.
+ * @remarks The report's VES subtotal is authoritative because exported unit costs can be rounded.
+ */
+export function parseCompletePurchaseCsv(text: string): PurchaseCsvParseResult<PurchaseCsvImportRow> {
+    const parsed = parseReport(text, COMPLETE_COLUMNS, (c, sourceRow) => {
+        const date = dateCell(c("Fecha"));
+        const applicationDate = dateCell(c("Fecha Aplicación"));
+        const documentNumber = c("Documento");
+        const supplierName = c("Proveedor");
+        const quantity = parsePurchaseDecimal(c("Cantidad"));
+        const unitCostBs = parsePurchaseDecimal(c("Costo Bs."));
+        const subtotalBs = parsePurchaseDecimal(c("Sub Total Bs."));
+        const exchangeRate = parsePurchaseDecimal(c("Tasa Cambio Bs."));
+        const otherCurrencyTotal = parsePurchaseDecimal(c("S. Total Otra Moneda"));
+        if (!documentNumber || !supplierName || !c("Codigo") || !c("Detalle")) throw new Error("Documento, proveedor, código y detalle son requeridos");
+        return {
+            sourceRow, date, applicationDate, documentType: c("Tipo Documento"), documentNumber, supplierName,
+            quantity, code: c("Codigo"), description: c("Detalle"), unitCostBs, subtotalBs,
+            fullCostBs: parsePurchaseDecimal(c("Costo Full Bs.")), exchangeRate, otherCurrencyTotal,
+            purchaseVatCode: c("IVA Compra").toUpperCase(),
+        };
+    });
+    const grouped = new Map<string, PurchaseCsvImportRow>();
+    for (const source of parsed.rows) {
+        const key = `${normalizePurchaseSupplierName(source.supplierName)}\u0000${source.documentNumber}`;
+        const item: PurchaseCsvItem = {
+            sourceRow: source.sourceRow, quantity: source.quantity, code: source.code, description: source.description,
+            unitCostBs: source.unitCostBs, subtotalBs: source.subtotalBs, fullCostBs: source.fullCostBs,
+            currencyCost: "0", currencySubtotal: source.otherCurrencyTotal, currencyFullCost: "0", salePrice: "0", markupPercent: "0",
+            currency: "VES", exchangeRate: source.exchangeRate, purchaseVatCode: source.purchaseVatCode,
+            date: source.date, documentNumber: source.documentNumber, supplierExternalId: "", sourceStock: "0", saleVatCode: "",
+        };
+        const existing = grouped.get(key);
+        if (existing) {
+            if (existing.header.date !== source.date) parsed.errors.push(`Fila ${source.sourceRow}: Fecha no coincide con la factura ${source.documentNumber}`);
+            if (normalizeColumn(existing.header.documentType) !== normalizeColumn(source.documentType)) parsed.errors.push(`Fila ${source.sourceRow}: Tipo Documento no coincide con la factura ${source.documentNumber}`);
+            if (!sameDecimal(existing.header.exchangeRate, source.exchangeRate)) parsed.errors.push(`Fila ${source.sourceRow}: Tasa Cambio Bs. no coincide con la factura ${source.documentNumber}`);
+            existing.items.push(item);
+            existing.header.totalBs = addDecimal(exactDecimal(existing.header.totalBs), exactDecimal(item.subtotalBs));
+            continue;
+        }
+        grouped.set(key, {
+            header: { sourceRow: source.sourceRow, date: source.date, supplierName: source.supplierName, supplierRif: "", documentNumber: source.documentNumber,
+                controlNumber: "", reference: "", supplierExternalId: "", currency: "VES", totalBs: item.subtotalBs, documentType: source.documentType,
+                exchangeRate: source.exchangeRate, sourceFormat: "complete" },
+            items: [item], selected: true, productResolutions: {}, acceptDifference: false,
+        });
+    }
+    return { companyRif: parsed.companyRif, rows: [...grouped.values()], errors: parsed.errors };
+}
+
 /**
  * Associates details using all three source identifiers, never by filename or document alone.
  * @param headers - Purchase headers from the active batch.
@@ -318,6 +385,7 @@ export function associatePurchaseItems(headers: PurchaseCsvHeader[], items: Purc
 }
 
 function matchesHeader(header: PurchaseCsvHeader, item: PurchaseCsvItem): boolean {
+    if (header.sourceFormat === "complete") return !!header.documentNumber && header.documentNumber === item.documentNumber && header.date === item.date;
     return !!header.documentNumber && !!header.supplierExternalId && header.documentNumber === item.documentNumber && header.supplierExternalId === item.supplierExternalId && header.date === item.date;
 }
 
@@ -336,8 +404,8 @@ export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: Purch
         config = normalizePurchaseCsvConfig(config, row.items);
         const header = row.header;
         if (!validDate(header.date)) result.errors.push("Fecha de compra inválida");
-        if (!header.supplierName.trim() || !/^[VEJPG]\d{9}$/.test(normalizePurchaseRif(header.supplierRif))) result.errors.push("Proveedor o RIF inválido");
-        if (!header.documentNumber.trim() || !header.supplierExternalId.trim()) result.errors.push("Documento e ID del proveedor son requeridos");
+        if (!header.supplierName.trim() || (header.sourceFormat !== "complete" && !/^[VEJPG]\d{9}$/.test(normalizePurchaseRif(header.supplierRif)))) result.errors.push("Proveedor o RIF inválido");
+        if (!header.documentNumber.trim() || (header.sourceFormat !== "complete" && !header.supplierExternalId.trim())) result.errors.push("Documento e ID del proveedor son requeridos");
         if (normalizeColumn(header.documentType) !== "factura") result.errors.push("Solo se admite Tipo Doc Factura en este formato");
         const expected = exactDecimal(boundedDecimal(header.totalBs));
         if (compareDecimal(expected, ZERO) < 0) result.errors.push("El total de compra no puede ser negativo");
@@ -356,24 +424,27 @@ export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: Purch
                 const rate = exactDecimal(boundedDecimal(source.exchangeRate));
                 for (const value of [source.fullCostBs, source.currencyCost, source.currencySubtotal, source.currencyFullCost, source.salePrice, source.markupPercent, source.sourceStock]) boundedDecimal(value);
                 if (compareDecimal(qty, ZERO) <= 0 || compareDecimal(cost, ZERO) < 0) throw new Error("Cantidad debe ser positiva y costo no negativo");
-                if (!sameDecimal(quantizeDecimal(multiplyDecimal(qty, cost), { scale: 2, mode: "half_up" }), quantizeDecimal(declaredSubtotal, { scale: 2, mode: "half_up" }))) throw new Error("Cantidad × Costo Bs. no coincide con Sub Total Bs.; revisa el archivo");
+                if (header.sourceFormat !== "complete" && !sameDecimal(quantizeDecimal(multiplyDecimal(qty, cost), { scale: 2, mode: "half_up" }), quantizeDecimal(declaredSubtotal, { scale: 2, mode: "half_up" }))) throw new Error("Cantidad × Costo Bs. no coincide con Sub Total Bs.; revisa el archivo");
                 const currency = currencyCell(source.currency);
                 if (currency !== "VES" && compareDecimal(rate, ZERO) <= 0) throw new Error("La tasa de cambio debe ser positiva");
                 const vatRate = config.vatMappings[source.purchaseVatCode];
                 if (!Object.prototype.hasOwnProperty.call(VAT, vatRate ?? "")) throw new Error(`Asigna IVA Compra ${source.purchaseVatCode}`);
-                if (!Object.prototype.hasOwnProperty.call(VAT, config.vatMappings[source.saleVatCode] ?? "")) throw new Error(`Asigna IVA Venta ${source.saleVatCode}`);
+                if ((header.sourceFormat !== "complete" || source.saleVatCode) && !Object.prototype.hasOwnProperty.call(VAT, config.vatMappings[source.saleVatCode] ?? "")) throw new Error(`Asigna IVA Venta ${source.saleVatCode}`);
                 const resolution = row.productResolutions[source.code];
                 if (!resolution || (!resolution.productId && !resolution.create)) throw new Error(`Resuelve el producto ${source.code}`);
                 if (resolution.productId && resolution.create) throw new Error("Selecciona un producto existente o uno nuevo, no ambos");
                 if (resolution.create && !resolution.create.name.trim()) throw new Error("El producto nuevo necesita nombre");
-                if (resolution.create && config.vatMappings[source.saleVatCode] === "reducida_8") throw new Error("El catálogo actual no admite IVA de venta 8% para productos nuevos; vincula un producto existente antes de importar");
+                if (resolution.create && source.saleVatCode && config.vatMappings[source.saleVatCode] === "reducida_8") throw new Error("El catálogo actual no admite IVA de venta 8% para productos nuevos; vincula un producto existente antes de importar");
                 const percent = exactDecimal(VAT[vatRate]);
                 const divisor = addDecimal(exactDecimal("1"), divideDecimal(percent, exactDecimal("100")));
                 if ((qty.split(".")[1]?.length ?? 0) > 4 || (rate.split(".")[1]?.length ?? 0) > 4) throw new Error("Cantidad y tasa admiten hasta 4 decimales");
                 if (compareDecimal(qty, exactDecimal("9999999999.9999")) > 0 || compareDecimal(rate, exactDecimal("99999999.9999")) > 0) throw new Error("Cantidad o tasa fuera del límite admitido");
+                if (header.sourceFormat === "complete" && compareDecimal(declaredSubtotal, ZERO) < 0) throw new Error("Sub Total Bs. no puede ser negativo");
                 const netCost = quantizeDecimal(config.costsIncludeVat ? divideDecimal(cost, divisor) : cost, { scale: 4, mode: "half_up" });
+                const netTotal = header.sourceFormat === "complete"
+                    ? (config.costsIncludeVat ? divideDecimal(declaredSubtotal, divisor) : declaredSubtotal)
+                    : multiplyDecimal(qty, netCost);
                 if (compareDecimal(netCost, exactDecimal("9999999999.9999")) > 0) throw new Error("Costo fuera del límite admitido");
-                const netTotal = multiplyDecimal(qty, netCost);
                 const originalCost = exactDecimal(source.currencyCost);
                 const currencyCost = quantizeDecimal(config.costsIncludeVat ? divideDecimal(originalCost, divisor) : originalCost, { scale: 4, mode: "half_up" });
                 if (compareDecimal(currencyCost, ZERO) < 0 || compareDecimal(currencyCost, exactDecimal("99999999.9999")) > 0) throw new Error("Costo en moneda fuera del límite admitido");

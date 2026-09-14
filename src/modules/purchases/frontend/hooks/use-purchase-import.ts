@@ -7,6 +7,7 @@ import {
     calculatePurchaseCsvRow,
     parsePurchaseHeaders,
     parsePurchaseItems,
+    parseCompletePurchaseCsv,
     normalizePurchaseRif,
     type PurchaseCsvConfig,
     type PurchaseCsvImportRow,
@@ -76,20 +77,25 @@ export function usePurchaseImport() {
         setBatch(next); setSession(toSession(next));
     }, []);
 
-    const submitFiles = useCallback(async (stage: "headers" | "details", companyId: string, files: File[], companyRif: string, sessionId?: string, targetInvoiceId?: string) => {
+    const submitFiles = useCallback(async (stage: "complete" | "headers" | "details", companyId: string, files: File[], companyRif: string, sessionId?: string, targetInvoiceId?: string) => {
         if (files.length === 0) return null;
         const requestGeneration = generation.current;
         setLoading(true); setError(null);
         try {
+            if (stage === "complete" && (files.length !== 1 || sessionId || targetInvoiceId)) {
+                throw new Error("Inicia una nueva importación y selecciona un solo archivo de compras completas.");
+            }
             const texts = await Promise.all(files.map((file) => file.text()));
             if (new Set(texts.map(text => text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"))).size !== texts.length) {
                 throw new Error("Seleccionaste el mismo contenido CSV más de una vez.");
             }
             const headerResults = stage === "headers" ? texts.map(parsePurchaseHeaders) : [];
             const itemResults = stage === "details" ? texts.map(parsePurchaseItems) : [];
-            const parserErrors = [...headerResults, ...itemResults].flatMap((result) => result.errors);
+            const completeResults = stage === "complete" ? texts.map(parseCompletePurchaseCsv) : [];
+            const parsedResults = [...headerResults, ...itemResults, ...completeResults];
+            const parserErrors = parsedResults.flatMap((result) => result.errors);
             if (parserErrors.length) throw new Error(parserErrors.join(" · "));
-            const reportedRifs = [...headerResults, ...itemResults].map((result) => result.companyRif).filter(Boolean);
+            const reportedRifs = parsedResults.map((result) => result.companyRif).filter(Boolean);
             if (reportedRifs.some((rif) => normalizePurchaseRif(rif) !== normalizePurchaseRif(companyRif))) {
                 throw new Error("El RIF del archivo no corresponde a la empresa activa.");
             }
@@ -112,7 +118,7 @@ export function usePurchaseImport() {
             if (associations.errors.length) throw new Error(associations.errors.join(" · "));
             const config: PurchaseCsvConfig = existingBatch?.config ?? { costsIncludeVat: false, vatMappings: {}, reviewed: false };
             const sourceCompanyRif = reportedRifs[0] ?? existingBatch?.companyRif ?? companyRif;
-            const rows: PurchaseCsvImportRow[] = sourceHeaders.map((header) => {
+            const rows: PurchaseCsvImportRow[] = stage === "complete" ? completeResults.flatMap(result => result.rows) : sourceHeaders.map((header) => {
                 const previous = existingRows.find((row) => row.header.sourceRow === header.sourceRow);
                 return { header, items: associations.assignments[header.sourceRow] ?? [], selected: previous?.selected ?? true, supplierId: previous?.supplierId, productResolutions: previous?.productResolutions ?? {}, acceptDifference: previous?.invoiceStatus === "confirmada" ? previous.acceptDifference : true };
             });
