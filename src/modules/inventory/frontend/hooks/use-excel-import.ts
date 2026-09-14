@@ -44,6 +44,10 @@ export interface ImportConfig {
   reference: string;
   /** Catalog-only by default. Positive stock requires a valuation cost; negative stock may start at zero cost. */
   importInitialStock: boolean;
+  /** Currency assigned to the sale-price column, or null to retain a mapped per-row currency. */
+  salePriceCurrency: "VES" | "USD" | null;
+  /** Whether the source sale price already includes IVA and must be normalized to the catalog's net contract. */
+  salePriceIncludesVat: boolean | null;
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────────

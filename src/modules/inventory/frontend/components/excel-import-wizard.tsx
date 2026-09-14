@@ -1,11 +1,13 @@
-// excel-import-wizard.tsx — 4-step wizard for importing inventory from Excel files.
+// excel-import-wizard.tsx — 5-step wizard for importing inventory from Excel files.
 // Step 1: Upload file + select sheet
 // Step 2: Review/adjust column mappings
-// Step 3: Import configuration (period, date, reference)
-// Step 4: Execution with progress
+// Step 3: Sale-price currency
+// Step 4: Import configuration (period, date, reference)
+// Step 5: Execution with progress
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { grossFromNet, netFromGross } from "@/src/modules/inventory/shared/totals";
 import * as XLSX from "xlsx";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -14,6 +16,8 @@ import {
   parseExcelFileWithProfiles,
   parseSemicolonCsvWorkbook,
   applyMappings,
+  parseNumeric,
+  normalizeVatType,
   SYSTEM_FIELD_OPTIONS,
   type ColumnMapping,
   type ExcelParseResult,
@@ -35,7 +39,7 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1 block";
 
-const STEP_LABELS = ["Archivo", "Columnas", "Configurar", "Importar"];
+const STEP_LABELS = ["Archivo", "Columnas", "Precios", "Configurar", "Importar"];
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -72,15 +76,17 @@ export function ExcelImportWizard() {
   // Step 2 state
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
 
-  // Step 3 state
+  // Step 4 state
   const [importConfig, setImportConfig] = useState<ImportConfig>({
     period: getCurrentPeriod(),
     date: getTodayDate(),
     reference: "",
     importInitialStock: false,
+    salePriceCurrency: null,
+    salePriceIncludesVat: null,
   });
 
-  // Step 4 state
+  // Step 5 state
   const [importData, setImportData] = useState<ExcelImportResult | null>(null);
   const { progress, executeImport, reset, cancel } = useExcelImport();
 
@@ -119,7 +125,7 @@ export function ExcelImportWizard() {
       setParseResult(result);
       setSelectedSheet(sheetToUse);
       setMappings(result.suggestedMappings);
-      setImportConfig(prev => ({ ...prev, reference: `Importación Excel - ${file.name}` }));
+      setImportConfig(prev => ({ ...prev, reference: `Importación Excel - ${file.name}`, salePriceCurrency: null, salePriceIncludesVat: null }));
     } catch {
       setFileError("No se pudo leer el archivo. Verifica que sea CSV, XLS o XLSX válido.");
     }
@@ -163,7 +169,7 @@ export function ExcelImportWizard() {
     }));
   }, []);
 
-  // ── Step 3 → 4 transition ──────────────────────────────────────────────
+  // ── Step 4 → 5 transition ──────────────────────────────────────────────
 
   const handleStartImport = useCallback(async () => {
     if (!workbookRef.current || !selectedSheet) return;
@@ -171,9 +177,11 @@ export function ExcelImportWizard() {
     const result = applyMappings(workbookRef.current, selectedSheet, mappings, {
       syntheticHeaders: profile?.syntheticHeaders,
       dataStartRowIndex: profile?.dataStartRowIndex,
+      salePriceCurrency: importConfig.salePriceCurrency ?? undefined,
+      salePriceIncludesVat: importConfig.salePriceIncludesVat ?? undefined,
     });
     setImportData(result);
-    setStep(3);
+    setStep(4);
     if (result.rows.length === 0) return;
     await executeImport(result.rows, result.newCustomFields, importConfig);
   }, [selectedSheet, mappings, importConfig, executeImport]);
@@ -201,7 +209,12 @@ export function ExcelImportWizard() {
       const hasName = mappings.some(m => m.target?.target === "product" && m.target.field === "name");
       return hasName;
     }
-    if (step === 2) return !!importConfig.period && !!importConfig.date;
+    if (step === 2) {
+      const hasMappedSaleCurrency = mappings.some((mapping) => mapping.target?.target === "product" && mapping.target.field === "saleCurrency");
+      return (importConfig.salePriceCurrency !== null || hasMappedSaleCurrency)
+        && importConfig.salePriceIncludesVat !== null;
+    }
+    if (step === 3) return !!importConfig.period && !!importConfig.date;
     return false;
   };
 
@@ -403,8 +416,95 @@ export function ExcelImportWizard() {
         </div>
       )}
 
-      {/* ── Step 2: Configuration ───────────────────────────────────────── */}
+      {/* ── Step 2: Sale-price currency ─────────────────────────────────── */}
       {step === 2 && (
+        <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
+          <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
+            Moneda e IVA del precio de venta
+          </h2>
+          <p className="text-[12px] text-[var(--text-tertiary)]">
+            Indica la moneda de la columna mapeada como precio de venta. La moneda y el costo de las últimas columnas del archivo se conservan como datos de costo y no cambian esta selección.
+          </p>
+          <div className={`grid gap-3 ${mappings.some((mapping) => mapping.target?.target === "product" && mapping.target.field === "saleCurrency") ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {mappings.some((mapping) => mapping.target?.target === "product" && mapping.target.field === "saleCurrency") && (
+              <label className={`cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 ${importConfig.salePriceCurrency === null ? "border-primary-500 bg-primary-500/[0.05]" : "border-border-light bg-surface-2/40"}`}>
+                <input
+                  type="radio"
+                  name="salePriceCurrency"
+                  checked={importConfig.salePriceCurrency === null}
+                  onChange={() => setImportConfig((current) => ({ ...current, salePriceCurrency: null }))}
+                  className="sr-only focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                />
+                <span className="block text-[13px] font-medium text-foreground">Usar moneda de cada fila</span>
+                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">Se conserva la columna mapeada como moneda del precio de venta.</span>
+              </label>
+            )}
+            {([
+              ["VES", "Bolívares (Bs.)", "Ejemplo: 3.874,15 representa Bs. 3.874,15 en el archivo."],
+              ["USD", "Dólares estadounidenses (USD)", "Ejemplo: 4,60 representa USD 4,60 en el archivo."],
+            ] as const).map(([currency, label, example]) => (
+              <label key={currency} className={`cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 ${importConfig.salePriceCurrency === currency ? "border-primary-500 bg-primary-500/[0.05]" : "border-border-light bg-surface-2/40"}`}>
+                <input
+                  type="radio"
+                  name="salePriceCurrency"
+                  value={currency}
+                  checked={importConfig.salePriceCurrency === currency}
+                  onChange={() => setImportConfig((current) => ({ ...current, salePriceCurrency: currency }))}
+                  className="sr-only focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                />
+                <span className="block text-[13px] font-medium text-foreground">{label}</span>
+                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">{example}</span>
+              </label>
+            ))}
+          </div>
+          <div className="space-y-2 border-t border-border-light pt-4">
+            <h3 className="text-[12px] font-medium text-foreground">Tratamiento del IVA</h3>
+            <p className="text-[11px] text-[var(--text-tertiary)]">El catálogo guarda el precio fijo sin IVA. La ganancia incluida en el precio final se conserva como parte de ese monto fijo y no se vuelve a calcular.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {([
+                [true, "Precio final: IVA y ganancia incluidos", "Se extrae el IVA según el producto para guardar el monto neto."],
+                [false, "Precio sin IVA", "El monto se guarda tal como viene en el archivo."],
+              ] as const).map(([includesVat, label, description]) => (
+                <label key={String(includesVat)} className={`cursor-pointer rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2 ${importConfig.salePriceIncludesVat === includesVat ? "border-primary-500 bg-primary-500/[0.05]" : "border-border-light bg-surface-2/40"}`}>
+                  <input
+                    type="radio"
+                    name="salePriceIncludesVat"
+                    checked={importConfig.salePriceIncludesVat === includesVat}
+                    onChange={() => setImportConfig((current) => ({ ...current, salePriceIncludesVat: includesVat }))}
+                    className="sr-only"
+                  />
+                  <span className="block text-[13px] font-medium text-foreground">{label}</span>
+                  <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">{description}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {parseResult?.previewRows[0] && (() => {
+            const salePriceMapping = mappings.find((mapping) => mapping.target?.target === "product" && mapping.target.field === "salePrice");
+            const preview = salePriceMapping ? parseResult.previewRows[0][salePriceMapping.sourceHeader] : null;
+            if (!preview) return null;
+            const hasMappedSaleCurrency = mappings.some((mapping) => mapping.target?.target === "product" && mapping.target.field === "saleCurrency");
+            if ((importConfig.salePriceCurrency === null && !hasMappedSaleCurrency) || importConfig.salePriceIncludesVat === null) {
+              return <p className="text-[12px] text-[var(--text-secondary)]">El primer precio es <strong>{preview}</strong>. Selecciona su moneda y tratamiento de IVA para continuar.</p>;
+            }
+            if (parseNumeric(preview) <= 0) {
+              return <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 text-[12px] text-amber-700">Vista previa: el primer precio es <strong>{preview}</strong>; no sobrescribirá el precio de venta que ya tenga el producto.</div>;
+            }
+            const vatMapping = mappings.find((mapping) => mapping.target?.target === "product" && mapping.target.field === "vatType");
+            const vatType = normalizeVatType(vatMapping ? parseResult.previewRows[0][vatMapping.sourceHeader] ?? "" : "");
+            const sourceAmount = parseNumeric(preview);
+            const vatRate = vatType === "general" ? "general_16" : "exenta";
+            const netAmount = importConfig.salePriceIncludesVat ? netFromGross(sourceAmount, vatRate) : sourceAmount;
+            const grossAmount = importConfig.salePriceIncludesVat ? sourceAmount : grossFromNet(netAmount, vatRate);
+            const ivaAmount = grossAmount - netAmount;
+            const currencyLabel = importConfig.salePriceCurrency === null ? "moneda de la fila" : importConfig.salePriceCurrency === "USD" ? "USD" : "Bs.";
+            return <div className="rounded-lg border border-border-light bg-surface-2/50 px-4 py-3 text-[12px] text-[var(--text-secondary)]">Vista previa: origen <strong>{currencyLabel} {preview}</strong> · neto a guardar <strong>{currencyLabel} {netAmount.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> · IVA <strong>{currencyLabel} {ivaAmount.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> · precio final <strong>{currencyLabel} {grossAmount.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>. Se guarda como precio fijo; no se aplica otro margen.</div>;
+          })()}
+        </div>
+      )}
+
+      {/* ── Step 3: Configuration ───────────────────────────────────────── */}
+      {step === 3 && (
         <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
           <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
             Configuración de importación
@@ -465,8 +565,8 @@ export function ExcelImportWizard() {
         </div>
       )}
 
-      {/* ── Step 3: Execution ───────────────────────────────────────────── */}
-      {step === 3 && (
+      {/* ── Step 4: Execution ───────────────────────────────────────────── */}
+      {step === 4 && (
         <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
           <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
             {progress.phase === "done"
@@ -562,19 +662,19 @@ export function ExcelImportWizard() {
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          {step > 0 && (step < 3 || (step === 3 && progress.phase === "idle")) && (
+          {step > 0 && (step < 4 || (step === 4 && progress.phase === "idle")) && (
             <BaseButton.Root variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} leftIcon={<ArrowLeft size={14} />}>
               Atrás
             </BaseButton.Root>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {progress.phase !== "idle" && progress.phase !== "done" && step === 3 && (
+          {progress.phase !== "idle" && progress.phase !== "done" && step === 4 && (
             <BaseButton.Root variant="secondary" size="sm" onClick={cancel}>
               Cancelar
             </BaseButton.Root>
           )}
-          {step < 2 && (
+          {step < 3 && (
             <BaseButton.Root
               variant="primary"
               size="sm"
@@ -585,7 +685,7 @@ export function ExcelImportWizard() {
               Siguiente
             </BaseButton.Root>
           )}
-          {step === 2 && (
+          {step === 3 && (
             <BaseButton.Root
               variant="primary"
               size="sm"
@@ -596,8 +696,8 @@ export function ExcelImportWizard() {
               Iniciar importación
             </BaseButton.Root>
           )}
-          {step === 3 && progress.phase === "done" && (
-            <BaseButton.Root variant="primary" size="sm" onClick={() => { reset(); setStep(0); setParseResult(null); setFileName(null); }}>
+          {step === 4 && progress.phase === "done" && (
+            <BaseButton.Root variant="primary" size="sm" onClick={() => { reset(); setStep(0); setParseResult(null); setFileName(null); setMappings([]); setSelectedSheet(""); detectedProfileRef.current = null; setImportConfig((current) => ({ ...current, reference: "", salePriceCurrency: null, salePriceIncludesVat: null })); }}>
               Nueva importación
             </BaseButton.Root>
           )}

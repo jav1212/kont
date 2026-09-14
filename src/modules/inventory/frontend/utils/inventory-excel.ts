@@ -6,6 +6,7 @@
 import * as XLSX from "xlsx";
 import type { MeasureUnit, SalePricing, VatType } from "@/src/modules/inventory/backend/domain/product";
 import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { netFromGross } from "@/src/modules/inventory/shared/totals";
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 
 /** Parse semicolon-delimited CSV as text so locale-formatted numbers remain untouched. */
@@ -319,6 +320,14 @@ export interface ParseSheetOptions {
   dataStartRowIndex?: number;
 }
 
+/** Options that alter how mapped values are interpreted during an import. */
+export interface ApplyMappingsOptions extends Pick<ParseSheetOptions, "syntheticHeaders" | "dataStartRowIndex"> {
+  /** Explicit currency for every mapped sale price in the file. */
+  salePriceCurrency?: CurrencyCode;
+  /** Whether mapped positive sale prices are final amounts that already include IVA. */
+  salePriceIncludesVat?: boolean;
+}
+
 // Extract headers, preview, and mappings from a specific sheet.
 export function parseExcelSheet(
   workbook: XLSX.WorkBook,
@@ -378,12 +387,20 @@ export function parseExcelSheet(
   return { sheetNames: workbook.SheetNames, headers, suggestedMappings, previewRows, totalRows };
 }
 
-// Apply confirmed mappings to all rows and produce typed import data.
+/**
+ * Apply the selected column mappings and produce typed rows for import.
+ *
+ * @param workbook - Source workbook containing the selected sheet.
+ * @param sheetName - Name of the sheet to read.
+ * @param mappings - Confirmed source-column mappings.
+ * @param options - Headerless-profile and sale-price interpretation options.
+ * @returns Valid import rows together with row-level errors, warnings, and custom fields.
+ */
 export function applyMappings(
   workbook: XLSX.WorkBook,
   sheetName: string,
   mappings: ColumnMapping[],
-  options?: Pick<ParseSheetOptions, "syntheticHeaders" | "dataStartRowIndex">,
+  options?: ApplyMappingsOptions,
 ): ExcelImportResult {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return { rows: [], errors: [], warnings: [], newCustomFields: [] };
@@ -514,19 +531,30 @@ export function applyMappings(
       continue;
     }
     const salePrice = parseNumeric(getVal(raw, "product.salePrice"));
-    // INVENTARIO3's primary price column is the local-currency price; its
-    // trailing "moneda" field is retained as source metadata because it does
-    // not consistently describe that amount. Generic mapped files can still
-    // supply an explicit saleCurrency.
-    const saleCurrency = normalizeSaleCurrency(getVal(raw, "product.saleCurrency"))
+    // The selected import currency belongs to the mapped sale-price column.
+    // INVENTARIO3's trailing cost and cost-currency columns are source metadata
+    // and must never determine a sale price's currency.
+    const saleCurrency = options?.salePriceCurrency
+      ?? normalizeSaleCurrency(getVal(raw, "product.saleCurrency"))
       ?? (salePrice > 0 ? "VES" : null);
+    const netSalePrice = salePrice > 0 && options?.salePriceIncludesVat
+      ? netFromGross(salePrice, vatType === "general" ? "general_16" : "exenta")
+      : salePrice;
     const salePricing = salePrice > 0 && saleCurrency
-      ? { mode: "fixed" as const, amount: salePrice, currency: saleCurrency }
+      ? { mode: "fixed" as const, amount: netSalePrice, currency: saleCurrency }
       : undefined;
 
     // Custom fields
     const customFields: Record<string, unknown> = {};
     if (sourceType) customFields.tipo_origen = sourceType;
+    if (salePrice > 0 && saleCurrency) {
+      customFields.importacion_precio_venta = {
+        amount: salePrice,
+        currency: saleCurrency,
+        includesVat: options?.salePriceIncludesVat ?? false,
+        netAmount: netSalePrice,
+      };
+    }
     for (const cm of customMappings) {
       const val = raw[cm.index];
       if (val !== undefined && val !== null && val !== "") {
@@ -649,7 +677,7 @@ function tryDetectFromSheet(
     const stringCells = row.filter(cell => typeof cell === "string" && cell.trim().length > 0);
     if (stringCells.length >= 3) {
       const headers = row.map(cell => String(cell ?? "").trim());
-      const result = detectFormatProfile(sheetNames, headers, fileName);
+      const result = detectFormatProfile(sheetNames, headers, fileName, rows);
       if (result) return result;
     }
   }

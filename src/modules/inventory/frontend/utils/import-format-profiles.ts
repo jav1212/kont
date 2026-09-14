@@ -58,6 +58,14 @@ export interface ImportFormatProfile {
     sheetNameHints?: string[];
     /** Regex tested against the uploaded filename for an extra score boost. */
     filenamePattern?: RegExp;
+    /**
+     * Signature for headerless exports. A row must have the minimum number of
+     * columns and match every probe for the profile to apply.
+     */
+    headerlessLayout?: {
+      minColumns: number;
+      probes: Array<{ index: number; pattern: RegExp }>;
+    };
   };
 }
 
@@ -66,8 +74,8 @@ const INVENTARIO3_HEADERS = [
   "precio 2", "precio 3", "precio 4", "iva", "unidad", "extras",
   "departamento 1", "departamento 2", "departamento 3", "departamento 4",
   "departamento 5", "departamento 6", "departamento 7", "departamento 8",
-  "departamento 9", "departamento 10", "tipo origen", "precio divisa",
-  "estanteria", "moneda",
+  "departamento 9", "departamento 10", "tipo origen", "costo referencia",
+  "estanteria", "moneda costo",
 ];
 
 const INVENTARIO3_PROFILE: ImportFormatProfile = {
@@ -87,8 +95,9 @@ const INVENTARIO3_PROFILE: ImportFormatProfile = {
     iva: { target: "product", field: "vatType" },
     unidad: { target: "product", field: "measureUnit" },
     "tipo origen": { target: "product", field: "sourceType" },
-    moneda: { target: "custom", field: "moneda_origen" },
-    "precio divisa": { target: "custom", field: "precio_divisa_referencia" },
+    // These final columns describe the cost, never the sale price or its currency.
+    "costo referencia": { target: "custom", field: "costo_referencia" },
+    "moneda costo": { target: "custom", field: "moneda_costo" },
     extras: null, estanteria: null,
     "precio 2": null, "precio 3": null, "precio 4": null,
     "departamento 1": null, "departamento 2": null, "departamento 3": null,
@@ -99,6 +108,17 @@ const INVENTARIO3_PROFILE: ImportFormatProfile = {
   detect: {
     requiredHeaders: [],
     filenamePattern: /^inventario3\.csv$/i,
+    headerlessLayout: {
+      minColumns: 25,
+      probes: [
+        { index: 0, pattern: /\S/ },
+        { index: 1, pattern: /\S/ },
+        { index: 8, pattern: /^(IVA\d*|EXENTO)$/i },
+        { index: 9, pattern: /^(UNI|UNIDAD|KG|GR|G|GAL)$/i },
+        { index: 21, pattern: /^(PRODUCTO|COMPUESTO|CONTORNO)$/i },
+        { index: 24, pattern: /^(USD|USD \$|BS\.?|VES|EUR|EUR €|B|D)$/i },
+      ],
+    },
   },
 };
 
@@ -240,11 +260,18 @@ export interface ProfileDetectionResult {
 /**
  * Score each registered profile against the file metadata and return
  * the best match above the confidence threshold, or null for generic fallback.
+ *
+ * @param sheetNames - Workbook sheet names used for sheet-hint scoring.
+ * @param rawHeaders - Candidate header row, if the export supplies one.
+ * @param fileName - Uploaded file name used as a legacy detection hint.
+ * @param rawRows - Sheet rows used to identify supported headerless layouts.
+ * @returns The strongest matching format profile, or null for generic parsing.
  */
 export function detectFormatProfile(
   sheetNames: string[],
   rawHeaders: string[],
   fileName: string,
+  rawRows?: unknown[][],
 ): ProfileDetectionResult | null {
   const normalizedHeaders = rawHeaders.map(h => normalizeHeader(h));
   const headerSet = new Set(normalizedHeaders.filter(Boolean));
@@ -253,8 +280,17 @@ export function detectFormatProfile(
   let bestResult: ProfileDetectionResult | null = null;
 
   for (const profile of PROFILES) {
-    if (profile.syntheticHeaders && profile.detect.filenamePattern?.test(fileName)) {
-      return { profile, confidence: 1 };
+    if (profile.syntheticHeaders) {
+      const layout = profile.detect.headerlessLayout;
+      const matchesLayout = layout && rawRows?.some((row) => (
+        row.length >= layout.minColumns
+        && layout.probes.every(({ index, pattern }) => pattern.test(String(row[index] ?? "").trim()))
+      ));
+      if (matchesLayout) return { profile, confidence: 1 };
+      if (profile.detect.filenamePattern?.test(fileName)) return { profile, confidence: 0.85 };
+      // Headerless profiles must not match a normal workbook just because they
+      // have no required headers.
+      continue;
     }
     // Gate: all required headers must be present
     const allRequired = profile.detect.requiredHeaders.every(rh => headerSet.has(rh));
