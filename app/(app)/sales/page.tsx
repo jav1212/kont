@@ -248,21 +248,24 @@ export default function SalesDashboardPage() {
                             </BaseButton.Root>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="isolate overflow-x-auto">
                             <table className="w-full min-w-[1024px] text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/50">
-                                        {["Fecha", "Tipo", "Nº", "Cliente", "RIF", "Subtotal", "IVA", "IGTF", "Total", "Estado", "", ""].map((h, i) => (
-                                            <th key={i}
+                                        {["Fecha", "Tipo", "Nº", "Cliente", "RIF", "Subtotal", "IVA", "IGTF", "Total", "Estado"].map((h) => (
+                                            <th key={h}
                                                 className={["px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap", ["Subtotal", "IVA", "IGTF", "Total"].includes(h) ? "text-right" : "text-left"].join(" ")}>
                                                 {h}
                                             </th>
                                         ))}
+                                        <th scope="col" className="sticky right-0 z-20 w-[116px] border-l border-border-light bg-surface-2 px-4 py-2.5 text-right text-[11px] font-normal uppercase tracking-[0.12em] text-[var(--text-tertiary)] shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)]">
+                                            Acciones
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filtered.map((f) => (
-                                        <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                        <tr key={f.id} className="group border-b border-border-light/50 transition-colors hover:bg-surface-2">
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
                                             <td className="px-4 py-2.5 whitespace-nowrap"><span className="inline-flex rounded border border-border-light px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">{(f.documentType ?? "venta") === "nota_entrega" ? "Nota de entrega" : f.salesChannel === "pos" ? "Venta · POS" : "Venta"}</span></td>
                                             <td className="px-4 py-2.5 text-foreground tabular-nums whitespace-nowrap">{f.invoiceNumber}</td>
@@ -275,19 +278,27 @@ export default function SalesDashboardPage() {
                                             </td>
                                             <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right whitespace-nowrap">{fmtN(f.total)}</td>
                                             <td className="px-4 py-2.5 whitespace-nowrap"><StatusBadge status={f.status} /></td>
-                                            <td className="px-4 py-2.5 whitespace-nowrap">
-                                                <Link href={`/sales/${f.id}`} className="text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors">
-                                                    Ver
-                                                </Link>
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                {f.status === "borrador" && (
-                                                    <button type="button" onClick={() => setConfirmDelete(f.id!)}
-                                                        className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                                        aria-label="Eliminar" title="Eliminar borrador">
-                                                        <Trash2 size={14} strokeWidth={2} />
-                                                    </button>
-                                                )}
+                                            <td className="sticky right-0 z-10 w-[116px] border-l border-border-light bg-surface-1 px-4 py-2.5 shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-surface-2">
+                                                <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                                                    <Link
+                                                        href={`/sales/${f.id}`}
+                                                        className="inline-flex h-9 items-center rounded px-2 text-[11px] uppercase tracking-[0.10em] text-primary-500 transition-colors hover:bg-primary-500/10 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
+                                                        aria-label={`Ver factura ${f.invoiceNumber}`}
+                                                    >
+                                                        Ver
+                                                    </Link>
+                                                    {f.status === "borrador" && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmDelete(f.id!)}
+                                                            className="flex size-9 items-center justify-center rounded text-[var(--text-tertiary)] transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                                                            aria-label={`Eliminar factura ${f.invoiceNumber}`}
+                                                            title="Eliminar borrador"
+                                                        >
+                                                            <Trash2 size={14} strokeWidth={2} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

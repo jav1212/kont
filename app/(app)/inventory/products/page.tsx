@@ -900,7 +900,7 @@ export default function ProductosPage() {
                         </div>
 
                         {/* Desktop: dense table */}
-                        <div className="hidden md:block overflow-x-auto">
+                        <div className="hidden md:block isolate overflow-x-auto">
                             <table className="w-full min-w-[860px] font-sans text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/60">
@@ -925,7 +925,6 @@ export default function ProductosPage() {
                                             { label: "Precio venta", align: "text-right" },
                                             { label: "Estado",       align: "text-left"  },
                                             ...customFields.map((cf) => ({ label: cf.label, align: "text-left" })),
-                                            { label: "",             align: "text-right" },
                                         ].map((h, idx) => (
                                             <th
                                                 key={idx}
@@ -934,13 +933,20 @@ export default function ProductosPage() {
                                                 {h.label}
                                             </th>
                                         ))}
+                                        <th scope="col" className="sticky right-0 z-20 w-[116px] border-l border-border-light bg-surface-2 px-4 py-3 text-right font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)]">
+                                            Acciones
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="font-sans">
-                                    {pageProducts.map((p) => (
+                                    {pageProducts.map((p, index) => (
                                         <tr key={p.id} className={[
-                                            "border-b border-border-light/70 align-middle transition-colors even:bg-surface-2/25",
-                                            selected.has(p.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2",
+                                            "group border-b border-border-light/70 align-middle transition-colors",
+                                            selected.has(p.id!)
+                                                ? "bg-[color-mix(in_srgb,var(--surface-1)_95%,var(--primary-500))] hover:bg-[color-mix(in_srgb,var(--surface-1)_90%,var(--primary-500))]"
+                                                : index % 2 === 1
+                                                    ? "bg-[color-mix(in_srgb,var(--surface-1)_75%,var(--surface-2))] hover:bg-surface-2"
+                                                    : "bg-surface-1 hover:bg-surface-2",
                                         ].join(" ")}>
                                             <td className="px-4 py-3 w-10">
                                                 <input
@@ -993,20 +999,27 @@ export default function ProductosPage() {
                                                     {p.customFields?.[cf.key] != null ? String(p.customFields[cf.key]) : "—"}
                                                 </td>
                                             ))}
-                                            <td className="px-4 py-3 text-right">
+                                            <td className={[
+                                                "sticky right-0 z-10 w-[116px] border-l border-border-light px-4 py-3 text-right shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)] transition-colors",
+                                                selected.has(p.id!)
+                                                    ? "bg-[color-mix(in_srgb,var(--surface-1)_95%,var(--primary-500))] group-hover:bg-[color-mix(in_srgb,var(--surface-1)_90%,var(--primary-500))]"
+                                                    : index % 2 === 1
+                                                        ? "bg-[color-mix(in_srgb,var(--surface-1)_75%,var(--surface-2))] group-hover:bg-surface-2"
+                                                        : "bg-surface-1 group-hover:bg-surface-2",
+                                            ].join(" ")}>
                                                 <div className="flex items-center justify-end gap-1">
                                                     {confirmDelete === p.id ? (
-                                                        <div className="flex items-center gap-2 px-2">
-                                                            <span className="font-sans text-[12px] text-[var(--text-secondary)] hidden sm:inline">¿Eliminar?</span>
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <span className="font-sans text-[12px] text-[var(--text-secondary)]">¿Eliminar?</span>
                                                             <button
                                                                 onClick={() => handleDelete(p.id!)}
-                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-text-error hover:text-error transition-colors"
+                                                                className="inline-flex h-9 items-center rounded px-2 font-mono text-[11px] uppercase tracking-[0.10em] text-text-error transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/50"
                                                             >
                                                                 Confirmar
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(null)}
-                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
+                                                                className="inline-flex h-9 items-center rounded px-2 font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] transition-colors hover:bg-surface-3 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
                                                             >
                                                                 Cancelar
                                                             </button>
@@ -1015,7 +1028,7 @@ export default function ProductosPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => p.id ? router.push(`/inventory/products/${p.id}`) : openEdit(p)}
-                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                                                                className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--text-tertiary)] transition-colors hover:bg-primary-500/10 hover:text-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
                                                                 aria-label={`Editar ${p.name}`}
                                                                 title="Editar"
                                                             >
@@ -1023,7 +1036,7 @@ export default function ProductosPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(p.id!)}
-                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/10 transition-colors"
+                                                                className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--text-tertiary)] transition-colors hover:bg-error/10 hover:text-text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/50"
                                                                 aria-label={`Eliminar ${p.name}`}
                                                                 title="Eliminar"
                                                             >
