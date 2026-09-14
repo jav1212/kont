@@ -501,16 +501,18 @@ export default function EntradasPage() {
                             </button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="isolate overflow-x-auto">
                             <table className="w-full min-w-[1024px] text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/60">
-                                        {["Fecha", "Proveedor", "Nº Factura", "Tasa", "Subtotal", "IVA", "Total", "Estado", "", ""].map((h, i) => (
+                                        {["Fecha", "Proveedor", "Nº Factura", "Tasa", "Subtotal", "IVA", "Total", "Estado", "Acciones"].map((h) => (
                                             <th
-                                                key={i}
+                                                key={h}
+                                                scope="col"
                                                 className={[
                                                     "whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]",
                                                     ["Subtotal", "IVA", "Total", "Tasa"].includes(h) ? "text-right" : "text-left",
+                                                    h === "Acciones" ? "sticky right-0 z-20 w-[116px] border-l border-border-light bg-surface-2 shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)]" : "",
                                                 ].join(" ")}
                                             >
                                                 {h}
@@ -520,7 +522,7 @@ export default function EntradasPage() {
                                 </thead>
                                 <tbody>
                                     {filtered.map((f) => (
-                                        <tr key={f.id} className="border-b border-border-light/70 align-middle transition-colors hover:bg-surface-2">
+                                        <tr key={f.id} className="group border-b border-border-light/70 align-middle transition-colors hover:bg-surface-2">
                                             <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmtDate(f.date)}</td>
                                             <td className="px-4 py-3 font-sans font-semibold text-foreground">{f.supplierName ?? "—"}</td>
                                             <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)]">{f.invoiceNumber || "—"}</td>
@@ -536,24 +538,25 @@ export default function EntradasPage() {
                                             <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)] text-right whitespace-nowrap">{fmtN(f.vatAmount)}</td>
                                             <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right whitespace-nowrap">{fmtN(f.total)}</td>
                                             <td className="px-4 py-2.5 whitespace-nowrap"><StatusBadge status={f.status} /></td>
-                                            <td className="px-4 py-2.5 whitespace-nowrap">
-                                                <Link
-                                                    href={`/purchases/${f.id}`}
-                                                    className="text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
-                                                >
-                                                    Ver
-                                                </Link>
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => requestDelete(f.id!, f.status)}
-                                                    className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                                    aria-label="Eliminar"
-                                                    title="Eliminar"
-                                                >
-                                                    <Trash2 size={14} strokeWidth={2} />
-                                                </button>
+                                            <td className="sticky right-0 z-10 w-[116px] border-l border-border-light bg-surface-1 px-4 py-2.5 shadow-[-8px_0_14px_-12px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-surface-2">
+                                                <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                                                    <Link
+                                                        href={`/purchases/${f.id}`}
+                                                        className="inline-flex h-9 items-center rounded px-2 text-[11px] uppercase tracking-[0.10em] text-primary-500 transition-colors hover:bg-primary-500/10 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
+                                                        aria-label={`Ver factura${f.invoiceNumber ? ` ${f.invoiceNumber}` : ""}`}
+                                                    >
+                                                        Ver
+                                                    </Link>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => requestDelete(f.id!, f.status)}
+                                                        className="flex size-9 items-center justify-center rounded text-[var(--text-tertiary)] transition-colors hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                                                        aria-label={`Eliminar factura${f.invoiceNumber ? ` ${f.invoiceNumber}` : ""}`}
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 size={14} strokeWidth={2} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
