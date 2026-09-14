@@ -25,7 +25,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     return (
         <div className="flex-1 min-h-0 overflow-y-auto bg-surface-2">
             <PageHeader title="Configuración" subtitle={active?.subtitle ?? FALLBACK_SUBTITLE} />
-            <main className={`${pathname === "/settings/organization" ? "max-w-5xl" : "max-w-3xl"} mx-auto px-4 pt-6 pb-16 sm:px-6 lg:px-10 lg:pt-10`}>
+            <main className="w-full px-4 pt-6 pb-16 sm:px-6 lg:pt-10">
                 {children}
             </main>
         </div>

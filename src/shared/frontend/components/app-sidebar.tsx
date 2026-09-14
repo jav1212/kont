@@ -249,6 +249,12 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 <SidebarUpdateBanner />
                 <div className="flex flex-col gap-0.5">
                     <UtilityShortcut
+                        href={settingsHref}
+                        active={isSettingsRoute}
+                        label="Configuración"
+                        icon={<Settings size={17} strokeWidth={1.8} />}
+                    />
+                    <UtilityShortcut
                         href={buildContextHref("/help")}
                         active={pathname.startsWith("/help")}
                         label="Ayuda"

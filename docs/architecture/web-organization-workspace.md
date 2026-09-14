@@ -15,7 +15,9 @@ navegación principal: aparece junto a los módulos disponibles, sin entrar en
 el catálogo portable de módulos del espacio de trabajo ni poder seleccionarse
 como tal. Sus entradas se agrupan en Organización, Empresa y Cuenta personal;
 las rutas directas de `/settings/*` activan esa superficie sin cambiar el
-módulo operativo confirmado.
+módulo operativo confirmado. El acceso **Configuración** del pie de la barra,
+encima de **Ayuda**, activa esa misma navegación. Su contenido aprovecha el
+ancho disponible y conserva márgenes laterales adaptables.
 
 Cuando hay varias organizaciones, el selector abre un directorio buscable y
 agrupa las cuentas propias (`owner`) bajo **Mi cuenta** y las demás membresías
