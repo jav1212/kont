@@ -445,13 +445,14 @@ export default function ProductosPage() {
                 <div className="rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)]">
                     <div className="flex w-full flex-wrap items-center gap-3">
                         <div className="relative order-3 min-w-[220px] flex-1 lg:max-w-[520px]">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
-                            <input
-                                type="text"
+                            <BaseInput.Field
+                                aria-label="Buscar productos"
+                                size="sm"
                                 placeholder="Buscar por código, nombre, departamento…"
                                 value={search}
-                                onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                                className="h-9 w-full rounded-lg border border-border-light bg-surface-1 pl-9 pr-3 font-mono text-[13px] text-foreground outline-none placeholder:text-[var(--text-tertiary)] transition-colors hover:border-border-medium focus:border-primary-500/60"
+                                onValueChange={(value) => { setSearch(value); setSelected(new Set()); }}
+                                startContent={<Search aria-hidden="true" size={14} className="shrink-0 text-[var(--text-tertiary)]" />}
+                                inputClassName="font-mono"
                             />
                         </div>
 
