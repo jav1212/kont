@@ -20,7 +20,7 @@ import {
     UserRound,
     X,
 } from "lucide-react";
-import { APP_MODULES, MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
+import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE } from "@/src/shared/frontend/navigation";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
@@ -31,7 +31,7 @@ import type { ModuleCode } from "@kontave/modules/domain";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
-import { SidebarModuleSelector } from "@/src/shared/frontend/components/sidebar-module-selector";
+import { SidebarModuleSelector, type SelectableModule } from "@/src/shared/frontend/components/sidebar-module-selector";
 import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
 import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-update-banner";
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
@@ -71,6 +71,7 @@ function buildModuleSubtitle(moduleId: string | null, planName?: string | null):
         case "documents":   return "Archivos y contratos";
         case "tools":       return "BCV · SENIAT";
         case "billing":     return planName ?? "Suscripción";
+        case "settings":    return "Organización, empresa y cuenta";
         default:            return null;
     }
 }
@@ -117,7 +118,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     }, [pathname]);
 
     const activeModuleId = workspaceApplication.workspace.activeModule?.code ?? null;
-    const requestedModuleId = activeModuleId ?? derivedModuleId;
+    const isSettingsRoute = pathname === "/settings" || pathname.startsWith("/settings/");
+    const requestedModuleId = isSettingsRoute ? WEB_SETTINGS_MODULE.id : activeModuleId ?? derivedModuleId;
     const availableModuleCodes = useMemo(
         () => new Set(workspaceApplication.workspace.modules.map((module) => module.code)),
         [workspaceApplication.workspace.modules],
@@ -137,8 +139,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         accounting: subscriptionAllows(subscriptionAccess.get("accounting")),
     }), [subscriptionAccess]);
 
-    const selectableModules = useMemo(() =>
-        APP_MODULES
+    const selectableModules = useMemo((): SelectableModule[] => [
+        ...APP_MODULES
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (!isKnownOrganizationModule(mod.id)) return false;
@@ -149,6 +151,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 return true;
             })
             .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
+        WEB_SETTINGS_MODULE,
+    ],
         [availableModuleCodes, organizationAccess, paidAccess, workspaceApplication.status]);
 
     const resolvedModuleId = selectableModules.some((module) => module.id === requestedModuleId) ? requestedModuleId : null;
@@ -158,6 +162,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     }) : []), [organizationAccess.can, resolvedModuleId]);
 
     async function handleSelectModule(id: string, href: string) {
+        if (id === WEB_SETTINGS_MODULE.id) {
+            router.push(settingsHref);
+            return;
+        }
         const tenantId = workspaceController.getSnapshot().tenantId;
         await workspaceController.selectModule(id as ModuleCode);
         const committed = workspaceController.getSnapshot();
@@ -240,12 +248,6 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             >
                 <SidebarUpdateBanner />
                 <div className="flex flex-col gap-0.5">
-                    <UtilityShortcut
-                        href={settingsHref}
-                        active={pathname.startsWith("/settings")}
-                        label="Configuración"
-                        icon={<Settings size={17} strokeWidth={1.8} />}
-                    />
                     <UtilityShortcut
                         href={buildContextHref("/help")}
                         active={pathname.startsWith("/help")}

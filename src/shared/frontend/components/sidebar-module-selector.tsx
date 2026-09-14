@@ -7,6 +7,7 @@
 // with the module's glyph inside. Click → floating listbox menu.
 
 import { useRef, useState } from "react";
+import { Settings } from "lucide-react";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
@@ -93,6 +94,8 @@ function renderModuleIcon(id: string, size: number) {
                     <path d="M9 5L2.5 11.5a1.4 1.4 0 0 0 2 2L11 7" />
                 </svg>
             );
+        case "settings":
+            return <Settings size={s} strokeWidth={1.6} aria-hidden="true" />;
         default:
             return null;
     }

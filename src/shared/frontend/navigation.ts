@@ -12,10 +12,27 @@ export const APP_MODULES = [
 
 export type AppModule = typeof APP_MODULES[number];
 
+/**
+ * Web-only navigation surface for settings. It deliberately does not enter
+ * APP_MODULES because it is not a workspace module that can be installed.
+ */
+export const WEB_SETTINGS_MODULE = {
+    id: "settings",
+    label: "Configuración",
+    href: "/settings/organization",
+} as const;
+
 // ── Sub-navigation per module ─────────────────────────────────────────────────
 // employees is absorbed into payroll subnav and excluded from the module selector.
 
-export type SubNavItem = { href: string; label: string; group?: string | null; beta?: boolean };
+export type SubNavItem = {
+    href: string;
+    label: string;
+    group?: string | null;
+    beta?: boolean;
+    icon?: string;
+    subtitle?: string;
+};
 
 export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     payroll: [
@@ -77,5 +94,18 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/tools/divisas",           label: "Divisas BCV",       group: "Conversores"    },
         { href: "/tools/calendario-seniat", label: "Calendario SENIAT", group: "Calendarios"    },
         { href: "/tools/status",            label: "Estatus Portales",  group: "Monitoreo"      },
+    ],
+    settings: [
+        { href: "/settings/organization", label: "Información general", group: "Organización", icon: "building", subtitle: "Identidad, empresas y personas de tu organización." },
+        { href: "/settings/members", label: "Miembros", group: "Organización", icon: "users", subtitle: "Personas e invitaciones del espacio de trabajo." },
+        { href: "/settings/roles", label: "Roles", group: "Organización", icon: "shield", subtitle: "Ajusta los permisos de cada rol del sistema." },
+        { href: "/settings/access", label: "Acceso", group: "Organización", icon: "barcode", subtitle: "Terminales y carnets para iniciar sesión con lector." },
+        { href: "/settings/billing", label: "Facturación", group: "Organización", icon: "credit-card", subtitle: "Plan activo, pagos y solicitudes de suscripción." },
+        { href: "/settings/referrals", label: "Referidos", group: "Organización", icon: "gift", subtitle: "Invita a otros profesionales y gana crédito." },
+        { href: "/settings/company", label: "Datos de empresa", group: "Empresa", icon: "building", subtitle: "Datos fiscales y opciones de los reportes PDF." },
+        { href: "/settings/inventory-config", label: "Inventario", group: "Empresa", icon: "boxes", subtitle: "Campos personalizados visibles en productos." },
+        { href: "/settings/apariencia", label: "Apariencia", group: "Cuenta personal", icon: "palette", subtitle: "Tema y preferencias visuales de este navegador." },
+        { href: "/settings/instalar-app", label: "Instalar app", group: "Cuenta personal", icon: "download", subtitle: "Cómo agregar Konta a Windows, macOS, Android o iOS." },
+        { href: "/settings/devices", label: "Dispositivos", group: "Cuenta personal", icon: "monitor", subtitle: "Conecta lectores y equipos locales con Kontave." },
     ],
 };

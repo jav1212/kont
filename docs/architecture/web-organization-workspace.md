@@ -10,8 +10,12 @@ no acredita un despliegue de los cambios Web o API.
 
 El selector de organización aparece en la barra lateral incluso cuando hay un
 solo espacio disponible. La empresa seleccionada y la cuenta personal siguen
-siendo conceptos distintos. Configuración agrupa sus entradas en Organización,
-Empresa y Cuenta personal.
+siendo conceptos distintos. Configuración es una superficie Web de la
+navegación principal: aparece junto a los módulos disponibles, sin entrar en
+el catálogo portable de módulos del espacio de trabajo ni poder seleccionarse
+como tal. Sus entradas se agrupan en Organización, Empresa y Cuenta personal;
+las rutas directas de `/settings/*` activan esa superficie sin cambiar el
+módulo operativo confirmado.
 
 Cuando hay varias organizaciones, el selector abre un directorio buscable y
 agrupa las cuentas propias (`owner`) bajo **Mi cuenta** y las demás membresías
@@ -36,9 +40,10 @@ devolver el espacio actualizado.
 
 El selector usa `avatarUrl` antes de `logoUrl` y muestra la inicial del nombre
 si la imagen no existe o no puede cargarse. Su campo de búsqueda expone el slot
-`organization-search` para la normalización de la entrada. En escritorio la
-barra lateral se apila por encima del panel de contenido para que el directorio
-abierto no quede pintado debajo de la navegación de Configuración.
+`organization-search` para la normalización de la entrada. La subnavegación de
+Configuración se presenta en la misma barra lateral y se filtra con la política
+canónica de rutas; el layout de la ruta solo muestra encabezado y contenido,
+sin rail secundario ni pestañas móviles propios.
 
 El escaneo de clases de HeroUI se declara en
 [globals.css](../../app/globals.css) con una ruta `@source` relativa a esa hoja

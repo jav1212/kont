@@ -21,26 +21,34 @@ import {
     BadgePercent,
     BarChart3,
     BookOpen,
+    Building2,
     Boxes,
     Calculator,
     CalendarDays,
     CalendarRange,
     CircleDot,
     ClipboardList,
+    CreditCard,
     DollarSign,
+    Download,
     FileText,
     FolderOpen,
+    Gift,
     HandCoins,
     History,
     LayoutDashboard,
     ListTree,
+    MonitorCog,
     Package,
+    Palette,
     Plug,
     ReceiptText,
     RefreshCcw,
     Scale,
     ScrollText,
+    ScanBarcode,
     Settings,
+    ShieldCheck,
     TreePalm,
     Truck,
     UserMinus,
@@ -130,6 +138,19 @@ const NAV_ITEM_ICONS: Record<string, LucideIcon> = {
     "/tools/status": Activity,
 };
 
+const SETTINGS_ITEM_ICONS: Record<string, LucideIcon> = {
+    building: Building2,
+    users: Users,
+    shield: ShieldCheck,
+    barcode: ScanBarcode,
+    "credit-card": CreditCard,
+    gift: Gift,
+    boxes: Boxes,
+    palette: Palette,
+    download: Download,
+    monitor: MonitorCog,
+};
+
 interface SidebarSubnavProps {
     subnav: SubNavItem[];
     pathname: string;
@@ -144,11 +165,12 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
 
     return (
         <div className="flex flex-col">
-            {subnav.map(({ href, label, group, beta }, idx) => {
+            {subnav.map(({ href, label, group, beta, icon }, idx) => {
                 const isActive  = pathname === href;
                 const isRoot    = !group;
-                const Icon      = NAV_ITEM_ICONS[href] ?? CircleDot;
+                const Icon      = (icon ? SETTINGS_ITEM_ICONS[icon] : NAV_ITEM_ICONS[href]) ?? CircleDot;
                 const showGroup = group && !seenGroups.has(group) && (() => { seenGroups.add(group); return true; })();
+                const showGroupLabel = showGroup && href.startsWith("/settings/");
 
                 // A group's first item gets a divider; subsequent items remain dense.
                 const tone = isRoot
@@ -159,12 +181,17 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                     <div key={href} className="flex flex-col">
                         {showGroup && (
                             <div
-                                aria-hidden="true"
                                 className={[
-                                    "mx-2 border-t border-sidebar-border",
-                                    idx === 0 ? "mt-1 pt-1" : "mt-2 pt-1",
+                                    showGroupLabel
+                                        ? "mx-3 pt-3 pb-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-sidebar-label"
+                                        : "mx-2 border-t border-sidebar-border",
+                                    showGroupLabel
+                                        ? (idx === 0 ? "mt-1" : "mt-2")
+                                        : (idx === 0 ? "mt-1 pt-1" : "mt-2 pt-1"),
                                 ].join(" ")}
-                            />
+                            >
+                                {showGroupLabel ? group : null}
+                            </div>
                         )}
                         <Link
                             href={buildContextHref(href)}
