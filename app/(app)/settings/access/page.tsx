@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
+import { Download, Plus, Printer, RefreshCw, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
@@ -13,7 +13,7 @@ import { IssuedBadgeCard } from "@/src/modules/auth/frontend/components/issued-b
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 
 interface TerminalEntry { id: string; name: string; status: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }
-interface BadgeEntry { id: string; userId: string; email: string | null; status: string; createdAt: string; revokedAt: string | null }
+interface BadgeEntry { id: string; userId: string; email: string | null; status: string; reprintable: boolean; createdAt: string; revokedAt: string | null }
 interface Member { id: string; memberId: string | null; email: string; pending: boolean }
 interface IssuedBadge { badge: BadgeEntry; barcode: string }
 
@@ -41,6 +41,8 @@ export default function AccessSettingsPage() {
     const userEmail = user?.email ?? null;
     const scope = `${activeTenantId ?? ""}:${activeTenantRole ?? ""}:${permitted}:${userId ?? ""}`;
     const issuingBadge = working === "badge-issue" || working?.startsWith("badge-reissue-") === true;
+    const hasLegacyBadges = badges.some((badge) => !badge.reprintable);
+    const canExportBadges = !loading && badges.length > 0 && !hasLegacyBadges;
 
     useEffect(() => {
         mounted.current = true;
@@ -75,7 +77,7 @@ export default function AccessSettingsPage() {
                 return;
             }
             setTerminals(((terminalBody.data as { terminals?: TerminalEntry[] } | undefined)?.terminals ?? []).filter((terminal) => terminal.status !== "revoked"));
-            setBadges((badgeBody.data as { badges?: BadgeEntry[] } | undefined)?.badges ?? []);
+            setBadges(((badgeBody.data as { badges?: BadgeEntry[] } | undefined)?.badges ?? []).filter((badge) => badge.status === "active"));
             const listedMembers = membersResponse.ok ? ((memberBody.data as Member[] | undefined) ?? []).filter((member) => !member.pending) : [];
             if (activeTenantRole === "owner" && userId && !listedMembers.some((member) => (member.memberId ?? member.id) === userId)) {
                 listedMembers.unshift({ id: userId, memberId: userId, email: userEmail ?? userId, pending: false });
@@ -173,6 +175,39 @@ export default function AccessSettingsPage() {
         } finally { mutationInFlight.current = false; setWorking(null); }
     }
 
+    async function reprintBadge(badge: BadgeEntry) {
+        if (mutationInFlight.current || !badge.reprintable) return;
+        mutationInFlight.current = true;
+        setWorking(`badge-print-${badge.id}`);
+        try {
+            const response = await apiFetch(`/api/access/badges/${badge.id}/print`, { method: "POST" });
+            const body = await response.json() as { data?: IssuedBadge; error?: string };
+            if (!response.ok || !body.data) { notify.error(body.error ?? "No se pudo reimprimir el carnet."); return; }
+            setIssued(body.data);
+        } catch {
+            notify.error("No se pudo conectar con el servidor.");
+        } finally { mutationInFlight.current = false; setWorking(null); }
+    }
+
+    async function exportBadgesPdf() {
+        if (mutationInFlight.current || !canExportBadges) return;
+        mutationInFlight.current = true;
+        setWorking("badge-export");
+        try {
+            const response = await apiFetch("/api/access/badges/print", { method: "POST" });
+            const body = await response.json() as { data?: { badges?: IssuedBadge[] }; error?: string; code?: string };
+            const printableBadges = body.data?.badges;
+            if (!response.ok || !printableBadges?.length) {
+                notify.error(response.status === 409 && body.code === "badge_reprint_unavailable" ? "Para exportar todos los carnets, reemite una vez los que todavía no permiten reimpresión." : body.error ?? "No hay carnets activos para exportar.");
+                return;
+            }
+            const { createAccessBadgesPdf } = await import("@/src/modules/auth/frontend/access-badge-pdf");
+            createAccessBadgesPdf(printableBadges.map(({ barcode, badge }) => ({ barcode, email: badge.email }))).save("carnets-acceso.pdf");
+        } catch {
+            notify.error("No se pudo generar el PDF de los carnets.");
+        } finally { mutationInFlight.current = false; setWorking(null); }
+    }
+
     if (accessState !== "allowed" || !permitted) return null;
     return <div className="space-y-6">
         <SettingsSection title="Terminales de acceso" subtitle="Habilita este navegador para que los carnets puedan iniciar sesión." flush>
@@ -185,8 +220,8 @@ export default function AccessSettingsPage() {
             <AccessRows entries={terminals} empty="No hay terminales habilitadas." working={working} onRevoke={(id) => void revoke("terminal", id)} />
         </SettingsSection>
 
-        <SettingsSection title="Carnets de acceso" subtitle="Emite un carnet por miembro. El código sólo se muestra una vez; imprímelo o entrégalo de inmediato." flush>
-            <div className="grid grid-cols-1 items-end gap-3 border-b border-border-light p-5 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <SettingsSection title="Carnets de acceso" subtitle="Emite, reimprime o exporta los carnets activos de los miembros." flush>
+            <div className="grid grid-cols-1 items-end gap-3 border-b border-border-light p-5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <label className="min-w-0 font-mono text-[11px] uppercase tracking-[0.1em] text-text-tertiary">Miembro
                     <select className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-3 font-sans text-sm text-foreground" value={memberId} onChange={(event) => setMemberId(event.target.value)}>
                         <option value="">Selecciona un miembro</option>
@@ -194,8 +229,10 @@ export default function AccessSettingsPage() {
                     </select>
                 </label>
                 <BaseButton.Root className="h-auto min-h-10 w-full shrink-0 whitespace-normal px-4 py-2 xl:w-auto [&>span]:whitespace-normal" variant="primary" isDisabled={working !== null} loading={working === "badge-issue"} onClick={() => void issueBadge(memberId)} leftIcon={<Plus size={14} />}>Emitir carnet</BaseButton.Root>
+                <BaseButton.Root className="h-auto min-h-10 w-full shrink-0 whitespace-normal px-4 py-2 xl:w-auto [&>span]:whitespace-normal" variant="secondary" isDisabled={working !== null || !canExportBadges} loading={working === "badge-export"} onClick={() => void exportBadgesPdf()} leftIcon={<Download size={14} />}>Exportar carnets PDF</BaseButton.Root>
             </div>
-            <AccessRows entries={badges} empty="No hay carnets emitidos." working={working} disableRevoke={issuingBadge} onRevoke={(id) => void revoke("badge", id)} onReissue={(badge) => void issueBadge(badge.userId, badge)} />
+            {hasLegacyBadges && <p className="border-b border-border-light px-5 py-3 text-sm text-text-tertiary">Para exportar todos los carnets, reemite una vez los que todavía no permiten reimpresión.</p>}
+            <AccessRows entries={badges} empty="No hay carnets activos." working={working} disableRevoke={issuingBadge} onRevoke={(id) => void revoke("badge", id)} onReissue={(badge) => void issueBadge(badge.userId, badge)} onReprint={(badge) => void reprintBadge(badge)} />
         </SettingsSection>
 
         {issued && <div ref={issuedBadgeRef} tabIndex={-1} className="scroll-mt-6 outline-none"><IssuedBadgeCard barcode={issued.barcode} email={issued.badge.email} onClose={() => setIssued(null)} /></div>}
@@ -203,12 +240,13 @@ export default function AccessSettingsPage() {
     </div>;
 }
 
-function AccessRows({ entries, empty, working, disableRevoke = false, onRevoke, onReissue }: { entries: Array<TerminalEntry | BadgeEntry>; empty: string; working: string | null; disableRevoke?: boolean; onRevoke: (id: string) => void; onReissue?: (badge: BadgeEntry) => void }) {
+function AccessRows({ entries, empty, working, disableRevoke = false, onRevoke, onReissue, onReprint }: { entries: Array<TerminalEntry | BadgeEntry>; empty: string; working: string | null; disableRevoke?: boolean; onRevoke: (id: string) => void; onReissue?: (badge: BadgeEntry) => void; onReprint?: (badge: BadgeEntry) => void }) {
     if (!entries.length) return <p className="p-6 text-sm text-text-tertiary">{empty}</p>;
     return <ul className="divide-y divide-border-light">{entries.map((entry) => <li key={entry.id} className="flex flex-wrap items-center gap-3 p-4">
         <ScanBarcode className="h-4 w-4 shrink-0 text-primary-500" aria-hidden />
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground">{"email" in entry ? entry.email : entry.name}</p><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-tertiary">{entry.status}{"lastUsedAt" in entry && entry.lastUsedAt ? ` · Último uso ${new Date(entry.lastUsedAt).toLocaleDateString("es-VE")}` : ""}</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground">{"email" in entry ? entry.email : entry.name}</p><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-tertiary">{entry.status === "active" ? "Activo" : entry.status === "revoked" ? "Revocado" : entry.status}{"lastUsedAt" in entry && entry.lastUsedAt ? ` · Último uso ${new Date(entry.lastUsedAt).toLocaleDateString("es-VE")}` : ""}</p>{"reprintable" in entry && !entry.reprintable && <p className="mt-1 text-xs text-text-tertiary">Reemite este carnet una vez para habilitar la reimpresión.</p>}</div>
         <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1 sm:w-auto">
+            {"reprintable" in entry && onReprint && <BaseButton.Root size="sm" variant="ghost" isDisabled={working !== null || !entry.reprintable} loading={working === `badge-print-${entry.id}`} onClick={() => onReprint(entry)} leftIcon={<Printer size={13} />}>Reimprimir</BaseButton.Root>}
             {"userId" in entry && entry.status !== "revoked" && onReissue && <BaseButton.Root size="sm" variant="ghost" isDisabled={working !== null} loading={working === `badge-reissue-${entry.id}`} onClick={() => onReissue(entry)} leftIcon={<RefreshCw size={13} />}>Reemitir</BaseButton.Root>}
             {entry.status !== "revoked" && <BaseButton.Root size="sm" variant="ghost" isDisabled={disableRevoke || working !== null} onClick={() => onRevoke(entry.id)} leftIcon={<ShieldOff size={13} />}>Revocar</BaseButton.Root>}
         </div>

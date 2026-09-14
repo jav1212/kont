@@ -23,7 +23,10 @@ export const POST = withTenant(async (request, tenant) => {
     if (typeof body.userId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.userId)) return NextResponse.json({ error: 'Usuario inválido.', code: 'invalid_user' }, { status: 400 });
     try {
         const result = await getBarcodeAccessActions().issueBadge.execute({ tenantId: tenant.tenantId, userId: body.userId, actorId: tenant.userId });
-        if (result.isFailure) return NextResponse.json({ error: "No se pudo emitir el carnet.", code: result.getError() }, { status: 400 });
+        if (result.isFailure) {
+            const unavailable = result.getError() === 'badge_reprint_unavailable';
+            return NextResponse.json({ error: unavailable ? 'La emisión de carnets no está disponible temporalmente. Intenta de nuevo.' : "No se pudo emitir el carnet.", code: result.getError() }, { status: unavailable ? 503 : 400 });
+        }
         return NextResponse.json({ data: result.getValue() }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
         const code = error instanceof Error ? error.message : 'badge_issue_failed';

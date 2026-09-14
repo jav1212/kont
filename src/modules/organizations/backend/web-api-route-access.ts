@@ -13,6 +13,8 @@ type RouteRule = readonly [method: HttpMethod, pathname: string, permission: Can
 const ROUTES: readonly RouteRule[] = [
   ["GET","/api/access/badges","access.manage"],
   ["POST","/api/access/badges","access.manage"],
+  ["POST","/api/access/badges/print","access.manage"],
+  ["POST","/api/access/badges/[id]/print","access.manage"],
   ["POST","/api/access/badges/[id]/revoke","access.manage"],
   ["GET","/api/access/terminals","access.manage"],
   ["POST","/api/access/terminals","access.manage"],

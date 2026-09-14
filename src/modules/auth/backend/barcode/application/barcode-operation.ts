@@ -3,6 +3,8 @@ import { UseCase } from "@/src/core/domain/use-case";
 
 const expectedFailures = new Set([
     "badge_user_not_member", "badge_user_ineligible", "badge_already_active",
+    "badge_reprint_unavailable",
+    "badge_reprint_legacy",
 ]);
 
 /** Application boundary for a single authorized terminal/carnet operation. */

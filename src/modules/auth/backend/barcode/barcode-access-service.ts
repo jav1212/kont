@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 import { isBarcodeSessionActive } from './application/barcode-session-policy';
 
@@ -6,14 +6,68 @@ export const BARCODE_TERMINAL_COOKIE = 'kont_barcode_terminal';
 const BARCODE_SESSION_MAX_SECONDS = 8 * 60 * 60;
 
 type TerminalRow = { id: string; tenant_id: string; name: string; status: string; protection_ready: boolean; created_at: string; last_used_at: string | null; revoked_at: string | null };
-type BadgeRow = { id: string; tenant_id: string; user_id: string; status: string; created_at: string; revoked_at: string | null };
+type BadgeRow = { id: string; tenant_id: string; user_id: string; status: string; created_at: string; revoked_at: string | null; code_ciphertext?: string | null };
 
 export type BarcodeTerminal = { id: string; name: string; status: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
-export type BarcodeBadge = { id: string; userId: string; email: string | null; status: string; createdAt: string; revokedAt: string | null };
+export type BarcodeBadge = { id: string; userId: string; email: string | null; status: string; createdAt: string; revokedAt: string | null; reprintable: boolean };
 export type BarcodeSessionValidation = { registered: boolean; active: boolean; id?: string; tenantId?: string; terminalId?: string; expiresAt?: string; idleExpiresAt?: string };
 export type BarcodeTerminalResolution =
     | { ready: true; terminal: TerminalRow }
     | { ready: false; reason: 'not_enrolled' | 'revoked' | 'access_unavailable' };
+
+const BADGE_CIPHER_VERSION = 'v1';
+
+/** Decodes the server-only AES-256 key used to permit future badge reprints. */
+function badgeEncryptionKey(): Buffer {
+    const value = process.env.KONTAVE_BARCODE_BADGE_ENCRYPTION_KEY;
+    if (!value || !/^[A-Za-z0-9_-]{43}$/.test(value)) throw new Error('badge_reprint_unavailable');
+    const key = Buffer.from(value, 'base64url');
+    if (key.length !== 32) throw new Error('badge_reprint_unavailable');
+    return key;
+}
+
+/** Binds ciphertext to the badge identity and immutable login verifier. */
+function badgeCipherAad(tenantId: string, userId: string, hash: string): Buffer {
+    return Buffer.from(`${tenantId}:${userId}:${hash}`, 'utf8');
+}
+
+/**
+ * Encrypts a newly issued badge value for server-side reprint only.
+ * @param input - Tenant-bound badge identity and raw printable credential.
+ * @returns A versioned authenticated ciphertext safe for service-role storage.
+ * @throws Error when the server encryption key is unavailable or invalid.
+ */
+export function encryptBarcodeBadge(input: { tenantId: string; userId: string; barcode: string }): string {
+    const hash = credentialHash(input.barcode);
+    const nonce = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', badgeEncryptionKey(), nonce);
+    cipher.setAAD(badgeCipherAad(input.tenantId, input.userId, hash));
+    const ciphertext = Buffer.concat([cipher.update(input.barcode, 'utf8'), cipher.final()]);
+    return `${BADGE_CIPHER_VERSION}.${nonce.toString('base64url')}.${cipher.getAuthTag().toString('base64url')}.${ciphertext.toString('base64url')}`;
+}
+
+/**
+ * Decrypts a stored badge value and verifies it still matches its lookup hash.
+ * @param input - Stored encrypted credential and immutable tenant/user/hash bindings.
+ * @returns The validated raw printable credential.
+ * @throws Error when the ciphertext, key, binding, or credential is invalid.
+ */
+export function decryptBarcodeBadge(input: { tenantId: string; userId: string; codeHash: string; ciphertext: string }): string {
+    try {
+        const [version, nonce, tag, ciphertext] = input.ciphertext.split('.');
+        if (version !== BADGE_CIPHER_VERSION || !nonce || !tag || !ciphertext || input.ciphertext.split('.').length !== 4) throw new Error();
+        const decipher = createDecipheriv('aes-256-gcm', badgeEncryptionKey(), Buffer.from(nonce, 'base64url'));
+        decipher.setAAD(badgeCipherAad(input.tenantId, input.userId, input.codeHash));
+        decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+        const barcode = Buffer.concat([decipher.update(Buffer.from(ciphertext, 'base64url')), decipher.final()]).toString('utf8');
+        const actualHash = Buffer.from(credentialHash(barcode), 'utf8');
+        const expectedHash = Buffer.from(input.codeHash, 'utf8');
+        if (actualHash.length !== expectedHash.length || !timingSafeEqual(actualHash, expectedHash) || !/^KONT-[A-Za-z0-9_-]{20,25}$/.test(barcode)) throw new Error();
+        return barcode;
+    } catch {
+        throw new Error('badge_reprint_unavailable');
+    }
+}
 
 /**
  * Creates a fixed-length SHA-256 digest for a high-entropy server credential.
@@ -262,11 +316,11 @@ export async function revokeBarcodeTerminal(input: { tenantId: string; terminalI
  */
 export async function listBarcodeBadges(tenantId: string): Promise<BarcodeBadge[]> {
     const source = new ServerSupabaseSource().instance;
-    const { data, error } = await source.from('barcode_access_badges').select('id,tenant_id,user_id,status,created_at,revoked_at').eq('tenant_id', tenantId).order('created_at', { ascending: false });
+    const { data, error } = await source.from('barcode_access_badges').select('id,tenant_id,user_id,status,created_at,revoked_at,code_ciphertext').eq('tenant_id', tenantId).order('created_at', { ascending: false });
     if (error) throw new Error('badge_list_failed');
     const rows = (data ?? []) as BadgeRow[];
     const users = await Promise.all(rows.map(async (badge) => ({ badge, response: await source.auth.admin.getUserById(badge.user_id) })));
-    return users.map(({ badge, response }) => ({ id: badge.id, userId: badge.user_id, email: response.data.user?.email ?? null, status: badge.status, createdAt: badge.created_at, revokedAt: badge.revoked_at }));
+    return users.map(({ badge, response }) => ({ id: badge.id, userId: badge.user_id, email: response.data.user?.email ?? null, status: badge.status, createdAt: badge.created_at, revokedAt: badge.revoked_at, reprintable: !!badge.code_ciphertext }));
 }
 
 /**
@@ -287,10 +341,58 @@ export async function issueBarcodeBadge(input: { tenantId: string; userId: strin
     const user = userData.user;
     if (adminError || userError || !user || !user.email_confirmed_at || (user.banned_until && Date.parse(user.banned_until) > Date.now()) || user.deleted_at || admin || user.factors?.some((factor) => factor.status === 'verified')) throw new Error('badge_user_ineligible');
     const barcode = barcodeValue();
-    const { data, error } = await source.rpc('barcode_access_issue_badge', { p_tenant_id: input.tenantId, p_user_id: input.userId, p_actor_id: input.actorId, p_code_hash: credentialHash(barcode) });
+    const codeHash = credentialHash(barcode);
+    const ciphertext = encryptBarcodeBadge({ tenantId: input.tenantId, userId: input.userId, barcode });
+    const { data, error } = await source.rpc('barcode_access_issue_badge', { p_tenant_id: input.tenantId, p_user_id: input.userId, p_actor_id: input.actorId, p_code_hash: codeHash, p_code_ciphertext: ciphertext });
     if (error || !data) throw new Error('badge_issue_failed');
     await audit({ tenant_id: input.tenantId, badge_id: data.id, user_id: input.userId, event: 'badge_issued' });
-    return { badge: { id: data.id, userId: data.user_id, email: user.email ?? null, status: data.status, createdAt: data.created_at, revokedAt: data.revoked_at }, barcode };
+    return { badge: { id: data.id, userId: data.user_id, email: user.email ?? null, status: data.status, createdAt: data.created_at, revokedAt: data.revoked_at, reprintable: true }, barcode };
+}
+
+/**
+ * Reprints one active tenant badge without replacing its credential.
+ * @param input - Authorized tenant scope and target badge identifier.
+ * @returns The active badge metadata and its restored printable credential.
+ * @throws Error when the badge cannot safely be reprinted.
+ */
+export async function reprintBarcodeBadge(input: { tenantId: string; badgeId: string; actorId: string }): Promise<{ badge: BarcodeBadge; barcode: string }> {
+    const source = new ServerSupabaseSource().instance;
+    const { data, error } = await source.from('barcode_access_badges').select('id,tenant_id,user_id,status,created_at,revoked_at,code_hash,code_ciphertext').eq('id', input.badgeId).eq('tenant_id', input.tenantId).maybeSingle();
+    if (error || !data || data.status !== 'active' || !(await hasTenantMembership(input.tenantId, data.user_id))) throw new Error('badge_reprint_unavailable');
+    if (!data.code_ciphertext) throw new Error('badge_reprint_legacy');
+    const [{ data: admin, error: adminError }, user] = await Promise.all([
+        source.from('admin_users').select('id').eq('id', data.user_id).maybeSingle(),
+        source.auth.admin.getUserById(data.user_id),
+    ]);
+    if (adminError || admin || user.error || !user.data.user?.email || !user.data.user.email_confirmed_at || (user.data.user.banned_until && Date.parse(user.data.user.banned_until) > Date.now()) || user.data.user.deleted_at || user.data.user.factors?.some((factor) => factor.status === 'verified')) throw new Error('badge_reprint_unavailable');
+    const barcode = decryptBarcodeBadge({ tenantId: input.tenantId, userId: data.user_id, codeHash: data.code_hash, ciphertext: data.code_ciphertext });
+    await audit({ tenant_id: input.tenantId, badge_id: data.id, user_id: input.actorId, event: 'badge_reprinted' });
+    return { badge: { id: data.id, userId: data.user_id, email: user.data.user.email, status: data.status, createdAt: data.created_at, revokedAt: data.revoked_at, reprintable: true }, barcode };
+}
+
+/**
+ * Reprints every active badge in a tenant, failing rather than omitting legacy cards.
+ * @param input - Authorized tenant scope and administrator identity for audit.
+ * @returns All active printable badges after validating every entry first.
+ * @throws Error when any active badge cannot safely be reprinted.
+ */
+export async function reprintAllBarcodeBadges(input: { tenantId: string; actorId: string }): Promise<Array<{ badge: BarcodeBadge; barcode: string }>> {
+    const source = new ServerSupabaseSource().instance;
+    const badges: Array<{ id: string; code_ciphertext: string | null }> = [];
+    for (let start = 0; ; start += 500) {
+        const { data, error } = await source.from('barcode_access_badges').select('id,code_ciphertext').eq('tenant_id', input.tenantId).eq('status', 'active').order('created_at', { ascending: true }).order('id', { ascending: true }).range(start, start + 499);
+        if (error) throw new Error('badge_reprint_unavailable');
+        const page = (data ?? []) as Array<{ id: string; code_ciphertext: string | null }>;
+        badges.push(...page);
+        if (page.length < 500) break;
+    }
+    if (badges.some((badge) => !badge.id || !badge.code_ciphertext)) throw new Error('badge_reprint_legacy');
+    const printed: Array<{ badge: BarcodeBadge; barcode: string }> = [];
+    for (let start = 0; start < badges.length; start += 10) {
+        printed.push(...await Promise.all(badges.slice(start, start + 10).map((badge) => reprintBarcodeBadge({ tenantId: input.tenantId, badgeId: badge.id, actorId: input.actorId }))));
+    }
+    await audit({ tenant_id: input.tenantId, user_id: input.actorId, event: 'badges_exported', reason: `count:${printed.length}` });
+    return printed;
 }
 
 /**
