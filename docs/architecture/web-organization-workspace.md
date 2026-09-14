@@ -8,8 +8,9 @@ no acredita un despliegue de los cambios Web o API.
 
 ## Experiencia y alcance
 
-El selector de organización aparece en la barra lateral incluso cuando hay un
-solo espacio disponible. La empresa seleccionada y la cuenta personal siguen
+En la barra lateral Web de escritorio (`>=1280 px`), el selector de
+organización aparece en el modo expandido incluso cuando hay un solo espacio
+disponible. La empresa seleccionada y la cuenta personal siguen
 siendo conceptos distintos. Configuración es una superficie Web de la
 navegación principal: aparece junto a los módulos disponibles, sin entrar en
 el catálogo portable de módulos del espacio de trabajo ni poder seleccionarse
@@ -137,6 +138,15 @@ antes de confirmarse. Al confirmar, actualiza la compatibilidad de navegador
 (`kont-active-tenant-id`, `kont-company-id` y módulo) y conserva los demás
 parámetros de la URL. Los providers históricos de tenant, organización y empresa
 leen la instantánea confirmada; no mantienen una segunda selección.
+
+La barra lateral Web en escritorio alterna entre 280 px expandida y 72 px
+compacta. Al pasar el cursor o recibir foco, la marca revela el control para
+alternar el estado, con etiquetas accesibles para expandir o contraer; la
+preferencia se conserva localmente bajo `kontave.web.sidebar.pinned`. Los
+selectores de organización, empresa y módulo se muestran en el modo expandido;
+el compacto usa navegación por iconos y mantiene los accesos de cuenta,
+Configuración y Ayuda. En móvil, la misma jerarquía se presenta como un drawer
+completo e independiente de la preferencia de escritorio.
 
 La proyección Web de módulos conserva la política existente: permisos y rol
 efectivo deciden la autorización, y la suscripción decide por separado si un

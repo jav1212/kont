@@ -154,9 +154,17 @@ const SETTINGS_ITEM_ICONS: Record<string, LucideIcon> = {
 interface SidebarSubnavProps {
     subnav: SubNavItem[];
     pathname: string;
+    /** Whether desktop navigation should render as an icon rail. */
+    compact?: boolean;
 }
 
-export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
+/**
+ * Renders the authorized routes for the selected module.
+ *
+ * @param props - Pre-filtered navigation entries, active path, and icon-rail state.
+ * @returns The module navigation, or nothing when the module has no routes.
+ */
+export function SidebarSubnav({ subnav, pathname, compact = false }: SidebarSubnavProps) {
     const { buildContextHref } = useUrlContext();
 
     if (subnav.length === 0) return null;
@@ -179,7 +187,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
 
                 return (
                     <div key={href} className="flex flex-col">
-                        {showGroup && (
+                        {showGroup && !compact && (
                             <div
                                 className={[
                                     showGroupLabel
@@ -196,7 +204,9 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                         <Link
                             href={buildContextHref(href)}
                             aria-current={isActive ? "page" : undefined}
-                            className={[ITEM_BASE, tone, FOCUS_RING].join(" ")}
+                            aria-label={compact ? label : undefined}
+                            title={compact ? label : undefined}
+                            className={[ITEM_BASE, tone, FOCUS_RING, compact && "xl:justify-center xl:px-2"].filter(Boolean).join(" ")}
                         >
                             <ActiveBar visible={isActive} />
                             <span
@@ -208,8 +218,8 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                             >
                                 <Icon size={16} strokeWidth={1.75} />
                             </span>
-                            <span className="truncate flex-1">{label}</span>
-                            {beta && <BetaBadge />}
+                            {!compact && <span className="truncate flex-1">{label}</span>}
+                            {!compact && beta && <BetaBadge />}
                         </Link>
                     </div>
                 );

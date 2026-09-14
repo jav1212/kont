@@ -1,12 +1,13 @@
 "use client";
 
 // AppSidebar — single-column navigation shell.
-// Desktop stays compact and labelled; mobile reuses the same hierarchy as a drawer.
+// Desktop switches between labelled and icon-rail presentations; mobile reuses
+// the full hierarchy as a drawer.
 
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
     Activity,
     CircleHelp,
@@ -18,6 +19,8 @@ import {
     Sun,
     UserRound,
     X,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from "lucide-react";
 import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE } from "@/src/shared/frontend/navigation";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
@@ -27,7 +30,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
 import { useWebApplication } from "@/src/modules/workspace/frontend/web-application-provider";
 import type { ModuleCode } from "@kontave/modules/domain";
-import { LogoFull } from "@/src/shared/frontend/components/logo";
+import { LogoFull, LogoMark } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
 import { SidebarModuleSelector, type SelectableModule } from "@/src/shared/frontend/components/sidebar-module-selector";
@@ -41,9 +44,12 @@ import { useOrganizationModuleAccess } from "@/src/modules/organizations/fronten
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
+const WEB_SIDEBAR_PINNED_KEY = "kontave.web.sidebar.pinned";
+
 // ── Size constants ────────────────────────────────────────────────────────────
 
 const SIDEBAR_WIDTH = 280;
+const COLLAPSED_SIDEBAR_WIDTH = 72;
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
@@ -83,6 +89,23 @@ function subscriptionAllows(status: string | undefined): boolean {
     return status === "active" || status === "trial";
 }
 
+function subscribeToSidebarPreference(callback: () => void): () => void {
+    window.addEventListener("storage", callback);
+    return () => window.removeEventListener("storage", callback);
+}
+
+function getSidebarPinnedSnapshot(): boolean {
+    try {
+        return window.localStorage.getItem(WEB_SIDEBAR_PINNED_KEY) !== "false";
+    } catch {
+        return true;
+    }
+}
+
+function getServerSidebarPinnedSnapshot(): boolean {
+    return true;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -92,10 +115,20 @@ interface AppSidebarProps {
     onClose: () => void;
 }
 
+/**
+ * Renders the authenticated Web navigation as a mobile drawer and a desktop
+ * sidebar whose expanded preference is retained locally when storage is available.
+ *
+ * @param props - The drawer visibility and callback used to close it on mobile.
+ * @returns The primary application navigation.
+ */
 export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const isDesktop = useIsDesktop();
+    const persistedSidebarPinned = useSyncExternalStore(subscribeToSidebarPreference, getSidebarPinnedSnapshot, getServerSidebarPinnedSnapshot);
+    const [sidebarPinnedOverride, setSidebarPinnedOverride] = useState<boolean | null>(null);
+    const sidebarPinned = sidebarPinnedOverride ?? persistedSidebarPinned;
 
     const { signOut } = useAuth();
     useTheme();
@@ -106,6 +139,16 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const planName = usePlanName();
     const organizationAccess = useOrganizationModuleAccess(pathname);
     const settingsHref = buildContextHref(organizationAccess.can("organizations.read") ? "/settings/organization" : "/settings/apariencia");
+
+    function toggleSidebarPinned() {
+        const nextPinned = !sidebarPinned;
+        try {
+            window.localStorage.setItem(WEB_SIDEBAR_PINNED_KEY, String(nextPinned));
+        } catch {
+            // The current in-memory preference remains usable without storage.
+        }
+        setSidebarPinnedOverride(nextPinned);
+    }
     // ── Module selection ──────────────────────────────────────────────────────
     const derivedModuleId = useMemo(() => {
         const match = APP_MODULES.find((mod) => {
@@ -184,14 +227,18 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     // ── Render ────────────────────────────────────────────────────────────────
 
     const moduleSubtitle = buildModuleSubtitle(resolvedModuleId, planName);
+    const collapsed = isDesktop && !sidebarPinned;
+    const sidebarWidth = collapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
+    const sidebarActionLabel = sidebarPinned ? "Contraer navegación" : "Expandir navegación";
 
     return (
         <aside
             aria-label="Navegación principal"
-            style={isDesktop ? { width: SIDEBAR_WIDTH } : undefined}
+            data-collapsed={collapsed}
+            style={isDesktop ? { width: sidebarWidth } : undefined}
             className={[
-                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-visible",
-                "fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-24px))] transition-transform duration-300 ease-in-out",
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-visible transition-[width,transform] duration-300 ease-in-out motion-reduce:transition-none",
+                "fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-24px))]",
                 open ? "translate-x-0" : "-translate-x-full",
                 // The organization directory may extend into the content pane.
                 // Keep the desktop sidebar above that sibling pane so the
@@ -201,9 +248,31 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         >
             <header
                 style={{ paddingTop: "env(safe-area-inset-top)" }}
-                className="h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 px-4 xl:px-5 flex items-center justify-between border-b border-sidebar-border"
+                className={[
+                    "h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 px-4 flex items-center justify-between border-b border-sidebar-border",
+                    collapsed ? "xl:justify-center xl:px-3" : "xl:px-5",
+                ].join(" ")}
             >
-                <LogoFull size={25} className="text-sidebar-fg-hover" />
+                <button
+                    type="button"
+                    onClick={toggleSidebarPinned}
+                    aria-label={sidebarActionLabel}
+                    aria-expanded={sidebarPinned}
+                    title={sidebarActionLabel}
+                    className={[
+                        "group relative hidden xl:grid min-w-8 min-h-8 place-items-start rounded-lg text-sidebar-fg-hover",
+                        "hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+                        collapsed && "place-items-center",
+                    ].filter(Boolean).join(" ")}
+                >
+                    <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex items-center transition-all duration-150 motion-reduce:transition-none group-hover:scale-95 group-hover:opacity-0 group-focus-visible:scale-95 group-focus-visible:opacity-0">
+                        {collapsed ? <LogoMark size={25} /> : <LogoFull size={25} />}
+                    </span>
+                    <span aria-hidden="true" className="col-start-1 row-start-1 inline-flex w-8 h-8 items-center justify-center opacity-0 scale-90 transition-all duration-150 motion-reduce:transition-none group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 group-focus-visible:scale-100">
+                        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                    </span>
+                </button>
+                <LogoFull size={25} className="xl:hidden text-sidebar-fg-hover" />
                 <button
                     type="button"
                     onClick={onClose}
@@ -214,7 +283,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 </button>
             </header>
 
-            <div className="px-3 py-3 border-b border-sidebar-border flex flex-col gap-2">
+            <div className={["px-3 py-3 border-b border-sidebar-border flex flex-col gap-2", collapsed && "xl:hidden"].filter(Boolean).join(" ")}>
                 <OrganizationSwitcher />
                 <p className="px-1 pt-1 font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-sidebar-label">Empresa</p>
                 <SidebarCompanySelector
@@ -233,30 +302,32 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             </div>
 
             <nav
-                className="flex-1 min-h-0 px-3 pt-3 pb-5 overflow-y-auto"
-                style={{ scrollbarGutter: "stable" }}
+                className={["flex-1 min-h-0 px-3 pt-3 pb-5 overflow-y-auto", collapsed && "xl:px-2"].filter(Boolean).join(" ")}
+                style={collapsed ? undefined : { scrollbarGutter: "stable" }}
                 aria-label="Secciones del módulo"
             >
-                <SidebarSubnav subnav={subnav} pathname={pathname} />
+                <SidebarSubnav subnav={subnav} pathname={pathname} compact={collapsed} />
             </nav>
 
             <div
                 style={{ paddingBottom: "calc(0.875rem + env(safe-area-inset-bottom))" }}
-                className="px-3 pt-3 border-t border-sidebar-border flex flex-col gap-2"
+                className={["px-3 pt-3 border-t border-sidebar-border flex flex-col gap-2", collapsed && "xl:px-2"].filter(Boolean).join(" ")}
             >
-                <SidebarUpdateBanner />
+                <SidebarUpdateBanner collapsed={collapsed} />
                 <div className="flex flex-col gap-0.5">
                     <UtilityShortcut
                         href={settingsHref}
                         active={isSettingsRoute}
                         label="Configuración"
                         icon={<Settings size={17} strokeWidth={1.8} />}
+                        compact={collapsed}
                     />
                     <UtilityShortcut
                         href={buildContextHref("/help")}
                         active={pathname.startsWith("/help")}
                         label="Ayuda"
                         icon={<CircleHelp size={17} strokeWidth={1.8} />}
+                        compact={collapsed}
                     />
                 </div>
                 <AccountCard
@@ -270,6 +341,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     statusHref={buildContextHref("/tools/status")}
                     billingHref={buildContextHref("/settings/billing")}
                     canViewBilling={organizationAccess.can("billing.read")}
+                    compact={collapsed}
                 />
             </div>
         </aside>
@@ -280,14 +352,17 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 // UtilityShortcut — Config / Help rows
 // ────────────────────────────────────────────────────────────────────────────
 
-function UtilityShortcut({ href, active, label, icon }: { href: string; active: boolean; label: string; icon: React.ReactNode }) {
+function UtilityShortcut({ href, active, label, icon, compact }: { href: string; active: boolean; label: string; icon: React.ReactNode; compact: boolean }) {
     return (
         <Link
             href={href}
             aria-current={active ? "page" : undefined}
+            aria-label={compact ? label : undefined}
+            title={compact ? label : undefined}
             className={[
                 "group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150",
                 "font-sans text-[15px] font-semibold",
+                compact && "xl:justify-center xl:px-2",
                 active
                     ? "text-sidebar-active-fg bg-sidebar-active-bg/60"
                     : "text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover",
@@ -296,7 +371,7 @@ function UtilityShortcut({ href, active, label, icon }: { href: string; active: 
             <span className="shrink-0 w-5 h-5 flex items-center justify-center text-sidebar-label group-hover:text-sidebar-fg-hover">
                 {icon}
             </span>
-            <span>{label}</span>
+            {!compact && <span>{label}</span>}
         </Link>
     );
 }
@@ -316,9 +391,10 @@ interface AccountCardProps {
     statusHref:   string;
     billingHref:  string;
     canViewBilling: boolean;
+    compact: boolean;
 }
 
-function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref, helpHref, statusHref, billingHref, canViewBilling }: AccountCardProps) {
+function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref, helpHref, statusHref, billingHref, canViewBilling, compact }: AccountCardProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -332,11 +408,13 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
             <button
                 onClick={() => setOpen((v) => !v)}
                 aria-label={`Cuenta: ${displayName}. Abrir menú`}
+                title={compact ? `Cuenta: ${displayName}` : undefined}
                 aria-expanded={open}
                 aria-haspopup="menu"
                 className={[
                     "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+                    compact && "xl:justify-center xl:px-2",
                     open
                         ? "bg-sidebar-bg-hover border-border-medium"
                         : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
@@ -346,18 +424,20 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
                     <Avatar avatarUrl={avatarUrl} initial={initial} size={32} />
                 </span>
 
-                <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
-                        {displayName}
-                    </span>
-                    {email && email !== displayName && (
-                        <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
-                            {email}
+                {!compact && <>
+                    <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                        <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
+                            {displayName}
                         </span>
-                    )}
-                </span>
+                        {email && email !== displayName && (
+                            <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                                {email}
+                            </span>
+                        )}
+                    </span>
 
-                <UpChevron />
+                    <UpChevron />
+                </>}
             </button>
 
             <PortalMenu
