@@ -55,12 +55,48 @@ export class CreateOrganizationRole {
     return this.administration.createRole({organizationId:input.organizationId,name,description,permissions:[...new Set(input.permissions)],idempotencyKey:input.idempotencyKey});
   }
 }
+/** Updates role permissions while preserving system-role identity metadata. */
 export class UpdateOrganizationRole {
+  /**
+   * Connects role-policy validation to versioned persistence.
+   * @param administration - Organization role repository used for reads and atomic writes.
+   * @returns A role-update use case.
+   */
   constructor(private readonly administration: AccessControlAdministration) {}
-  async execute(input:{actor:AuthorizationSnapshot;organizationId:string;roleId:RoleId;name?:string;description?:string;permissions?:readonly PermissionCode[];expectedVersion:number}){
-    const target=await this.administration.findRole(input.roleId); if(!target)throw new AccessControlFailure("ROLE_NOT_FOUND","Role not found."); target.assertBelongsTo(input.organizationId);target.assertMutable();
-    if(input.permissions?.some(permission=>!input.actor.role.hasPermission(permission)))throw new AccessControlFailure("CANNOT_GRANT_UNOWNED_PERMISSION","An actor cannot grant a permission they do not possess.");
-    return this.administration.updateRole({roleId:input.roleId,expectedVersion:input.expectedVersion,...(input.name===undefined?{}:{name:input.name.trim()}),...(input.description===undefined?{}:{description:input.description.trim()}),...(input.permissions===undefined?{}:{permissions:[...new Set(input.permissions)]})});
+
+  /**
+   * Changes an organization's role after its request boundary authorizes roles.manage.
+   * System roles retain their metadata; owner and global templates remain protected.
+   * The repository atomically checks the version and invalidates affected authorization snapshots.
+   * @param input - Authorized actor, organization, target role, expected version, and requested changes.
+   * @returns The persisted role with its current permissions and new version.
+   * @throws {AccessControlFailure} If the role is missing, outside the organization, protected,
+   * the actor does not own a requested grant, or the persisted version has changed.
+   */
+  async execute(input: {
+    actor: AuthorizationSnapshot;
+    organizationId: string;
+    roleId: RoleId;
+    name?: string;
+    description?: string;
+    permissions?: readonly PermissionCode[];
+    expectedVersion: number;
+  }): Promise<Role> {
+    const target = await this.administration.findRole(input.roleId);
+    if (!target) throw new AccessControlFailure("ROLE_NOT_FOUND", "Role not found.");
+    target.assertBelongsTo(input.organizationId);
+    target.assertPermissionsMutable();
+    if (input.name !== undefined || input.description !== undefined) target.assertMutable();
+    if (input.permissions?.some((permission) => !input.actor.role.hasPermission(permission))) {
+      throw new AccessControlFailure("CANNOT_GRANT_UNOWNED_PERMISSION", "An actor cannot grant a permission they do not possess.");
+    }
+    return this.administration.updateRole({
+      roleId: input.roleId,
+      expectedVersion: input.expectedVersion,
+      ...(input.name === undefined ? {} : { name: input.name.trim() }),
+      ...(input.description === undefined ? {} : { description: input.description.trim() }),
+      ...(input.permissions === undefined ? {} : { permissions: [...new Set(input.permissions)] }),
+    });
   }
 }
 export class ArchiveOrganizationRole { constructor(private readonly administration:AccessControlAdministration){} async execute(input:{organizationId:string;roleId:RoleId;expectedVersion:number}){const target=await this.administration.findRole(input.roleId);if(!target)throw new AccessControlFailure("ROLE_NOT_FOUND","Role not found.");target.assertBelongsTo(input.organizationId);target.assertMutable();if(await this.administration.countActiveMemberships(input.roleId))throw new AccessControlFailure("ROLE_IN_USE","A role in use cannot be archived.");return this.administration.archiveRoleVersioned(input.roleId,input.expectedVersion);} }
@@ -74,13 +110,28 @@ export class AssignMembershipRole {
     await this.administration.assignRole(input.membershipId, input.roleId);
   }
 }
+/** Replaces grants through the legacy administration port while enforcing role policy. */
 export class ReplaceRolePermissions {
+  /**
+   * Connects the legacy replacement command to organization role persistence.
+   * @param administration - Repository that reads roles and atomically replaces permission grants.
+   * @returns A permission-replacement use case.
+   */
   constructor(private readonly administration: AccessControlAdministration) {}
-  async execute(input: { actor: AuthorizationSnapshot; organizationId: string; roleId: RoleId; permissions: readonly PermissionCode[] }) {
+
+  /**
+   * Replaces grants after the caller authorizes role management for this organization.
+   * This legacy command does not compare versions; interactive editors should use UpdateOrganizationRole.
+   * @param input - Authorized actor, target organization and role, and complete desired grant set.
+   * @returns Nothing after the replacement and authorization-version invalidation complete.
+   * @throws {AccessControlFailure} If the target is outside the organization, protected,
+   * or the actor does not possess every requested permission.
+   */
+  async execute(input: { actor: AuthorizationSnapshot; organizationId: string; roleId: RoleId; permissions: readonly PermissionCode[] }): Promise<void> {
     const target = await this.administration.findRole(input.roleId);
     if (!target) throw new AccessControlFailure("ROLE_OUTSIDE_ORGANIZATION", "The role belongs to another organization.");
     target.assertBelongsTo(input.organizationId);
-    target.assertMutable();
+    target.assertPermissionsMutable();
     if (input.permissions.some((permission) => !input.actor.role.hasPermission(permission))) throw new AccessControlFailure("CANNOT_GRANT_UNOWNED_PERMISSION", "An actor cannot grant a permission they do not possess.");
     await this.administration.replacePermissions(input.roleId, [...new Set(input.permissions)]);
   }

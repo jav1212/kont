@@ -274,9 +274,20 @@ operativa. Las actualizaciones usan `expectedVersion`; una versión que ya no
 coincide devuelve conflicto y exige recargar el contexto. La resolución de
 tasas no crea una vía de acceso alternativa al contexto operativo.
 
-La pantalla de roles lista con `roles.read` y permite gestionar solo roles
-personalizados con `roles.manage` y `expectedVersion`. Los roles del sistema
-permanecen bloqueados y el editor no escribe las definiciones globales legacy.
+La pantalla de roles lista con `roles.read` y permite a quien tenga
+`roles.manage` cambiar los permisos de los roles activos de la organización
+mediante `expectedVersion`. El rol `owner` conserva acceso total y es de solo
+lectura. Los perfiles predeterminados locales `admin`, `accountant`, `seller` y
+`cashier` pueden ajustar únicamente sus permisos en esa organización; no se
+pueden renombrar, describir de nuevo, archivar ni convertir. La actualización
+solo puede conceder permisos que ya posea quien la ejecuta. Tras guardar, la
+Web vuelve a cargar los permisos efectivos de la organización para que su
+propio acceso refleje la nueva asignación.
+
+Las plantillas globales de sistema y sus permisos no se editan desde esta ruta.
+Siguen siendo la fuente de aprovisionamiento de los perfiles predeterminados
+de organizaciones existentes y futuras; una personalización local no modifica
+esas plantillas ni los valores predeterminados de otra organización.
 
 ## Puente de tenant operativo
 
@@ -324,6 +335,17 @@ añade `access.manage` al catálogo canónico y lo concede solamente a los roles
 activos de sistema `owner` y `admin`, incluidas las plantillas de organizaciones
 nuevas. No modifica roles personalizados ni los roles base de cajero, vendedor
 o contador. Su aplicación de base de datos no despliega el código Web o API.
+
+[261_organization_system_role_permission_overrides.sql](../../supabase/migrations/261_organization_system_role_permission_overrides.sql)
+habilita la sustitución versionada de permisos para perfiles del sistema que
+pertenecen a una organización y que no son `owner`. También mantiene protegidos
+el metadato y ciclo de vida de esos perfiles, las plantillas globales y el
+propietario. Aplique la migración 261 antes de desplegar o usar en la Web la
+edición de permisos de roles predeterminados. La migración no cambia los
+permisos existentes ni los valores predeterminados usados al aprovisionar una
+organización. Revertir solo el código Web no revierte personalizaciones ya
+guardadas; para retirar la capacidad sin perderlas basta con volver a ocultar o
+denegar la mutación en la aplicación.
 
 La ruta de miembros a la que enlaza depende de
 [256_defer_direct_member_provisioning.sql](../../supabase/migrations/256_defer_direct_member_provisioning.sql):

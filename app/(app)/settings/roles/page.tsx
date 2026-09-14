@@ -54,13 +54,18 @@ const ACTION_LABELS: Record<string, string> = {
     manage: "Gestionar",
 };
 
+/**
+ * Renders the organization role-permission settings and protects the owner role from changes.
+ *
+ * @returns The role settings interface for the active organization.
+ */
 export default function RolesSettingsPage() {
     const router = useRouter();
     const { state: accessState, can } = useOrganizationModuleAccess("/settings/roles");
     const { refresh: refreshOrganization } = useOrganization();
     const [roles, setRoles] = useState<Role[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [selectedRole, setSelectedRole] = useState("admin");
+    const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -73,8 +78,13 @@ export default function RolesSettingsPage() {
             setLoading(false);
             return;
         }
-        setRoles(json.data?.roles ?? []);
+        const nextRoles = json.data?.roles ?? [];
+        setRoles(nextRoles);
         setPermissions(json.data?.permissions ?? []);
+        setSelectedRole((current) => {
+            if (current && nextRoles.some((item) => item.id === current)) return current;
+            return nextRoles[0]?.id ?? null;
+        });
         setLoading(false);
     }, []);
 
@@ -84,6 +94,8 @@ export default function RolesSettingsPage() {
     }, [accessState, router, load]);
 
     const role = roles.find((item) => item.id === selectedRole) ?? roles[0];
+    const canManageRoles = can("roles.manage");
+    const canEditSelectedRole = Boolean(role && !role.locked && canManageRoles && !loading && !saving);
     const groupedPermissions = useMemo(() => {
         const groups: Record<string, Permission[]> = {};
         for (const permission of permissions) {
@@ -94,7 +106,7 @@ export default function RolesSettingsPage() {
     }, [permissions]);
 
     function togglePermission(code: string) {
-        if (!role || role.locked || !can("roles.manage")) return;
+        if (!role || !canEditSelectedRole) return;
         setRoles((current) => current.map((item) => {
             if (item.id !== role.id) return item;
             const enabled = item.permissions.includes(code);
@@ -103,7 +115,7 @@ export default function RolesSettingsPage() {
     }
 
     async function saveRole() {
-        if (!role || role.locked || !can("roles.manage")) return;
+        if (!role || !canEditSelectedRole) return;
         setSaving(true);
         const response = await apiFetch("/api/authorization/roles", {
             method: "PATCH",
@@ -126,7 +138,7 @@ export default function RolesSettingsPage() {
         <div className="space-y-6">
             <SettingsSection
                 title="Roles y permisos"
-                subtitle="Configura qué puede hacer cada perfil dentro de tus empresas. Los cambios aplican a todos los miembros con ese rol."
+                subtitle="Configura qué puede hacer cada perfil en esta organización. Los cambios aplican a todos los miembros que tengan ese rol."
                 action={<ShieldCheck size={18} className="text-primary-500" />}
             >
                 <div className="space-y-5">
@@ -135,12 +147,12 @@ export default function RolesSettingsPage() {
                             <button
                                 key={item.id}
                                 type="button"
-                                onClick={() => { if (!item.locked) setSelectedRole(item.id); }}
-                                disabled={item.locked}
-                                className={["text-left rounded-lg border px-3 py-3 transition-colors", item.locked ? "border-border-light bg-surface-2/50 cursor-not-allowed" : selectedRole === item.id ? "border-primary-300 bg-primary-50" : "border-border-light hover:bg-surface-2"].join(" ")}
+                                onClick={() => setSelectedRole(item.id)}
+                                aria-pressed={selectedRole === item.id}
+                                className={["text-left rounded-lg border px-3 py-3 transition-colors", selectedRole === item.id ? "border-primary-300 bg-primary-50" : "border-border-light hover:bg-surface-2"].join(" ")}
                             >
                                 <p className="font-mono text-[12px] font-bold text-foreground flex items-center gap-1.5">{item.name}{item.locked && <LockKeyhole size={12} className="text-[var(--text-tertiary)]" />}</p>
-                                <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-1 leading-snug">{item.locked ? "Rol del sistema: no se puede modificar." : item.description}</p>
+                                <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-1 leading-snug">{item.locked ? "Acceso total protegido; sus permisos no se pueden modificar." : item.description}</p>
                             </button>
                         ))}
                     </div>
@@ -152,9 +164,9 @@ export default function RolesSettingsPage() {
                             <div className="flex items-center justify-between gap-4 border-t border-border-light pt-4">
                                 <div>
                                     <p className="font-mono text-[13px] font-bold text-foreground">Permisos de {role.name}</p>
-                                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">Activa solo las operaciones necesarias para este perfil.</p>
+                                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">{role.locked ? "Este perfil tiene acceso total y es de solo lectura." : canManageRoles ? "Activa solo las operaciones necesarias para este perfil." : "No tienes permiso para modificar este perfil."}</p>
                                 </div>
-                                <BaseButton.Root variant="primary" size="sm" onClick={saveRole} isDisabled={saving || role.locked || !can("roles.manage")} loading={saving} leftIcon={<Save size={13} />}>
+                                <BaseButton.Root variant="primary" size="sm" onClick={saveRole} isDisabled={saving || !canEditSelectedRole} loading={saving} leftIcon={<Save size={13} />}>
                                     Guardar
                                 </BaseButton.Root>
                             </div>
@@ -169,7 +181,14 @@ export default function RolesSettingsPage() {
                                             {items.map((permission) => {
                                                 const checked = role.permissions.includes(permission.code);
                                                 return (
-                                                    <button key={permission.code} type="button" onClick={() => togglePermission(permission.code)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/40 transition-colors">
+                                                    <button
+                                                        key={permission.code}
+                                                        type="button"
+                                                        onClick={() => togglePermission(permission.code)}
+                                                        disabled={!canEditSelectedRole}
+                                                        aria-pressed={checked}
+                                                        className={["w-full flex items-center gap-3 px-4 py-3 text-left transition-colors", canEditSelectedRole ? "hover:bg-surface-2/40" : "cursor-not-allowed opacity-70"].join(" ")}
+                                                    >
                                                         <span className={["w-5 h-5 rounded-md border flex items-center justify-center shrink-0", checked ? "bg-primary-500 border-primary-500 text-white" : "border-border-light"].join(" ")}>
                                                             {checked && <Check size={13} strokeWidth={3} />}
                                                         </span>
@@ -192,7 +211,7 @@ export default function RolesSettingsPage() {
 
             <div className="flex items-start gap-3 px-1 text-[var(--text-tertiary)]">
                 <LockKeyhole size={15} className="mt-0.5 shrink-0" />
-                <p className="font-sans text-[12px] leading-relaxed">El rol Dueño siempre conserva acceso total y no puede modificarse. La autorización también se valida en el backend, aunque un miembro intente acceder directamente a una ruta.</p>
+                <p className="font-sans text-[12px] leading-relaxed">El rol Dueño siempre conserva acceso total y no puede modificarse. Los demás perfiles del sistema pueden ajustarse para esta organización. La autorización también se valida en el backend.</p>
             </div>
         </div>
     );

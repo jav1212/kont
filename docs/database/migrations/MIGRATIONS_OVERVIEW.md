@@ -128,6 +128,30 @@ Before release, confirm `public.membership_direct_provisioning_ready()` is true 
 
 Apply `257_organization_access_management_permission.sql` after the organization role catalog exists. It records `access.manage` in the access-control catalog and grants it only to active system owner and admin roles, including templates. It does not alter custom role grants or cashier, seller, and accountant defaults. Verify the required grant on active system owner/admin roles before enabling the access-settings Web route; applying the migration alone does not deploy that route.
 
+### Organization system-role permission overrides rollout
+
+Apply `261_organization_system_role_permission_overrides.sql` after migrations
+that create the canonical organization role catalog and its versioned role
+update RPC. It updates both the legacy permission-replacement RPC and the
+versioned role-update RPC so an active organization-local system role can have
+its permissions replaced when its code is not `owner`. The role must belong to
+an organization; global templates remain immutable.
+
+The migration keeps system-role identity metadata and lifecycle immutable:
+only a custom role may change its name or description, and no system role may
+be archived through the update RPC. It does not rewrite any current role grants
+or template defaults. Organization roles already provisioned keep their grants;
+future organizations receive their initial system-role grants from the unchanged
+templates. An override is limited to the organization whose local role is
+updated and does not re-provision another organization.
+
+Apply migration 261 before deploying or enabling the Web editor for default
+role permissions. The editor requires `roles.manage`, requires the caller to own
+every permission being granted, and sends `expectedVersion`; a stale version
+returns the existing role-version conflict. If the application code is rolled
+back, stored local overrides remain in place; do not remove role or permission
+rows merely to disable the editor.
+
 ### Stage 7 - Accounting module
 
 Main migrations:

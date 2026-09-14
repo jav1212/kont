@@ -93,6 +93,17 @@ test("the canonical cashier role grants only its assigned read capability", asyn
     await assert.rejects(() => requirePermission(context(), "employees.read"), PermissionDeniedError);
 });
 
+test("editing a system role's permissions takes effect on subsequent Web requests", async () => {
+    state = { organization: "active", membership: "active", role: "active", permissions: ["companies.read"] };
+    await assert.rejects(() => requirePermission(context(), "sales.create"), PermissionDeniedError);
+
+    state.permissions = ["companies.read", "sales.create"];
+    await requirePermission(context(), "sales.create");
+
+    state.permissions = ["companies.read"];
+    await assert.rejects(() => requirePermission(context(), "sales.create"), PermissionDeniedError);
+});
+
 test("suspended organization, inactive membership, or archived role fails closed", async () => {
     for (const next of [
         { organization: "suspended", membership: "active", role: "active" },

@@ -342,9 +342,15 @@ Responsable de:
 Es el modulo que hace posible la operacion multi-tenant compartida.
 
 La administración de roles usa roles con alcance de organización. `roles.read`
-permite consultar y `roles.manage` permite cambiar roles personalizados con
-control de versión; los roles del sistema están bloqueados. Esta edición no
-modifica los roles globales legacy.
+permite consultar y `roles.manage` permite cambiar, con control de versión, los
+permisos de roles personalizados y de los perfiles predeterminados locales
+`admin`, `accountant`, `seller` y `cashier`. El rol `owner` conserva acceso total
+y permanece bloqueado. Los perfiles del sistema solo permiten cambiar permisos:
+su nombre, descripción, estado y las plantillas globales que aprovisionan otras
+organizaciones no se modifican. Quien administra roles solo puede conceder
+permisos que ya posee; después de guardar, la Web actualiza los permisos
+efectivos de la organización. Esta capacidad requiere aplicar la migración 261
+antes de utilizarse en una base de datos remota.
 
 La creacion directa permite a un `owner` o `admin` con `members.invite` crear una cuenta confirmada que puede iniciar sesion de inmediato, sin OTP por correo. Recibe correo, contrasena de al menos ocho caracteres y uno de los roles `admin`, `contador`, `vendedor` o `cajero`; un `admin` no puede crear otro `admin`. No fuerza un cambio de contrasena en el primer acceso.
 

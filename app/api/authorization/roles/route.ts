@@ -23,7 +23,7 @@ export const GET = withTenantPermission("roles.read", async (request, tenant) =>
                 id: role.id,
                 name: role.name,
                 description: role.description,
-                locked: role.kind === "system",
+                locked: role.code === "owner",
                 kind: role.kind,
                 version: role.version,
                 permissions: [...role.permissions],
@@ -34,7 +34,7 @@ export const GET = withTenantPermission("roles.read", async (request, tenant) =>
 });
 
 /**
- * Replaces permissions on one mutable organization-local role using optimistic concurrency.
+ * Replaces permissions on one editable organization-local role using optimistic concurrency.
  *
  * @param request Cookie-authenticated request containing role UUID, permission codes, and version.
  * @returns The changed role's id, canonical permissions, and new version.

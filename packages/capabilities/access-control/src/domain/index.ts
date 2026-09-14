@@ -84,7 +84,25 @@ export class Role {
   constructor(properties: RoleProperties) { Object.assign(this, properties); this.id = properties.id; this.organizationId = properties.organizationId; this.code = properties.code; this.name = properties.name; this.description = properties.description; this.kind = properties.kind; this.permissions = Object.freeze([...properties.permissions]); this.status = properties.status; this.version = properties.version; }
   isActive(): boolean { return this.status === RoleStatus.Active; }
   hasPermission(permission: PermissionCode): boolean { return this.permissions.includes(permission); }
-  assertMutable(): void { if (this.kind === RoleKind.System) throw new AccessControlFailure("SYSTEM_ROLE_IMMUTABLE", "System roles cannot be modified."); }
+  /**
+   * Ensures this role's identity metadata and lifecycle can be changed.
+   * @returns Nothing when the role is custom.
+   * @throws {AccessControlFailure} When the role is a system role.
+   */
+  assertMutable(): void {
+    if (this.kind === RoleKind.System) throw new AccessControlFailure("SYSTEM_ROLE_IMMUTABLE", "System roles cannot be modified.");
+  }
+  /**
+   * Ensures this role may have its permission grants changed in its organization.
+   * Global templates and the owner role define protected authorization baselines.
+   * @returns Nothing when permission grants are mutable.
+   * @throws {AccessControlFailure} When the role is a global template or the protected owner role.
+   */
+  assertPermissionsMutable(): void {
+    if (this.organizationId === null || this.code === RoleCode.Owner) {
+      throw new AccessControlFailure("SYSTEM_ROLE_IMMUTABLE", "The owner role and system templates cannot be modified.");
+    }
+  }
   assertAssignableBy(actorRole: Role): void { if (this.code === RoleCode.Owner && actorRole.code !== RoleCode.Owner) throw new AccessControlFailure("CANNOT_ASSIGN_OWNER", "Only an owner can assign the owner role."); }
   assertBelongsTo(organizationId: string): void { if (this.organizationId !== organizationId) throw new AccessControlFailure("ROLE_OUTSIDE_ORGANIZATION", "The role belongs to another organization."); }
 }
