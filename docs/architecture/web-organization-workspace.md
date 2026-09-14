@@ -69,8 +69,15 @@ de estilos, para incluir las clases de superposición del tema instalado.
 
 `/settings/organization` muestra nombre, logo y rol del usuario. Sus secciones
 de empresas, miembros e invitaciones y roles consultan las proyecciones de la
-organización según los permisos efectivos del usuario. Los errores de consulta
-tienen reintento y no se representan como listas vacías o conteos de cero.
+organización según los permisos efectivos del usuario. Las lecturas de recursos
+por [organization-request.ts](../../src/modules/organizations/frontend/organization-request.ts)
+reintentan únicamente ante HTTP 503 con un sobre de error válido cuyo código es
+`ORGANIZATION_REPOSITORY_UNAVAILABLE`: esperan 250 y 500 ms, para un máximo de
+tres intentos. Cada intento conserva los encabezados de tenant y la señal de
+cancelación; una solicitud cancelada no programa otro intento. Las mutaciones,
+los errores de autenticación y autorización, y los demás fallos no se
+reintentan. Los errores de consulta no se representan como listas vacías o
+conteos de cero.
 
 Quien tenga `organizations.update` puede cambiar el nombre, subir un logo o
 quitarlo. Cada escritura incluye `expectedVersion`; los conflictos de versión
