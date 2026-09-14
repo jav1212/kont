@@ -14,6 +14,8 @@ El servidor crea una sesión Supabase real para el titular y registra su `sessio
 
 Sólo un propietario o administrador autenticado de forma convencional y con el permiso `access.manage` puede enrolar terminales, emitir carnets o revocarlos. La página es `/settings/access`; los endpoints administrativos nunca devuelven un código previamente emitido. Reemitir sustituye el carnet activo y revoca las sesiones que dependían de él.
 
+Al emitir un carnet, la vista muestra el titular y las barras Code 128, sin texto del código, instrucciones para el lector ni control para copiarlo. Sólo ofrece **Imprimir** y **Cerrar**; esos controles se excluyen de la impresión y el formato compacto del carnet tiene 110 mm de ancho. Quitar el texto no cambia que el código de barras sea una credencial ni impide que alguien lo copie o escanee: un carnet expuesto debe revocarse como cualquier otra credencial perdida.
+
 Ante pérdida de un carnet, revocarlo desde esa página y emitir uno nuevo. Ante pérdida de una terminal o navegador, revocar la terminal. Ambos casos se registran en `barcode_access_audit` sin almacenar el código, token, cookie ni enlace temporal.
 
 La sesión deja de estar activa después de cinco minutos sin interacción humana registrada o tras ocho horas desde su creación. El botón de bloqueo y el cierre de sesión convencional bloquean el registro servidor. El bloqueo identifica la sesión exacta para que una pestaña antigua no cierre una sesión más nueva; las pestañas se avisan entre sí y vuelven a comprobar el servidor.

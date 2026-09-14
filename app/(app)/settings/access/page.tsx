@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Copy, Plus, Printer, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
+import { Plus, ScanBarcode, ShieldOff, Terminal } from "lucide-react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
@@ -9,7 +9,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { notify } from "@/src/shared/frontend/notify";
-import { Code128Barcode } from "@/src/modules/auth/frontend/components/code128-barcode";
+import { IssuedBadgeCard } from "@/src/modules/auth/frontend/components/issued-badge-card";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 
 interface TerminalEntry { id: string; name: string; status: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }
@@ -134,7 +134,7 @@ export default function AccessSettingsPage() {
             <AccessRows entries={badges} empty="No hay carnets emitidos." working={working} onRevoke={(id) => void revoke("badge", id)} />
         </SettingsSection>
 
-        {issued && <IssuedBadgeCard issued={issued} onClose={() => setIssued(null)} />}
+        {issued && <IssuedBadgeCard barcode={issued.barcode} email={issued.badge.email} onClose={() => setIssued(null)} />}
         {loading && <p className="font-sans text-sm text-text-tertiary">Cargando accesos…</p>}
     </div>;
 }
@@ -146,20 +146,4 @@ function AccessRows({ entries, empty, working, onRevoke }: { entries: Array<Term
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground">{"email" in entry ? entry.email : entry.name}</p><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-tertiary">{entry.status}{"lastUsedAt" in entry && entry.lastUsedAt ? ` · Último uso ${new Date(entry.lastUsedAt).toLocaleDateString("es-VE")}` : ""}</p></div>
         {entry.status !== "revoked" && <BaseButton.Root size="sm" variant="ghost" disabled={working === entry.id} onClick={() => onRevoke(entry.id)} leftIcon={<ShieldOff size={13} />}>Revocar</BaseButton.Root>}
     </li>)}</ul>;
-}
-
-function IssuedBadgeCard({ issued, onClose }: { issued: IssuedBadge; onClose: () => void }) {
-    async function copy() { await navigator.clipboard.writeText(issued.barcode); notify.success("Código copiado."); }
-    return <section id="kont-issued-badge" className="rounded-xl border-2 border-primary-500/30 bg-surface-1 p-6 print:border-0" aria-live="polite">
-        <style>{"@media print { body * { visibility: hidden !important; } #kont-issued-badge, #kont-issued-badge * { visibility: visible !important; } #kont-issued-badge { position: fixed; inset: 18mm; border: 0 !important; } }"}</style>
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-primary-500">Carnet emitido</p>
-        <h2 className="mt-2 text-lg font-semibold">Carnet de acceso</h2>
-        <p className="mt-1 text-sm text-text-tertiary">Titular: {issued.badge.email ?? "Usuario de Kontave"}</p>
-        <div className="my-5 rounded-lg border border-border-light bg-white px-4 py-6 text-center text-black">
-            <Code128Barcode value={issued.barcode} />
-            <div className="select-all break-all font-mono text-xl font-bold tracking-[0.16em]">{issued.barcode}</div>
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em]">Escanear con lector configurado como teclado</p>
-        </div>
-        <div className="flex gap-2 print:hidden"><BaseButton.Root variant="secondary" onClick={() => void copy()} leftIcon={<Copy size={13} />}>Copiar</BaseButton.Root><BaseButton.Root variant="primary" onClick={() => window.print()} leftIcon={<Printer size={13} />}>Imprimir</BaseButton.Root><BaseButton.Root variant="ghost" onClick={onClose}>Cerrar</BaseButton.Root></div>
-    </section>;
 }

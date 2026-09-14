@@ -25,5 +25,5 @@ export function Code128Barcode({ value }: { value: string }) {
         });
     }, [value]);
 
-    return <svg ref={reference} role="img" aria-label="Código de barras Code 128" className="mx-auto max-w-full" />;
+    return <svg ref={reference} role="img" aria-label="Código de barras Code 128" className="mx-auto h-auto max-w-full" />;
 }
