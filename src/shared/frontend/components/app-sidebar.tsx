@@ -9,7 +9,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Activity,
-    Check,
     CircleHelp,
     CreditCard,
     LifeBuoy,
@@ -37,7 +36,6 @@ import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-up
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
-import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 
@@ -324,7 +322,6 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
-    const { organizations, organization, selectOrganization } = useOrganization();
     const router = useRouter();
 
     const initial = (name?.[0] ?? email?.[0] ?? "?").toUpperCase();
@@ -376,9 +373,6 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
                     email={email}
                     displayName={displayName}
                     planName={planName}
-                    allTenants={organizations.map((entry) => ({ tenantId: entry.id, tenantEmail: entry.name, tenantAvatarUrl: entry.logoUrl, isOwn: false, role: entry.role }))}
-                    activeTenantId={organization?.id ?? null}
-                    onSwitchTenant={(id) => { selectOrganization(id); setOpen(false); }}
                     onProfileClick={() => { setOpen(false); router.push(profileHref); }}
                     onHelpClick={() => { setOpen(false); router.push(helpHref); }}
                     onStatusClick={() => { setOpen(false); router.push(statusHref); }}
@@ -425,16 +419,13 @@ function UpChevron() {
     );
 }
 
-// ── Account menu (tenants + profile + sign out) ──────────────────────────
+// ── Account menu (profile + preferences + sign out) ──────────────────────
 
 interface AccountMenuProps {
     className:      string;
     email?:         string | null;
     displayName:    string;
     planName?:      string | null;
-    allTenants:     Array<{ tenantId: string; tenantEmail: string; tenantAvatarUrl: string | null; isOwn: boolean; role: string }>;
-    activeTenantId: string | null;
-    onSwitchTenant: (id: string) => void;
     onProfileClick: () => void;
     onHelpClick:    () => void;
     onStatusClick:  () => void;
@@ -443,8 +434,7 @@ interface AccountMenuProps {
     onSignOut:      () => void;
 }
 
-function AccountMenu({ className, email, displayName, planName, allTenants, activeTenantId, onSwitchTenant, onProfileClick, onHelpClick, onStatusClick, onBillingClick, canViewBilling, onSignOut }: AccountMenuProps) {
-    const hasMultipleTenants = allTenants.length > 1;
+function AccountMenu({ className, email, displayName, planName, onProfileClick, onHelpClick, onStatusClick, onBillingClick, canViewBilling, onSignOut }: AccountMenuProps) {
     const { theme, setTheme } = useTheme();
 
     return (
@@ -476,50 +466,6 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                     <Settings size={16} strokeWidth={1.8} />
                 </button>
             </div>
-
-            {/* Tenant switcher (only when multiple tenants) */}
-            {hasMultipleTenants && (
-                <div className="p-1.5 border-b border-sidebar-border">
-                    <p className="px-2 pt-1 pb-1.5 font-sans text-[12px] font-semibold text-sidebar-label">
-                        Cambiar organización
-                    </p>
-                    <ul>
-                        {allTenants.map((t) => {
-                            const isSelected = t.tenantId === activeTenantId;
-                            return (
-                                <li key={t.tenantId}>
-                                    <button
-                                        role="menuitemradio"
-                                        aria-checked={isSelected}
-                                        onClick={() => onSwitchTenant(t.tenantId)}
-                                        className={[
-                                            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold",
-                                            isSelected ? "text-sidebar-fg-hover bg-sidebar-bg-hover" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                        ].join(" ")}
-                                    >
-                                        <span className="w-5 h-5 rounded-md bg-primary-500/10 border border-primary-500/20 flex items-center justify-center overflow-hidden shrink-0">
-                                            {t.tenantAvatarUrl ? (
-                                                <Image src={t.tenantAvatarUrl} alt="" width={20} height={20} unoptimized className="object-cover" />
-                                            ) : (
-                                                <span className="font-mono text-[10px] font-bold text-primary-500 uppercase">
-                                                    {t.tenantEmail[0] ?? "?"}
-                                                </span>
-                                            )}
-                                        </span>
-                                        <span className="truncate flex-1">{t.isOwn ? "Mi cuenta" : t.tenantEmail}</span>
-                                        {!t.isOwn && (
-                                            <span className="px-2 py-0.5 rounded-md bg-sidebar-bg-hover text-sidebar-label text-[11px] font-semibold shrink-0">
-                                                {sentenceCase(t.role)}
-                                            </span>
-                                        )}
-                                        {isSelected && <Check size={15} className="ml-auto shrink-0" strokeWidth={2} />}
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
-            )}
 
             <div className="p-1.5 border-b border-sidebar-border">
                 <div className="h-10 px-2 flex items-center justify-between gap-3 font-sans text-[14px] font-semibold text-sidebar-fg">

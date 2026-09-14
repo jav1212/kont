@@ -19,6 +19,9 @@ módulo operativo confirmado. El acceso **Configuración** del pie de la barra,
 encima de **Ayuda**, activa esa misma navegación. Su contenido aprovecha el
 ancho disponible y conserva márgenes laterales adaptables.
 
+El cambio de organización se realiza únicamente desde el selector superior de
+la barra lateral; el menú de cuenta no replica ese directorio.
+
 Cuando hay varias organizaciones, el selector abre un directorio buscable y
 agrupa las cuentas propias (`owner`) bajo **Mi cuenta** y las demás membresías
 directas bajo **Otras cuentas**; identifica la organización activa. Con una sola
