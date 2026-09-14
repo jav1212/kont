@@ -143,3 +143,17 @@ test("complete reports do not skip a confirmed invoice when supplier-name resolu
     assert.equal(result.isSuccess, true);
     assert.equal(f.calls.length, 1);
 });
+
+test("complete VES reports retain their source exchange rate without converting fiscal totals", async () => {
+    const f = fixture();
+    f.row.header = { ...f.row.header, sourceFormat: "complete", exchangeRate: "820.1018" };
+    const result = await f.repo.execute("batch", "company", "draft", 3);
+    assert.equal(result.isSuccess, true);
+    const invoice = f.calls[0].input.p_invoice as Record<string, unknown>;
+    assert.equal(invoice.currency, "VES");
+    assert.equal(invoice.dollarRate, "820.1018");
+    assert.equal(invoice.subtotal, "116");
+    assert.equal(invoice.vatAmount, "18.56");
+    assert.equal(invoice.total, "134.56");
+    assert.deepEqual(invoice.exchangeRates, []);
+});

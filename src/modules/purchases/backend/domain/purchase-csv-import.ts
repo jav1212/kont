@@ -441,8 +441,10 @@ export function calculatePurchaseCsvRow(row: PurchaseCsvImportRow, config: Purch
                 if (compareDecimal(qty, exactDecimal("9999999999.9999")) > 0 || compareDecimal(rate, exactDecimal("99999999.9999")) > 0) throw new Error("Cantidad o tasa fuera del límite admitido");
                 if (header.sourceFormat === "complete" && compareDecimal(declaredSubtotal, ZERO) < 0) throw new Error("Sub Total Bs. no puede ser negativo");
                 const netCost = quantizeDecimal(config.costsIncludeVat ? divideDecimal(cost, divisor) : cost, { scale: 4, mode: "half_up" });
+                // Match the persisted fiscal base precision before aggregating IVA.
+                // VAT-inclusive division can otherwise cross a cent boundary after save.
                 const netTotal = header.sourceFormat === "complete"
-                    ? (config.costsIncludeVat ? divideDecimal(declaredSubtotal, divisor) : declaredSubtotal)
+                    ? quantizeDecimal(config.costsIncludeVat ? divideDecimal(declaredSubtotal, divisor) : declaredSubtotal, { scale: 4, mode: "half_up" })
                     : multiplyDecimal(qty, netCost);
                 if (compareDecimal(netCost, exactDecimal("9999999999.9999")) > 0) throw new Error("Costo fuera del límite admitido");
                 const originalCost = exactDecimal(source.currencyCost);

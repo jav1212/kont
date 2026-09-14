@@ -121,6 +121,21 @@ test("IVA included costs round to DB precision before totals and preserve source
     assert.equal(fractional.vatAmount, "0.13");
 });
 
+test("complete IVA-included lines aggregate at persisted four-decimal tax-base precision", () => {
+    const input = row([
+        source({ quantity: "11.4", unitCostBs: "4991.25", subtotalBs: "56900.25" }),
+        source({ code: "002", quantity: "11.4", unitCostBs: "5487.9", subtotalBs: "62562.06" }),
+    ]);
+    input.header.sourceFormat = "complete";
+    const result = calculatePurchaseCsvRow(input, { ...config, costsIncludeVat: true });
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.items[0].totalCost, "49051.9397");
+    assert.equal(result.items[1].totalCost, "53932.8103");
+    assert.equal(result.subtotal, "102984.75");
+    assert.equal(result.vatAmount, "16477.56");
+    assert.equal(result.total, "119462.31");
+});
+
 test("all-USD imports still calculate from source Bs and truncate aggregate VAT exactly", () => {
     const input = row([source({ quantity: "1", unitCostBs: "0.29", subtotalBs: "0.29", currencyCost: "999" }), source({ code: "002", quantity: "1", unitCostBs: "0.29", subtotalBs: "0.29", currencyCost: "999" })]);
     const result = calculatePurchaseCsvRow(input, config);

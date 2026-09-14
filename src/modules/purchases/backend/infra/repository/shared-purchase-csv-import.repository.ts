@@ -121,7 +121,7 @@ export class SharedPurchaseCsvImportRepository implements IPurchaseCsvImportRepo
             const invoice = {
                 companyId, revision, documentNumber: row.header.documentNumber, controlNumber: row.header.controlNumber, date: row.header.date,
                 currency: row.header.currency, subtotal: headerOnlyDraft ? '0' : calculated.subtotal, vatAmount: headerOnlyDraft ? '0' : calculated.vatAmount, total: headerOnlyDraft ? row.header.totalBs : calculated.total,
-                dollarRate: row.header.currency === 'USD' ? row.header.exchangeRate : row.items.find(item => item.currency === 'USD')?.exchangeRate ?? null,
+                dollarRate: row.header.sourceFormat === 'complete' || row.header.currency === 'USD' ? row.header.exchangeRate : row.items.find(item => item.currency === 'USD')?.exchangeRate ?? null,
                 exchangeRates: row.header.currency !== 'VES' ? [{ currencyCode: row.header.currency, vesPerUnit: Number(row.header.exchangeRate), effectiveDate: row.header.date, source: 'manual', decimals: 4 }] : [],
                 notes: '[KONT_COMPRA_CSV]' + JSON.stringify({
                     batchId: id, sourceRow, reference: row.header.reference, supplierExternalId: row.header.supplierExternalId,
