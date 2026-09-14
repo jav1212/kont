@@ -1,17 +1,30 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { hasSameOrigin, sessionIdFromAccessToken, terminalFromCookie, touchBarcodeSession, validateBarcodeAccessSession } from '@/src/modules/auth/backend/barcode/barcode-access-service';
+import { BARCODE_TERMINAL_COOKIE, hasSameOrigin, sessionIdFromAccessToken, resolveBarcodeTerminal, touchBarcodeSession, validateBarcodeAccessSession } from '@/src/modules/auth/backend/barcode/barcode-access-service';
 
-/** Reads barcode-session state without extending its inactivity lifetime. */
+/**
+ * Reads browser enrollment and session state without extending inactivity lifetime.
+ * @returns Uncached session status with safe enrollment failure reasons, or a 503 on lookup failure.
+ */
 export async function GET(): Promise<Response> {
+    try {
+        return await readSessionStatus();
+    } catch {
+        return NextResponse.json({ error: 'No se pudo verificar el acceso. Intenta nuevamente.', code: 'barcode_session_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+}
+
+async function readSessionStatus(): Promise<Response> {
     const cookieStore = await cookies();
     const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } });
     const [{ data: userData }, { data: sessionData }] = await Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]);
     const user = userData.user;
     const sessionId = sessionData.session?.access_token ? sessionIdFromAccessToken(sessionData.session.access_token) : null;
-    const terminal = await terminalFromCookie(cookieStore.get('kont_barcode_terminal')?.value);
-    const terminalData = terminal ? { ready: true, id: terminal.id, name: terminal.name, tenantId: terminal.tenant_id } : { ready: false };
+    const resolution = await resolveBarcodeTerminal(cookieStore.get(BARCODE_TERMINAL_COOKIE)?.value);
+    const terminalData = resolution.ready
+        ? { ready: true, id: resolution.terminal.id, name: resolution.terminal.name, tenantId: resolution.terminal.tenant_id }
+        : resolution;
     if (!user || !sessionId) return NextResponse.json({ data: { active: false, registered: false, terminal: terminalData } }, { headers: { 'Cache-Control': 'no-store' } });
     const status = await validateBarcodeAccessSession(user.id, sessionId, cookieStore.get('kont_barcode_terminal')?.value);
     return NextResponse.json({ data: status.active ? { active: true, registered: true, sessionId: status.id, expiresAt: status.expiresAt, idleExpiresAt: status.idleExpiresAt, tenantId: status.tenantId, terminal: terminalData } : { active: false, registered: status.registered, sessionId: status.id, terminal: terminalData } }, { headers: { 'Cache-Control': 'no-store' } });

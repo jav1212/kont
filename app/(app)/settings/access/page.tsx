@@ -65,9 +65,25 @@ export default function AccessSettingsPage() {
         setWorking("terminal");
         try {
             const response = await apiFetch("/api/access/terminals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, install: true }) });
-            const body = await response.json() as { error?: string };
+            const body = await response.json() as { data?: { terminal?: TerminalEntry }; error?: string };
             if (!response.ok) { notify.error(body.error ?? "No se pudo habilitar la terminal."); return; }
-            setTerminalName(""); notify.success("Terminal habilitada en este navegador."); await reload();
+            setTerminalName("");
+            try {
+                const verificationResponse = await fetch("/api/auth/barcode/session", { cache: "no-store" });
+                const verification = await verificationResponse.json() as { data?: { terminal?: { ready?: boolean; id?: string; reason?: string } } };
+                if (!verificationResponse.ok || verification.data?.terminal?.reason === "access_unavailable") {
+                    notify.error("La terminal se registró, pero no pudimos verificar este navegador. Intenta nuevamente.");
+                } else if (body.data?.terminal?.id && verification.data?.terminal?.ready && verification.data.terminal.id === body.data.terminal.id) {
+                    notify.success("Terminal habilitada en este navegador.");
+                } else {
+                    notify.error("La terminal se registró, pero este navegador no conservó la habilitación. Comprueba que permita cookies y vuelve a habilitarlo.");
+                }
+            } catch {
+                notify.error("La terminal se registró, pero no pudimos verificar este navegador. Intenta nuevamente.");
+            }
+            await reload();
+        } catch {
+            notify.error("No se pudo conectar con el servidor.");
         } finally { setWorking(null); }
     }
 

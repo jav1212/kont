@@ -18,6 +18,12 @@ Ante pérdida de un carnet, revocarlo desde esa página y emitir uno nuevo. Ante
 
 La sesión deja de estar activa después de cinco minutos sin interacción humana registrada o tras ocho horas desde su creación. El botón de bloqueo y el cierre de sesión convencional bloquean el registro servidor. El bloqueo identifica la sesión exacta para que una pestaña antigua no cierre una sesión más nueva; las pestañas se avisan entre sí y vuelven a comprobar el servidor.
 
+### Diagnóstico después de cerrar sesión
+
+Cerrar la sesión del operador o una sesión por carnet no elimina el enrolamiento del navegador ni exige reemitir el carnet. Al volver a la pantalla de carnet, `GET /api/auth/barcode/session` informa el estado de ese enrolamiento sin requerir una sesión Supabase activa. La respuesta esperada para un navegador enrolado contiene `terminal.ready: true`; `active: false` y `registered: false` sólo indican que no hay una sesión por carnet activa.
+
+Si `terminal.ready` es `false`, revisar `terminal.reason`: `not_enrolled` indica que el navegador no envió una credencial de enrolamiento válida o que ya no coincide con una terminal registrada; `revoked` indica que la terminal fue revocada; `access_unavailable` indica que el servidor no pudo comprobar la protección o el registro. Ante `not_enrolled` o `revoked`, según corresponda, debe habilitarse de nuevo el navegador desde **Configuración → Acceso**; ante `access_unavailable`, volver a comprobar el servicio. La respuesta no permite determinar por sí sola por qué una cookie concreta dejó de llegar al servidor; debe comprobarse la cookie `kont_barcode_terminal` en el navegador afectado.
+
 ## Protección de datos y compatibilidad
 
 Las tablas `barcode_access_terminals`, `barcode_access_badges`, `barcode_access_sessions` y `barcode_access_audit` pertenecen a `public`, tienen RLS activado y ningún privilegio para `anon` ni `authenticated`. Adaptadores con `service_role` son los únicos que las consultan.

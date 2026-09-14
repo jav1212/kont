@@ -11,6 +11,9 @@ type BadgeRow = { id: string; tenant_id: string; user_id: string; status: string
 export type BarcodeTerminal = { id: string; name: string; status: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
 export type BarcodeBadge = { id: string; userId: string; email: string | null; status: string; createdAt: string; revokedAt: string | null };
 export type BarcodeSessionValidation = { registered: boolean; active: boolean; id?: string; tenantId?: string; terminalId?: string; expiresAt?: string; idleExpiresAt?: string };
+export type BarcodeTerminalResolution =
+    | { ready: true; terminal: TerminalRow }
+    | { ready: false; reason: 'not_enrolled' | 'revoked' | 'access_unavailable' };
 
 /**
  * Creates a fixed-length SHA-256 digest for a high-entropy server credential.
@@ -178,14 +181,33 @@ export async function validateBarcodeAccessSession(userId: string, supabaseSessi
  * @returns The scoped terminal, or null for invalid/revoked/unprotected cookies.
  */
 export async function terminalFromCookie(cookieValue: string | undefined): Promise<TerminalRow | null> {
-    if (!(await isBarcodeAccessProtectionReady())) return null;
+    const resolution = await resolveBarcodeTerminal(cookieValue);
+    return resolution.ready ? resolution.terminal : null;
+}
+
+/**
+ * Resolves browser enrollment independently of the operator's login cookies.
+ *
+ * @param cookieValue - HttpOnly terminal credential supplied by the browser.
+ * @returns A verified terminal or a safe reason; infrastructure failures never grant access.
+ */
+export async function resolveBarcodeTerminal(cookieValue: string | undefined): Promise<BarcodeTerminalResolution> {
     const separator = cookieValue?.indexOf('.');
-    if (!cookieValue || separator === undefined || separator <= 0) return null;
+    if (!cookieValue || separator === undefined || separator <= 0) return { ready: false, reason: 'not_enrolled' };
     const id = cookieValue.slice(0, separator);
     const secret = cookieValue.slice(separator + 1);
-    if (!/^[0-9a-f-]{36}$/i.test(id) || secret.length < 40) return null;
-    const { data } = await new ServerSupabaseSource().instance.from('barcode_access_terminals').select('id,tenant_id,name,status,protection_ready,created_at,last_used_at,revoked_at').eq('id', id).eq('secret_hash', credentialHash(secret)).maybeSingle();
-    return data && data.status === 'active' && data.protection_ready ? data as TerminalRow : null;
+    if (!/^[0-9a-f-]{36}$/i.test(id) || secret.length < 40) return { ready: false, reason: 'not_enrolled' };
+    try {
+        if (!(await isBarcodeAccessProtectionReady())) return { ready: false, reason: 'access_unavailable' };
+        const { data, error } = await new ServerSupabaseSource().instance.from('barcode_access_terminals').select('id,tenant_id,name,status,protection_ready,created_at,last_used_at,revoked_at').eq('id', id).eq('secret_hash', credentialHash(secret)).maybeSingle();
+        if (error) return { ready: false, reason: 'access_unavailable' };
+        if (!data) return { ready: false, reason: 'not_enrolled' };
+        if (data.status !== 'active') return { ready: false, reason: 'revoked' };
+        if (!data.protection_ready) return { ready: false, reason: 'access_unavailable' };
+        return { ready: true, terminal: data as TerminalRow };
+    } catch {
+        return { ready: false, reason: 'access_unavailable' };
+    }
 }
 
 /**
