@@ -77,11 +77,16 @@ function SignInFormContent() {
         e.preventDefault();
         setResendSent(false);
 
-        if (!email.trim()) { notify.error("El correo es requerido."); return; }
-        if (!pass)         { notify.error("La contraseña es requerida."); return; }
+        const normalizedEmail = email.trim();
+        if (!normalizedEmail) { notify.error("El correo es requerido."); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            notify.error("Ingresa un correo electrónico válido.");
+            return;
+        }
+        if (!pass) { notify.error("La contraseña es requerida."); return; }
 
         setLoading(true);
-        const err = await signIn(email, pass);
+        const err = await signIn(normalizedEmail, pass);
         setLoading(false);
 
         if (err) {
@@ -104,6 +109,7 @@ function SignInFormContent() {
                 value={email}
                 onValueChange={setEmail}
                 isDisabled={loading}
+                validationBehavior="aria"
             />
 
             <div>
@@ -164,13 +170,11 @@ function SignInFormContent() {
 
             <BaseButton.Root
                 type="submit"
-                disabled={loading}
+                loading={loading}
                 variant="primary"
                 className="w-full h-11 mt-1 rounded-xl shadow-sm"
             >
-                {loading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando…</>
-                    : "Ingresar"}
+                {loading ? "Verificando…" : "Ingresar"}
             </BaseButton.Root>
         </form>
     );

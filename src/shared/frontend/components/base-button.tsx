@@ -155,7 +155,9 @@ const ButtonRoot = ({
                 : leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
             }
             {children && (
-                <span className={loading ? "opacity-50" : ""}>{children}</span>
+                <span className={`inline-flex items-center justify-center gap-2 whitespace-nowrap [&>svg]:shrink-0${loading ? " opacity-50" : ""}`}>
+                    {children}
+                </span>
             )}
             {!loading && rightIcon && (
                 <span className="flex-shrink-0">{rightIcon}</span>

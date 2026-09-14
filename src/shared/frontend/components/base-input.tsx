@@ -197,6 +197,11 @@ const InputField = ({
                 size={size}
                 className={`group ${INPUT_SIZES[size].wrapper}`}
                 {...props}
+                // Auth and form failures are announced through notify.error().
+                // HeroUI otherwise derives a browser validation message for inputs
+                // such as type="email" and renders it below the field.
+                errorMessage={() => null}
+                isInvalid={Boolean(error) || props.isInvalid}
             />
 
             {/* ── helper ─────────────────────────────────────────────── */}
