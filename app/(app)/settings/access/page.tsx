@@ -74,7 +74,7 @@ export default function AccessSettingsPage() {
                 notify.error("No se pudo cargar la configuración de acceso.");
                 return;
             }
-            setTerminals((terminalBody.data as { terminals?: TerminalEntry[] } | undefined)?.terminals ?? []);
+            setTerminals(((terminalBody.data as { terminals?: TerminalEntry[] } | undefined)?.terminals ?? []).filter((terminal) => terminal.status !== "revoked"));
             setBadges((badgeBody.data as { badges?: BadgeEntry[] } | undefined)?.badges ?? []);
             const listedMembers = membersResponse.ok ? ((memberBody.data as Member[] | undefined) ?? []).filter((member) => !member.pending) : [];
             if (activeTenantRole === "owner" && userId && !listedMembers.some((member) => (member.memberId ?? member.id) === userId)) {
@@ -168,6 +168,7 @@ export default function AccessSettingsPage() {
             const response = await apiFetch(`/api/access/${kind}s/${id}/revoke`, { method: "POST" });
             const body = await response.json() as { error?: string };
             if (!response.ok) { notify.error(body.error ?? "No se pudo revocar."); return; }
+            if (kind === "terminal") setTerminals((current) => current.filter((terminal) => terminal.id !== id));
             await reload();
         } finally { mutationInFlight.current = false; setWorking(null); }
     }
