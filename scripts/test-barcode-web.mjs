@@ -12,6 +12,7 @@ try {
     let attempts = 0;
     const submittedBarcodes = [];
     let finishAttempt;
+    let loginAccepted = false;
     await page.route('**/api/**', async (route) => {
         const path = new URL(route.request().url()).pathname;
         if (path === '/api/auth/barcode/session') {
@@ -22,6 +23,7 @@ try {
             attempts++;
             submittedBarcodes.push(route.request().postDataJSON().barcode);
             await new Promise((resolve) => { finishAttempt = resolve; });
+            if (loginAccepted) return route.fulfill({ status: 200, json: { data: { session: { id: 'fixture-barcode-session' } } } });
             return route.fulfill({ status: 401, json: { error: 'No se pudo validar el carnet.' } });
         }
         return route.fulfill({ status: 200, json: { data: null } });
@@ -29,15 +31,25 @@ try {
     await page.goto(`${origin}/sign-in?mode=barcode`);
     await page.getByRole('heading', { name: 'Escanea tu carnet' }).waitFor();
     assert.equal(await page.locator('input[type=email]').count(), 0);
+    for (const invalidCode of ['7501234567890', '123']) {
+        await page.keyboard.type(invalidCode, { delay: 1 });
+        await page.keyboard.press('Enter');
+        await page.getByRole('heading', { name: 'Código no válido', exact: true }).waitFor();
+        await page.getByText('Este código no corresponde a un carnet de acceso. Escanea tu carnet.', { exact: true }).waitFor();
+        assert.equal(attempts, 0, 'Invalid formats must receive immediate feedback without waiting on authentication.');
+    }
     const credential = 'KONT-0123456789abcdefghijkl';
     await page.keyboard.type(credential, { delay: 1 });
     await page.keyboard.press('Enter');
     await page.getByRole('heading', { name: 'Validando carnet…' }).waitFor();
+    await page.getByText('Estamos comprobando tu acceso. Espera un momento.', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Código no válido', exact: true }).count(), 0);
     await page.keyboard.type(credential, { delay: 1 });
     await page.keyboard.press('Enter');
     assert.equal(attempts, 1, 'Duplicate scans during validation must not create extra logins.');
     finishAttempt();
     await page.getByText('No se pudo validar el carnet.', { exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Acceso no validado', exact: true }).waitFor();
     assert.equal((await page.locator('body').innerText()).includes(credential), false);
     await page.screenshot({ path: '/private/tmp/kont-barcode-scan-smoke.png', fullPage: true });
     await page.getByRole('tab', { name: 'Correo', exact: true }).click();
@@ -95,7 +107,27 @@ try {
         assert.equal((await page.locator('body').innerText()).includes(mixedCredential), false);
     }
     assert.equal(attempts, 3, 'Each complete keyboard scan must create exactly one login request.');
-    console.log('PASS: explicit carnet mode, exclusive credential forms, scanner submission, duplicate suppression, generic denial without credential disclosure, conventional login fallback, terminal reasons, temporary server failures, retry recovery, and Spanish keyboard/Caps Lock credential preservation.');
+    loginAccepted = true;
+    let finishLanding;
+    const landingRequest = page.waitForRequest((request) => new URL(request.url()).pathname === '/tools' && request.isNavigationRequest());
+    await page.route('**/tools?barcode-landing=1', async (route) => {
+        await new Promise((resolve) => { finishLanding = resolve; });
+        return route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Landing fixture</title>' });
+    });
+    await page.keyboard.type(credential, { delay: 1 });
+    await page.keyboard.press('Enter');
+    await page.getByRole('heading', { name: 'Validando carnet…' }).waitFor();
+    finishAttempt();
+    await page.getByRole('heading', { name: 'Acceso concedido', exact: true }).waitFor();
+    await page.getByText('Abriendo tu espacio de trabajo…', { exact: true }).waitFor();
+    const destination = await landingRequest;
+    assert.equal(new URL(destination.url()).searchParams.get('barcode-landing'), '1');
+    await page.keyboard.type(credential, { delay: 1 });
+    await page.keyboard.press('Enter');
+    assert.equal(attempts, 4, 'A confirmed login must ignore new scans while its destination is loading.');
+    finishLanding();
+    await page.waitForURL('**/tools?barcode-landing=1');
+    console.log('PASS: invalid format feedback, server denial, validation progress, success feedback during navigation, safe workspace landing, duplicate suppression, terminal recovery, and Spanish keyboard/Caps Lock credential preservation.');
 } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

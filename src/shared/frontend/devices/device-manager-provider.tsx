@@ -114,7 +114,9 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
     }, [accessListenerCount, releaseAccessCapture, requestAccessCapture]);
     useEffect(() => {
         if (!enabled && accessListenerCount === 0) return;
-        const scanner = new KeyboardWedgeScanner();
+        // Access must explain even a short invalid scan; product capture keeps
+        // its usual minimum so ordinary typing does not become a product read.
+        const scanner = new KeyboardWedgeScanner({ minimumLength: accessListenerCount > 0 ? 1 : 4 });
         let lastCharacterAt = 0;
         let editableSnapshot: EditableSnapshot | null = null;
         const onKeyDown = (event: KeyboardEvent) => {

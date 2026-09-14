@@ -8,8 +8,10 @@ interface Code128Encoder {
 /**
  * Creates a printable access badge with vector bars and no readable credential.
  *
- * The returned document stays in memory until the caller downloads it. Neither
- * the credential nor the holder is placed in PDF metadata or a filename.
+ * The returned document stays in memory until the caller downloads it. The
+ * credential is never placed in PDF metadata or its filename; the holder's
+ * display email remains visible in the document and its sanitized local part
+ * identifies the download.
  *
  * @param input - The newly issued credential and its holder's display email.
  * @returns A single A4 page containing a 110 mm wide badge at its original scale.
@@ -71,4 +73,23 @@ export function createAccessBadgePdf(input: { barcode: string; email: string | n
     }
 
     return pdf;
+}
+
+/**
+ * Creates a readable and filesystem-safe filename for an issued access badge.
+ *
+ * @param email - The holder email returned by the authorized badge issuance.
+ * @returns A bounded PDF filename based only on the email local part.
+ */
+export function accessBadgeFilename(email: string | null): string {
+    const localPart = email?.trim().split("@", 1)[0] ?? "";
+    const safeHolder = localPart
+        .normalize("NFKC")
+        .replace(/[\u0000-\u001F\u007F<>:"/\\|?*]/g, "-")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^[.\s-]+|[.\s-]+$/g, "")
+        .slice(0, 64)
+        .replace(/^[.\s-]+|[.\s-]+$/g, "");
+    return `carnet-acceso-${safeHolder || "usuario"}.pdf`;
 }

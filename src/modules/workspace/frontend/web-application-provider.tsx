@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ModuleCode } from "@kontave/modules/domain";
 import { useAuth } from "../../auth/frontend/hooks/use-auth";
 import { BarcodeSessionGuard } from "../../auth/frontend/components/barcode-session-guard";
@@ -20,6 +20,7 @@ import { GlobalInteractionBoundary } from "@/src/shared/frontend/components/glob
 import { createBrowserApplication } from "./web-browser-adapters";
 import { WebApplicationStartupBoundary } from "./web-application-startup-boundary";
 import { useWebCompanyActions } from "./web-company-actions";
+import { resolveBarcodeWorkspaceLanding } from "./barcode-workspace-landing";
 import type {
   WebApplicationController,
   WebApplicationSnapshot,
@@ -76,9 +77,12 @@ function AuthenticatedApplication({
     controller.getSnapshot,
   );
   const pathname = usePathname();
+  const router = useRouter();
   const params = useSearchParams();
   const urlTenant = params.get("tid");
   const urlCompany = params.get("cid");
+  const barcodeLanding = params.get("barcode-landing") === "1";
+  const isBarcodeLandingRoute = barcodeLanding && pathname === "/tools";
   const companyActions = useWebCompanyActions(
     controller,
     snapshot.tenantId,
@@ -127,6 +131,7 @@ function AuthenticatedApplication({
   }, [controller, urlCompany, urlTenant]);
 
   useEffect(() => {
+    if (isBarcodeLandingRoute) return;
     const current = controller.getSnapshot();
     const moduleCode = pathname.split("/")[1] as ModuleCode | undefined;
     if (
@@ -135,7 +140,23 @@ function AuthenticatedApplication({
       current.workspace.modules.some((entry) => entry.code === moduleCode)
     )
       void controller.selectModule(moduleCode);
-  }, [controller, pathname, snapshot.status, snapshot.tenantId]);
+  }, [controller, isBarcodeLandingRoute, pathname, snapshot.status, snapshot.tenantId]);
+
+  useEffect(() => {
+    if (!isBarcodeLandingRoute || snapshot.status !== "ready") return;
+    const organization = snapshot.organizations.find(
+      (entry) => entry.id === snapshot.workspace.activeWorkspace?.organizationId,
+    );
+    const destination = resolveBarcodeWorkspaceLanding(
+      snapshot.workspace.activeModule?.code ?? null,
+      snapshot.workspace.modules,
+      organization?.permissions ?? [],
+    );
+    const url = new URL(window.location.href);
+    url.searchParams.delete("barcode-landing");
+    url.pathname = destination;
+    router.replace(`${url.pathname}${url.search}${url.hash}`);
+  }, [isBarcodeLandingRoute, router, snapshot]);
 
   const organization =
     snapshot.organizations.find(

@@ -27,9 +27,9 @@ export function IssuedBadgeCard({ barcode, email, onClose }: IssuedBadgeCardProp
     async function downloadPdf() {
         setDownloading(true);
         try {
-            const { createAccessBadgePdf } = await import("../access-badge-pdf");
+            const { accessBadgeFilename, createAccessBadgePdf } = await import("../access-badge-pdf");
             const document = await createAccessBadgePdf({ barcode, email });
-            document.save("carnet-acceso.pdf");
+            document.save(accessBadgeFilename(email));
         } catch {
             notify.error("No se pudo generar el PDF del carnet.");
         } finally {
