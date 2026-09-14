@@ -1,5 +1,16 @@
 /** Reserved prefix for credentials that must never enter product scan flows. */
 export const BADGE_BARCODE_PREFIX = "KONT-";
+const BADGE_BARCODE_PATTERN = /^KONT-[A-Za-z0-9_-]{20,25}$/;
+
+/**
+ * Confirms that a raw value has the complete, case-sensitive credential shape.
+ *
+ * @param barcode - Raw scanner value.
+ * @returns Whether the value can be submitted as an access credential.
+ */
+export function isValidBadgeBarcode(barcode: string): boolean {
+    return BADGE_BARCODE_PATTERN.test(barcode);
+}
 
 /**
  * Identifies a credential barcode before it can enter UI scanner state.

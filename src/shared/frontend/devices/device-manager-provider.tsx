@@ -125,18 +125,22 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
                 if (occurredAt - lastCharacterAt > KEYBOARD_WEDGE_MAXIMUM_INTER_KEY_DELAY_MS) editableSnapshot = captureEditableTarget(event.target);
                 lastCharacterAt = occurredAt;
             }
-            const barcode = scanner.push(event.key, occurredAt);
-            if (!barcode) return;
+            const scan = scanner.push({ key: event.key, code: event.code, shiftKey: event.shiftKey, capsLock: event.getModifierState("CapsLock") }, occurredAt);
+            if (!scan) return;
             event.preventDefault();
             event.stopPropagation();
             restoreEditableTarget(editableSnapshot);
             editableSnapshot = null;
             setKeyboardDetected(true);
+            // Keep ordinary product scans exactly as the active keyboard layout
+            // produced them. A physical US-HID recovery is only used for a
+            // complete valid credential, and is suppressed outside access too.
+            if (!listeners.current.get("access")?.size && scan.badgeBarcode) return;
             deliverScan({
                 type: "barcode.scanned",
                 eventId: crypto.randomUUID(),
                 device: { id: "keyboard-wedge", category: "barcode-scanner", manufacturer: "USB", model: "Lector tipo teclado", connection: "USB-KBD/HID" },
-                barcode,
+                barcode: scan.badgeBarcode ?? scan.barcode,
                 occurredAt: new Date().toISOString(),
             });
         };

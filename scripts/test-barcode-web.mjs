@@ -10,6 +10,7 @@ try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     let session = { status: 200, terminal: { ready: true } };
     let attempts = 0;
+    const submittedBarcodes = [];
     let finishAttempt;
     await page.route('**/api/**', async (route) => {
         const path = new URL(route.request().url()).pathname;
@@ -19,6 +20,7 @@ try {
         }
         if (path === '/api/auth/barcode') {
             attempts++;
+            submittedBarcodes.push(route.request().postDataJSON().barcode);
             await new Promise((resolve) => { finishAttempt = resolve; });
             return route.fulfill({ status: 401, json: { error: 'No se pudo validar el carnet.' } });
         }
@@ -70,7 +72,30 @@ try {
     await page.getByRole('button', { name: 'Reintentar' }).click();
     await page.getByRole('heading', { name: 'Escanea tu carnet' }).waitFor();
     assert.equal(await page.getByText('No se pudo validar el carnet.', { exact: true }).count(), 0, 'Retry must clear an earlier scan error.');
-    console.log('PASS: explicit carnet mode, exclusive credential forms, scanner submission, duplicate suppression, generic denial without credential disclosure, conventional login fallback, terminal reasons, temporary server failures, and retry recovery.');
+    // US-configured USB scanners send physical Minus on Spanish keyboards,
+    // where the browser interprets it as an apostrophe (or ? with Shift).
+    const mixedCredential = 'KONT-Ab_9xY-0123456789abcde';
+    for (const capsLock of [false, true]) {
+        await page.evaluate(({ value, capsLock }) => {
+            for (const character of value) {
+                const letter = /^[A-Za-z]$/.test(character);
+                // A reader configured for Caps Lock compensates letter Shift;
+                // punctuation still depends only on the physical Shift state.
+                const shiftKey = letter ? (character === character.toUpperCase()) !== capsLock : character === '_';
+                const code = letter ? `Key${character.toUpperCase()}` : /[0-9]/.test(character) ? `Digit${character}` : 'Minus';
+                const key = code === 'Minus' ? (shiftKey ? '?' : "'") : character;
+                window.dispatchEvent(new KeyboardEvent('keydown', { key, code, shiftKey, modifierCapsLock: capsLock, bubbles: true, cancelable: true }));
+            }
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+        }, { value: mixedCredential, capsLock });
+        await page.getByRole('heading', { name: 'Validando carnet…' }).waitFor();
+        assert.equal(submittedBarcodes.at(-1), mixedCredential, 'Keyboard layout must not alter the credential submitted to authentication.');
+        finishAttempt();
+        await page.getByText('No se pudo validar el carnet.', { exact: true }).waitFor();
+        assert.equal((await page.locator('body').innerText()).includes(mixedCredential), false);
+    }
+    assert.equal(attempts, 3, 'Each complete keyboard scan must create exactly one login request.');
+    console.log('PASS: explicit carnet mode, exclusive credential forms, scanner submission, duplicate suppression, generic denial without credential disclosure, conventional login fallback, terminal reasons, temporary server failures, retry recovery, and Spanish keyboard/Caps Lock credential preservation.');
 } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
