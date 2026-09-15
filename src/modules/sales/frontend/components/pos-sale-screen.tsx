@@ -33,6 +33,7 @@ const money = (value: number) => value.toLocaleString("es-VE", { minimumFraction
 const stock = (value: number) => value.toLocaleString("es-VE", { maximumFractionDigits: 2 });
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const CATALOG_PAGE_SIZE = 48;
+const PRODUCT_CARD_TAP_SLOP_PX = 8;
 
 type CatalogProduct = {
     product: Product;
@@ -50,9 +51,50 @@ const PosProductCard = memo(function PosProductCard({ entry, onSelect }: {
     const noPrice = unitPriceBs == null || unitPriceBs <= 0;
     const code = product.code || "SIN CÓDIGO";
 
+    // Keep cancelled gestures until the click or next press: touch devices can emit a delayed click after scrolling.
+    const pointerGestureRef = useRef<{
+        id: number;
+        startX: number;
+        startY: number;
+        cancelClick: boolean;
+        scrollPositions: Array<{ element: HTMLElement; top: number; left: number }>;
+    } | null>(null);
+
+    const hasMovedBeyondTapSlop = (event: { clientX: number; clientY: number }, gesture: { startX: number; startY: number }) =>
+        Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > PRODUCT_CARD_TAP_SLOP_PX;
+
     return <button
         type="button"
-        onClick={() => onSelect(product)}
+        onPointerDown={(event) => {
+            const scrollPositions: Array<{ element: HTMLElement; top: number; left: number }> = [];
+            for (let element = event.currentTarget.parentElement; element; element = element.parentElement) {
+                if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                    scrollPositions.push({ element, top: element.scrollTop, left: element.scrollLeft });
+                }
+            }
+            pointerGestureRef.current = { id: event.pointerId, startX: event.clientX, startY: event.clientY, cancelClick: false, scrollPositions };
+        }}
+        onPointerMove={(event) => {
+            const gesture = pointerGestureRef.current;
+            if (!gesture || gesture.id !== event.pointerId || gesture.cancelClick) return;
+            if (hasMovedBeyondTapSlop(event, gesture)) gesture.cancelClick = true;
+        }}
+        onPointerUp={(event) => {
+            const gesture = pointerGestureRef.current;
+            if (!gesture || gesture.id !== event.pointerId) return;
+            if (hasMovedBeyondTapSlop(event, gesture)) gesture.cancelClick = true;
+        }}
+        onPointerCancel={() => {
+            const gesture = pointerGestureRef.current;
+            if (gesture) gesture.cancelClick = true;
+        }}
+        onClick={(event) => {
+            const gesture = pointerGestureRef.current;
+            const scrolled = gesture?.scrollPositions.some(({ element, top, left }) => element.scrollTop !== top || element.scrollLeft !== left);
+            pointerGestureRef.current = null;
+            if (event.detail !== 0 && (gesture?.cancelClick || scrolled)) return;
+            onSelect(product);
+        }}
         aria-label={`Consultar precio de ${product.name}`}
         className="group flex min-h-36 min-w-0 flex-col rounded-xl border border-border-light bg-surface-1 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary-500/50 hover:shadow-md active:translate-y-0 sm:p-4"
     >
