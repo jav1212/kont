@@ -13,11 +13,13 @@ export function getBarcodeAccessActions() {
         listTerminals: new BarcodeOperation(adapter.listBarcodeTerminals),
         revokeTerminal: new BarcodeOperation(adapter.revokeBarcodeTerminal),
         issueBadge: new BarcodeOperation(adapter.issueBarcodeBadge),
+        issueBadges: new BarcodeOperation(adapter.issueBarcodeBadges),
         listBadges: new BarcodeOperation(adapter.listBarcodeBadges),
         revokeBadge: new BarcodeOperation(adapter.revokeBarcodeBadge),
         findLoginBadge: new BarcodeOperation((input: { terminal: Parameters<typeof adapter.findLoginBadge>[0]; barcode: string }) => adapter.findLoginBadge(input.terminal, input.barcode)),
         registerSession: new BarcodeOperation(adapter.registerBarcodeSession),
         reprintBadge: new BarcodeOperation(adapter.reprintBarcodeBadge),
+        reprintBadges: new BarcodeOperation(adapter.reprintBarcodeBadges),
         reprintAllBadges: new BarcodeOperation(adapter.reprintAllBarcodeBadges),
     };
 }

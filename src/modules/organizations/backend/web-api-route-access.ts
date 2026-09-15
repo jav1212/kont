@@ -15,6 +15,7 @@ const ROUTES: readonly RouteRule[] = [
   ["POST","/api/access/badges","access.manage"],
   ["POST","/api/access/badges/print","access.manage"],
   ["POST","/api/access/badges/[id]/print","access.manage"],
+  ["POST","/api/access/badges/batch","access.manage"],
   ["POST","/api/access/badges/[id]/revoke","access.manage"],
   ["GET","/api/access/terminals","access.manage"],
   ["POST","/api/access/terminals","access.manage"],

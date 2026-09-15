@@ -11,8 +11,8 @@ Se conserva el inicio de sesión convencional para recuperación. El detalle de 
 ## Implementado en el código pendiente de despliegue
 
 - Un perfil de navegador se enrola como terminal para un tenant. Su secreto aleatorio se guarda sólo en una cookie `HttpOnly`, `Secure` en producción y `SameSite=Strict`; la terminal no equivale a una prueba de hardware.
-- Un propietario o administrador con el permiso canónico `access.manage` puede gestionar terminales y carnets en `/settings/access` desde una sesión por carnet o convencional; las guardas de validez de sesión y tenant se mantienen.
-- Cada carnet usa un valor `KONT-…` compatible con Code 128 y 128 bits de entropía. El hash conserva la validación de escaneo; los nuevos carnets guardan además el valor cifrado AES-256-GCM v1, exclusivamente del lado servidor, para reimprimir el mismo carnet activo. Reemitir o revocar el carnet revoca sus sesiones; reimprimir no.
+- Un propietario o administrador con el permiso canónico `access.manage` puede gestionar terminales y carnets en `/settings/access` desde una sesión por carnet o convencional; las guardas de validez de sesión y tenant se mantienen. La pantalla permite seleccionar miembros confirmados del tenant, emitirlos en lote y seleccionar por `badgeId` cuáles de los carnets activos reimprimibles se exportarán. Las emisiones mayores se dividen en grupos de hasta 50 destinatarios; el PDF contiene exactamente los carnets marcados en una o más hojas A4.
+- Cada carnet usa un valor `KONT-…` compatible con Code 128 y 128 bits de entropía. El hash conserva la validación de escaneo; los nuevos carnets guardan además el valor cifrado AES-256-GCM v1, exclusivamente del lado servidor, para reimprimir el mismo carnet activo. El valor completo se devuelve sólo al emitir o reimprimir, mediante una respuesta `no-store`; la pantalla lo conserva sólo en memoria para la exportación de la sesión actual. Reemitir o revocar el carnet revoca sus sesiones; reimprimir no.
 - `POST /api/auth/barcode` valida terminal y carnet y genera una sesión Supabase real para el titular. El servidor la registra con su tenant, terminal y carnet; no acepta un usuario elegido por el navegador.
 - La sesión de carnet vence tras cinco minutos sin actividad real o al cabo de ocho horas. El middleware y las rutas con tenant vuelven a validarla y fijan su tenant, aun si llegan cabeceras o parámetros distintos.
 - El bloqueo revoca la sesión exacta en el servidor. Una notificación entre pestañas recarga las vistas antiguas cuando otra sesión reemplaza la suya; la respuesta tardía de bloqueo no borra las cookies de un nuevo inicio de sesión.
@@ -29,14 +29,15 @@ La migración [262](../../supabase/migrations/262_barcode_badge_reprinting.sql) 
 | `GET`/`POST /api/access/terminals` | Listar o enrolar la terminal del navegador con una sesión de tenant autorizada. |
 | `POST /api/access/terminals/:id/revoke` | Revocar una terminal y sus sesiones de carnet. |
 | `GET`/`POST /api/access/badges` | Listar o emitir/reemplazar un carnet; la respuesta de emisión contiene el código sólo esa vez. |
+| `POST /api/access/badges/batch` | Emitir carnets para entre 1 y 50 UUID de usuarios distintos del tenant. `replaceExisting` sólo reemplaza carnets activos cuando es `true`; cada resultado indica emisión o un fallo por usuario. |
 | `POST /api/access/badges/:id/revoke` | Revocar un carnet y sus sesiones. |
 | `POST /api/access/badges/:id/print` | Reimprimir un carnet activo con cifrado; conserva sus sesiones. |
-| `POST /api/access/badges/print` | Preparar todos los carnets activos para PDF; falla sin resultado parcial si alguno no puede reimprimirse. |
+| `POST /api/access/badges/print` | Preparar entre 1 y 1.000 carnets activos seleccionados para PDF; falla sin respuesta de credenciales si alguno no puede reimprimirse. |
 | `POST /api/auth/barcode` | Intercambiar un escaneo válido por una sesión registrada. |
 | `GET`/`POST /api/auth/barcode/session` | Consultar el estado o registrar actividad humana; la consulta no amplía la sesión. |
 | `POST /api/auth/barcode/lock` | Bloquear la sesión registrada mostrada por esa pestaña. |
 
-Los errores de validación de carnet son deliberadamente genéricos y las rutas de mutación requieren mismo origen. Las respuestas de reimpresión son `no-store`, están limitadas por tasa y se auditan; no exponen el código a persistencia o registros del navegador. En producción, la limitación de intentos falla cerrada si no están configurados Upstash Redis REST URL y token.
+Los errores de validación de carnet son deliberadamente genéricos y las rutas de mutación requieren mismo origen. La emisión en lote se limita a 20 solicitudes por IP y tenant cada minuto; cada solicitud admite de 1 a 50 UUID de usuarios distintos del tenant. Las respuestas de emisión y reimpresión son `no-store`, están limitadas por tasa y se auditan; no exponen el código a persistencia o registros del navegador. En producción, la limitación de intentos falla cerrada si no están configurados Upstash Redis REST URL y token.
 
 ## Activación pendiente
 

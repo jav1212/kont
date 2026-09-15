@@ -46,6 +46,7 @@ test("preserves explicit personal and organization boundary routes outside gener
     assert.equal(inferPermissionFromRequest(request("/api/seniat-reminders/list", "GET")), null);
     assert.equal(inferPermissionFromRequest(request("/api/billing/capacity", "GET")), null);
     assert.equal(inferPermissionFromRequest(request("/api/access/terminals", "POST")), "access.manage");
+    assert.equal(inferPermissionFromRequest(request("/api/access/badges/batch", "POST")), "access.manage");
 });
 
 test("legacy upserts require both creation and update authority until their contracts split", () => {

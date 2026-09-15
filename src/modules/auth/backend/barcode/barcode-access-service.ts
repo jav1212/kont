@@ -68,6 +68,9 @@ export function decryptBarcodeBadge(input: { tenantId: string; userId: string; c
         throw new Error('badge_reprint_unavailable');
     }
 }
+export type BarcodeBadgeIssue = { badge: BarcodeBadge; barcode: string };
+export type BarcodeBadgeBatchIssueResult = { userId: string; issued: true; badge: BarcodeBadge } | { userId: string; issued: false; code: BarcodeBadgeIssueFailureCode };
+export type BarcodeBadgeIssueFailureCode = 'badge_user_not_member' | 'badge_user_ineligible' | 'badge_already_active' | 'badge_issue_failed';
 
 /**
  * Creates a fixed-length SHA-256 digest for a high-entropy server credential.
@@ -331,7 +334,7 @@ export async function listBarcodeBadges(tenantId: string): Promise<BarcodeBadge[
  * @returns The initial-only printable barcode and public badge metadata.
  * @throws Error with a stable internal code for expected eligibility failures.
  */
-export async function issueBarcodeBadge(input: { tenantId: string; userId: string; actorId: string }): Promise<{ badge: BarcodeBadge; barcode: string }> {
+export async function issueBarcodeBadge(input: { tenantId: string; userId: string; actorId: string }): Promise<BarcodeBadgeIssue> {
     if (!(await hasTenantMembership(input.tenantId, input.userId))) throw new Error('badge_user_not_member');
     const source = new ServerSupabaseSource().instance;
     const [{ data: admin, error: adminError }, { data: userData, error: userError }] = await Promise.all([
@@ -393,6 +396,65 @@ export async function reprintAllBarcodeBadges(input: { tenantId: string; actorId
     }
     await audit({ tenant_id: input.tenantId, user_id: input.actorId, event: 'badges_exported', reason: `count:${printed.length}` });
     return printed;
+}
+
+/**
+ * Restores precisely the selected active credentials in the caller's order.
+ * Each identifier is re-authorized against the tenant before its encrypted
+ * value is decrypted, so a foreign identifier never leaks a credential.
+ *
+ * @param input - Authorized tenant scope, administrator identity, and selected badge IDs.
+ * @returns The selected printable credentials in exactly the supplied order.
+ * @throws Error when any selected credential is unavailable or a legacy card.
+ */
+export async function reprintBarcodeBadges(input: { tenantId: string; badgeIds: readonly string[]; actorId: string }): Promise<Array<{ badge: BarcodeBadge; barcode: string }>> {
+    const printed: Array<{ badge: BarcodeBadge; barcode: string }> = [];
+    for (let start = 0; start < input.badgeIds.length; start += 10) {
+        printed.push(...await Promise.all(input.badgeIds.slice(start, start + 10).map((badgeId) => reprintBarcodeBadge({
+            tenantId: input.tenantId,
+            badgeId,
+            actorId: input.actorId,
+        }))));
+    }
+    await audit({ tenant_id: input.tenantId, user_id: input.actorId, event: 'badges_exported', reason: `count:${printed.length}` });
+    return printed;
+}
+
+/**
+ * Issues printable credentials for a bounded set of tenant members.
+ * Active credentials observed before issuance are rejected unless replacement
+ * was explicitly authorized.
+ * When authorized, the issuing RPC atomically revokes the old credential and
+ * its live sessions before returning safe badge metadata. The generated
+ * credentials remain encrypted server-side for an authorized print request.
+ *
+ * @param input - Authorized tenant scope, issuer identity, unique targets, and replacement consent.
+ * @returns A result for every requested user, preserving expected eligibility failures.
+ */
+export async function issueBarcodeBadges(input: { tenantId: string; userIds: readonly string[]; actorId: string; replaceExisting: boolean }): Promise<BarcodeBadgeBatchIssueResult[]> {
+    const source = new ServerSupabaseSource().instance;
+    return Promise.all(input.userIds.map(async (userId): Promise<BarcodeBadgeBatchIssueResult> => {
+        try {
+            if (!input.replaceExisting) {
+                const { data, error } = await source
+                    .from('barcode_access_badges')
+                    .select('id')
+                    .eq('tenant_id', input.tenantId)
+                    .eq('user_id', userId)
+                    .eq('status', 'active')
+                    .maybeSingle();
+                if (error) throw new Error('badge_issue_failed');
+                if (data) return { userId, issued: false, code: 'badge_already_active' };
+            }
+            const { badge } = await issueBarcodeBadge({ tenantId: input.tenantId, userId, actorId: input.actorId });
+            return { userId, issued: true, badge };
+        } catch (error) {
+            const code = error instanceof Error && (
+                error.message === 'badge_user_not_member' || error.message === 'badge_user_ineligible' || error.message === 'badge_already_active'
+            ) ? error.message : 'badge_issue_failed';
+            return { userId, issued: false, code };
+        }
+    }));
 }
 
 /**
