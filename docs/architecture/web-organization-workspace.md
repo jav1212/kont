@@ -129,6 +129,18 @@ que recorre páginas, navegación y handlers tenant para exigir una clasificaci�
 de permiso canónico o autenticado; la auditoría compara rutas exactas antes de
 permitir que una ruta estática coincida con una plantilla dinámica.
 
+## Destino después de autenticarse
+
+El inicio de sesión y el registro, el callback de autenticación exitoso y las
+redirecciones del middleware para un cliente activo usan el destino predeterminado
+de [post-authentication-destination.ts](../../src/modules/auth/post-authentication-destination.ts):
+`/tools`, una ruta `authenticated` que no exige permiso de organización.
+El inicio de sesión y el registro conservan los parámetros explícitos `redirect`
+y `redirectTo`; la ruta solicitada sigue aplicando su propia autorización.
+Esto evita enviar a un cajero a `/documents` al autenticarse: puede acceder a
+Ventas y Punto de venta conforme a sus permisos, mientras Documentos y Nómina
+continúan denegados cuando no están autorizados.
+
 ## Propiedad y composición
 
 - [Organizations](../../packages/capabilities/organizations) conserva el dominio,
@@ -359,6 +371,12 @@ inferir que el UUID de una organización es un UUID de tenant.
 Las pruebas focalizadas están en
 [web-organizations.test.ts](../../test/web-organizations.test.ts) y en
 [los tests del adaptador](../../packages/capabilities/organizations/test/adapters).
+La regresión de destino posterior a la autenticación se cubre en
+[post-authentication-destination.test.ts](../../test/post-authentication-destination.test.ts):
+se informaron 39 pruebas focalizadas aprobadas. El build no se pudo completar
+por un `TypeError` interno (`undefined.length`); el reintento encontró otra
+compilación ocupando `.next/lock`. TypeScript, lint focalizado y la auditoría
+de rutas aprobaron. Esta validación no acredita un despliegue.
 La composición real del BFF se ejercita con respuestas de Supabase simuladas en
 [web-organization-actions.test.ts](../../test/web-organization-actions.test.ts),
 incluyendo aislamiento de terminales y denegación anterior a la consulta de miembros.

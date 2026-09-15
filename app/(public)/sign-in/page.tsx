@@ -10,6 +10,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, PasswordField } from "../_components/auth-shell";
 import { BarcodeSignIn } from "@/src/modules/auth/frontend/components/barcode-sign-in";
+import { resolvePostAuthenticationDestination } from "@/src/modules/auth/post-authentication-destination";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -95,7 +96,10 @@ function SignInFormContent() {
             return;
         }
 
-        const redirectTo = searchParams.get("redirect") ?? searchParams.get("redirectTo") ?? "/documents";
+        const redirectTo = resolvePostAuthenticationDestination(
+            searchParams.get("redirect"),
+            searchParams.get("redirectTo"),
+        );
         router.replace(redirectTo);
     }
 

@@ -4,7 +4,7 @@
 // SIGN UP — flujo de 2 etapas con OTP
 //
 //   Stage 1 · Form  → useAuth().signUp(email, pass, name) (Supabase manda OTP)
-//   Stage 2 · Code  → supabase.auth.verifyOtp({ type: 'signup' }) → /documents
+//   Stage 2 · Code  → supabase.auth.verifyOtp({ type: 'signup' }) → authenticated landing
 //
 // El correo del Dashboard puede traer también el link de ConfirmationURL como
 // respaldo (callback en /api/auth/callback hace exchangeCodeForSession). Si el
@@ -22,6 +22,7 @@ import { notify } from "@/src/shared/frontend/notify";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { AuthShell, AuthHeader, AuthVisual, PasswordField } from "../_components/auth-shell";
 import { trackEvent } from "@/src/shared/frontend/components/analytics-consent";
+import { resolvePostAuthenticationDestination } from "@/src/modules/auth/post-authentication-destination";
 
 const RESEND_UNLOCK_SECONDS   = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -67,7 +68,10 @@ function SignUpPageInner() {
     const router = useRouter();
     const { signUp, resendConfirmation } = useAuth();
     const searchParams = useSearchParams();
-    const redirectTo = searchParams.get("redirect") ?? searchParams.get("redirectTo") ?? "/documents";
+    const redirectTo = resolvePostAuthenticationDestination(
+        searchParams.get("redirect"),
+        searchParams.get("redirectTo"),
+    );
 
     const [stage,   setStage]   = useState<Stage>("form");
     const [name,    setName]    = useState("");

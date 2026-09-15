@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { barcodeTenantMatches, isBarcodeSessionRecoveryPath, readBarcodeRequestAccess } from '@/src/shared/backend/barcode/barcode-request-guard';
+import { DEFAULT_POST_AUTHENTICATION_DESTINATION } from '@/src/modules/auth/post-authentication-destination';
 
 // ============================================================================
 // MIDDLEWARE — route protection + role separation + security headers
@@ -174,7 +175,7 @@ export async function middleware(request: NextRequest) {
             }
             // Cliente con sesión activa intentando ver páginas públicas de admin → app
             if (user) {
-                return NextResponse.redirect(new URL('/documents', request.url));
+                return NextResponse.redirect(new URL(DEFAULT_POST_AUTHENTICATION_DESTINATION, request.url));
             }
             return response;
         }
@@ -183,7 +184,7 @@ export async function middleware(request: NextRequest) {
         if (!isAdminSession) {
             // Si tiene sesión de cliente, redirigir a la app en vez de al sign-in de admin
             return user
-                ? NextResponse.redirect(new URL('/payroll', request.url))
+                ? NextResponse.redirect(new URL(DEFAULT_POST_AUTHENTICATION_DESTINATION, request.url))
                 : NextResponse.redirect(new URL('/admin/sign-in', request.url));
         }
 
@@ -218,7 +219,7 @@ export async function middleware(request: NextRequest) {
     // de contraseña. /reset-password ya hereda la misma excepción para los
     // correos antiguos con magic-link.
     if (user && isPublic(pathname) && pathname !== '/reset-password' && pathname !== '/forgot-password' && !(pathname === '/sign-in' && request.nextUrl.searchParams.get('mode') === 'barcode')) {
-        return NextResponse.redirect(new URL('/payroll', request.url));
+        return NextResponse.redirect(new URL(DEFAULT_POST_AUTHENTICATION_DESTINATION, request.url));
     }
 
     // ── Verificación del tenant ───────────────────────────────────────────

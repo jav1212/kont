@@ -1,6 +1,13 @@
 import { SupabaseSource } from '@/src/shared/backend/source/infra/supabase';
 import { NextResponse } from 'next/server';
+import { DEFAULT_POST_AUTHENTICATION_DESTINATION } from '@/src/modules/auth/post-authentication-destination';
 
+/**
+ * Exchanges an email authentication code and redirects to the authenticated landing.
+ * @param request - Callback URL containing the one-time authentication code.
+ * @returns A redirect to the application or the expired-link recovery page.
+ * @throws Error when authentication infrastructure cannot be initialized.
+ */
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
@@ -10,7 +17,7 @@ export async function GET(request: Request) {
         const { error } = await source.instance.auth.exchangeCodeForSession(code);
 
         if (!error) {
-            return NextResponse.redirect(`${origin}/documents`);
+            return NextResponse.redirect(`${origin}${DEFAULT_POST_AUTHENTICATION_DESTINATION}`);
         }
 
         // Si hay error (ej. código expirado), redirigir a la página de reenvío
