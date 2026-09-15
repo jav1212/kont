@@ -64,6 +64,13 @@ interface ColumnSpec {
     format: "text" | "ves" | "usd" | "number";
 }
 
+/**
+ * Downloads a consolidated report, preserving full amounts within their columns.
+ * @param rows - Employee amounts already calculated or loaded from payroll history.
+ * @param opts - Company and period metadata for the report.
+ * @returns Resolves after generating the PDF and requesting its download.
+ * @throws Propagates PDF generation or download failures.
+ */
 export async function generatePayrollSummaryPdf(
     rows: PayrollSummaryEmployeeRow[],
     opts: PayrollSummaryOptions,
@@ -108,7 +115,7 @@ export async function generatePayrollSummaryPdf(
 
     const kpis: [string, string][] = [
         ["Empleados",    String(rows.length)],
-        ["Total Neto",   formatPayrollAmount(totals.net)],
+        ["Total Neto Bs.", formatPayrollAmount(totals.net)],
         ["Total Neto ref.", formatN(totals.netUSD)],
     ];
     const colWk = (W - 4) / kpis.length;
@@ -127,12 +134,50 @@ export async function generatePayrollSummaryPdf(
         { key: "cedula",          title: "Cédula",     width: 24, align: "left",   mono: true,            format: "text"   },
         { key: "nombre",          title: "Nombre",     width: 60, align: "left",                          format: "text"   },
         { key: "cargo",           title: "Cargo",      width: 38, align: "left",                          format: "text"   },
-        { key: "salarioMensual",  title: "Sal. Base",  width: 28, align: "right",  mono: true,            format: "ves"    },
-        { key: "totalEarnings",   title: "Asignac.",   width: 28, align: "right",  mono: true,            format: "ves"    },
-        { key: "totalBonuses",    title: "Bonos",      width: 22, align: "right",  mono: true,            format: "ves"    },
-        { key: "totalDeductions", title: "Deducc.",    width: 22, align: "right",  mono: true,            format: "ves"    },
+        { key: "salarioMensual",  title: "Sal. Base Bs.", width: 28, align: "right", mono: true,           format: "ves"    },
+        { key: "totalEarnings",   title: "Asignac. Bs.",  width: 28, align: "right", mono: true,           format: "ves"    },
+        { key: "totalBonuses",    title: "Bonos Bs.",     width: 22, align: "right", mono: true,           format: "ves"    },
+        { key: "totalDeductions", title: "Deducc. Bs.",   width: 22, align: "right", mono: true,           format: "ves"    },
         { key: "net",             title: "Neto Bs.",   width: 28, align: "right",  mono: true, bold: true, format: "ves"    },
     ];
+
+    const totalsByKey: Record<string, number> = {
+        salarioMensual: totals.salario,
+        totalEarnings: totals.earnings,
+        totalBonuses: totals.bonuses,
+        totalDeductions: totals.deductions,
+        net: totals.net,
+    };
+
+    // Measure both employee amounts and bold totals before allocating column space.
+    // Reserve readable identity columns; exceptionally long amounts can also shrink.
+    const moneyCols = cols.slice(4);
+    for (const c of moneyCols) {
+        doc.setFont("courier", "bold");
+        doc.setFontSize(c.bold ? 9 : 8.5);
+        let amountWidth = doc.getTextWidth(fmtCell(c, totalsByKey[c.key]));
+        doc.setFont("courier", c.bold ? "bold" : "normal");
+        doc.setFontSize(c.bold ? 8.5 : 8);
+        for (const row of rows) {
+            const value = row[c.key as keyof PayrollSummaryEmployeeRow] as number;
+            amountWidth = Math.max(amountWidth, doc.getTextWidth(fmtCell(c, value)));
+        }
+        c.width = Math.max(c.width, amountWidth + 4);
+    }
+    const moneyWidth = moneyCols.reduce((sum, c) => sum + c.width, 0);
+    const maxMoneyWidth = W - 10 - 24 - 40 - 24;
+    const moneyScale = Math.min(1, maxMoneyWidth / moneyWidth);
+    for (const c of moneyCols) c.width *= moneyScale;
+    const descriptionWidth = W - cols[0].width - cols[1].width - moneyWidth * moneyScale;
+    cols[2].width = descriptionWidth * 60 / 98;
+    cols[3].width = descriptionWidth * 38 / 98;
+
+    function fittedMonoSize(text: string, width: number, size: number, bold: boolean): number {
+        doc.setFont("courier", bold ? "bold" : "normal");
+        doc.setFontSize(size);
+        const textWidth = doc.getTextWidth(text);
+        return textWidth > width ? size * width / textWidth : size;
+    }
 
     // Build x positions
     const colsWithX: (ColumnSpec & { x: number })[] = [];
@@ -179,7 +224,7 @@ export async function generatePayrollSummaryPdf(
                     align: c.align,
                     mono:  c.mono,
                     bold:  c.bold,
-                    size:  c.bold ? 8.5 : 8,
+                    size:  c.mono ? fittedMonoSize(text, c.width - 4, c.bold ? 8.5 : 8, !!c.bold) : 8,
                     color: c.bold ? COLORS.ink : COLORS.inkMed,
                 };
             }),
@@ -207,17 +252,11 @@ export async function generatePayrollSummaryPdf(
 
     renderLabel(doc, "Total", ML + labelW - 3, y + 5.6, "right", COLORS.inkMed, 8);
 
-    const totalsByKey: Record<string, number> = {
-        salarioMensual:  totals.salario,
-        totalEarnings:   totals.earnings,
-        totalBonuses:    totals.bonuses,
-        totalDeductions: totals.deductions,
-        net:             totals.net,
-        netUSD:          totals.netUSD,
-    };
     colsWithX.slice(4).forEach((c) => {
         const value = totalsByKey[c.key as string];
-        renderMono(doc, fmtCell(c, value), c.x + c.width - 1, y + 5.6, c.bold ? 9 : 8.5, true, COLORS.ink, "right");
+        const text = fmtCell(c, value);
+        const size = fittedMonoSize(text, c.width - 4, c.bold ? 9 : 8.5, true);
+        renderMono(doc, text, c.x + c.width - 1, y + 5.6, size, true, COLORS.ink, "right");
     });
 
     y += 8 + 8;
@@ -225,7 +264,8 @@ export async function generatePayrollSummaryPdf(
     // ── Firma de recibo ─────────────────────────────────────────────────────────
     // Una tarjeta por empleado con su neto, para que el trabajador deje constancia
     // de la recepción del pago. 4 tarjetas por fila (A4 horizontal).
-    if (y + 8 > pageBounds(doc).contentBot) {
+    const SIG_H = 40;
+    if (y + 6 + SIG_H > pageBounds(doc).contentBot) {
         doc.addPage();
         drawHeader(doc, headerOpts);
         y = PAGE.contentTop as number;
@@ -236,7 +276,6 @@ export async function generatePayrollSummaryPdf(
     const SIG_COLS = 4;
     const SIG_GAP  = 4;
     const SIG_W    = (W - SIG_GAP * (SIG_COLS - 1)) / SIG_COLS;
-    const SIG_H    = 40;
     const PD       = 3;
     const CB       = 2.5;
     const SIG_LINE_Y_OFFSET  = 6;
