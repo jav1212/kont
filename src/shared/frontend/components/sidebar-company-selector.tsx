@@ -232,9 +232,9 @@ export function SidebarCompanySelector({
                                             {rowSub && (
                                                 <span className="text-[10px] text-sidebar-label truncate mt-0.5">
                                                     {rowSub}
-                                                </span>
+                                                  </span>
                                             )}
-                                        </span>
+                                          </span>
                                         {isSelected && <CheckIcon />}
                                     </button>
                                 </li>
@@ -246,16 +246,21 @@ export function SidebarCompanySelector({
                             </li>
                         )}
                     </ul>
-                    <div className="mx-2 border-t border-sidebar-border px-0 py-2">
+                    <div className="p-1.5 border-t border-sidebar-border">
                         <button
                             type="button"
                             onClick={goToCompanies}
                             className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-left text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
                         >
-                            <span className="shrink-0 inline-flex items-center justify-center text-sidebar-label">
-                                <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
+                            <span className="w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-bg">
+                                <Plus size={17} strokeWidth={1.8} aria-hidden="true" />
                             </span>
-                            <span className="min-w-0 font-mono text-[15px] font-bold tracking-[0.02em]">Crear empresa</span>
+                            <span className="min-w-0 flex flex-col font-sans leading-tight">
+                                <span className="text-[14px] font-bold">Crear empresa</span>
+                                <span className="mt-0.5 text-[12px] font-medium text-sidebar-label">
+                                    Administra o registra una nueva empresa
+                                </span>
+                            </span>
                         </button>
                     </div>
             </PortalMenu>

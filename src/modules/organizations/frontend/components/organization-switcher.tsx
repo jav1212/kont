@@ -177,7 +177,7 @@ export function OrganizationSwitcher(): React.JSX.Element {
             ) : null}
           </div>
           {canManageOrganization ? (
-            <div className="mx-2 shrink-0 border-t border-sidebar-border px-0 py-2">
+            <div className="shrink-0 border-t border-sidebar-border p-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -186,10 +186,15 @@ export function OrganizationSwitcher(): React.JSX.Element {
                 }}
                 className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-left text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
               >
-                <span className="shrink-0 inline-flex items-center justify-center text-sidebar-label">
-                  <Settings size={16} strokeWidth={1.8} aria-hidden />
+                <span className="w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-bg">
+                  <Settings size={17} strokeWidth={1.8} aria-hidden />
                 </span>
-                <span className="min-w-0 font-mono text-[15px] font-bold tracking-[0.02em]">Gestionar organización</span>
+                <span className="min-w-0 flex flex-col font-sans leading-tight">
+                  <span className="text-[14px] font-bold">Gestionar organización</span>
+                  <span className="mt-0.5 text-[12px] font-medium text-sidebar-label">
+                    Configura esta organización
+                  </span>
+                </span>
               </button>
             </div>
           ) : null}
