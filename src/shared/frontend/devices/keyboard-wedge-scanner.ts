@@ -31,7 +31,7 @@ export const KEYBOARD_WEDGE_MAXIMUM_INTER_KEY_DELAY_MS = 50;
 export class KeyboardWedgeScanner {
     private buffer = "";
     private physicalBuffer: string | null = "";
-    private lastCharacterAt = 0;
+    private lastCharacterAt: number | null = null;
     private discardUntilDelimiter = false;
     private readonly minimumLength: number;
     private readonly maximumLength: number;
@@ -76,7 +76,7 @@ export class KeyboardWedgeScanner {
         }
 
         if (input.key.length !== 1) {
-            if (!isModifierKey(input.key)) this.physicalBuffer = null;
+            if (!isModifierKey(input.key)) this.reset();
             return null;
         }
         if (this.discardUntilDelimiter) return null;
@@ -84,7 +84,7 @@ export class KeyboardWedgeScanner {
         if (this.buffer.length >= this.maximumLength) {
             this.buffer = "";
             this.physicalBuffer = null;
-            this.lastCharacterAt = 0;
+            this.lastCharacterAt = null;
             this.discardUntilDelimiter = true;
             return null;
         }
@@ -106,12 +106,19 @@ export class KeyboardWedgeScanner {
     reset(): void {
         this.buffer = "";
         this.physicalBuffer = "";
-        this.lastCharacterAt = 0;
+        this.lastCharacterAt = null;
         this.discardUntilDelimiter = false;
     }
 
-    private isCurrentSequence(occurredAt: number): boolean {
-        return this.lastCharacterAt > 0 && occurredAt - this.lastCharacterAt <= this.maximumInterKeyDelayMs;
+    /**
+     * Shares the recognizer's burst boundary with editable-target capture.
+     *
+     * @param occurredAt - Browser event timestamp, independent of handler delays.
+     * @returns Whether the event continues the buffered burst.
+     */
+    isCurrentSequence(occurredAt: number): boolean {
+        return this.lastCharacterAt !== null && occurredAt >= this.lastCharacterAt
+            && occurredAt - this.lastCharacterAt <= this.maximumInterKeyDelayMs;
     }
 }
 
