@@ -1,9 +1,10 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { createIncidentCode } from "@/src/core/errors/incident-code";
 import { reportClientError } from "@/src/shared/frontend/utils/report-client-error";
 import { ACCESS_CAPTURE_CAPABILITY, DEVICE_PROTOCOL_VERSION, parseDeviceManagerEvent, type BarcodeScannedEvent, type DeviceInfo, type DeviceStatus } from "../../devices/device-contracts";
-import { KeyboardWedgeScanner, KEYBOARD_WEDGE_MAXIMUM_INTER_KEY_DELAY_MS } from "./keyboard-wedge-scanner";
+import { KeyboardWedgeScanner } from "./keyboard-wedge-scanner";
 import { isBadgeBarcode, mayDeliverRawBridgeScan } from "./barcode-access-policy";
 
 /** Consumer domains for scanner data. Access is an exclusive credential flow. */
@@ -25,10 +26,14 @@ function captureEditableTarget(target: EventTarget | null): EditableSnapshot | n
 }
 
 function restoreEditableTarget(snapshot: EditableSnapshot | null): void {
-    if (!snapshot || snapshot.element.value === snapshot.value) return;
+    if (!snapshot || !snapshot.element.isConnected) return;
     const prototype = snapshot.element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    // React may still track the original value after batched or normalized edits.
+    // Prime its public value setter with a different valid value, then bypass
+    // that setter for restoration so the input event always updates React state.
+    snapshot.element.value = snapshot.value === "" ? "0" : "";
     Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(snapshot.element, snapshot.value);
-    snapshot.element.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync(() => snapshot.element.dispatchEvent(new Event("input", { bubbles: true })));
     if (snapshot.selectionStart !== null && snapshot.selectionEnd !== null) snapshot.element.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
 }
 
@@ -117,22 +122,27 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         // Access must explain even a short invalid scan; product capture keeps
         // its usual minimum so ordinary typing does not become a product read.
         const scanner = new KeyboardWedgeScanner({ minimumLength: accessListenerCount > 0 ? 1 : 4 });
-        let lastCharacterAt = 0;
         let editableSnapshot: EditableSnapshot | null = null;
+        let burstTarget: EventTarget | null = null;
+        const reset = () => { scanner.reset(); editableSnapshot = null; burstTarget = null; };
         const onKeyDown = (event: KeyboardEvent) => {
-            if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey) { scanner.reset(); return; }
-            if (document.visibilityState !== "visible" || !document.hasFocus() || listeners.current.size === 0) { scanner.reset(); return; }
-            const occurredAt = performance.now();
+            if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey) { reset(); return; }
+            if (document.visibilityState !== "visible" || !document.hasFocus() || listeners.current.size === 0) { reset(); return; }
+            const occurredAt = event.timeStamp;
+            if (burstTarget !== event.target) reset();
             if (event.key.length === 1) {
-                if (occurredAt - lastCharacterAt > KEYBOARD_WEDGE_MAXIMUM_INTER_KEY_DELAY_MS) editableSnapshot = captureEditableTarget(event.target);
-                lastCharacterAt = occurredAt;
+                if (!scanner.isCurrentSequence(occurredAt)) editableSnapshot = captureEditableTarget(event.target);
+                burstTarget = event.target;
             }
             const scan = scanner.push({ key: event.key, code: event.code, shiftKey: event.shiftKey, capsLock: event.getModifierState("CapsLock") }, occurredAt);
-            if (!scan) return;
+            if (!scan) {
+                if (event.key === "Enter" || (event.key.length !== 1 && !["Shift", "CapsLock"].includes(event.key))) reset();
+                return;
+            }
             event.preventDefault();
             event.stopPropagation();
             restoreEditableTarget(editableSnapshot);
-            editableSnapshot = null;
+            reset();
             setKeyboardDetected(true);
             // Keep ordinary product scans exactly as the active keyboard layout
             // produced them. A physical US-HID recovery is only used for a
@@ -147,7 +157,13 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
             });
         };
         window.addEventListener("keydown", onKeyDown, true);
-        return () => window.removeEventListener("keydown", onKeyDown, true);
+        window.addEventListener("blur", reset);
+        document.addEventListener("visibilitychange", reset);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown, true);
+            window.removeEventListener("blur", reset);
+            document.removeEventListener("visibilitychange", reset);
+        };
     }, [deliverScan, enabled, accessListenerCount]);
     useEffect(() => {
         if (!enabled && accessListenerCount === 0) return; let socket: WebSocket | null = null; let timer: ReturnType<typeof setTimeout> | undefined; let stopped = false; let retry = 0; const delays = [1000, 2000, 5000, 10000, 30000];

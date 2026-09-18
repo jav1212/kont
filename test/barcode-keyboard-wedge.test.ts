@@ -69,3 +69,22 @@ test("keeps ordinary product values logical and rejects slow and overflowed fram
     const overflow = new KeyboardWedgeScanner({ maximumLength: 4 });
     assert.equal(read(overflow, `${badge}TAIL`), null);
 });
+
+test("shares burst boundaries from timestamp zero and rejects time reversal", () => {
+    const scanner = new KeyboardWedgeScanner();
+    scanner.push(keyFor("1"), 0);
+    assert.equal(scanner.isCurrentSequence(0), true);
+    assert.equal(scanner.isCurrentSequence(50), true);
+    assert.equal(scanner.isCurrentSequence(51), false);
+    assert.equal(scanner.isCurrentSequence(-1), false);
+    scanner.reset();
+    assert.equal(scanner.isCurrentSequence(1), false);
+});
+
+test("editing navigation ends a candidate burst so manual edits are not restored as a scan", () => {
+    const scanner = new KeyboardWedgeScanner();
+    for (const [index, character] of [..."1234"].entries()) scanner.push(keyFor(character), index * 5);
+    scanner.push({ key: "ArrowLeft", code: "ArrowLeft", shiftKey: false, capsLock: false }, 20);
+    assert.equal(scanner.isCurrentSequence(25), false);
+    assert.equal(scanner.push({ key: "Enter", code: "Enter", shiftKey: false, capsLock: false }, 25), null);
+});

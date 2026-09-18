@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Minus, Package, Plus, Search, ShoppingCart, Trash2, UserPlus, X } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -169,6 +169,11 @@ export function PosSaleScreen() {
     const date = getTodayIsoDate();
     const { options: currencyOptions, appliedRates, getRate, publishedDate } = useInvoiceExchangeRates(date);
     const searchRef = useRef<HTMLInputElement>(null);
+    const scannerFocusRef = useRef<HTMLDivElement>(null);
+    const addProductRef = useRef<HTMLButtonElement>(null);
+    const manualPriceRef = useRef<HTMLInputElement>(null);
+    const scannedInquiryRef = useRef(false);
+    const [inquiryFocusRequest, setInquiryFocusRequest] = useState(0);
     const [query, setQuery] = useState("");
     const [departmentId, setDepartmentId] = useState("all");
     const [cart, setCart] = useState<CartLine[]>([]);
@@ -228,19 +233,32 @@ export function PosSaleScreen() {
             }];
         });
         setQuery("");
-        requestAnimationFrame(() => searchRef.current?.focus());
     }, [resolvePrice]);
 
-    const openPriceInquiry = useCallback((product: Product) => {
+    const openPriceInquiry = useCallback((product: Product, scanned = false) => {
+        scannedInquiryRef.current = scanned;
         setSelectedProduct(product);
-        setManualPrice("");
-        setManualCurrency(normalizeCurrencyCode(product.salePricing?.currency ?? "VES"));
-    }, []);
+        // Repeated reads should refocus even when React receives the same object,
+        // without erasing a price the cashier is entering for this product.
+        if (!scanned || selectedProduct?.id !== product.id) {
+            setManualPrice("");
+            setManualCurrency(normalizeCurrencyCode(product.salePricing?.currency ?? "VES"));
+        }
+        setInquiryFocusRequest((request) => request + 1);
+    }, [selectedProduct]);
 
     const closePriceInquiry = useCallback(() => {
         setSelectedProduct(null);
-        requestAnimationFrame(() => searchRef.current?.focus());
+        if (scannedInquiryRef.current) scannerFocusRef.current?.focus();
+        else searchRef.current?.focus();
     }, []);
+
+    useLayoutEffect(() => {
+        if (!selectedProduct) return;
+        // A priced preview is a scanner destination, never an editable search.
+        // Unpriced products retain their manual amount entry workflow.
+        (manualPriceRef.current ?? addProductRef.current)?.focus();
+    }, [inquiryFocusRequest, selectedProduct]);
 
     useEffect(() => {
         if (!selectedProduct) return;
@@ -304,7 +322,7 @@ export function PosSaleScreen() {
     useDeviceSubscription("sale", (scan) => {
         const product = productIndexes.byBarcode.get(scan.barcode);
         if (!product) notify.error(`Código de barras no registrado: ${scan.barcode}`);
-        else openPriceInquiry(product);
+        else openPriceInquiry(product, true);
     });
 
     const deferredQuery = useDeferredValue(query);
@@ -458,7 +476,7 @@ export function PosSaleScreen() {
         </div>
     </div>;
 
-    return <div className="flex min-h-full flex-1 flex-col bg-background">
+    return <div ref={scannerFocusRef} tabIndex={-1} aria-label="Punto de venta: escáner listo" className="flex min-h-full flex-1 flex-col bg-background">
         <header className="flex flex-wrap items-center gap-3 border-b border-border-light bg-surface-1 px-4 py-3 sm:px-6">
             <div className="mr-auto"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-primary-500">Ventas</p><h1 className="text-xl font-semibold text-foreground">Punto de venta</h1></div>
             <DeviceStatusControl />
@@ -482,12 +500,12 @@ export function PosSaleScreen() {
                 <div className="mt-4 space-y-2 rounded-xl border border-border-light bg-surface-2 p-4 text-[12px]"><div className="flex justify-between text-[var(--text-secondary)]"><span>Precio base</span><span className="font-mono text-foreground">Bs {money(selectedBasePrice)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>{selectedProduct.vatType === "exento" ? "IVA (exento)" : "IVA 16%"}</span><span className="font-mono text-foreground">Bs {money(selectedVatAmount)}</span></div>{!isLocalCurrency(selectedPrice.resolved.currency) && <><div className="border-t border-border-light pt-2 flex justify-between text-[var(--text-secondary)]"><span>Precio de referencia</span><span className="font-mono text-foreground">{money(selectedPrice.resolved.sourcePrice)} {normalizeCurrencyCode(selectedPrice.resolved.currency)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>Tasa aplicada</span><span className="font-mono text-foreground">Bs {money(selectedPrice.rate ?? 0)}</span></div></>}</div>
             </> : <>
                 <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-700">Este producto no tiene un precio de venta disponible. Ingresa un precio temporal para esta venta.</div>
-                <div className="mt-4 grid grid-cols-[1fr_112px] items-end gap-3"><div><label className="block font-mono text-[10px] uppercase tracking-[.12em] text-[var(--text-tertiary)]">Precio sin IVA</label><input autoFocus type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addManualPrice(); }} className="mt-2 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-3 font-mono outline-none focus:border-primary-500"/></div><CurrencyCombobox label="Moneda" value={manualCurrency} options={currencyOptions} onChange={setManualCurrency}/></div>
+                <div className="mt-4 grid grid-cols-[1fr_112px] items-end gap-3"><div><label className="block font-mono text-[10px] uppercase tracking-[.12em] text-[var(--text-tertiary)]">Precio sin IVA</label><input ref={manualPriceRef} aria-label="Precio sin IVA" type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addManualPrice(); }} className="mt-2 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-3 font-mono outline-none focus:border-primary-500"/></div><CurrencyCombobox label="Moneda" value={manualCurrency} options={currencyOptions} onChange={setManualCurrency}/></div>
                 {!isLocalCurrency(manualCurrency) && <div className={`mt-3 rounded-lg border px-3 py-2 text-[12px] ${manualRate ? "border-border-light bg-surface-2 text-[var(--text-secondary)]" : "border-red-500/20 bg-red-500/5 text-red-600"}`}>{manualRate ? <>Tasa: Bs {money(manualRate)}</> : `No hay una tasa disponible para ${manualCurrency}.`}</div>}
                 {canAddManualPrice && <div className="mt-3 rounded-xl bg-primary-500/10 px-4 py-3 text-center"><p className="text-[10px] uppercase tracking-[.12em] text-primary-500">{selectedProduct.vatType === "exento" ? "Precio final · Exento" : "Precio final con IVA"}</p><p className="mt-1 font-mono text-[24px] font-bold text-foreground">Bs {money(manualFinalPrice)}</p></div>}
             </>}
             <div className="mt-4 flex items-center justify-between text-[11px] text-[var(--text-secondary)]"><span>Existencia: <strong className="font-mono text-foreground">{stock(selectedProduct.currentStock)} {selectedProduct.measureUnit}</strong></span>{selectedCartQuantity > 0 && <span>En carrito: <strong className="font-mono text-foreground">{stock(selectedCartQuantity)}</strong></span>}</div>
-            <div className="mt-5 grid grid-cols-[auto_1fr] gap-2"><button type="button" onClick={closePriceInquiry} className="h-10 rounded-lg border border-border-light px-4 text-[12px]">Cerrar</button><button type="button" autoFocus={Boolean(selectedPrice?.resolved && selectedBasePrice > 0)} onClick={selectedPrice?.resolved && selectedBasePrice > 0 ? addSelectedProduct : addManualPrice} disabled={selectedPrice?.resolved && selectedBasePrice > 0 ? false : !canAddManualPrice} className="h-10 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">{selectedCartQuantity > 0 ? "Agregar otra unidad" : "Agregar a la venta"}</button></div>
+            <div className="mt-5 grid grid-cols-[auto_1fr] gap-2"><button type="button" onClick={closePriceInquiry} className="h-10 rounded-lg border border-border-light px-4 text-[12px]">Cerrar</button><button ref={addProductRef} type="button" onClick={selectedPrice?.resolved && selectedBasePrice > 0 ? addSelectedProduct : addManualPrice} disabled={selectedPrice?.resolved && selectedBasePrice > 0 ? false : !canAddManualPrice} className="h-10 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">{selectedCartQuantity > 0 ? "Agregar otra unidad" : "Agregar a la venta"}</button></div>
         </div></div>}
         {creatingCustomer && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-md rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold">Nuevo cliente</h2><div className="mt-5 grid gap-3"><input autoFocus value={customerDraft.rif} onChange={(event) => setCustomerDraft((current) => ({ ...current, rif: event.target.value }))} placeholder="RIF o cédula" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/><input value={customerDraft.name} onChange={(event) => setCustomerDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre o razón social" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setCreatingCustomer(false)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={createCustomer} disabled={!customerDraft.rif.trim() || !customerDraft.name.trim()} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Crear cliente</button></div></div></div>}
         {completed && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-7 text-center shadow-2xl"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><CheckCircle2 size={30}/></div><h2 className="mt-4 text-xl font-semibold">{completed.documentType === "nota_entrega" ? "Nota de entrega confirmada" : "Venta confirmada"}</h2><p className="mt-1 font-mono text-[12px] text-[var(--text-tertiary)]">{completed.documentType === "nota_entrega" ? "Nota de entrega" : "Factura"} Nº {completed.invoiceNumber}</p><p className="mt-5 font-mono text-3xl font-bold text-foreground">Bs {money(completed.total)}</p><div className="mt-6 grid gap-2"><button onClick={downloadPdf} disabled={generatingPdf} className="h-11 rounded-xl bg-primary-500 text-[12px] font-bold uppercase tracking-[.1em] text-white">{generatingPdf ? "Generando…" : completed.documentType === "nota_entrega" ? "Descargar nota" : "Descargar factura A4"}</button><Link href={`/sales/${completed.id}`} className="flex h-10 items-center justify-center rounded-xl border border-border-light text-[12px]">Abrir {completed.documentType === "nota_entrega" ? "nota de entrega" : "factura"}</Link><button onClick={resetSale} className="h-10 rounded-xl text-[12px] font-semibold text-primary-500">Nueva {completed.documentType === "nota_entrega" ? "nota de entrega" : "venta"}</button></div></div></div>}
