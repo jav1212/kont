@@ -192,7 +192,9 @@ export async function middleware(request: NextRequest) {
     }
 
     // ── Admin no puede usar la app regular ni las páginas públicas ────────
-    if (isAdminSession) {
+    // API handlers enforce their own authorization and must return JSON, not a
+    // page redirect. Keep the barcode session checks above active for APIs.
+    if (isAdminSession && !pathname.startsWith('/api/')) {
         return NextResponse.redirect(new URL('/admin', request.url));
     }
 
