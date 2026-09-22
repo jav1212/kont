@@ -11,6 +11,7 @@ import type { CustomFieldDefinition, InventoryConfig } from "@/src/modules/compa
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { ExcelImportRow } from "../utils/inventory-excel";
+import { resolveCatalogImportCompositeState } from "../utils/catalog-import-composite-policy";
 import type { CompositeImportResult } from "../utils/composite-import";
 import { validateCompositeImport } from "../utils/composite-import";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
@@ -190,6 +191,11 @@ export function useExcelImport() {
         const existing = (row.product.barcode ? existingByBarcode.get(row.product.barcode) : undefined)
           ?? (row.product.code ? existingByCode.get(row.product.code) : undefined);
         const deptId = row.departmentName ? deptMap.get(row.departmentName.toUpperCase()) : undefined;
+        const compositeState = resolveCatalogImportCompositeState({
+          existing,
+          incomingCompositionKind: row.product.compositionKind,
+          incomingCustomFields: row.customFields,
+        });
 
         const product: Product = {
           id: existing?.id,
@@ -207,9 +213,9 @@ export function useExcelImport() {
           departmentId: deptId ?? existing?.departmentId,
           vatType: row.product.vatType,
           salePricing: row.product.salePricing ?? existing?.salePricing,
-          compositionKind: row.product.compositionKind ?? existing?.compositionKind,
-          compositionStatus: row.product.compositionKind === "composite" ? "pending" : existing?.compositionStatus,
-          customFields: { ...(existing?.customFields ?? {}), ...row.customFields },
+          compositionKind: compositeState.compositionKind,
+          compositionStatus: compositeState.compositionStatus,
+          customFields: compositeState.customFields,
         };
 
         const result = await saveProductDetailed(product);

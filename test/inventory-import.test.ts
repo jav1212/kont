@@ -11,6 +11,65 @@ import {
   type ColumnMapping,
 } from "../src/modules/inventory/frontend/utils/inventory-excel";
 import { parseCompositeProductsCsv, validateCompositeImport } from "../src/modules/inventory/frontend/utils/composite-import";
+import { resolveCatalogImportCompositeState } from "../src/modules/inventory/frontend/utils/catalog-import-composite-policy";
+
+test("una importación de catálogo conserva compuestos existentes y no aporta recetas", () => {
+  const existingReady = {
+    compositionKind: "composite" as const,
+    compositionStatus: "ready" as const,
+    customFields: { tipo_origen: "Compuesto", fuente: "catálogo anterior" },
+    components: [{ productId: "pan", quantity: 2 }],
+  };
+  const ready = resolveCatalogImportCompositeState({
+    existing: existingReady,
+    incomingCustomFields: { tipo_origen: "Producto", lote: "nuevo" },
+  });
+  assert.deepEqual(ready, {
+    compositionKind: "composite", compositionStatus: "ready",
+    customFields: { tipo_origen: "Compuesto", fuente: "catálogo anterior", lote: "nuevo" },
+  });
+  assert.deepEqual(existingReady.components, [{ productId: "pan", quantity: 2 }]);
+  assert.equal("components" in ready, false, "La importación de catálogo no transporta ni modifica recetas");
+
+  for (const [incomingCompositionKind, tipo_origen] of [
+    [undefined, undefined],
+    ["simple", "Producto"],
+    ["simple", "Contorno"],
+  ] as const) {
+    for (const compositionStatus of ["pending", "ready"] as const) {
+      const preserved = resolveCatalogImportCompositeState({
+        existing: { compositionKind: "composite", compositionStatus, customFields: { tipo_origen: "Compuesto" } },
+        incomingCompositionKind,
+        incomingCustomFields: tipo_origen ? { tipo_origen } : {},
+      });
+      assert.equal(preserved.compositionKind, "composite");
+      assert.equal(preserved.compositionStatus, compositionStatus);
+      assert.equal(preserved.customFields.tipo_origen, "Compuesto");
+    }
+  }
+});
+
+test("solo una clasificación explícita crea compuestos nuevos", () => {
+  const workbook = parseSemicolonCsvWorkbook("codigo;nombre;tipo de origen\n0782;COMBO 1;Producto");
+  const mapped = applyMappings(workbook, "Inventario", [
+    { sourceIndex: 0, sourceHeader: "codigo", target: { target: "product", field: "code" }, confidence: "manual" },
+    { sourceIndex: 1, sourceHeader: "nombre", target: { target: "product", field: "name" }, confidence: "manual" },
+    { sourceIndex: 2, sourceHeader: "tipo de origen", target: { target: "product", field: "sourceType" }, confidence: "manual" },
+  ]);
+  const namedCombo = resolveCatalogImportCompositeState({
+    incomingCompositionKind: mapped.rows[0].product.compositionKind,
+    incomingCustomFields: mapped.rows[0].customFields,
+  });
+  assert.equal(namedCombo.compositionKind, "simple", "El nombre COMBO no clasifica productos");
+
+  const explicitComposite = resolveCatalogImportCompositeState({
+    incomingCompositionKind: "composite",
+    incomingCustomFields: { tipo_origen: "Compuesto" },
+  });
+  assert.equal(explicitComposite.compositionKind, "composite");
+  assert.equal(explicitComposite.compositionStatus, "pending");
+  assert.equal(explicitComposite.customFields.tipo_origen, "Compuesto");
+});
 
 test("clasifica barcode e identificadores internos sin perder el texto", () => {
   assert.deepEqual(classifySourceIdentifier(" 850241000402 "), {

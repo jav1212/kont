@@ -6,7 +6,9 @@ Un producto compuesto es un artículo comercial que conserva una sola línea y u
 
 ## Catálogo y composición
 
-Los productos tienen una presentación explícita: `simple` o `composite`. Los productos existentes permanecen como simples; el sistema no reclasifica catálogos previos por su nombre, código o existencias. Para clasificar productos importados se requiere una nueva importación de su catálogo con el tipo de origen correspondiente.
+Los productos tienen una presentación explícita: `simple` o `composite`. La clasificación no se infiere por nombre, código ni existencias. La migración de reconciliación reconoce de forma explícita el metadato histórico `custom_fields.tipo_origen` cuando su valor normalizado es `compuesto`; con ello se corrigieron los 38 productos de El Portal que cumplían las condiciones de seguridad.
+
+La reconciliación solo convierte productos simples sin existencias propias y que no sean ya componentes de otra receta. Los productos con existencias distintas de cero o que ya son componentes permanecen sin cambios y requieren revisión manual. Las importaciones ordinarias posteriores del catálogo conservan la presentación compuesta y su receta; solo el reporte de compuestos o el editor manual modifica componentes.
 
 En el formato de catálogo de El Portal, el tipo de origen `Compuesto` crea un producto compuesto y se conserva como `tipo_origen` para trazabilidad. Otros tipos de origen, como `Contorno`, no cambian la presentación a compuesta.
 
@@ -37,7 +39,7 @@ La línea comercial conserva el precio único del combo. Los movimientos de inve
 
 ## Base de datos, despliegue y validación
 
-La migración `264_shared_inventory_composite_products.sql` crea la clasificación, las recetas, sus restricciones y la expansión de ventas. La migración `265_composite_sales_reporting.sql` añade el tratamiento del ingreso comercial de compuestos en los reportes. Deben aplicarse en este orden, primero **264** y después **265**, y solo después desplegar la aplicación que las utiliza. Para retirar la funcionalidad se debe hacer una migración explícita de reversión; no se deben borrar tablas o columnas directamente porque las ventas confirmadas conservan instantáneas.
+La migración `264_shared_inventory_composite_products.sql` crea la clasificación, las recetas, sus restricciones y la expansión de ventas. La migración `265_composite_sales_reporting.sql` añade el tratamiento del ingreso comercial de compuestos en los reportes. La migración `266_backfill_imported_composite_products.sql` reconcilia los compuestos históricos identificados por su tipo de origen. Deben aplicarse en este orden: **264**, **265** y **266**; el despliegue de la aplicación que las utiliza ocurre después. Para retirar la funcionalidad se debe hacer una migración explícita de reversión; no se deben borrar tablas o columnas directamente porque las ventas confirmadas conservan instantáneas.
 
 Antes de migrar, ejecutar las pruebas focalizadas desde la raíz del repositorio:
 
@@ -55,3 +57,5 @@ La prueba SQL ejecuta las migraciones contra una base aislada usando la función
 Validación de esta implementación: 16 pruebas de importación/POS aprobadas; prueba SQL, TypeScript, auditoría de rutas y build de producción aprobados. ESLint de los archivos modificados no reportó problemas. El lint global permanece bloqueado por errores preexistentes en archivos fuera de este cambio. Ambos CSV reales se cruzaron sin conflictos: 36 composiciones, 99 relaciones y los dos pendientes indicados arriba.
 
 En Supabase quedaron registradas como `20260922153754_shared_inventory_composite_products` y `20260922153804_composite_sales_reporting`. Se verificaron las dos tablas con RLS habilitado, la clasificación predeterminada, el RPC de reemplazo y el acceso del adaptador servidor a las instantáneas.
+
+La reconciliación de `266_backfill_imported_composite_products.sql` se aplicó de forma remota como `20260922154931_backfill_imported_composite_products`: los 38 productos históricos quedaron clasificados como compuestos. La protección de importación ordinaria se verificó con 18 pruebas de importación/POS, TypeScript, ESLint focalizado y la prueba SQL aprobados. La aplicación Web aún requiere su propio despliegue.

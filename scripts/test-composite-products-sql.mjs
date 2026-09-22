@@ -23,7 +23,8 @@ try {
         code text not null default '', name text not null, measure_unit text not null default 'unidad',
         current_stock numeric(14,4) not null default 0, average_cost numeric(14,4) not null default 0,
         active boolean not null default true, type text not null default 'mercancia', description text default '',
-        valuation_method text default 'promedio_ponderado', vat_type text default 'general', department_id text, updated_at timestamptz default now(), primary key(tenant_id,id)
+        valuation_method text default 'promedio_ponderado', vat_type text default 'general', department_id text,
+        custom_fields jsonb not null default '{}'::jsonb, updated_at timestamptz default now(), primary key(tenant_id,id)
       );
       CREATE TABLE public.shared_inventory_sales_invoices(
         tenant_id uuid not null references public.tenants(id), id text not null, company_id text not null,
@@ -49,10 +50,26 @@ try {
     `);
     await db.exec(await readFile(new URL('../supabase/migrations/210_allow_negative_inventory_balances.sql', import.meta.url), 'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/264_shared_inventory_composite_products.sql', import.meta.url), 'utf8'));
-    await db.query(`insert into public.shared_inventory_products(tenant_id,id,company_id,code,name,current_stock) values
-      ($1,'bread','company','001','Bread',12),($1,'drink','company','002','Drink',5),($1,'combo','company','003','Combo',0),($1,'stocked','company','004','Stocked',1),($1,'foreign-company','other-company','005','Other company',4),($1,'pending','company','006','Pending combo',0)`, [tenant]);
+    await db.query(`insert into public.shared_inventory_products(tenant_id,id,company_id,code,name,current_stock,custom_fields) values
+      ($1,'bread','company','001','Bread',12,'{}'),($1,'drink','company','002','Drink',5,'{}'),($1,'combo','company','003','Combo',0,'{}'),($1,'stocked','company','004','Stocked',1,'{}'),($1,'foreign-company','other-company','005','Other company',4,'{}'),($1,'pending','company','006','Pending combo',0,'{}'),
+      ($1,'legacy-zero','company','007','Imported compound',0,'{"tipo_origen":"  CoMpUeStO  "}'),($1,'legacy-positive','company','008','Imported compound with stock',1,'{"tipo_origen":"Compuesto"}'),($1,'legacy-negative','company','009','Imported compound with negative stock',-1,'{"tipo_origen":"Compuesto"}'),($1,'legacy-simple-name','company','010','COMBO named but simple',0,'{}'),($1,'legacy-parent','company','011','Existing parent',0,'{}'),($1,'legacy-component','company','012','Imported component',0,'{"tipo_origen":"Compuesto"}')`, [tenant]);
     await db.query("update public.shared_inventory_products set composition_kind='composite' where tenant_id=$1 and id='combo'", [tenant]);
     await db.query("update public.shared_inventory_products set composition_kind='composite' where tenant_id=$1 and id='pending'", [tenant]);
+    await db.query("update public.shared_inventory_products set composition_kind='composite' where tenant_id=$1 and id='legacy-parent'", [tenant]);
+    await db.query("select public.shared_inventory_product_composition_replace($1,'company','legacy-parent','[{\"productId\":\"legacy-component\",\"quantity\":1}]')", [tenant]);
+    const backfillMigration = await readFile(new URL('../supabase/migrations/266_backfill_imported_composite_products.sql', import.meta.url), 'utf8');
+    await db.exec(backfillMigration);
+    const legacyKinds = await db.query("select id, composition_kind from public.shared_inventory_products where tenant_id=$1 and id like 'legacy-%' order by id", [tenant]);
+    assert.deepEqual(legacyKinds.rows.map((row) => [row.id, row.composition_kind]), [
+        ['legacy-component', 'simple'],
+        ['legacy-negative', 'simple'],
+        ['legacy-parent', 'composite'],
+        ['legacy-positive', 'simple'],
+        ['legacy-simple-name', 'simple'],
+        ['legacy-zero', 'composite'],
+    ], 'Only zero-stock, explicitly imported compound products without a parent recipe are backfilled');
+    await db.exec(backfillMigration);
+    assert.equal((await db.query("select composition_kind from public.shared_inventory_products where tenant_id=$1 and id='legacy-zero'", [tenant])).rows[0].composition_kind, 'composite', 'Backfill is idempotent');
 
     await assert.rejects(
         db.query("select public.shared_inventory_product_composition_replace($1,'company','combo','[{\"productId\":\"combo\",\"quantity\":1}]')", [tenant]),
