@@ -4,6 +4,7 @@
 
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { ExcelImportWizard } from "@/src/modules/inventory/frontend/components/excel-import-wizard";
+import { CompositeReportImport } from "@/src/modules/inventory/frontend/components/composite-report-import";
 
 export default function InventoryImportPage() {
   return (
@@ -12,7 +13,8 @@ export default function InventoryImportPage() {
           title="Importar Inventario"
           subtitle="Migra tu inventario desde un archivo Excel (.xls, .xlsx)"
         />
-        <div className="px-8 py-6 max-w-5xl">
+        <div className="px-8 py-6 max-w-5xl space-y-6">
+          <CompositeReportImport />
           <ExcelImportWizard />
         </div>
       </div>

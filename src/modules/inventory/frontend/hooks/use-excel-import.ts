@@ -11,6 +11,9 @@ import type { CustomFieldDefinition, InventoryConfig } from "@/src/modules/compa
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { ExcelImportRow } from "../utils/inventory-excel";
+import type { CompositeImportResult } from "../utils/composite-import";
+import { validateCompositeImport } from "../utils/composite-import";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 // ── Progress state ──────────────────────────────────────────────────────────
 
@@ -22,6 +25,12 @@ export interface ImportProgress {
   created: { departments: number; products: number; movements: number };
   updated: { products: number };
   skipped: number;
+}
+
+/** Outcome of replacing the recipes included in one composite report. */
+export interface CompositeImportOutcome {
+  saved: number;
+  errors: Array<{ row: number; message: string }>;
 }
 
 function createInitialProgress(): ImportProgress {
@@ -198,6 +207,8 @@ export function useExcelImport() {
           departmentId: deptId ?? existing?.departmentId,
           vatType: row.product.vatType,
           salePricing: row.product.salePricing ?? existing?.salePricing,
+          compositionKind: row.product.compositionKind ?? existing?.compositionKind,
+          compositionStatus: row.product.compositionKind === "composite" ? "pending" : existing?.compositionStatus,
           customFields: { ...(existing?.customFields ?? {}), ...row.customFields },
         };
 
@@ -247,6 +258,9 @@ export function useExcelImport() {
 
         const productId = productIdMap.get(row.product.code);
         if (!productId) continue; // product creation failed, skip movements
+        const savedProduct = existingByCode.get(row.product.code)
+          ?? (row.product.barcode ? existingByBarcode.get(row.product.barcode) : undefined);
+        if (savedProduct?.compositionKind === "composite" || row.product.compositionKind === "composite") continue;
 
         const baseMovement: Omit<Movement, "id" | "type" | "quantity" | "unitCost" | "totalCost" | "balanceQuantity"> = {
           companyId,
@@ -337,7 +351,50 @@ export function useExcelImport() {
     }
 
     update({ phase: "done" });
+    return localProgress.errors.length === 0 && !cancelledRef.current;
   }, [companyId, company, loadProducts, loadDepartments, saveProductDetailed, saveDepartment, saveMovement, saveInventoryConfig]);
 
-  return { progress, executeImport, reset, cancel };
+  /**
+   * Validates a composite report against the current catalog and atomically replaces
+   * each complete recipe included in that report.
+   *
+   * @param parsed - Recipes parsed from the companion CSV report.
+   * @returns Row-level errors, if validation or persistence fails.
+   */
+  const previewCompositeImport = useCallback(async (parsed: CompositeImportResult): Promise<CompositeImportResult> => {
+    if (!companyId) return { ...parsed, errors: [...parsed.errors, { row: 0, message: "Selecciona una empresa antes de importar." }] };
+    const products = await loadProducts(companyId, true);
+    if (!products) return { ...parsed, errors: [...parsed.errors, { row: 0, message: "No se pudo cargar el catálogo actual." }] };
+    return validateCompositeImport(parsed, products);
+  }, [companyId, loadProducts]);
+
+  const executeCompositeImport = useCallback(async (parsed: CompositeImportResult): Promise<CompositeImportOutcome> => {
+    if (!companyId) return { saved: 0, errors: [{ row: 0, message: "Selecciona una empresa antes de importar." }] };
+    const products = await loadProducts(companyId, true);
+    if (!products) return { saved: 0, errors: [{ row: 0, message: "No se pudo cargar el catálogo actual." }] };
+    const validated = validateCompositeImport(parsed, products);
+    if (validated.errors.length) return { saved: 0, errors: validated.errors };
+    const byCode = new Map(products.map((product) => [product.code, product]));
+    const errors: Array<{ row: number; message: string }> = [];
+    let saved = 0;
+    for (const recipe of validated.recipes) {
+      const parent = byCode.get(recipe.parentCode)!;
+      try {
+        const response = await apiFetch(`/api/inventory/products/${encodeURIComponent(parent.id!)}/components?companyId=${encodeURIComponent(companyId)}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId, components: recipe.lines.map((line) => ({ productId: byCode.get(line.componentCode)!.id, quantity: line.quantity })) }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          errors.push({ row: recipe.lines[0]?.row ?? 0, message: typeof body.error === "string" ? body.error : `No se pudo guardar ${recipe.parentCode}.` });
+        } else saved += 1;
+      } catch (error) {
+        errors.push({ row: recipe.lines[0]?.row ?? 0, message: error instanceof Error ? error.message : `No se pudo guardar ${recipe.parentCode}.` });
+      }
+    }
+    if (saved > 0) await loadProducts(companyId, true);
+    return { saved, errors };
+  }, [companyId, loadProducts]);
+
+  return { progress, executeImport, previewCompositeImport, executeCompositeImport, reset, cancel };
 }

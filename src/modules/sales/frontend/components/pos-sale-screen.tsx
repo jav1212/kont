@@ -18,6 +18,7 @@ import { notify } from "@/src/shared/frontend/notify";
 import type { SalesDocumentType } from "../../backend/domain/sales-invoice";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
+import { getSaleableStock, isCompositePending } from "../utils/composite-availability";
 
 type CartLine = {
     product: Product;
@@ -40,6 +41,8 @@ type CatalogProduct = {
     searchText: string;
     normalizedCode: string;
     stockLabel: string;
+    availableStock: number;
+    compositePending: boolean;
     unitPriceBs: number | null;
 };
 
@@ -47,7 +50,7 @@ const PosProductCard = memo(function PosProductCard({ entry, onSelect }: {
     entry: CatalogProduct;
     onSelect: (product: Product) => void;
 }) {
-    const { product, stockLabel, unitPriceBs } = entry;
+    const { product, stockLabel, unitPriceBs, availableStock, compositePending } = entry;
     const noPrice = unitPriceBs == null || unitPriceBs <= 0;
     const code = product.code || "SIN CÓDIGO";
 
@@ -95,18 +98,18 @@ const PosProductCard = memo(function PosProductCard({ entry, onSelect }: {
             if (event.detail !== 0 && (gesture?.cancelClick || scrolled)) return;
             onSelect(product);
         }}
-        aria-label={`Consultar precio de ${product.name}`}
+        aria-label={compositePending ? `Consultar ${product.name}: composición pendiente` : `Consultar precio de ${product.name}`}
         className="group flex min-h-36 min-w-0 flex-col rounded-xl border border-border-light bg-surface-1 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary-500/50 hover:shadow-md active:translate-y-0 sm:p-4"
     >
         <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
             <span title={code} className="min-w-0 truncate font-mono text-[10px] text-[var(--text-tertiary)]">{code}</span>
-            <span className={`inline-flex shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold ${product.currentStock <= 0 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
-                {stockLabel} {product.measureUnit}
+            <span className={`inline-flex shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold ${availableStock <= 0 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+                {compositePending ? "Sin composición" : `${stockLabel} ${product.measureUnit}`}
             </span>
         </div>
         <p className="mt-3 line-clamp-2 flex-1 text-[13px] font-semibold leading-snug text-foreground">{product.name}</p>
         <div className="mt-3 grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-end gap-2">
-            <span className="whitespace-nowrap text-[9px] uppercase text-[var(--text-tertiary)]">{product.vatType === "exento" ? "Exento" : "IVA 16%"}</span>
+            <span className="whitespace-nowrap text-[9px] uppercase text-[var(--text-tertiary)]">{product.compositionKind === "composite" ? "Compuesto" : product.vatType === "exento" ? "Exento" : "IVA 16%"}</span>
             <span title={noPrice ? "Ingresar precio" : `Bs ${money(unitPriceBs)}`} className={`min-w-0 truncate text-right font-mono text-[14px] font-bold ${noPrice ? "text-amber-600" : "text-primary-500"}`}>
                 {noPrice ? "Ingresar precio" : `Bs ${money(unitPriceBs)}`}
             </span>
@@ -293,6 +296,10 @@ export function PosSaleScreen() {
 
     const addResolvedProduct = useCallback((product: Product, manual?: { amount: number; currency: CurrencyCode; rate: number }) => {
         if (!product.id) return;
+        if (isCompositePending(product)) {
+            notify.error("Este producto compuesto todavía no tiene una composición lista para vender.");
+            return;
+        }
         const { resolved, rate } = resolvePrice(product);
         const unitPrice = manual ? round2(manual.amount * manual.rate) : resolved?.unitPriceBs;
         if (unitPrice == null || unitPrice <= 0) return;
@@ -358,6 +365,8 @@ export function PosSaleScreen() {
     const selectedCartQuantity = selectedProduct?.id
         ? cart.find((line) => line.product.id === selectedProduct.id)?.quantity ?? 0
         : 0;
+    const selectedAvailableStock = selectedProduct ? getSaleableStock(selectedProduct) : 0;
+    const selectedCompositePending = selectedProduct ? isCompositePending(selectedProduct) : false;
 
     function addSelectedProduct() {
         if (!selectedProduct || !selectedPrice?.resolved || selectedBasePrice <= 0) return;
@@ -379,7 +388,9 @@ export function PosSaleScreen() {
                 product,
                 searchText: [product.name, product.code, product.barcode ?? ""].join("\u0000").toLocaleLowerCase("es"),
                 normalizedCode: product.code.toLocaleLowerCase("es"),
-                stockLabel: stock(product.currentStock),
+                stockLabel: stock(getSaleableStock(product)),
+                availableStock: getSaleableStock(product),
+                compositePending: isCompositePending(product),
                 unitPriceBs: resolved?.unitPriceBs ?? null,
             };
         })
@@ -541,7 +552,8 @@ export function PosSaleScreen() {
             {cart.length === 0 ? <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-[var(--text-tertiary)]"><ShoppingCart size={34} strokeWidth={1.4} /><p className="text-[13px]">Consulta un producto y agrégalo para comenzar.</p></div> : cart.map((line) => <div key={line.product.id} className="border-b border-border-light p-4">
                 <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-[13px] font-semibold text-foreground">{line.product.name}</p><p className="mt-1 font-mono text-[10px] text-[var(--text-tertiary)]">{line.product.code || "Sin código"}{line.manualPrice ? " · Precio temporal" : ""}</p></div><button type="button" onClick={() => changeQuantity(line.product.id!, 0)} className="p-1.5 text-[var(--text-tertiary)] hover:text-red-500"><Trash2 size={14} /></button></div>
                 <div className="mt-3 flex items-center justify-between"><div className="flex items-center rounded-lg border border-border-light"><button type="button" onClick={() => changeQuantity(line.product.id!, line.quantity - 1)} className="size-8"><Minus size={13} className="mx-auto" /></button><input aria-label={`Cantidad de ${line.product.name}`} type="number" min="0.01" step="0.01" value={line.quantity} onChange={(event) => changeQuantity(line.product.id!, Number(event.target.value))} className="h-8 w-14 border-x border-border-light bg-transparent text-center font-mono text-[12px] outline-none"/><button type="button" onClick={() => changeQuantity(line.product.id!, line.quantity + 1)} className="size-8"><Plus size={13} className="mx-auto" /></button></div><div className="text-right"><p className="font-mono text-[12px] text-[var(--text-secondary)]">Bs {money(line.unitPrice)}</p><p className="font-mono text-[14px] font-bold text-foreground">Bs {money(line.unitPrice * line.quantity)}</p></div></div>
-                {line.quantity > line.product.currentStock && <p className="mt-2 text-[10px] font-medium text-amber-600">La venta dejará existencia negativa ({stock(line.product.currentStock - line.quantity)}).</p>}
+                {line.product.compositionKind === "composite" && line.product.components?.length ? <div className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-[10px] text-[var(--text-secondary)]"><p className="font-semibold uppercase tracking-[.1em] text-[var(--text-tertiary)]">Incluye</p>{line.product.components.map((component) => <p key={component.productId} className="mt-1">{stock(component.quantity * line.quantity)} {component.measureUnit} · {component.name}</p>)}</div> : null}
+                {line.quantity > getSaleableStock(line.product) && <p className="mt-2 text-[10px] font-medium text-amber-600">La venta dejará existencia negativa ({stock(getSaleableStock(line.product) - line.quantity)}).</p>}
             </div>)}
         </div>
         <div className="space-y-3 border-t border-border-light p-5 shadow-[0_-8px_24px_rgba(0,0,0,.04)]">
@@ -572,6 +584,7 @@ export function PosSaleScreen() {
         {departmentPickerOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/45 p-3 pt-[5vh] sm:p-6 sm:pt-[8vh]" onClick={() => closeDepartmentPicker()}><div role="dialog" aria-modal="true" aria-labelledby="pos-departments-title" className="w-full max-w-2xl rounded-3xl border border-border-light bg-surface-1 p-5 shadow-2xl sm:p-7" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[11px] uppercase tracking-[.16em] text-primary-500">Acceso rápido · F4</p><h2 id="pos-departments-title" className="mt-2 text-[23px] font-bold text-foreground sm:text-[26px]">Seleccionar departamento</h2><p className="mt-2 text-[13px] text-[var(--text-secondary)]">Elige una tarjeta para ver sus productos.</p></div><button type="button" onClick={() => closeDepartmentPicker()} aria-label="Cerrar departamentos" className="flex size-11 shrink-0 items-center justify-center rounded-xl text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"><X size={23}/></button></div><div role="listbox" aria-label="Departamentos" aria-activedescendant={`pos-department-option-${departmentOptionIndex}`} className="mt-5 grid max-h-[62vh] gap-2 overflow-y-auto rounded-2xl border border-border-light bg-surface-2 p-2 sm:grid-cols-2">{departmentOptions.map((option, index) => <button key={option.id} ref={(element) => { departmentOptionRefs.current[index] = element; }} id={`pos-department-option-${index}`} type="button" role="option" aria-selected={departmentId === option.id} tabIndex={index === departmentOptionIndex ? 0 : -1} onClick={() => selectDepartment(option.id)} onFocus={() => setDepartmentOptionIndex(index)} className={`flex min-h-[82px] items-center justify-between gap-4 rounded-xl border px-4 py-4 text-left transition sm:min-h-[96px] sm:px-5 ${index === departmentOptionIndex ? "border-primary-500 bg-primary-500/10 text-primary-500 shadow-sm" : "border-transparent bg-surface-1 text-foreground hover:border-primary-500/40 hover:bg-primary-500/5"}`}><span className="min-w-0"><span className="block text-[15px] font-bold leading-snug sm:text-[16px]">{option.name}</span><span className="mt-2 block text-[12px] text-[var(--text-secondary)]">{option.detail}</span></span>{departmentId === option.id && <span className="shrink-0 rounded-full bg-primary-500 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[.08em] text-white">Activo</span>}</button>)}</div><p className="mt-4 text-[11px] text-[var(--text-secondary)]">Usa ↑ ↓ para navegar, Enter para seleccionar y Escape para cerrar.</p></div></div>}
         {selectedProduct && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4" onClick={closePriceInquiry}><div role="dialog" aria-modal="true" aria-labelledby="pos-price-title" className="w-full max-w-sm rounded-2xl border border-border-light bg-surface-1 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-primary-500">Consulta de precio</p><h2 id="pos-price-title" className="mt-1 text-[18px] font-semibold text-foreground">{selectedProduct.name}</h2><p className="mt-1 font-mono text-[11px] text-[var(--text-tertiary)]">{selectedProduct.code || "Sin código"}</p></div><button type="button" onClick={closePriceInquiry} aria-label="Cerrar consulta de precio" className="shrink-0 rounded-lg p-2 text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"><X size={18}/></button></div>
+            {selectedCompositePending && <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-[12px] text-amber-700">Este producto compuesto aún no tiene una composición válida. Puedes consultar su precio, pero no agregarlo a una venta.</div>}
             {selectedPrice?.resolved && selectedBasePrice > 0 ? <>
                 <div className="mt-5 rounded-xl bg-primary-500/10 px-4 py-5 text-center"><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-primary-500">Precio final</p><p className="mt-1 font-mono text-[30px] font-bold text-foreground">Bs {money(selectedFinalPrice)}</p><p className="mt-1 text-[11px] text-[var(--text-secondary)]">{selectedProduct.vatType === "exento" ? "Producto exento de IVA" : "IVA incluido"}</p></div>
                 <div className="mt-4 space-y-2 rounded-xl border border-border-light bg-surface-2 p-4 text-[12px]"><div className="flex justify-between text-[var(--text-secondary)]"><span>Precio base</span><span className="font-mono text-foreground">Bs {money(selectedBasePrice)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>{selectedProduct.vatType === "exento" ? "IVA (exento)" : "IVA 16%"}</span><span className="font-mono text-foreground">Bs {money(selectedVatAmount)}</span></div>{!isLocalCurrency(selectedPrice.resolved.currency) && <><div className="border-t border-border-light pt-2 flex justify-between text-[var(--text-secondary)]"><span>Precio de referencia</span><span className="font-mono text-foreground">{money(selectedPrice.resolved.sourcePrice)} {normalizeCurrencyCode(selectedPrice.resolved.currency)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>Tasa aplicada</span><span className="font-mono text-foreground">Bs {money(selectedPrice.rate ?? 0)}</span></div></>}</div>
@@ -581,8 +594,9 @@ export function PosSaleScreen() {
                 {!isLocalCurrency(manualCurrency) && <div className={`mt-3 rounded-lg border px-3 py-2 text-[12px] ${manualRate ? "border-border-light bg-surface-2 text-[var(--text-secondary)]" : "border-red-500/20 bg-red-500/5 text-red-600"}`}>{manualRate ? <>Tasa: Bs {money(manualRate)}</> : `No hay una tasa disponible para ${manualCurrency}.`}</div>}
                 {canAddManualPrice && <div className="mt-3 rounded-xl bg-primary-500/10 px-4 py-3 text-center"><p className="text-[10px] uppercase tracking-[.12em] text-primary-500">{selectedProduct.vatType === "exento" ? "Precio final · Exento" : "Precio final con IVA"}</p><p className="mt-1 font-mono text-[24px] font-bold text-foreground">Bs {money(manualFinalPrice)}</p></div>}
             </>}
-            <div className="mt-4 flex items-center justify-between text-[11px] text-[var(--text-secondary)]"><span>Existencia: <strong className="font-mono text-foreground">{stock(selectedProduct.currentStock)} {selectedProduct.measureUnit}</strong></span>{selectedCartQuantity > 0 && <span>En carrito: <strong className="font-mono text-foreground">{stock(selectedCartQuantity)}</strong></span>}</div>
-            <div className="mt-5 grid grid-cols-[auto_1fr] gap-2"><button type="button" onClick={closePriceInquiry} className="h-10 rounded-lg border border-border-light px-4 text-[12px]">Cerrar</button><button ref={addProductRef} type="button" onClick={selectedPrice?.resolved && selectedBasePrice > 0 ? addSelectedProduct : addManualPrice} disabled={selectedPrice?.resolved && selectedBasePrice > 0 ? false : !canAddManualPrice} className="h-10 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">{selectedCartQuantity > 0 ? "Agregar otra unidad" : "Agregar a la venta"}</button></div>
+            {selectedProduct.compositionKind === "composite" && selectedProduct.components?.length ? <div className="mt-4 rounded-xl border border-border-light bg-surface-2 p-4"><p className="font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--text-tertiary)]">Incluye</p><ul className="mt-2 space-y-1.5 text-[12px] text-[var(--text-secondary)]">{selectedProduct.components.map((component) => <li key={component.productId} className="flex justify-between gap-3"><span className="min-w-0 truncate">{component.name}</span><span className="shrink-0 font-mono text-foreground">{stock(component.quantity)} {component.measureUnit}</span></li>)}</ul></div> : null}
+            <div className="mt-4 flex items-center justify-between text-[11px] text-[var(--text-secondary)]"><span>{selectedProduct.compositionKind === "composite" ? "Disponibilidad:" : "Existencia:"} <strong className="font-mono text-foreground">{stock(selectedAvailableStock)} {selectedProduct.measureUnit}</strong></span>{selectedCartQuantity > 0 && <span>En carrito: <strong className="font-mono text-foreground">{stock(selectedCartQuantity)}</strong></span>}</div>
+            <div className="mt-5 grid grid-cols-[auto_1fr] gap-2"><button type="button" onClick={closePriceInquiry} className="h-10 rounded-lg border border-border-light px-4 text-[12px]">Cerrar</button><button ref={addProductRef} type="button" onClick={selectedPrice?.resolved && selectedBasePrice > 0 ? addSelectedProduct : addManualPrice} disabled={selectedCompositePending || (selectedPrice?.resolved && selectedBasePrice > 0 ? false : !canAddManualPrice)} className="h-10 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">{selectedCompositePending ? "Composición pendiente" : selectedCartQuantity > 0 ? "Agregar otra unidad" : "Agregar a la venta"}</button></div>
         </div></div>}
         {creatingCustomer && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-md rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold">Nuevo cliente</h2><div className="mt-5 grid gap-3"><input autoFocus value={customerDraft.rif} onChange={(event) => setCustomerDraft((current) => ({ ...current, rif: event.target.value }))} placeholder="RIF o cédula" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/><input value={customerDraft.name} onChange={(event) => setCustomerDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre o razón social" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setCreatingCustomer(false)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={createCustomer} disabled={!customerDraft.rif.trim() || !customerDraft.name.trim()} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Crear cliente</button></div></div></div>}
         {completed && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-7 text-center shadow-2xl"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><CheckCircle2 size={30}/></div><h2 className="mt-4 text-xl font-semibold">{completed.documentType === "nota_entrega" ? "Nota de entrega confirmada" : "Venta confirmada"}</h2><p className="mt-1 font-mono text-[12px] text-[var(--text-tertiary)]">{completed.documentType === "nota_entrega" ? "Nota de entrega" : "Factura"} Nº {completed.invoiceNumber}</p><p className="mt-5 font-mono text-3xl font-bold text-foreground">Bs {money(completed.total)}</p><div className="mt-6 grid gap-2"><button onClick={downloadPdf} disabled={generatingPdf} className="h-11 rounded-xl bg-primary-500 text-[12px] font-bold uppercase tracking-[.1em] text-white">{generatingPdf ? "Generando…" : completed.documentType === "nota_entrega" ? "Descargar nota" : "Descargar factura A4"}</button><Link href={`/sales/${completed.id}`} className="flex h-10 items-center justify-center rounded-xl border border-border-light text-[12px]">Abrir {completed.documentType === "nota_entrega" ? "nota de entrega" : "factura"}</Link><button onClick={resetSale} className="h-10 rounded-xl text-[12px] font-semibold text-primary-500">Nueva {completed.documentType === "nota_entrega" ? "nota de entrega" : "venta"}</button></div></div></div>}

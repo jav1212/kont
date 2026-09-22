@@ -10,6 +10,7 @@ import {
   parseSemicolonCsvWorkbook,
   type ColumnMapping,
 } from "../src/modules/inventory/frontend/utils/inventory-excel";
+import { parseCompositeProductsCsv, validateCompositeImport } from "../src/modules/inventory/frontend/utils/composite-import";
 
 test("clasifica barcode e identificadores internos sin perder el texto", () => {
   assert.deepEqual(classifySourceIdentifier(" 850241000402 "), {
@@ -158,7 +159,54 @@ test("acepta GAL y los tipos Compuesto y Contorno conservando el tipo de origen"
     assert.equal(result.errors.length, 0);
     assert.equal(result.rows[0].product.measureUnit, "galon");
     assert.equal(result.rows[0].customFields.tipo_origen, sourceType);
+    assert.equal(result.rows[0].product.compositionKind, sourceType === "Compuesto" ? "composite" : "simple");
   }
+});
+
+test("agrupa un reporte de compuestos no contiguo y conserva ceros y decimales", () => {
+  const report = [
+    "empresa",
+    "Codigo/Compuesto;Producto/Compuesto;Departamento/Compuesto;Codigo/Componente;Producto/Componente;Departamento/Componente;Tipo/Unidad;Cantidad;",
+    "0782;COMBO 1;D;0041;CACHITO;D;UNI;2;",
+    "0783;COMBO 2;D;0050;PASTELITO;D;UNI;1;",
+    "0782;COMBO 1;D;0005;PAN;D;KG;0,25;",
+  ].join("\n");
+  const result = parseCompositeProductsCsv(report);
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.recipes.length, 2);
+  assert.deepEqual(result.recipes[0].lines.map((line) => [line.componentCode, line.quantity]), [["0041", 2], ["0005", 0.25]]);
+});
+
+test("bloquea composiciones con producto ausente, unidad incompatible o componentes compuestos", () => {
+  const parsed = parseCompositeProductsCsv("Codigo/Compuesto;Producto/Compuesto;D;Codigo/Componente;Producto/Componente;D;Tipo/Unidad;Cantidad\n0782;COMBO;D;0041;PAN;D;UNI;1");
+  const result = validateCompositeImport(parsed, [
+    { id: "combo", companyId: "c", code: "0782", name: "COMBO", description: "", type: "mercancia", measureUnit: "unidad", valuationMethod: "promedio_ponderado", currentStock: 0, averageCost: 0, active: true, vatType: "general", compositionKind: "composite" },
+    { id: "pan", companyId: "c", code: "0041", name: "PAN", description: "", type: "mercancia", measureUnit: "kg", valuationMethod: "promedio_ponderado", currentStock: 0, averageCost: 0, active: true, vatType: "general" },
+  ]);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0].message, /no coincide/);
+});
+
+test("un reporte malformado no deja recetas parcialmente válidas para guardar", () => {
+  const parsed = parseCompositeProductsCsv([
+    "Codigo/Compuesto;Producto/Compuesto;D;Codigo/Componente;Producto/Componente;D;Tipo/Unidad;Cantidad",
+    "0782;COMBO;D;0041;PAN;D;UNI;1",
+    "0782;COMBO;D;;BEBIDA;D;UNI;1",
+  ].join("\n"));
+  assert.equal(parsed.errors.length, 1);
+  assert.equal(parsed.recipes[0].lines.length, 1);
+  assert.ok(parsed.errors.length > 0, "el llamador debe bloquear todas las escrituras al haber errores");
+});
+
+test("una fila corta se informa y un formato genérico no reclasifica productos existentes", () => {
+  const malformed = parseCompositeProductsCsv("Codigo/Compuesto;Producto/Compuesto;D;Codigo/Componente;Producto/Componente;D;Tipo/Unidad;Cantidad\n0782;COMBO");
+  assert.equal(malformed.errors.length, 1);
+  const workbook = parseSemicolonCsvWorkbook("codigo;nombre\n0782;COMBO");
+  const generic = applyMappings(workbook, "Inventario", [
+    { sourceIndex: 0, sourceHeader: "codigo", target: { target: "product", field: "code" }, confidence: "manual" },
+    { sourceIndex: 1, sourceHeader: "nombre", target: { target: "product", field: "name" }, confidence: "manual" },
+  ]);
+  assert.equal(generic.rows[0].product.compositionKind, undefined);
 });
 
 test("separa filas conflictivas sin descartar los productos válidos", () => {

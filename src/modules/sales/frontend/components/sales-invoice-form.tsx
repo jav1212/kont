@@ -691,15 +691,18 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                         </div>
                         {items.map((it, idx) => (
                             <div key={idx} style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 82px 120px 100px 110px 32px" }} className="group grid items-start gap-3 border-b border-border-light/60 px-2 py-2 transition-colors hover:bg-surface-2/30 last:border-b-0">
-                                <SalesLineCombobox
-                                    productId={it.productId}
-                                    description={it.description}
-                                    products={products.filter((product) => product.active)}
-                                    readOnly={isReadOnly}
-                                    onFreeTextChange={(value) => updateItem(idx, { productId: null, description: value })}
-                                    onProductSelect={(product) => selectProduct(idx, product.id!)}
-                                    onClear={() => updateItem(idx, { productId: null, description: "" })}
-                                />
+                                <div className="min-w-0">
+                                    <SalesLineCombobox
+                                        productId={it.productId}
+                                        description={it.description}
+                                        products={products.filter((product) => product.active)}
+                                        readOnly={isReadOnly}
+                                        onFreeTextChange={(value) => updateItem(idx, { productId: null, description: value })}
+                                        onProductSelect={(product) => selectProduct(idx, product.id!)}
+                                        onClear={() => updateItem(idx, { productId: null, description: "" })}
+                                    />
+                                    {isReadOnly && it.compositionSnapshot?.length ? <div className="mt-2 rounded-md bg-surface-2 px-2.5 py-2 text-[10px] text-[var(--text-secondary)]"><p className="font-semibold uppercase tracking-[.1em] text-[var(--text-tertiary)]">Componentes utilizados</p>{it.compositionSnapshot.map((component) => <p key={component.productId} className="mt-1 truncate"><span className="font-mono text-foreground">{component.quantity.toLocaleString("es-VE", { maximumFractionDigits: 4 })} {component.measureUnit}</span> · {component.name}{component.code ? ` (${component.code})` : ""}</p>)}</div> : null}
+                                </div>
                                 <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
                                 <CurrencyCombobox label="" options={currencyOptions} value={normalizeCurrencyCode(it.currency)} onChange={(value) => changeItemCurrency(idx, value)} disabled={isReadOnly} />
                                 <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" inputClassName="text-right tabular-nums" value={(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) ? String(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) : ""} onValueChange={(value) => updatePriceManually(idx, parseFloat(value) || 0)} isReadOnly={isReadOnly} />

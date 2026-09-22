@@ -80,6 +80,7 @@ type RawItem = {
     vat_base: number | string | null;
     vat_included: boolean | null;
 };
+type RawCompositionSnapshot = { invoice_item_id: string; component_product_id: string; component_code: string; component_name: string; component_measure_unit: string; quantity: number | string };
 
 type RawCustomer = { name: string; rif: string; address: string };
 
@@ -204,10 +205,15 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         ]);
         if (itemsResult.error) return Result.fail(itemsResult.error.message);
         if (customerResult.error) return Result.fail(customerResult.error.message);
-        return Result.success(this.mapToDomain(row, (itemsResult.data as RawItem[]) ?? [], customerResult.data as RawCustomer | null));
+        const itemIds = ((itemsResult.data as RawItem[]) ?? []).map((item) => item.id);
+        const snapshots = itemIds.length
+            ? await this.source.instance.from('shared_inventory_sales_invoice_item_components').select('*').eq('tenant_id', this.tenantId).in('invoice_item_id', itemIds)
+            : { data: [], error: null };
+        if (snapshots.error) return Result.fail(snapshots.error.message);
+        return Result.success(this.mapToDomain(row, (itemsResult.data as RawItem[]) ?? [], customerResult.data as RawCustomer | null, (snapshots.data as RawCompositionSnapshot[]) ?? []));
     }
 
-    private mapToDomain(row: RawInvoice, rawItems: RawItem[], customer: RawCustomer | null): SalesInvoice {
+    private mapToDomain(row: RawInvoice, rawItems: RawItem[], customer: RawCustomer | null, snapshots: RawCompositionSnapshot[] = []): SalesInvoice {
         return {
             id: row.id, companyId: row.company_id, customerId: row.customer_id,
             customerName: customer?.name, customerRif: customer?.rif, customerAddress: customer?.address,
@@ -242,6 +248,7 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
                 descuentoTipo: adjustment(item.discount_type), descuentoValor: num(item.discount_value), descuentoMonto: num(item.discount_amount), descuentoMoneda: normalizeCurrencyCode(item.discount_currency),
                 recargoTipo: adjustment(item.surcharge_type), recargoValor: num(item.surcharge_value), recargoMonto: num(item.surcharge_amount), recargoMoneda: normalizeCurrencyCode(item.surcharge_currency),
                 baseIVA: num(item.vat_base, num(item.line_total)), ivaIncluido: item.vat_included === true,
+                compositionSnapshot: snapshots.filter((snapshot) => snapshot.invoice_item_id === item.id).map((snapshot) => ({ productId: snapshot.component_product_id, code: snapshot.component_code, name: snapshot.component_name, measureUnit: snapshot.component_measure_unit, quantity: num(snapshot.quantity) })),
             })),
             createdAt: row.created_at ?? undefined, updatedAt: row.updated_at ?? undefined,
         };

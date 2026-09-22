@@ -98,6 +98,8 @@ export interface ExcelImportRow {
     vatType: VatType;
     measureUnit: MeasureUnit;
     sourceType: string;
+    /** Explicit source classification; combos are never inferred from their name. */
+    compositionKind?: "simple" | "composite";
     salePricing?: SalePricing;
   };
   departmentName: string | null;
@@ -524,7 +526,8 @@ export function applyMappings(
       errors.push({ row: rowNum, message: `Unidad no soportada "${String(rawUnit)}".` });
       continue;
     }
-    const sourceType = String(getVal(raw, "product.sourceType") ?? "Producto").trim();
+    const rawSourceType = getVal(raw, "product.sourceType");
+    const sourceType = String(rawSourceType ?? "Producto").trim();
     const supportedSourceTypes = new Set(["producto", "compuesto", "contorno"]);
     if (sourceType && !supportedSourceTypes.has(sourceType.toLowerCase())) {
       errors.push({ row: rowNum, message: `Tipo "${sourceType}" requiere modelado o revisión manual.` });
@@ -575,7 +578,10 @@ export function applyMappings(
 
     rows.push({
       sourceRow: rowNum,
-      product: { code, barcode: identifier.barcode, identifierClassification: identifier.classification, name, vatType, measureUnit, sourceType, salePricing },
+      product: {
+        code, barcode: identifier.barcode, identifierClassification: identifier.classification, name, vatType, measureUnit, sourceType, salePricing,
+        compositionKind: rawSourceType === undefined ? undefined : sourceType.toLowerCase() === "compuesto" ? "composite" : "simple",
+      },
       departmentName,
       initialStock, initialCost,
       entradaQty, entradaCost,

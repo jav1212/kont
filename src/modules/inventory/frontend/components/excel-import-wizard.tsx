@@ -25,6 +25,7 @@ import {
   type SystemFieldTarget,
   type ParseSheetOptions,
 } from "../utils/inventory-excel";
+import { parseCompositeProductsCsv, type CompositeImportResult } from "../utils/composite-import";
 import { applyProfileMappings, type ImportFormatProfile } from "../utils/import-format-profiles";
 import { useExcelImport, type ImportConfig } from "../hooks/use-excel-import";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, X, Loader2, Sparkles } from "lucide-react";
@@ -61,11 +62,16 @@ export function ExcelImportWizard() {
 
   // Step 1 state
   const fileRef = useRef<HTMLInputElement>(null);
+  const compositeFileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<ExcelParseResult | null>(null);
   const [selectedSheet, setSelectedSheet] = useState<string>("");
   const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [compositeFileName, setCompositeFileName] = useState<string | null>(null);
+  const [compositeData, setCompositeData] = useState<CompositeImportResult | null>(null);
+  const [compositeErrors, setCompositeErrors] = useState<Array<{ row: number; message: string }>>([]);
+  const [importingCompositions, setImportingCompositions] = useState(false);
   // Stores detected profile info and its parsing options for sheet-change re-parsing
   const detectedProfileRef = useRef<{
     info: NonNullable<ExcelParseResult["detectedProfile"]>;
@@ -88,7 +94,7 @@ export function ExcelImportWizard() {
 
   // Step 5 state
   const [importData, setImportData] = useState<ExcelImportResult | null>(null);
-  const { progress, executeImport, reset, cancel } = useExcelImport();
+  const { progress, executeImport, executeCompositeImport, reset, cancel } = useExcelImport();
 
   // ── Step 1 handlers ─────────────────────────────────────────────────────
 
@@ -131,6 +137,16 @@ export function ExcelImportWizard() {
     }
 
     if (fileRef.current) fileRef.current.value = "";
+  }, []);
+
+  const handleCompositeFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const parsed = parseCompositeProductsCsv(await file.text());
+    setCompositeFileName(file.name);
+    setCompositeData(parsed);
+    setCompositeErrors(parsed.errors);
+    event.currentTarget.value = "";
   }, []);
 
   const handleSheetChange = useCallback((sheetName: string) => {
@@ -183,8 +199,21 @@ export function ExcelImportWizard() {
     setImportData(result);
     setStep(4);
     if (result.rows.length === 0) return;
-    await executeImport(result.rows, result.newCustomFields, importConfig);
-  }, [selectedSheet, mappings, importConfig, executeImport]);
+    const catalogCompleted = await executeImport(result.rows, result.newCustomFields, importConfig);
+    if (compositeData && compositeData.errors.length === 0 && result.errors.length === 0) {
+      if (!catalogCompleted) {
+        setCompositeErrors([{ row: 0, message: "No se importaron las composiciones porque el catálogo quedó incompleto. Corrige sus errores y vuelve a cargar el reporte." }]);
+        return;
+      }
+      setImportingCompositions(true);
+      try {
+        const outcome = await executeCompositeImport(compositeData);
+        setCompositeErrors(outcome.errors);
+      } finally {
+        setImportingCompositions(false);
+      }
+    }
+  }, [selectedSheet, mappings, importConfig, executeImport, compositeData, executeCompositeImport]);
 
   const downloadConflicts = useCallback(() => {
     if (!importData?.errors.length) return;
@@ -204,7 +233,7 @@ export function ExcelImportWizard() {
   // ── Render ────────────────────────────────────────────────────────────
 
   const canGoNext = (): boolean => {
-    if (step === 0) return !!parseResult && parseResult.totalRows > 0;
+    if (step === 0) return !!parseResult && parseResult.totalRows > 0 && !compositeData?.errors.length;
     if (step === 1) {
       const hasName = mappings.some(m => m.target?.target === "product" && m.target.field === "name");
       return hasName;
@@ -277,6 +306,18 @@ export function ExcelImportWizard() {
             )}
           </div>
           <input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
+
+          <div className="pt-2 border-t border-border-light">
+            <p className={labelCls}>Reporte de productos compuestos (opcional)</p>
+            <p className="mb-2 text-[11px] text-[var(--text-tertiary)]">Puedes cargarlo junto al catálogo; se aplicará después de que se creen los productos.</p>
+            <BaseButton.Root variant="secondary" size="sm" onClick={() => compositeFileRef.current?.click()} leftIcon={<FileSpreadsheet size={14} />}>
+              {compositeFileName ?? "Seleccionar reporte CSV"}
+            </BaseButton.Root>
+            <input ref={compositeFileRef} type="file" accept=".csv" className="hidden" onChange={handleCompositeFileSelect} />
+            {compositeData && <p className={compositeData.errors.length ? "mt-2 text-[11px] text-red-500" : "mt-2 text-[11px] text-green-600"}>
+              {compositeData.errors.length ? `${compositeData.errors.length} errores en el reporte.` : `${compositeData.recipes.length} compuestos y ${compositeData.totalLines} componentes listos para importar.`}
+            </p>}
+          </div>
 
           {fileError && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
@@ -569,7 +610,7 @@ export function ExcelImportWizard() {
       {step === 4 && (
         <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
           <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
-            {progress.phase === "done"
+            {importingCompositions ? "Importando composiciones..." : progress.phase === "done"
               ? "Importación completada"
               : importData && importData.rows.length === 0
                 ? "No hay filas válidas para importar"
@@ -639,6 +680,11 @@ export function ExcelImportWizard() {
               )}
             </div>
           )}
+          {compositeErrors.length > 0 && (
+            <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] space-y-1 max-h-40 overflow-y-auto">
+              {compositeErrors.slice(0, 20).map((error, index) => <p key={`${error.row}-${index}`} className="text-[11px] text-red-500">Compuestos, fila {error.row}: {error.message}</p>)}
+            </div>
+          )}
 
           {/* Import data warnings */}
           {importData && importData.warnings.length > 0 && progress.phase === "done" && (
@@ -696,8 +742,8 @@ export function ExcelImportWizard() {
               Iniciar importación
             </BaseButton.Root>
           )}
-          {step === 4 && progress.phase === "done" && (
-            <BaseButton.Root variant="primary" size="sm" onClick={() => { reset(); setStep(0); setParseResult(null); setFileName(null); setMappings([]); setSelectedSheet(""); detectedProfileRef.current = null; setImportConfig((current) => ({ ...current, reference: "", salePriceCurrency: null, salePriceIncludesVat: null })); }}>
+          {step === 4 && progress.phase === "done" && !importingCompositions && (
+            <BaseButton.Root variant="primary" size="sm" onClick={() => { reset(); setStep(0); setParseResult(null); setFileName(null); setMappings([]); setSelectedSheet(""); setCompositeFileName(null); setCompositeData(null); setCompositeErrors([]); detectedProfileRef.current = null; setImportConfig((current) => ({ ...current, reference: "", salePriceCurrency: null, salePriceIncludesVat: null })); }}>
               Nueva importación
             </BaseButton.Root>
           )}

@@ -40,17 +40,41 @@ function assertValidPeriod(period: string): void {
 
 /** Shared-schema equivalent of tenant_inventario_reporte_saldo. */
 export class SharedBalanceReportRepository implements IBalanceReportRepository {
+    /**
+     * Creates a tenant-scoped adapter for inventory balances and sales totals.
+     * @param source - Server-side database connection.
+     * @param tenantId - Organization that owns every queried record.
+     * @returns A report repository; construction performs no I/O.
+     */
     constructor(
         private readonly source: ISource<SupabaseClient>,
         private readonly tenantId: string,
     ) {}
 
+    /**
+     * Combines inventory movement costs with commercial revenue for the period.
+     * @param companyId - Company within the repository's organization.
+     * @param period - Calendar period in YYYY-MM format.
+     * @returns Department balances or a failure for invalid periods/database errors.
+     * @throws No expected errors; failures are represented by Result.
+     */
     async getReport(companyId: string, period: string): Promise<Result<BalanceReportRow[]>> {
         try {
             const start = `${period}-01`;
             assertValidPeriod(period);
             const products: ProductRow[] = [];
             const movements: MovementRow[] = [];
+            // Component movements intentionally have zero commercial revenue.
+            // Attribute each confirmed combo line once to its parent product.
+            const { data: compositeData, error: compositeError } = await this.source.instance.rpc(
+                'shared_inventory_composite_sales_totals',
+                { p_tenant_id: this.tenantId, p_company_id: companyId, p_period: period },
+            );
+            if (compositeError) return Result.fail(compositeError.message);
+            const compositeSales = new Map(
+                ((compositeData ?? []) as Array<{ product_id: string; sales_value: number | string }>)
+                    .map((item) => [item.product_id, n(item.sales_value)]),
+            );
 
             // PostgREST caps unbounded reads at 1,000 rows. Full-market tenants
             // routinely exceed that limit, so an all-history read silently
@@ -145,7 +169,7 @@ export class SharedBalanceReportRepository implements IBalanceReportRepository {
                 let inboundCost = 0;
                 let outboundUnits = 0;
                 let outboundCost = 0;
-                let salesValueWithoutVat = 0;
+                let salesValueWithoutVat = compositeSales.get(product.id) ?? 0;
 
                 for (const movement of history.filter((item) => item.period === period)) {
                     const quantity = n(movement.quantity);

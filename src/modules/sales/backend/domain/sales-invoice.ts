@@ -82,6 +82,8 @@ export interface SalesInvoiceItem {
 
     baseIVA?:        number;
     ivaIncluido?:    boolean;
+    /** Immutable component recipe captured when a composite product line was confirmed. */
+    compositionSnapshot?: Array<{ productId: string; code: string; name: string; measureUnit: string; quantity: number }>;
 }
 
 export interface SalesInvoice {

@@ -12,6 +12,8 @@ import { SaveDepartmentUseCase }      from '../app/save-department.use-case';
 import { DeleteDepartmentUseCase }    from '../app/delete-department.use-case';
 import { GetProductHistoryUseCase }   from '../app/get-product-history.use-case';
 import { SharedProductHistoryRepository } from './repository/shared-product-history.repository';
+import { GetProductCompositionUseCase } from '../app/get-product-composition.use-case';
+import { ReplaceProductCompositionUseCase } from '../app/replace-product-composition.use-case';
 
 export function getInventoryProductsActions(userId: string) {
     const source         = new ServerSupabaseSource();
@@ -28,5 +30,7 @@ export function getInventoryProductsActions(userId: string) {
         saveDepartment:    new SaveDepartmentUseCase(departmentRepo),
         deleteDepartment:  new DeleteDepartmentUseCase(departmentRepo),
         getProductHistory:  new GetProductHistoryUseCase(productHistoryRepo),
+        getProductComposition: new GetProductCompositionUseCase(productRepo),
+        replaceProductComposition: new ReplaceProductCompositionUseCase(productRepo),
     };
 }

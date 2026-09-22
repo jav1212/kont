@@ -11,6 +11,9 @@ export class SaveProductUseCase extends UseCase<Product, Product> {
     async execute(product: Product): Promise<Result<Product>> {
         if (!product.name?.trim()) return Result.fail('Product name is required');
         if (!product.companyId) return Result.fail('companyId is required');
+        if (product.compositionKind && product.compositionKind !== 'simple' && product.compositionKind !== 'composite') {
+            return Result.fail('compositionKind must be simple or composite');
+        }
         product.name = product.name.trim();
         product.code = product.code?.trim() ?? '';
         product.barcode = product.barcode?.trim() || undefined;
