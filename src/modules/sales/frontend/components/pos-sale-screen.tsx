@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Minus, Package, Plus, Search, ShoppingCart, Trash2, UserPlus, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, Minus, Package, Plus, Search, ShoppingCart, Trash2, UserPlus, X } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
@@ -169,6 +169,8 @@ export function PosSaleScreen() {
     const date = getTodayIsoDate();
     const { options: currencyOptions, appliedRates, getRate, publishedDate } = useInvoiceExchangeRates(date);
     const searchRef = useRef<HTMLInputElement>(null);
+    const departmentTriggerRef = useRef<HTMLButtonElement>(null);
+    const departmentOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const scannerFocusRef = useRef<HTMLDivElement>(null);
     const addProductRef = useRef<HTMLButtonElement>(null);
     const manualPriceRef = useRef<HTMLInputElement>(null);
@@ -176,6 +178,8 @@ export function PosSaleScreen() {
     const [inquiryFocusRequest, setInquiryFocusRequest] = useState(0);
     const [query, setQuery] = useState("");
     const [departmentId, setDepartmentId] = useState("all");
+    const [departmentPickerOpen, setDepartmentPickerOpen] = useState(false);
+    const [departmentOptionIndex, setDepartmentOptionIndex] = useState(0);
     const [cart, setCart] = useState<CartLine[]>([]);
     const [customerId, setCustomerId] = useState("");
     const [documentType, setDocumentType] = useState<SalesDocumentType>("venta");
@@ -211,6 +215,77 @@ export function PosSaleScreen() {
         return () => { cancelled = true; };
     }, [companyId, ensureConsumerFinal, loadCustomers, loadDepartments, loadProducts]);
 
+    const departmentOptions = useMemo(() => [
+        { id: "all", name: "Todos los departamentos", detail: "Mostrar todo el catálogo" },
+        ...departments.filter((department) => department.active).map((department) => ({ id: department.id!, name: department.name, detail: "Departamento activo" })),
+        { id: "none", name: "Sin departamento", detail: "Productos sin clasificación" },
+    ], [departments]);
+
+    const closeDepartmentPicker = useCallback((restoreFocus = true) => {
+        setDepartmentPickerOpen(false);
+        if (restoreFocus) departmentTriggerRef.current?.focus();
+    }, []);
+
+    const selectDepartment = useCallback((nextDepartmentId: string) => {
+        setDepartmentId(nextDepartmentId);
+        setQuery("");
+        closeDepartmentPicker(false);
+        searchRef.current?.focus();
+    }, [closeDepartmentPicker]);
+
+    useEffect(() => {
+        if (!departmentPickerOpen) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                closeDepartmentPicker();
+                return;
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                setDepartmentOptionIndex((current) => {
+                    const delta = event.key === "ArrowDown" ? 1 : -1;
+                    return (current + delta + departmentOptions.length) % departmentOptions.length;
+                });
+                return;
+            }
+            if (event.key === "Home" || event.key === "End") {
+                event.preventDefault();
+                setDepartmentOptionIndex(event.key === "Home" ? 0 : departmentOptions.length - 1);
+                return;
+            }
+            if (event.key === "Enter") {
+                event.preventDefault();
+                const option = departmentOptions[departmentOptionIndex];
+                if (option) selectDepartment(option.id);
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [closeDepartmentPicker, departmentOptionIndex, departmentOptions, departmentPickerOpen, selectDepartment]);
+
+    useLayoutEffect(() => {
+        if (!departmentPickerOpen) return;
+        departmentOptionRefs.current[departmentOptionIndex]?.focus();
+    }, [departmentOptionIndex, departmentPickerOpen]);
+
+    useEffect(() => {
+        const onShortcut = (event: KeyboardEvent) => {
+            if (event.key !== "F4" || event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+            if (selectedProduct || creatingCustomer || completed || cartOpen) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (departmentPickerOpen) closeDepartmentPicker();
+            else {
+                const selectedIndex = Math.max(0, departmentOptions.findIndex((option) => option.id === departmentId));
+                setDepartmentOptionIndex(selectedIndex);
+                setDepartmentPickerOpen(true);
+            }
+        };
+        window.addEventListener("keydown", onShortcut);
+        return () => window.removeEventListener("keydown", onShortcut);
+    }, [cartOpen, closeDepartmentPicker, completed, creatingCustomer, departmentId, departmentOptions, departmentPickerOpen, selectedProduct]);
+
     const resolvePrice = useCallback((product: Product) => {
         const rate = getRate(product.salePricing?.currency ?? "VES");
         return { resolved: resolveProductSalePrice(product, rate), rate };
@@ -236,6 +311,7 @@ export function PosSaleScreen() {
     }, [resolvePrice]);
 
     const openPriceInquiry = useCallback((product: Product, scanned = false) => {
+        setDepartmentPickerOpen(false);
         scannedInquiryRef.current = scanned;
         setSelectedProduct(product);
         // Repeated reads should refocus even when React receives the same object,
@@ -486,13 +562,14 @@ export function PosSaleScreen() {
             <section className="min-h-0 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
                 <div className="sticky top-0 z-20 -mx-4 mb-5 border-b border-border-light bg-background px-4 pb-3 pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.03)] sm:-mx-6 sm:px-6 sm:pt-6">
                     <div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-tertiary)]" size={17}/><input ref={searchRef} autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onSearchKeyDown} placeholder="Escanea o busca un producto para consultar su precio…" style={{ paddingLeft: "3rem", paddingRight: "1rem" }} className="h-12 w-full rounded-xl border border-border-light bg-surface-1 text-[14px] shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" /></div>
-                    <div className="mt-3 flex gap-2 overflow-x-auto pb-1"><button type="button" onClick={() => setDepartmentId("all")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "all" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Todos</button>{departments.filter((department) => department.active).map((department) => <button key={department.id} type="button" onClick={() => setDepartmentId(department.id!)} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === department.id ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>{department.name}</button>)}<button type="button" onClick={() => setDepartmentId("none")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "none" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Sin departamento</button></div>
+                    <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1"><button ref={departmentTriggerRef} type="button" onClick={() => { setDepartmentOptionIndex(Math.max(0, departmentOptions.findIndex((option) => option.id === departmentId))); setDepartmentPickerOpen(true); }} aria-haspopup="listbox" aria-expanded={departmentPickerOpen} className="flex shrink-0 items-center gap-2 rounded-lg border border-primary-500/50 bg-primary-500/10 px-3 py-2 text-[11px] font-semibold text-primary-500"><span>Departamentos · F4</span>{departmentPickerOpen ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}</button><button type="button" onClick={() => selectDepartment("all")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "all" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Todos</button>{departments.filter((department) => department.active).map((department) => <button key={department.id} type="button" onClick={() => selectDepartment(department.id!)} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === department.id ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>{department.name}</button>)}<button type="button" onClick={() => selectDepartment("none")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "none" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Sin departamento</button></div>
                 </div>
                 <PosProductCatalog key={`${departmentId}\u0000${normalizedQuery}`} products={visibleProducts} loading={loadingProducts} onSelect={openPriceInquiry}/>
             </section>
             <aside className="hidden min-h-0 border-l border-border-light lg:block">{cartPanel}</aside>
         </div>
         {cartOpen && <div className="fixed inset-0 z-[90] bg-black/45 lg:hidden" onClick={() => setCartOpen(false)}><aside className="ml-auto h-full w-full max-w-md" onClick={(event) => event.stopPropagation()}>{cartPanel}</aside></div>}
+        {departmentPickerOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/45 p-4 pt-[12vh]" onClick={() => closeDepartmentPicker()}><div role="dialog" aria-modal="true" aria-labelledby="pos-departments-title" className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-[.14em] text-primary-500">Acceso rápido · F4</p><h2 id="pos-departments-title" className="mt-1 text-[18px] font-semibold text-foreground">Seleccionar departamento</h2></div><button type="button" onClick={() => closeDepartmentPicker()} aria-label="Cerrar departamentos" className="rounded-lg p-2 text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"><X size={18}/></button></div><div role="listbox" aria-label="Departamentos" aria-activedescendant={`pos-department-option-${departmentOptionIndex}`} className="mt-4 grid max-h-[55vh] gap-1 overflow-y-auto rounded-xl border border-border-light p-1">{departmentOptions.map((option, index) => <button key={option.id} ref={(element) => { departmentOptionRefs.current[index] = element; }} id={`pos-department-option-${index}`} type="button" role="option" aria-selected={departmentId === option.id} tabIndex={index === departmentOptionIndex ? 0 : -1} onClick={() => selectDepartment(option.id)} onFocus={() => setDepartmentOptionIndex(index)} className={`flex items-center justify-between rounded-lg px-3 py-3 text-left ${index === departmentOptionIndex ? "bg-primary-500/10 text-primary-500" : "text-foreground hover:bg-surface-2"}`}><span><span className="block text-[13px] font-semibold">{option.name}</span><span className="mt-1 block text-[10px] text-[var(--text-tertiary)]">{option.detail}</span></span>{departmentId === option.id && <span className="font-mono text-[10px] font-bold uppercase">Activo</span>}</button>)}</div><p className="mt-3 text-[10px] text-[var(--text-tertiary)]">Usa ↑ ↓ para navegar, Enter para seleccionar y Escape para cerrar.</p></div></div>}
         {selectedProduct && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4" onClick={closePriceInquiry}><div role="dialog" aria-modal="true" aria-labelledby="pos-price-title" className="w-full max-w-sm rounded-2xl border border-border-light bg-surface-1 p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-primary-500">Consulta de precio</p><h2 id="pos-price-title" className="mt-1 text-[18px] font-semibold text-foreground">{selectedProduct.name}</h2><p className="mt-1 font-mono text-[11px] text-[var(--text-tertiary)]">{selectedProduct.code || "Sin código"}</p></div><button type="button" onClick={closePriceInquiry} aria-label="Cerrar consulta de precio" className="shrink-0 rounded-lg p-2 text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"><X size={18}/></button></div>
             {selectedPrice?.resolved && selectedBasePrice > 0 ? <>

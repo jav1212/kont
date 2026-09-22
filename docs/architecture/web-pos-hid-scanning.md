@@ -23,6 +23,13 @@ conserva el precio temporal en edición. Al cerrar una consulta iniciada por
 escaneo, el foco vuelve al contenedor del POS; una consulta iniciada manualmente
 devuelve el foco al buscador.
 
+El POS ofrece también el atajo F4 para abrir el selector de departamentos.
+El selector muestra Todos, los departamentos activos y Sin departamento; se
+puede recorrer con las flechas, confirmar con Enter y cerrar con Escape. Al
+seleccionar una opción se limpia la búsqueda textual y se filtran los productos
+del catálogo. El atajo pertenece a la interfaz del POS, ignora modificadores y
+repetición, y no se abre mientras haya otra ventana del flujo activa.
+
 La detección HID es una heurística temporal: no identifica físicamente qué
 dispositivo produjo las teclas. Una escritura humana suficientemente rápida
 puede clasificarse como lectura. Un escaneo realmente lento o interrumpido
