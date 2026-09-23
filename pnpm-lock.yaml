@@ -65,6 +65,9 @@ importers:
       '@kontave/employees':
         specifier: workspace:*
         version: link:packages/business/employees
+      '@kontave/fiscal':
+        specifier: workspace:*
+        version: link:packages/business/fiscal
       '@kontave/inventory':
         specifier: workspace:*
         version: link:packages/business/inventory
@@ -580,6 +583,9 @@ importers:
       '@kontave/monetary':
         specifier: workspace:*
         version: link:../../monetary
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
     devDependencies:
       tsx:
         specifier: ^4.23.12

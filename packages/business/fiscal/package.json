@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./application": "./src/application/index.ts",
+    "./supabase": "./src/adapters/supabase/index.ts",
     "./domain": "./src/domain/index.ts",
+    "./persistence": "./src/domain/persistence.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
@@ -14,7 +17,8 @@
   },
   "dependencies": {
     "@kontave/companies": "workspace:*",
-    "@kontave/monetary": "workspace:*"
+    "@kontave/monetary": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1"
   },
   "devDependencies": {
     "tsx": "^4.23.12",

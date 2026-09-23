@@ -31,6 +31,7 @@
     "@kontave/sales": "workspace:*",
     "@kontave/employees": "workspace:*",
     "@kontave/billing": "workspace:*",
+    "@kontave/fiscal": "workspace:*",
     "@kontave/auth": "workspace:*",
     "@kontave/client-contracts": "workspace:*",
     "@kontave/monetary": "workspace:*",
