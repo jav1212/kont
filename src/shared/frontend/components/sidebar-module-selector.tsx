@@ -23,6 +23,15 @@ function renderModuleIcon(id: string, size: number) {
         "aria-hidden": true,
     };
     switch (id) {
+        case "kiosk-pos":
+            // Storefront / cash register - the primary kiosk action.
+            return (
+                <svg {...props}>
+                    <path d="M2 6.2h12v7.3H2z" />
+                    <path d="M3.5 6.2V3.7h9v2.5M5 9h2M10.5 9h1" />
+                    <path d="M4 13.5v1M12 13.5v1" />
+                </svg>
+            );
         case "payroll":
             // Bullseye / target — represents the current payroll period focus
             return (

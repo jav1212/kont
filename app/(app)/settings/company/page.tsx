@@ -42,23 +42,25 @@ export default function CompanySettingsPage() {
                 flush
             >
                 <div className="divide-y divide-border-light">
-                    <label className="flex items-start justify-between gap-6 px-6 py-4">
-                        <span className="min-w-0">
+                    <label className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                        <span className="min-w-0 flex-1">
                             <span className="block font-mono text-[13px] text-foreground">Experiencia de la empresa</span>
                             <span className="mt-0.5 block font-sans text-[12px] leading-snug text-[var(--text-tertiary)]">
                                 Kiosco prioriza Vender, Ventas, Compras e Inventario. El acceso sigue dependiendo de los permisos y la suscripción.
                             </span>
                         </span>
-                        <select
-                            value={operatingProfile}
-                            onChange={(event) => void handleOperatingProfileChange(event.target.value as OperatingProfile)}
-                            disabled={saving || !company || !canManageOperatingProfile}
-                            aria-label="Modo de operación de la empresa"
-                            className="shrink-0 rounded-lg border border-border-light bg-surface-1 px-3 py-2 font-sans text-[13px] text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <option value="standard">Estándar</option>
-                            <option value="kiosk">Kiosco</option>
-                        </select>
+                        <span className="w-full shrink-0 sm:w-56">
+                            <select
+                                value={operatingProfile}
+                                onChange={(event) => void handleOperatingProfileChange(event.target.value as OperatingProfile)}
+                                disabled={saving || !company || !canManageOperatingProfile}
+                                aria-label="Modo de operación de la empresa"
+                                className="w-full rounded-lg border border-border-light bg-surface-1 px-3 py-2 font-sans text-[13px] text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="standard">Estándar</option>
+                                <option value="kiosk">Kiosco</option>
+                            </select>
+                        </span>
                     </label>
                 </div>
             </SettingsSection>
