@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/src/shared/backend/utils/require-admin';
+import { kioskPublicationPriceError } from '@/src/modules/billing/backend/domain/kiosk-plan-policy';
 
 /**
  * PATCH /api/admin/plans/[id]
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         'is_active',
         'is_contact_only',
         'product_id',
+        'included_modules',
     ];
 
     // Map camelCase keys sent from the client to snake_case DB columns
@@ -41,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         isActive:               'is_active',
         isContactOnly:          'is_contact_only',
         productId:              'product_id',
+        includedModules:        'included_modules',
     };
 
     const updates: Record<string, unknown> = {};
@@ -54,12 +57,34 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (Object.keys(updates).length === 0) {
         return Response.json({ error: 'No hay campos válidos para actualizar' }, { status: 400 });
     }
+    if ('included_modules' in updates && (!Array.isArray(updates.included_modules) || !updates.included_modules.every((code) => typeof code === 'string'))) {
+        return Response.json({ error: 'includedModules debe ser una lista de modulos' }, { status: 400 });
+    }
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         { auth: { persistSession: false } }
     );
+
+    const { data: existing, error: existingError } = await supabase
+        .from('plans').select('name,price_monthly_usd,price_quarterly_usd,price_annual_usd,is_active').eq('id', id).single();
+    if (existingError || !existing) return Response.json({ error: 'Plan no encontrado' }, { status: 404 });
+    const resultingName = String(updates.name ?? existing.name);
+    const resultingPrices = [
+        Number(updates.price_monthly_usd ?? existing.price_monthly_usd),
+        Number(updates.price_quarterly_usd ?? existing.price_quarterly_usd),
+        Number(updates.price_annual_usd ?? existing.price_annual_usd),
+    ];
+    if (!resultingPrices.every(Number.isFinite) || resultingPrices.some((price) => price < 0)) {
+        return Response.json({ error: 'Los precios deben ser numeros no negativos' }, { status: 400 });
+    }
+    const kioskPriceError = resultingName === 'Kiosco' && (updates.is_active ?? existing.is_active) === true
+        ? kioskPublicationPriceError(resultingPrices[0]!)
+        : null;
+    if (kioskPriceError) {
+        return Response.json({ error: kioskPriceError }, { status: 400 });
+    }
 
     // If productSlug is provided, resolve to product_id
     if (body.productSlug && typeof body.productSlug === 'string') {
@@ -93,6 +118,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             priceAnnualUsd:         data.price_annual_usd,
             isActive:               data.is_active,
             isContactOnly:          data.is_contact_only ?? false,
+            includedModules:        data.included_modules ?? [],
+            commercialCode:         data.commercial_code ?? null,
             productSlug:            product?.slug ?? null,
             productName:            product?.name ?? null,
         },

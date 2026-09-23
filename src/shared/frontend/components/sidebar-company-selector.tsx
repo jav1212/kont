@@ -91,7 +91,7 @@ interface SidebarCompanySelectorProps {
     companies: CompanyEntry[];
     selectedId: string | null;
     loading: boolean;
-    onSelect: (id: string) => void;
+    onSelect: (id: string) => void | Promise<void>;
     companiesHref: string;
 }
 
@@ -124,8 +124,8 @@ export function SidebarCompanySelector({
     const selected = companies.find((c) => c.id === selectedId) ?? companies[0] ?? null;
     const subtitle = buildCompanySubtitle(selected);
 
-    function handleSelect(id: string) {
-        onSelect(id);
+    async function handleSelect(id: string) {
+        await onSelect(id);
         setOpen(false);
         setSearch("");
     }

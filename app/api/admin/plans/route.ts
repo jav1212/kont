@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/src/shared/backend/utils/require-admin';
+import { kioskPublicationPriceError } from '@/src/modules/billing/backend/domain/kiosk-plan-policy';
 
 function serviceClient() {
     return createClient(
@@ -39,6 +40,8 @@ export async function GET(req: Request) {
                 priceAnnualUsd:         p.price_annual_usd,
                 isActive:               p.is_active,
                 isContactOnly:          p.is_contact_only ?? false,
+                includedModules:        p.included_modules ?? [],
+                commercialCode:         p.commercial_code ?? null,
                 productSlug:            product?.slug ?? null,
                 productName:            product?.name ?? null,
             };
@@ -66,21 +69,48 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
+        const monthly = Number(priceMonthlyUsd);
+        const quarterly = body.priceQuarterlyUsd != null ? Number(body.priceQuarterlyUsd) : 0;
+        const annual = body.priceAnnualUsd != null ? Number(body.priceAnnualUsd) : 0;
+        if (![monthly, quarterly, annual].every(Number.isFinite) || [monthly, quarterly, annual].some((price) => price < 0)) {
+            return Response.json({ error: 'Los precios deben ser numeros no negativos' }, { status: 400 });
+        }
+        const kioskPriceError = name === 'Kiosco' && body.isActive === true
+            ? kioskPublicationPriceError(monthly)
+            : null;
+        if (kioskPriceError) {
+            return Response.json({ error: kioskPriceError }, { status: 400 });
+        }
 
         const supabase = serviceClient();
+        const productSlug = typeof body.productSlug === 'string'
+            ? body.productSlug
+            : name === 'Kiosco' ? 'inventory' : null;
+        let productId: string | null = null;
+        if (productSlug) {
+            const { data: product, error: productError } = await supabase
+                .from('products').select('id').eq('slug', productSlug).maybeSingle();
+            if (productError || !product) return Response.json({ error: 'Producto no encontrado' }, { status: 400 });
+            productId = product.id;
+        }
+        if (name === 'Kiosco' && productSlug !== 'inventory') {
+            return Response.json({ error: 'Kiosco debe usar el producto Inventario' }, { status: 400 });
+        }
 
         const { data, error } = await supabase
             .from('plans')
             .insert({
                 name,
-                product_id:               null,
-                price_monthly_usd:        Number(priceMonthlyUsd),
-                price_quarterly_usd:      body.priceQuarterlyUsd != null ? Number(body.priceQuarterlyUsd) : 0,
-                price_annual_usd:         body.priceAnnualUsd    != null ? Number(body.priceAnnualUsd)    : 0,
+                product_id:               productId,
+                price_monthly_usd:        monthly,
+                price_quarterly_usd:      quarterly,
+                price_annual_usd:         annual,
                 max_companies:            body.maxCompanies            != null ? Number(body.maxCompanies)            : null,
                 max_employees_per_company: body.maxEmployeesPerCompany != null ? Number(body.maxEmployeesPerCompany) : null,
                 is_active:                body.isActive ?? true,
                 is_contact_only:          body.isContactOnly ?? false,
+                included_modules:         Array.isArray(body.includedModules) ? body.includedModules : name === 'Kiosco' ? ['inventory', 'purchases', 'sales'] : [],
+                commercial_code:          name === 'Kiosco' ? 'kiosk' : null,
             })
             .select()
             .single();
@@ -98,6 +128,8 @@ export async function POST(req: Request) {
                 priceAnnualUsd:         data.price_annual_usd,
                 isActive:               data.is_active,
                 isContactOnly:          data.is_contact_only ?? false,
+                includedModules:        data.included_modules ?? [],
+                commercialCode:         data.commercial_code ?? null,
                 productSlug:            null,
                 productName:            null,
             },

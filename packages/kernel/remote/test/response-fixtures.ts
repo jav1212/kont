@@ -48,6 +48,7 @@ export const accessibleOrganizationFixture = {
 } satisfies AccessibleOrganizationDto;
 
 export const companyFixture = {
+  operatingProfile: "standard",
   id: "id-sample",
   organizationId: "organizationId-sample",
   name: "name-sample",
@@ -56,6 +57,7 @@ export const companyFixture = {
 } satisfies OrganizationCompanyDto;
 
 export const operationalCompanyFixture = {
+  operatingProfile: "standard",
   id: "id-sample",
   organizationId: "organizationId-sample",
   legacyCompanyId: "legacyCompanyId-sample",
@@ -647,6 +649,8 @@ export const billingOverviewFixture = {
 } satisfies BillingOverviewDto;
 
 export const billingPlanFixture = {
+  commercialCode: "kiosk",
+  includedModules: ["inventory", "purchases", "sales"],
   id: "id-sample",
   name: "name-sample",
   maxCompanies: 1,

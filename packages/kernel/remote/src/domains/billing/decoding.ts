@@ -89,6 +89,8 @@ const billingPlanDtoShape: ResponseField<BillingPlanDto> =
     annualPrice: moneyDtoShape,
     productCode: nullOr(textField),
     contactOnly: booleanField,
+    includedModules: list(textField),
+    commercialCode: nullOr(textField),
   });
 
 const manualPaymentRequestDtoShape: ResponseField<ManualPaymentRequestDto> =
@@ -120,8 +122,12 @@ export const billingOverview: Decoder<BillingOverviewDto> = responseDto(
  * @param value - Untrusted response data.
  * @returns The validated DTO or null for malformed data, preserving exact strings and additive fields.
  */
-export const billingPlan: Decoder<BillingPlanDto> =
-  responseDto(billingPlanDtoShape);
+export const billingPlan: Decoder<BillingPlanDto> = (value) => {
+  // Older servers do not advertise bundle contents; absence grants no capability.
+  const compatible = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? { includedModules: [], commercialCode: null, ...value } : value;
+  return responseDto(billingPlanDtoShape)(compatible);
+};
 
 /**
  * Validates the complete ManualPaymentRequestDto response shape.

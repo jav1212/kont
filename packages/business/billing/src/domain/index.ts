@@ -59,6 +59,10 @@ export interface BillingPlan {
   readonly annualPrice: Money;
   readonly productCode: string | null;
   readonly contactOnly: boolean;
+  /** Modules commercially bundled by this plan. */
+  readonly includedModules: readonly string[];
+  /** Stable commercial offer identifier when the plan belongs to a named offer. */
+  readonly commercialCode: string | null;
 }
 export interface ManualPaymentRequest {
   readonly id: string;

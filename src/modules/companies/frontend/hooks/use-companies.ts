@@ -8,6 +8,7 @@ export type BusinessSector =
 
 // Re-export taxpayer classification from domain — mirrors SENIAT categories.
 export type TaxpayerType = 'ordinario' | 'especial';
+export type OperatingProfile = 'standard' | 'kiosk';
 
 export const TAXPAYER_TYPES: readonly TaxpayerType[] = ['ordinario', 'especial'] as const;
 
@@ -43,6 +44,8 @@ export interface Company {
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
     taxpayerType?:   TaxpayerType;
+    /** Defines the company-specific operational entry experience. */
+    operatingProfile?: OperatingProfile;
     inventoryConfig?:InventoryConfig;
     createdAt?:      string;
     updatedAt?:      string;
@@ -58,6 +61,7 @@ export interface CompanyUpdateData {
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
     taxpayerType?:   TaxpayerType;
+    operatingProfile?: OperatingProfile;
 }
 
 export interface UseCompanyResult {
@@ -67,7 +71,7 @@ export interface UseCompanyResult {
     loading:            boolean;
     error:              string | null;
     reload:             () => Promise<void>;
-    selectCompany:      (id: string) => void;
+    selectCompany:      (id: string) => Promise<void>;
     save:               (data: {
         id: string;
         name: string;
@@ -78,6 +82,7 @@ export interface UseCompanyResult {
         address?: string;
         sector?: BusinessSector;
         logoUrl?: string;
+        operatingProfile?: OperatingProfile;
     }) => Promise<string | null>;
     update:             (id: string, data: CompanyUpdateData)              => Promise<string | null>;
     remove:             (id: string)                                       => Promise<string | null>;

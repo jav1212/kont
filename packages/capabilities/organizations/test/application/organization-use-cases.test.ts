@@ -27,7 +27,7 @@ const access: OrganizationAccess = {
   organization: { id: ownOrganizationId, name: "Kontave", slug: "kontave", status: OrganizationStatus.Active, logoUrl: null, version: 1 },
   membership: { organizationId: ownOrganizationId, userId: ownerId, role: OrganizationRole.Owner, status: MembershipStatus.Active, permissions: ["*"] },
 };
-const company: OrganizationCompany = { id: companyId("J-1"), organizationId: ownOrganizationId, name: "Empresa", rif: "J-1", logoUrl: null };
+const company: OrganizationCompany = { id: companyId("J-1"), organizationId: ownOrganizationId, name: "Empresa", rif: "J-1", logoUrl: null, operatingProfile: "standard" };
 
 class FakeDirectory implements OrganizationDirectory {
   async listAccessForUser() { return [access]; }

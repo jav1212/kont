@@ -84,9 +84,7 @@ export function useWebCompanyActions(
     };
     return {
       reload: () => (current() ? controller.refresh() : Promise.resolve()),
-      selectCompany: (id: string) => {
-        void controller.selectCompany(id);
-      },
+      selectCompany: (id: string) => controller.selectCompany(id),
       save: (data: Parameters<UseCompanyResult["save"]>[0]) =>
         mutate("/api/companies/save", "POST", { ...data, ownerId: actorId }),
       update: (id: string, data: CompanyUpdateData) =>

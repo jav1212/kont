@@ -43,7 +43,7 @@ function workspace(id: string, relationship: "personal" | "member" | "delegated"
 }
 
 function company(id: string, organization: OrganizationId): OrganizationCompany {
-  return { id: companyId(id), organizationId: organization, name: id, rif: null, logoUrl: null };
+  return { id: companyId(id), organizationId: organization, name: id, rif: null, logoUrl: null, operatingProfile: "standard" };
 }
 
 const availableModules = [

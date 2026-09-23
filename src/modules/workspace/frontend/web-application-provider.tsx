@@ -3,8 +3,10 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -21,6 +23,7 @@ import { createBrowserApplication } from "./web-browser-adapters";
 import { WebApplicationStartupBoundary } from "./web-application-startup-boundary";
 import { useWebCompanyActions } from "./web-company-actions";
 import { resolveBarcodeWorkspaceLanding } from "./barcode-workspace-landing";
+import { resolveCompanyProfileLanding } from "./kiosk-company-landing";
 import type {
   WebApplicationController,
   WebApplicationSnapshot,
@@ -83,6 +86,7 @@ function AuthenticatedApplication({
   const urlCompany = params.get("cid");
   const barcodeLanding = params.get("barcode-landing") === "1";
   const isBarcodeLandingRoute = barcodeLanding && pathname === "/tools";
+  const kioskStartupLandingKey = useRef<string | null>(null);
   const companyActions = useWebCompanyActions(
     controller,
     snapshot.tenantId,
@@ -173,6 +177,70 @@ function AuthenticatedApplication({
     () => (available ? (organization?.permissions ?? []) : []),
     [available, organization?.permissions],
   );
+  const selectCompanyAndLand = useCallback(async (id: string): Promise<void> => {
+    const before = controller.getSnapshot();
+    const tenantId = before.tenantId;
+    const previousProfile = before.companies.find(
+      (entry) => entry.id === before.workspace.activeCompany?.id,
+    )?.operatingProfile ?? "standard";
+    await controller.selectCompany(id);
+    const committed = controller.getSnapshot();
+    if (
+      committed.status !== "ready" ||
+      committed.tenantId !== tenantId ||
+      committed.workspace.activeCompany?.id !== id
+    )
+      return;
+    const company = committed.companies.find((entry) => entry.id === id);
+    const nextProfile = company?.operatingProfile ?? "standard";
+    if (previousProfile === "standard" && nextProfile === "standard") return;
+    const organization = committed.organizations.find(
+      (entry) => entry.id === committed.workspace.activeWorkspace?.organizationId,
+    );
+    const inventorySubscriptionActive = committed.subscriptions.some(
+      (subscription) =>
+        subscription.product?.slug === "inventory" &&
+        ["active", "trial"].includes(subscription.status),
+    );
+    const destination = resolveCompanyProfileLanding(
+      nextProfile,
+      committed.workspace.modules.map((module) => module.code),
+      organization?.permissions ?? [],
+      inventorySubscriptionActive,
+    );
+    const url = new URL(destination, window.location.origin);
+    if (committed.tenantId) url.searchParams.set("tid", committed.tenantId);
+    url.searchParams.set("cid", id);
+    router.push(`${url.pathname}${url.search}`);
+  }, [controller, router]);
+  useEffect(() => {
+    if (snapshot.status !== "ready") return;
+    const company = snapshot.companies.find(
+      (entry) => entry.id === snapshot.workspace.activeCompany?.id,
+    );
+    const landingKey = `${snapshot.tenantId ?? ""}:${company?.id ?? ""}:${company?.operatingProfile ?? "standard"}`;
+    if (kioskStartupLandingKey.current === landingKey) return;
+    kioskStartupLandingKey.current = landingKey;
+    if (isBarcodeLandingRoute || pathname !== "/tools") return;
+    if (company?.operatingProfile !== "kiosk") return;
+    const inventorySubscriptionActive = snapshot.subscriptions.some(
+      (subscription) =>
+        subscription.product?.slug === "inventory" &&
+        ["active", "trial"].includes(subscription.status),
+    );
+    const destination = resolveCompanyProfileLanding(
+      "kiosk",
+      snapshot.workspace.modules.map((module) => module.code),
+      organization?.permissions ?? [],
+      inventorySubscriptionActive,
+    );
+    if (destination !== pathname) {
+      const url = new URL(destination, window.location.origin);
+      if (snapshot.tenantId) url.searchParams.set("tid", snapshot.tenantId);
+      if (company?.id) url.searchParams.set("cid", company.id);
+      router.replace(`${url.pathname}${url.search}`);
+    }
+  }, [isBarcodeLandingRoute, organization?.permissions, pathname, router, snapshot]);
   const operationRoute =
     pathname === "/inventory/operations/new" &&
     !!organization &&
@@ -234,6 +302,7 @@ function AuthenticatedApplication({
   const companyValue = useMemo(
     () => ({
       ...companyActions,
+      selectCompany: selectCompanyAndLand,
       companies: [...snapshot.companies],
       company:
         snapshot.companies.find(
@@ -245,6 +314,7 @@ function AuthenticatedApplication({
     }),
     [
       companyActions,
+      selectCompanyAndLand,
       loading,
       snapshot.companies,
       snapshot.error,

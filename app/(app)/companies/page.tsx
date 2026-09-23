@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -12,6 +12,7 @@ import { SECTOR_LABELS } from "@/src/modules/companies/backend/domain/company";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { notify } from "@/src/shared/frontend/notify";
 import {
@@ -172,10 +173,14 @@ function FilterPill({
 
 export default function CompaniesPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { companies, loading, save, update, remove, applySector, companyId, selectCompany } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
     const { user } = useAuth();
+    const { organization } = useOrganization();
     const atCompanyLimit = !canAddCompany();
+    const initialOperatingProfile = searchParams.get("operatingProfile") === "kiosk" ? "kiosk" : "standard";
+    const canManageOperatingProfile = organization?.role === "owner" || organization?.role === "admin";
 
     // ── Create / edit state ─────────────────────────────────────────────────
     // Both alta and edición share <CompanyEditModal/>. Here we only track which
@@ -730,6 +735,8 @@ export default function CompaniesPage() {
             <CompanyEditModal
                 company={editingCompany}
                 creating={creating}
+                initialOperatingProfile={initialOperatingProfile}
+                canManageOperatingProfile={canManageOperatingProfile}
                 userId={user?.id ?? null}
                 onClose={closeModal}
                 onSave={update}

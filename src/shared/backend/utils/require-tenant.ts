@@ -7,6 +7,7 @@ import { legacyRoleFromCanonical, resolveActiveLegacyTenant, type LegacyOrganiza
 import { AuthorizationSource, permissionCode as canonicalPermissionCode, type AuthorizationSnapshot } from '@kontave/access-control/domain';
 import { createAccessControlActions } from '@/src/client-api/v1/access-control/access-control-actions';
 import { resolveWebApiPermission } from '@/src/modules/organizations/backend/web-api-route-access';
+import { hasWebCommercialAccess } from './require-commercial-access';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,8 +129,8 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
  * @param context Active legacy tenant context whose organization bridge is verified server-side.
  * @param permission Canonical permission required by the operation.
  * @param options Optional request and audit metadata.
- * @returns Nothing when the active canonical role grants the permission.
- * @throws PermissionDeniedError when the organization, membership, role, or permission is invalid.
+ * @returns Nothing when the canonical role and commercial subscription grant access.
+ * @throws PermissionDeniedError when organization, membership, role, permission, or subscription denies access.
  */
 export async function requirePermission(
     context: TenantContext,
@@ -150,7 +151,7 @@ export async function requirePermission(
                 },
                 context: { requestId: crypto.randomUUID(), source: AuthorizationSource.Web, occurredAt: new Date().toISOString() },
             });
-            allowed = true;
+            allowed = await hasWebCommercialAccess(context.tenantId, permission);
         }
     } catch {
         // An unavailable, malformed, suspended, or unauthorized canonical

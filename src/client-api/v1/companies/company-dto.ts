@@ -11,5 +11,6 @@ export function toCompanyDto(company: Company): CompanyDto {
     taxId: company.taxId,
     country: company.country,
     status: company.status,
+    operatingProfile: company.operatingProfile,
   };
 }

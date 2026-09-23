@@ -86,6 +86,7 @@ export const toBillingPlanDto = (value: BillingPlan): BillingPlanDto => ({
   monthlyPrice: toMoneyDto(value.monthlyPrice),
   quarterlyPrice: toMoneyDto(value.quarterlyPrice),
   annualPrice: toMoneyDto(value.annualPrice),
+  commercialCode: value.commercialCode,
 });
 export const toManualPaymentRequestDto = (
   value: ManualPaymentRequest,

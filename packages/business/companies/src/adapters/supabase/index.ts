@@ -11,23 +11,23 @@ export function createCompanyRepository(configuration: { readonly url: string; r
 class SupabaseCompanyRepository implements CompanyRepository {
   constructor(private readonly client: SupabaseClient) {}
   async listByOrganization(target: OrganizationId) {
-    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif").eq("organization_id", target).order("name");
+    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif,operating_profile").eq("organization_id", target).order("name");
     if (error) throw repositoryFailure(error);
     return companyRowSchema.array().parse(data ?? []).map(mapCompany);
   }
   async findById(targetOrganizationId: OrganizationId, id: CompanyId) {
-    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif").eq("organization_id", targetOrganizationId).eq("id", id).maybeSingle();
+    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif,operating_profile").eq("organization_id", targetOrganizationId).eq("id", id).maybeSingle();
     if (error) throw repositoryFailure(error);
     return data ? mapCompany(companyRowSchema.parse(data)) : null;
   }
   async save(company: Company) {
-    const { error } = await this.client.from("shared_companies").update({ name: company.legalName, rif: company.taxId, updated_at: new Date().toISOString() }).eq("id", company.id).eq("organization_id", company.organizationId);
+    const { error } = await this.client.from("shared_companies").update({ name: company.legalName, rif: company.taxId, operating_profile: company.operatingProfile, updated_at: new Date().toISOString() }).eq("id", company.id).eq("organization_id", company.organizationId);
     if (error) throw repositoryFailure(error);
   }
 }
 
 function mapCompany(row: ReturnType<typeof companyRowSchema.parse>) {
-  return new Company({ id: companyId(row.id), organizationId: organizationId(row.organization_id), legacyCompanyId: row.id, legalName: row.name, tradeName: null, taxId: readLegacyTaxId(row.rif), country: CompanyCountry.Venezuela, status: CompanyStatus.Active });
+  return new Company({ id: companyId(row.id), organizationId: organizationId(row.organization_id), legacyCompanyId: row.id, legalName: row.name, tradeName: null, taxId: readLegacyTaxId(row.rif), country: CompanyCountry.Venezuela, status: CompanyStatus.Active, operatingProfile: row.operating_profile });
 }
 
 /** A corrupt optional RIF must not make every company in a legacy workspace unavailable. */

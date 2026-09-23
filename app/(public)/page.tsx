@@ -18,6 +18,10 @@ interface Plan {
     priceQuarterlyUsd:      number | null;
     priceAnnualUsd:         number | null;
     isContactOnly?:         boolean;
+    /** Modules explicitly included in the commercial offering. */
+    includedModules?:       readonly string[];
+    /** Stable commercial identifier when supplied by the billing catalog. */
+    commercialCode?:        string;
 }
 
 type Cycle = "monthly" | "quarterly" | "annual";
@@ -27,6 +31,15 @@ const BILLABLE_MODULES = [
     { slug: "inventory", label: "Inventario"  },
     { slug: "documents", label: "Documentos"  },
 ];
+
+const COMMERCIAL_MODULE_LABELS: Record<string, string> = {
+    sales: "Ventas",
+    purchases: "Compras",
+    inventory: "Inventario",
+    payroll: "Nómina",
+    accounting: "Contabilidad",
+    documents: "Documentos",
+};
 
 const FREE_MODULE_FEATURES: Record<string, string[]> = {
     documents: [
@@ -560,9 +573,17 @@ export default function LandingPage() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {visiblePlans.map((plan, idx) => {
-                                    const highlighted = idx === Math.floor(visiblePlans.length / 2);
                                     const price       = planPrice(plan);
                                     const savings     = planSavings(plan);
+                                    const includedModules = plan.includedModules
+                                        ?.map((module) => COMMERCIAL_MODULE_LABELS[module])
+                                        .filter((module): module is string => Boolean(module)) ?? [];
+                                    const isKiosk = plan.commercialCode === "kiosk" || plan.name.toLocaleLowerCase("es-VE") === "kiosco";
+                                    const highlighted = isKiosk || idx === Math.floor(visiblePlans.length / 2);
+                                    const isAvailableForSelfService = !plan.isContactOnly && price > 0;
+                                    const selectionHref = isKiosk
+                                        ? "/sign-up?redirect=%2Fcompanies%3FoperatingProfile%3Dkiosk"
+                                        : "/sign-up?redirect=/settings/billing";
 
                                     return (
                                         <div key={plan.id} className={`bg-background rounded-3xl flex flex-col relative transition-all duration-300 border px-8 pb-8 pt-10 ${highlighted ? 'border-2 border-primary-500 shadow-xl shadow-primary-500/20 -translate-y-4 hover:-translate-y-6' : 'border border-border-default shadow-sm hover:border-border-medium hover:-translate-y-2 mt-4'}`}>
@@ -607,19 +628,27 @@ export default function LandingPage() {
                                                     <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                                                     Actualizaciones Inmediatas
                                                 </div>
-                                                <div className="flex items-start gap-4 opacity-60">
-                                                    <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                                                    Soporte Regular
-                                                </div>
+                                                {includedModules.map((module) => (
+                                                    <div key={module} className="flex items-start gap-4">
+                                                        <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                        Incluye {module}
+                                                    </div>
+                                                ))}
+                                                {includedModules.length === 0 && (
+                                                    <div className="flex items-start gap-4 opacity-60">
+                                                        <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                        Capacidades según suscripción
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <BaseButton.Root
                                                 as={plan.isContactOnly ? "a" : Link}
-                                                href={plan.isContactOnly ? "mailto:contacto@kont.app" : "/sign-up"}
+                                                href={plan.isContactOnly ? "mailto:contacto@kont.app" : isKiosk && !isAvailableForSelfService ? "/kiosco" : selectionHref}
                                                 variant={highlighted ? "primary" : "outline"}
                                                 className="w-full rounded-full h-12 font-bold text-[14px]"
                                             >
-                                                {plan.isContactOnly ? "Contactar" : "Seleccionar"}
+                                                {plan.isContactOnly ? "Contactar" : isKiosk && !isAvailableForSelfService ? "Ver oferta" : "Seleccionar"}
                                             </BaseButton.Root>
                                         </div>
                                     )

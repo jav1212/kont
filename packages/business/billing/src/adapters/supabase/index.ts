@@ -114,7 +114,7 @@ class SupabaseOrganizationBillingRepository implements OrganizationBillingReposi
       const limits: Array<number | null> = [];
       for (const row of entitlementRowSchema.array().parse(data ?? [])) {
         const product = row.products; const plan = row.plans;
-        if (product?.slug) modules.add(product.slug);
+        if (product?.slug) for (const code of bundledModulesForProduct(product.slug)) modules.add(code);
         if (plan) limits.push(plan.max_companies);
       }
       return {
@@ -166,7 +166,7 @@ class SupabaseOrganizationBillingRepository implements OrganizationBillingReposi
   async listPlans(): Promise<readonly BillingPlan[]> {
     return this.guard(async () => {
       const { data, error } = await this.client.from("plans")
-        .select("id,name,max_companies,max_employees_per_company,price_monthly_usd,price_quarterly_usd,price_annual_usd,is_contact_only,products(slug)")
+        .select("id,name,max_companies,max_employees_per_company,price_monthly_usd,price_quarterly_usd,price_annual_usd,is_contact_only,included_modules,commercial_code,products(slug)")
         .eq("is_active", true).order("price_monthly_usd", { ascending: true });
       if (error) throw error;
       return billingPlanRowSchema.array().parse(data ?? []).map(mapPlan);
@@ -218,8 +218,19 @@ class SupabasePaymentReceiptStorage implements PaymentReceiptStorage {
 }
 
 function usd(value: string | number) { return money(BigInt(Math.round(Number(value) * 100)), Currency.Usd); }
+/**
+ * Resolves system-owned module entitlements for a commercial product.
+ *
+ * @param productCode - Product slug stored by the subscription.
+ * @returns Product module codes granted by the immutable commercial bundle.
+ */
+export function bundledModulesForProduct(productCode: string): readonly string[] {
+  return productCode === 'inventory'
+    ? ['inventory', 'purchases', 'sales']
+    : [productCode];
+}
 function mapPlan(row: ReturnType<typeof billingPlanRowSchema.parse>): BillingPlan {
-  return { id: row.id, name: row.name, maxCompanies: row.max_companies, maxEmployeesPerCompany: row.max_employees_per_company, monthlyPrice: usd(row.price_monthly_usd), quarterlyPrice: usd(row.price_quarterly_usd), annualPrice: usd(row.price_annual_usd), productCode: row.products?.slug ?? null, contactOnly: row.is_contact_only };
+  return { id: row.id, name: row.name, maxCompanies: row.max_companies, maxEmployeesPerCompany: row.max_employees_per_company, monthlyPrice: usd(row.price_monthly_usd), quarterlyPrice: usd(row.price_quarterly_usd), annualPrice: usd(row.price_annual_usd), productCode: row.products?.slug ?? null, contactOnly: row.is_contact_only, includedModules: row.included_modules, commercialCode: row.commercial_code };
 }
 function mapManualPaymentRequest(row: ReturnType<typeof manualPaymentRequestRowSchema.parse>): ManualPaymentRequest {
   return { id: row.id, organizationId: row.organization_id as OrganizationId, planId: row.plan_id, billingCycle: row.billing_cycle, amount: usd(row.amount_usd), discount: usd(row.discount_usd), paymentMethod: row.payment_method, receiptStorageKey: row.receipt_storage_key, status: row.status, notes: row.notes, submittedAt: row.submitted_at, reviewedAt: row.reviewed_at };

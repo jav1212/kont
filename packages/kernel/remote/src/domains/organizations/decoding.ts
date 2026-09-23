@@ -61,6 +61,7 @@ const organizationCompanyDtoShape: ResponseField<OrganizationCompanyDto> =
     name: textField,
     rif: nullOr(textField),
     logoUrl: nullOr(textField),
+    operatingProfile: literal("standard", "kiosk"),
   });
 
 const companyDtoShape: ResponseField<CompanyDto> = shape<CompanyDto>({
@@ -72,6 +73,7 @@ const companyDtoShape: ResponseField<CompanyDto> = shape<CompanyDto>({
   taxId: nullOr(textField),
   country: textField,
   status: textField,
+  operatingProfile: literal("standard", "kiosk"),
 });
 
 const availableOrganizationModuleDtoShape: ResponseField<AvailableOrganizationModuleDto> =
@@ -141,17 +143,26 @@ export const accessibleOrganization: Decoder<AccessibleOrganizationDto> =
  * @param value - Untrusted response data.
  * @returns The validated DTO or null for malformed data, preserving exact strings and additive fields.
  */
-export const company: Decoder<OrganizationCompanyDto> = responseDto(
-  organizationCompanyDtoShape,
-);
+export const company: Decoder<OrganizationCompanyDto> = (value) =>
+  responseDto(organizationCompanyDtoShape)(withLegacyCompanyProfile(value));
 
 /**
  * Validates the complete CompanyDto response shape.
  * @param value - Untrusted response data.
  * @returns The validated DTO or null for malformed data, preserving exact strings and additive fields.
  */
-export const operationalCompany: Decoder<CompanyDto> =
-  responseDto(companyDtoShape);
+export const operationalCompany: Decoder<CompanyDto> = (value) =>
+  responseDto(companyDtoShape)(withLegacyCompanyProfile(value));
+
+/**
+ * Supplies the standard experience for responses from servers predating profiles.
+ * @param value - Untrusted company response; explicit invalid profiles remain invalid.
+ * @returns The response with an additive default only when the field is absent.
+ */
+function withLegacyCompanyProfile(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.hasOwn(value, "operatingProfile") ? value : { ...value, operatingProfile: "standard" };
+}
 
 /**
  * Validates the complete AvailableOrganizationModuleDto response shape.

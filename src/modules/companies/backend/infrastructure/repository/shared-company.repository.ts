@@ -8,6 +8,7 @@ import {
     TAXPAYER_TYPES,
     BusinessSector,
     TaxpayerType,
+    OperatingProfile,
 } from '../../domain/company';
 import { ICompanyRepository } from '../../domain/repository/company.repository';
 
@@ -25,6 +26,7 @@ type RawSharedCompany = {
     sector: string | null;
     taxpayer_type: string | null;
     inventory_config: Record<string, unknown> | null;
+    operating_profile: string | null;
     created_at: string | null;
     updated_at: string | null;
 };
@@ -67,9 +69,15 @@ export class SharedCompanyRepository implements ICompanyRepository {
 
     async save(company: Company): Promise<Result<void>> {
         try {
+            const existingResult = await this.findById(company.id);
+            if (!existingResult.isSuccess) return Result.fail(existingResult.getError());
+            const existing = existingResult.getValue();
+            const toSave = existing && company.operatingProfile === undefined
+                ? { ...company, operatingProfile: existing.operatingProfile }
+                : company;
             const { error } = await this.source.instance
                 .from('shared_companies')
-                .upsert(this.toRow(company), { onConflict: 'tenant_id,id' });
+                .upsert(this.toRow(toSave), { onConflict: 'tenant_id,id' });
             return error ? Result.fail(error.message) : Result.success();
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Error saving shared company');
@@ -85,7 +93,15 @@ export class SharedCompanyRepository implements ICompanyRepository {
         try {
             const { data, error } = await this.source.instance
                 .from('shared_companies')
-                .update(this.toRow({ ...current, ...company, id, ownerId: current.ownerId }))
+                .update(this.toRow({
+                    ...current,
+                    ...company,
+                    // Legacy callers pass an object with optional fields. An
+                    // omitted profile must preserve the saved workspace mode.
+                    operatingProfile: company.operatingProfile ?? current.operatingProfile,
+                    id,
+                    ownerId: current.ownerId,
+                }))
                 .eq('tenant_id', this.tenantId)
                 .eq('id', id)
                 .select('*')
@@ -144,6 +160,7 @@ export class SharedCompanyRepository implements ICompanyRepository {
             sector: company.sector ?? null,
             taxpayer_type: company.taxpayerType ?? 'ordinario',
             inventory_config: company.inventoryConfig ?? {},
+            operating_profile: company.operatingProfile ?? 'standard',
         };
     }
 
@@ -176,6 +193,7 @@ export class SharedCompanyRepository implements ICompanyRepository {
             sector,
             taxpayerType,
             inventoryConfig,
+            operatingProfile: row.operating_profile === 'kiosk' ? 'kiosk' : 'standard' as OperatingProfile,
             createdAt: row.created_at ? new Date(row.created_at) : undefined,
             updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
         };

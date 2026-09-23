@@ -7,4 +7,5 @@ export interface CompanyDto {
   readonly taxId: string | null;
   readonly country: string;
   readonly status: string;
+  readonly operatingProfile: "standard" | "kiosk";
 }

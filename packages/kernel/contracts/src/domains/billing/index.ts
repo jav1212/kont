@@ -65,6 +65,10 @@ export interface BillingPlanDto {
   readonly annualPrice: MoneyDto;
   readonly productCode: string | null;
   readonly contactOnly: boolean;
+  /** Modules presented as part of this commercial offer. */
+  readonly includedModules: readonly string[];
+  /** Stable commercial offer identifier when present. */
+  readonly commercialCode: string | null;
 }
 export interface ManualPaymentRequestDto {
   readonly id: string;

@@ -58,6 +58,10 @@ interface PlanRow {
     isContactOnly:          boolean;
     productSlug:            string | null;
     productName:            string | null;
+    /** Modules included by the plan's commercial product. */
+    includedModules?:       readonly string[];
+    /** Stable commercial identifier when supplied by the catalog. */
+    commercialCode?:        string;
 }
 
 interface SubscriptionRow {
@@ -1290,6 +1294,13 @@ export default function AdminPage() {
                                     </div>
                                 )}
 
+                                <div className="rounded-xl border border-primary-500/20 bg-primary-500/[0.04] px-4 py-3">
+                                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">Paquete Kiosco</p>
+                                    <p className="mt-1 font-sans text-[12px] leading-relaxed text-[var(--text-secondary)]">
+                                        Incluye Ventas, Compras e Inventario. Configura un precio mensual mayor a $0 antes de publicarlo; los ciclos trimestral y anual son opcionales. El plan sembrado permanece inactivo hasta entonces.
+                                    </p>
+                                </div>
+
                                 {!plansLoaded ? (
                                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                                         <Spinner />
@@ -1315,6 +1326,8 @@ export default function AdminPage() {
                                                 {plans.map((plan) => {
                                                     const isEditing = planEditId === plan.id;
                                                     const d = isEditing ? planDraft : {};
+                                                    const isKiosk = plan.commercialCode === "kiosk" || plan.name.trim().toLocaleLowerCase("es-VE") === "kiosco";
+                                                    const canPublish = !isKiosk || Number(d.priceMonthlyUsd ?? plan.priceMonthlyUsd) > 0;
 
                                                     const numInput = (field: keyof PlanRow, label: string, nullable?: boolean) => (
                                                         <BaseInput.Field
@@ -1349,7 +1362,10 @@ export default function AdminPage() {
                                                                     )}
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[12px] font-medium text-foreground">
-                                                                    {plan.name}
+                                                                    <div className="flex items-center gap-2">
+                                                                        {plan.name}
+                                                                        {isKiosk && <span className="rounded border border-primary-500/20 bg-primary-500/[0.08] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-primary-500">Kiosco</span>}
+                                                                    </div>
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                                     {plan.maxCompanies ?? "∞"}
@@ -1425,6 +1441,7 @@ export default function AdminPage() {
                                                                                     <select
                                                                                         value={String(d.isActive ?? plan.isActive)}
                                                                                         onChange={(e) => setPlanDraft((prev) => ({ ...prev, isActive: e.target.value === "true" }))}
+                                                                                        disabled={!canPublish}
                                                                                         className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
                                                                                     >
                                                                                         <option value="true">Sí</option>
@@ -1437,6 +1454,10 @@ export default function AdminPage() {
                                                                                 {numInput("priceQuarterlyUsd", "Precio trimestral (USD)")}
                                                                                 {numInput("priceAnnualUsd", "Precio anual (USD)")}
                                                                             </div>
+
+                                                                            {isKiosk && !canPublish && (
+                                                                                <p className="font-sans text-[11px] text-amber-600 dark:text-amber-400">Define un precio mensual mayor a $0 para publicar Kiosco.</p>
+                                                                            )}
 
                                                                             {planSaveErr && (
                                                                                 <p className="font-mono text-[10px] text-red-500">{planSaveErr}</p>

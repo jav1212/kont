@@ -6,12 +6,15 @@ export interface Plan {
     priceMonthlyUsd:           number;
     priceQuarterlyUsd:         number;
     priceAnnualUsd:            number;
+    includedModules?:          readonly string[];
 }
 
 // Plan returned by the public plans listing — includes the associated module slug.
 export interface PlanWithModule extends Plan {
     moduleSlug:    string | null;
     isContactOnly: boolean;
+    includedModules: readonly string[];
+    commercialCode: string | null;
 }
 
 export type TenantStatus   = 'trial' | 'active' | 'suspended';

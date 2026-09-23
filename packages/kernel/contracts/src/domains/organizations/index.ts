@@ -76,6 +76,8 @@ export interface OrganizationCompanyDto {
   readonly name: string;
   readonly rif: string | null;
   readonly logoUrl: string | null;
+  /** Per-company workspace presentation. It never grants commercial access. */
+  readonly operatingProfile: "standard" | "kiosk";
 }
 export interface AvailableOrganizationModuleDto {
   readonly id: string;
@@ -100,6 +102,8 @@ export interface CompanyDto {
   readonly taxId: string | null;
   readonly country: string;
   readonly status: string;
+  /** Per-company workspace presentation. It never grants commercial access. */
+  readonly operatingProfile: "standard" | "kiosk";
 }
 export interface EmployeeDto {
   readonly id: string;

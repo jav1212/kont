@@ -7,6 +7,13 @@ test("company owns its legal and operational invariants", () => {
   const company = new Company({ id: companyId("id"), organizationId: organizationId("org"), legacyCompanyId: "J-29767818-2", legalName: " Cliente CA ", tradeName: null, taxId: taxId("J-29767818-2"), country: CompanyCountry.Venezuela, status: CompanyStatus.Active });
   assert.equal(company.legalName, "Cliente CA");
   assert.equal(company.suspend().status, CompanyStatus.Suspended);
+  assert.equal(company.operatingProfile, "standard");
+});
+
+test("company preserves a kiosk operating profile independently from its status", () => {
+  const company = new Company({ id: companyId("id"), organizationId: organizationId("org"), legacyCompanyId: null, legalName: "Kiosco", tradeName: null, taxId: null, country: CompanyCountry.Venezuela, status: CompanyStatus.Active, operatingProfile: "kiosk" });
+  assert.equal(company.operatingProfile, "kiosk");
+  assert.equal(company.suspend().operatingProfile, "kiosk");
 });
 
 test("legacy seven-digit Venezuelan tax identifiers are canonicalized", () => {

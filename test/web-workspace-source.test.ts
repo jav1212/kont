@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createWebWorkspaceSource,
   webAvailableModules,
+  webCompanyEntry,
 } from "../src/modules/workspace/frontend/web-workspace-source";
 import type { OrganizationWorkspace } from "../src/modules/organizations/contracts";
 
@@ -43,6 +44,17 @@ test("ungranted company access resolves an empty projection without issuing a fo
     ),
     [],
   );
+});
+
+test("company projections preserve the company-scoped operating profile", async () => {
+  const source = createWebWorkspaceSource(async () =>
+    Response.json({
+      data: [{ id: "J-KIOSK", name: "Quiosco", ownerId: organization.legacyTenantId, operatingProfile: "kiosk" }],
+    }),
+  );
+  const [company] = await source.companies(organization, new AbortController().signal);
+  assert.equal(company.operatingProfile, "kiosk");
+  assert.equal(webCompanyEntry(company, organization.id).operatingProfile, "kiosk");
 });
 
 test("available modules require both canonical permission and existing Web entitlement", () => {

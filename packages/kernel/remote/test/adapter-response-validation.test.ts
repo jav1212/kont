@@ -271,6 +271,11 @@ for (const boundary of cases) {
     }
     for (const path of fieldPaths(boundary.payload)) {
       for (const remove of [true, false]) {
+        // These additive fields have explicit defaults for older server versions.
+        // Their wrong-type variants still have to fail validation.
+        const legacyDefault = (boundary.name === "billing plans" && ["0.includedModules", "0.commercialCode"].includes(path.join(".")))
+          || (["companies", "operational companies"].includes(boundary.name) && path.join(".") === "0.operatingProfile");
+        if (remove && legacyDefault) continue;
         await assert.rejects(
           boundary.run(transport(changedField(boundary.payload, path, remove))),
           invalidResponse,

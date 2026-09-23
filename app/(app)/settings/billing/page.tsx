@@ -23,6 +23,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 
 // ============================================================================
 // TYPES
@@ -38,6 +39,8 @@ interface Plan {
     priceAnnualUsd:         number | null;
     moduleSlug:             string | null;
     isContactOnly:          boolean;
+    /** Modules explicitly included in this commercial plan. */
+    includedModules?:       readonly string[];
 }
 
 interface TenantData {
@@ -109,6 +112,15 @@ function planPrice(plan: Plan, cycle: string): number {
     return plan.priceMonthlyUsd;
 }
 
+const COMMERCIAL_MODULE_LABELS: Record<string, string> = {
+    sales: "Ventas",
+    purchases: "Compras",
+    inventory: "Inventario",
+    payroll: "Nómina",
+    accounting: "Contabilidad",
+    documents: "Documentos",
+};
+
 // Features shown in plan comparison cards
 const PLAN_FEATURES = [
     { key: "companies", label: "Empresas" },
@@ -118,14 +130,19 @@ const PLAN_FEATURES = [
     { key: "documents", label: "Documentos" },
 ];
 
-function getPlanFeatures(plan: Plan): Record<string, string | boolean> {
+function getPlanFeatures(plan: Plan): Record<string, string | boolean | undefined> {
+    const modules = new Set(plan.includedModules ?? []);
+    // The billing migration backfills this metadata. Keep the former display
+    // for legacy catalog rows that have not yet been backfilled, rather than
+    // showing their established capabilities as unavailable.
+    const usesLegacyFallback = modules.size === 0;
     const isGratuito = plan.name === "Gratuito";
     return {
         companies:  plan.maxCompanies === null ? "Ilimitadas" : `${plan.maxCompanies}`,
-        nomina:     !isGratuito,
-        inventory:  !isGratuito,
-        accounting: !isGratuito,
-        documents:  true,
+        nomina:     modules.has("payroll") || (usesLegacyFallback && !isGratuito) || undefined,
+        inventory:  modules.has("inventory") || (usesLegacyFallback && !isGratuito) || undefined,
+        accounting: modules.has("accounting") || (usesLegacyFallback && !isGratuito) || undefined,
+        documents:  modules.has("documents") || usesLegacyFallback || undefined,
     };
 }
 
@@ -141,6 +158,7 @@ export default function BillingPage() {
     const canManageBilling = can("billing.manage");
     const { capacity } = useCapacity();
     const { availableUsd, reload: reloadCredit } = useAvailableCredit();
+    const { company } = useCompany();
 
     // ── Data ──────────────────────────────────────────────────────────────
     const [tenant,    setTenant]    = useState<TenantData | null>(null);
@@ -295,7 +313,7 @@ export default function BillingPage() {
                     {/* ── Plan comparison grid ─────────────────────────────── */}
                     <SettingsSection
                         title="Planes disponibles"
-                        subtitle="Compara los planes y solicita el que mejor se ajuste a tu operación."
+                        subtitle="La suscripción pertenece a tu organización y se aplica a todas sus empresas. El modo de operación se elige por empresa."
                     >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                             {plans.map((plan, index) => {
@@ -366,6 +384,16 @@ export default function BillingPage() {
                                                         </li>
                                                     );
                                                 })}
+                                                {plan.includedModules?.map((module) => {
+                                                    const label = COMMERCIAL_MODULE_LABELS[module];
+                                                    if (!label || ["payroll", "inventory", "accounting", "documents"].includes(module)) return null;
+                                                    return (
+                                                        <li key={module} className="flex items-center gap-2 font-sans text-[12px]">
+                                                            <Check size={12} className="text-primary-500 flex-shrink-0" strokeWidth={3} />
+                                                            <span className="text-[var(--text-secondary)]">{label}</span>
+                                                        </li>
+                                                    );
+                                                })}
                                             </ul>
 
                                             {/* CTA */}
@@ -409,6 +437,15 @@ export default function BillingPage() {
                             })}
                         </div>
                     </SettingsSection>
+
+                    <div className="flex items-start gap-3 rounded-xl border border-border-light bg-surface-1 px-4 py-3">
+                        <Building2 size={16} className="mt-0.5 shrink-0 text-primary-500" />
+                        <p className="font-sans text-[12px] leading-relaxed text-[var(--text-secondary)]">
+                            {company
+                                ? <>Estás trabajando en <span className="font-semibold text-foreground">{company.name}</span>, cuyo modo es <span className="font-semibold text-foreground">{company.operatingProfile === "kiosk" ? "Kiosco" : "Estándar"}</span>. Puedes cambiarlo al cambiar de empresa; la suscripción y sus módulos se mantienen a nivel de organización.</>
+                                : "El modo de operación se configura por empresa. La suscripción y sus módulos se mantienen a nivel de organización."}
+                        </p>
+                    </div>
 
                     {/* ── Current plan card ────────────────────────────────── */}
                     <SettingsSection

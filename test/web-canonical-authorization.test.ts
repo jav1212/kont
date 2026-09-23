@@ -9,6 +9,7 @@ const organizationB = "30000000-0000-4000-8000-000000000002";
 const roleA = "40000000-0000-4000-8000-000000000001";
 
 let state = { organization: "active", membership: "active", role: "active", permissions: ["companies.read"] as string[] };
+let subscriptions = [{ tenantId: tenantA, product: "inventory", status: "active" }];
 
 /**
  * Mimics only the Supabase projections consumed by canonical Web authorization.
@@ -21,6 +22,13 @@ const supabaseFetch: typeof fetch = async (input, init) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const url = new URL(request.url);
     const table = url.pathname.split("/").at(-1);
+    if (table === "tenant_subscriptions") {
+        const selectedTenant = url.searchParams.get("tenant_id")?.replace("eq.", "");
+        const product = url.searchParams.get("products.slug")?.replace("eq.", "");
+        return Response.json(subscriptions
+            .filter((entry) => entry.tenantId === selectedTenant && entry.product === product)
+            .map((entry) => ({ status: entry.status, products: { slug: entry.product } })));
+    }
     const tenantId = url.searchParams.get("legacy_tenant_id")?.replace("eq.", "") ?? tenantA;
     const organizationId = tenantId === tenantB ? organizationB : organizationA;
 
@@ -120,4 +128,34 @@ test("a second organization cannot inherit a permission granted only in the firs
     await requirePermission(context(tenantA), "companies.read");
     state = { organization: "active", membership: "active", role: "active", permissions: [] };
     await assert.rejects(() => requirePermission(context(tenantB), "companies.read"), PermissionDeniedError);
+});
+
+test("a kiosk bundle authorizes its three modules but cannot grant payroll or accounting", async () => {
+    state = { organization: "active", membership: "active", role: "active", permissions: ["sales.create", "purchases.create", "inventory.read", "payroll.read", "accounting.read"] };
+    subscriptions = [{ tenantId: tenantA, product: "inventory", status: "active" }];
+    for (const permission of ["sales.create", "purchases.create", "inventory.read"] as const) {
+        await requirePermission(context(), permission);
+    }
+    for (const permission of ["payroll.read", "accounting.read"] as const) {
+        await assert.rejects(() => requirePermission(context(), permission), PermissionDeniedError);
+    }
+});
+
+test("suspension denies direct API access and renewal restores the same bundle", async () => {
+    state = { organization: "active", membership: "active", role: "active", permissions: ["sales.create"] };
+    for (const status of ["suspended", "cancelled", "pending"]) {
+        subscriptions = [{ tenantId: tenantA, product: "inventory", status }];
+        await assert.rejects(() => requirePermission(context(), "sales.create"), PermissionDeniedError);
+    }
+    for (const status of ["trial", "active"]) {
+        subscriptions = [{ tenantId: tenantA, product: "inventory", status }];
+        await requirePermission(context(), "sales.create");
+    }
+});
+
+test("switching organization cannot reuse another organization's subscription", async () => {
+    state = { organization: "active", membership: "active", role: "active", permissions: ["sales.read", "companies.read"] };
+    subscriptions = [{ tenantId: tenantA, product: "inventory", status: "active" }];
+    await assert.rejects(() => requirePermission(context(tenantB), "sales.read"), PermissionDeniedError);
+    await requirePermission(context(tenantB), "companies.read");
 });

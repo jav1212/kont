@@ -14,6 +14,7 @@ export enum CompanyStatus {
 export enum CompanyCountry {
   Venezuela = "VE",
 }
+export type CompanyOperatingProfile = "standard" | "kiosk";
 
 export interface CompanyState {
   readonly id: CompanyId;
@@ -24,6 +25,7 @@ export interface CompanyState {
   readonly taxId: TaxId | null;
   readonly country: CompanyCountry;
   readonly status: CompanyStatus;
+  readonly operatingProfile?: CompanyOperatingProfile;
 }
 
 export class Company {
@@ -35,6 +37,7 @@ export class Company {
   readonly taxId: TaxId | null;
   readonly country: CompanyCountry;
   readonly status: CompanyStatus;
+  readonly operatingProfile: CompanyOperatingProfile;
 
   constructor(state: CompanyState) {
     this.id = state.id;
@@ -45,6 +48,7 @@ export class Company {
     this.taxId = state.taxId;
     this.country = state.country;
     this.status = state.status;
+    this.operatingProfile = state.operatingProfile ?? "standard";
   }
 
   assertOperational(): void {

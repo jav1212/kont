@@ -5,4 +5,5 @@ export const companyRowSchema = z.object({
   organization_id: z.string().min(1),
   name: z.string().min(1),
   rif: z.string().nullable(),
+  operating_profile: z.enum(["standard", "kiosk"]).catch("standard"),
 });

@@ -1,6 +1,7 @@
 // CreatePaymentRequestUseCase — submits a new payment request (comprobante) for a tenant, then emits PaymentRequestCreated.
 // Role: application — validates required fields, delegates persistence to the repository.
-// Invariant: planId, billingCycle, amountUsd, and paymentMethod are required; status defaults to 'pending'.
+// Invariant: planId, billingCycle, and paymentMethod are required. Price comes
+// from the active server-side plan rather than the client request.
 // Side-effect: applies available referral credit before persisting; registers redemptions afterwards.
 
 import { UseCase }              from "@/src/core/domain/use-case";
@@ -34,8 +35,23 @@ export class CreatePaymentRequestUseCase extends UseCase<Input, PaymentRequest> 
     async execute(input: Input): Promise<Result<PaymentRequest>> {
         const { tenantId, ...rest } = input;
 
-        if (!rest.planId || !rest.billingCycle || !rest.amountUsd || !rest.paymentMethod) {
-            return Result.fail("planId, billingCycle, amountUsd and paymentMethod are required");
+        if (!rest.planId || !rest.billingCycle || !rest.paymentMethod) {
+            return Result.fail("planId, billingCycle and paymentMethod are required");
+        }
+        if (!['monthly', 'quarterly', 'annual'].includes(rest.billingCycle)) {
+            return Result.fail("Ciclo de facturacion invalido.");
+        }
+        const plansResult = await this.repo.getPlans();
+        if (plansResult.isFailure) return Result.fail(plansResult.getError());
+        const plan = plansResult.getValue().find((candidate) => candidate.id === rest.planId);
+        if (!plan || plan.isContactOnly) return Result.fail("Plan no disponible para pago directo.");
+        const planAmountUsd = rest.billingCycle === 'monthly'
+            ? plan.priceMonthlyUsd
+            : rest.billingCycle === 'quarterly'
+                ? plan.priceQuarterlyUsd
+                : plan.priceAnnualUsd;
+        if (!Number.isFinite(planAmountUsd) || planAmountUsd <= 0) {
+            return Result.fail("El ciclo de facturacion seleccionado no esta disponible.");
         }
 
         // 1) Calcular descuento por crédito disponible (si hay use cases inyectados).
@@ -44,12 +60,12 @@ export class CreatePaymentRequestUseCase extends UseCase<Input, PaymentRequest> 
             const availRes = await this.getAvailableCredit.execute({ tenantId });
             if (availRes.isSuccess) {
                 const available = availRes.getValue().availableUsd;
-                discountUsd = Math.min(available, rest.amountUsd);
+                discountUsd = Math.min(available, planAmountUsd);
                 discountUsd = Math.round(discountUsd * 100) / 100;
             }
         }
 
-        const finalAmountUsd = Math.round((rest.amountUsd - discountUsd) * 100) / 100;
+        const finalAmountUsd = Math.round((planAmountUsd - discountUsd) * 100) / 100;
 
         // 2) Caso especial: el crédito cubre el 100% del plan → auto-aprobamos
         //    y activamos el tenant sin exigir comprobante.

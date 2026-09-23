@@ -33,6 +33,7 @@ export class MobileWorkspaceCompanySource implements WorkspaceCompanySource {
       id: companyId(value.id),
       organizationId: organizationId(value.organizationId),
       name: value.tradeName ?? value.legalName,
+      operatingProfile: value.operatingProfile ?? "standard",
       rif: value.taxId,
       logoUrl: (value.legacyCompanyId ? presentationById.get(value.legacyCompanyId)?.logoUrl : null)
         ?? (value.taxId ? presentationByRif.get(value.taxId)?.logoUrl : null)

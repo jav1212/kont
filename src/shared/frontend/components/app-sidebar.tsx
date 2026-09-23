@@ -197,13 +197,50 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     ],
         [availableModuleCodes, organizationAccess, paidAccess, workspaceApplication.status]);
 
+    const kioskCompany = companies.find((company) => company.id === companyId)?.operatingProfile === "kiosk";
+
     const resolvedModuleId = selectableModules.some((module) => module.id === requestedModuleId) ? requestedModuleId : null;
     const subnav = useMemo(() => (resolvedModuleId ? (MODULE_SUBNAV[resolvedModuleId] ?? []).filter((entry) => {
         const requirement = getOrganizationRouteAccess(entry.href);
         return requirement.kind === "authenticated" || (requirement.kind === "protected" && requirement.permissions.every(organizationAccess.can));
     }) : []), [organizationAccess.can, resolvedModuleId]);
 
+    const kioskModules = useMemo((): SelectableModule[] => {
+        if (!kioskCompany) return selectableModules;
+        const primaryIds = new Set(["sales", "purchases", "inventory"]);
+        const operational = selectableModules.filter((module) => primaryIds.has(module.id));
+        const sales = operational.find((module) => module.id === "sales");
+        return [
+            ...(sales && organizationAccess.can("sales.create") ? [{ id: "kiosk-pos", label: "Vender", href: "/sales/pos" }] : []),
+            ...operational,
+            ...selectableModules.filter((module) => module.id === WEB_SETTINGS_MODULE.id),
+        ];
+    }, [kioskCompany, organizationAccess, selectableModules]);
+    const requestedVisibleModuleId = kioskCompany && pathname === "/sales/pos"
+        ? "kiosk-pos"
+        : resolvedModuleId;
+    const visibleModuleId = kioskModules.some((module) => module.id === requestedVisibleModuleId)
+        ? requestedVisibleModuleId
+        : null;
+
+    const kioskSubnav = useMemo(() => {
+        if (!kioskCompany || !resolvedModuleId) return subnav;
+        if (resolvedModuleId === "sales") {
+            return subnav.map((entry) => entry.href === "/sales/pos"
+                ? { ...entry, label: "Vender" }
+                : entry.href === "/sales" ? { ...entry, label: "Ventas" } : entry,
+            ).sort((left, right) =>
+                (left.href === "/sales/pos" ? -1 : right.href === "/sales/pos" ? 1 : 0),
+            );
+        }
+        return subnav;
+    }, [kioskCompany, resolvedModuleId, subnav]);
+
     async function handleSelectModule(id: string, href: string) {
+        if (id === "kiosk-pos") {
+            router.push(buildContextHref(href));
+            return;
+        }
         if (id === WEB_SETTINGS_MODULE.id) {
             router.push(settingsHref);
             return;
@@ -302,8 +339,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     companiesHref={buildContextHref("/companies")}
                 />
                 <SidebarModuleSelector
-                    modules={selectableModules}
-                    activeModuleId={resolvedModuleId}
+                    modules={kioskModules}
+                    activeModuleId={visibleModuleId}
                     onSelect={handleSelectModule}
                     subtitle={moduleSubtitle}
                 />
@@ -314,7 +351,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 style={collapsed ? undefined : { scrollbarGutter: "stable" }}
                 aria-label="Secciones del módulo"
             >
-                <SidebarSubnav subnav={subnav} pathname={pathname} compact={collapsed} />
+                <SidebarSubnav subnav={kioskSubnav} pathname={pathname} compact={collapsed} />
             </nav>
 
             <div

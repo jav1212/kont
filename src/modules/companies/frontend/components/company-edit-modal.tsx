@@ -21,7 +21,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { InlineSelect } from "@/src/shared/frontend/components/inline-select";
 import type { InlineSelectOption } from "@/src/shared/frontend/components/inline-select";
 import type {
-    Company, BusinessSector, TaxpayerType, CompanyUpdateData,
+    Company, BusinessSector, OperatingProfile, TaxpayerType, CompanyUpdateData,
 } from "@/src/modules/companies/frontend/hooks/use-companies";
 import {
     SECTOR_LABELS, BUSINESS_SECTORS, TAXPAYER_TYPES, TAXPAYER_TYPE_LABELS,
@@ -40,6 +40,11 @@ const SECTOR_OPTIONS: InlineSelectOption<BusinessSector>[] = BUSINESS_SECTORS.ma
     value: s,
     label: SECTOR_LABELS[s],
 }));
+
+const OPERATING_PROFILE_OPTIONS: InlineSelectOption<OperatingProfile>[] = [
+    { value: "standard", label: "Estándar" },
+    { value: "kiosk", label: "Kiosco" },
+];
 
 // ── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +66,7 @@ export interface CompanyCreateData {
     address?:      string;
     sector?:       BusinessSector;
     logoUrl?:      string;
+    operatingProfile?: OperatingProfile;
 }
 
 interface Props {
@@ -68,6 +74,8 @@ interface Props {
     company:    Company | null;
     /** `true` → abre el modal en modo creación (RIF editable). */
     creating?:  boolean;
+    initialOperatingProfile?: OperatingProfile;
+    canManageOperatingProfile: boolean;
     userId:     string | null;
     onClose:    () => void;
     onSave:     (id: string, patch: CompanyUpdateData) => Promise<string | null>;
@@ -77,7 +85,7 @@ interface Props {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function CompanyEditModal({ company, creating = false, userId, onClose, onSave, onCreate, onApplySector }: Props) {
+export function CompanyEditModal({ company, creating = false, initialOperatingProfile, canManageOperatingProfile, userId, onClose, onSave, onCreate, onApplySector }: Props) {
     const open = company !== null || creating;
 
     return (
@@ -86,6 +94,8 @@ export function CompanyEditModal({ company, creating = false, userId, onClose, o
                 <CompanyEditModalBody
                     key={company?.id ?? "__new__"}
                     company={company}
+                    initialOperatingProfile={initialOperatingProfile}
+                    canManageOperatingProfile={canManageOperatingProfile}
                     userId={userId}
                     onClose={onClose}
                     onSave={onSave}
@@ -99,7 +109,7 @@ export function CompanyEditModal({ company, creating = false, userId, onClose, o
 
 // ── Inner body (re-mounts on open so state initializes from current company) ──
 
-function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onApplySector }: Omit<Props, "company" | "creating"> & { company: Company | null }) {
+function CompanyEditModalBody({ company, initialOperatingProfile, canManageOperatingProfile, userId, onClose, onSave, onCreate, onApplySector }: Omit<Props, "company" | "creating"> & { company: Company | null }) {
     const isCreate = company === null;
 
     // Form state — initialized from the company on mount (blank in create mode)
@@ -111,6 +121,7 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onAp
     const [logoUrl, setLogoUrl]       = useState<string | undefined>(company?.logoUrl);
     const [sector, setSector]         = useState<BusinessSector | undefined>(company?.sector);
     const [taxpayerType, setTaxpayerType] = useState<TaxpayerType>(company?.taxpayerType ?? "ordinario");
+    const [operatingProfile, setOperatingProfile] = useState<OperatingProfile>(company?.operatingProfile ?? initialOperatingProfile ?? "standard");
 
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoUploadOk, setLogoUploadOk]   = useState(false);
@@ -197,6 +208,7 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onAp
                 address:      address.trim() || undefined,
                 sector,
                 logoUrl,
+                ...(canManageOperatingProfile ? { operatingProfile } : {}),
             });
             if (err) {
                 setSaving(false);
@@ -219,6 +231,9 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onAp
             logoUrl,
             sector,
             taxpayerType,
+            ...(canManageOperatingProfile && operatingProfile !== (company.operatingProfile ?? "standard")
+                ? { operatingProfile }
+                : {}),
         });
         if (err) {
             setSaving(false);
@@ -346,6 +361,20 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onAp
                             </div>
                             <p className="mt-1.5 font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
                                 Los Sujetos Pasivos Especiales (SPE) tienen calendarios y obligaciones distintas según SENIAT.
+                            </p>
+                        </div>
+                        <div>
+                            <label className={FIELD_LABEL}>Modo de operación</label>
+                            <InlineSelect
+                                value={operatingProfile}
+                                onChange={(value) => setOperatingProfile(value as OperatingProfile)}
+                                options={OPERATING_PROFILE_OPTIONS}
+                                ariaLabel="Modo de operación de la empresa"
+                                size="md"
+                                disabled={!canManageOperatingProfile}
+                            />
+                            <p className="mt-1.5 font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
+                                Kiosco abre el punto de venta y prioriza ventas, compras e inventario para esta empresa.
                             </p>
                         </div>
                     </section>

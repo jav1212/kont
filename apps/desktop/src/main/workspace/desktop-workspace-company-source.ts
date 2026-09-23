@@ -33,5 +33,6 @@ function mapCompany(value: OrganizationCompanyDto): OrganizationCompany {
     name: value.name,
     rif: value.rif,
     logoUrl: value.logoUrl,
+    operatingProfile: value.operatingProfile ?? "standard",
   };
 }

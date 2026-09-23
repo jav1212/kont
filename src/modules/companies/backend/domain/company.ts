@@ -11,6 +11,8 @@ export interface ConfigFiscal {
 // 'ordinario': Contribuyente Ordinario — standard monthly deadlines.
 // 'especial':  Sujeto Pasivo Especial — digit-based calendar + IVA retention agent.
 export type TaxpayerType = 'ordinario' | 'especial';
+export type OperatingProfile = 'standard' | 'kiosk';
+export const OPERATING_PROFILES: readonly OperatingProfile[] = ['standard', 'kiosk'] as const;
 
 export const TAXPAYER_TYPES: readonly TaxpayerType[] = ['ordinario', 'especial'] as const;
 
@@ -89,6 +91,8 @@ export interface Company {
     sector?: BusinessSector;
     taxpayerType?: TaxpayerType;
     inventoryConfig?: InventoryConfig;
+    /** Per-company workspace presentation. This selection does not grant modules. */
+    operatingProfile?: OperatingProfile;
     createdAt?: Date;
     updatedAt?: Date;
 }

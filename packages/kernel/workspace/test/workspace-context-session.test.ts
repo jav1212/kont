@@ -141,13 +141,16 @@ class MemoryCompanySelection implements ActiveWorkspaceCompanyStore {
 
 test("company context selects only companies owned by the active organization", async () => {
   const organization = organizationId("organization-1");
-  const first = { id: companyId("company-1"), organizationId: organization, name: "Principal", rif: "J-1", logoUrl: null };
-  const second = { id: companyId("company-2"), organizationId: organization, name: "Sucursal", rif: "J-2", logoUrl: null };
+  const first = { id: companyId("company-1"), organizationId: organization, name: "Principal", rif: "J-1", logoUrl: null, operatingProfile: "standard" as const };
+  const second = { id: companyId("company-2"), organizationId: organization, name: "Sucursal", rif: "J-2", logoUrl: null, operatingProfile: "kiosk" as const };
   const store = new MemoryCompanySelection();
   const session = new WorkspaceCompanyContextSession({ async listByOrganization() { return [first, second]; } }, store);
 
   assert.equal((await session.restore(organization)).active?.id, first.id);
   assert.equal((await session.select(second.id)).active?.id, second.id);
+  assert.equal((await session.select(second.id)).active?.operatingProfile, "kiosk");
+  assert.equal((await session.select(first.id)).active?.operatingProfile, "standard");
+  await session.select(second.id);
   assert.equal(store.values.get(organization), second.id);
 });
 
@@ -155,7 +158,7 @@ test("company context rejects a company leaked from a client organization", asyn
   const organization = organizationId("organization-1");
   const session = new WorkspaceCompanyContextSession({
     async listByOrganization() {
-      return [{ id: companyId("client-company"), organizationId: organizationId("client-organization"), name: "Cliente", rif: null, logoUrl: null }];
+      return [{ id: companyId("client-company"), organizationId: organizationId("client-organization"), name: "Cliente", rif: null, logoUrl: null, operatingProfile: "standard" as const }];
     },
   }, new MemoryCompanySelection());
   await assert.rejects(() => session.restore(organization), { code: "COMPANY_NOT_FOUND" });

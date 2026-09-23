@@ -207,7 +207,7 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
     try {
       const { data, error } = await this.client
         .from("shared_companies")
-        .select("organization_id,id,name,rif,logo_url")
+        .select("organization_id,id,name,rif,logo_url,operating_profile")
         .eq("organization_id", targetOrganizationId)
         .order("name", { ascending: true });
       if (error) throw error;
@@ -221,7 +221,7 @@ class SupabaseOrganizationDirectory implements OrganizationRepository, Organizat
     try {
       const { data, error } = await this.client
         .from("shared_companies")
-        .select("organization_id,id,name,rif,logo_url")
+        .select("organization_id,id,name,rif,logo_url,operating_profile")
         .eq("organization_id", targetOrganizationId)
         .eq("id", targetCompanyId)
         .maybeSingle();
@@ -254,7 +254,7 @@ export class SupabaseOrganizationLogoStorage implements OrganizationLogoStorage 
 }
 
 function mapCompany(row: CompanyRow): OrganizationCompany {
-  return { id: companyId(row.id), organizationId: organizationId(row.organization_id), name: row.name, rif: row.rif, logoUrl: row.logo_url };
+  return { id: companyId(row.id), organizationId: organizationId(row.organization_id), name: row.name, rif: row.rif, logoUrl: row.logo_url, operatingProfile: row.operating_profile };
 }
 
 function mapRole(role: string): OrganizationRole {

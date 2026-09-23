@@ -28,5 +28,6 @@ export function toCompanyDto(
     name: company.name,
     rif: company.rif,
     logoUrl: company.logoUrl,
+    operatingProfile: company.operatingProfile,
   };
 }

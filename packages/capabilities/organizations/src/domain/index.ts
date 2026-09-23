@@ -40,6 +40,7 @@ export interface OrganizationCompany {
   readonly name: string;
   readonly rif: string | null;
   readonly logoUrl: string | null;
+  readonly operatingProfile: "standard" | "kiosk";
 }
 
 export interface OrganizationAccess {

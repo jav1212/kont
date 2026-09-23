@@ -76,7 +76,12 @@ const tenantSchema = z.object({
   permissions: z.array(z.string()),
 });
 const companySchema = z
-  .object({ id: z.string().min(1), ownerId: z.string(), name: z.string() })
+  .object({
+    id: z.string().min(1),
+    ownerId: z.string(),
+    name: z.string(),
+    operatingProfile: z.enum(["standard", "kiosk"]).optional(),
+  })
   .passthrough();
 const subscriptionSchema = z.object({
   id: z.string(),
@@ -219,5 +224,6 @@ export function webCompanyEntry(company: Company, organization: string) {
     name: company.name,
     rif: company.rif ?? null,
     logoUrl: company.logoUrl ?? null,
+    operatingProfile: company.operatingProfile ?? "standard",
   };
 }

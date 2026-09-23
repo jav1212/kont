@@ -30,11 +30,14 @@ interface RawPlanRow {
     price_monthly_usd:         number;
     price_quarterly_usd:       number;
     price_annual_usd:          number;
+    included_modules?:         string[] | null;
+    commercial_code?:          string | null;
 }
 
 interface RawPlanWithProductRow extends RawPlanRow {
     products:        { slug: string } | { slug: string }[] | null;
     is_contact_only: boolean;
+    included_modules: string[] | null;
 }
 
 interface RawSubscriptionRow {
@@ -207,6 +210,8 @@ export class SupabaseBillingRepository implements IBillingRepository {
                 ...normalizePlan(raw),
                 moduleSlug:    product?.slug ?? null,
                 isContactOnly: raw.is_contact_only ?? false,
+                includedModules: raw.included_modules ?? [],
+                commercialCode: raw.commercial_code ?? null,
             };
         });
 

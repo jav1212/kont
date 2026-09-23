@@ -170,6 +170,16 @@ antes de confirmarse. Al confirmar, actualiza la compatibilidad de navegador
 parámetros de la URL. Los providers históricos de tenant, organización y empresa
 leen la instantánea confirmada; no mantienen una segunda selección.
 
+Cada empresa expone además un `operatingProfile` aditivo. La suscripción y los
+derechos comerciales pertenecen a la organización, mientras el perfil dirige la
+presentación del workspace de la empresa activa. En consecuencia, cambiar de
+empresa vuelve a resolver el destino de inicio sin cambiar de organización ni
+conceder permisos. El perfil `kiosk` abre Punto de venta cuando la suscripción
+de Inventario y los permisos de ventas lo permiten, y presenta Ventas, Compras e
+Inventario como las secciones operativas principales. Las empresas sin el campo
+usan `standard`. La especificación comercial y el despliegue se documentan en
+[Perfil comercial Kiosco](../kiosk-commercial-profile.md).
+
 La barra lateral Web en escritorio alterna entre 280 px expandida y 72 px
 compacta. Al pasar el cursor o recibir foco, la marca revela el control para
 alternar el estado, con etiquetas accesibles para expandir o contraer; la
