@@ -10,19 +10,31 @@ import { BARCODE_LOGIN_LANDING_HREF } from "@/src/modules/workspace/frontend/bar
 
 type TerminalReason = "not_enrolled" | "revoked" | "access_unavailable";
 type BarcodeSignInState = "loading" | "ready" | "unavailable" | "revoked" | "access-unavailable" | "validating" | "invalid" | "denied" | "offline" | "success";
+interface BarcodeSignInProps {
+    /** Makes this scanner surface visible and enables feedback for reader input. */
+    readonly active: boolean;
+    /** Prevents this component from creating a second authentication request. */
+    readonly authenticationBlocked: boolean;
+    /** Brings the scanner surface forward after a credential is recognized. */
+    readonly onCredentialDetected: () => void;
+    /** Reports whether this component owns an authentication request. */
+    readonly onAuthenticationStateChange: (inProgress: boolean) => void;
+}
 
 /**
  * Renders the exclusive scanner surface used to exchange a badge for a session.
  *
+ * @param props - Visibility, authentication coordination, and scan-detection callbacks.
  * @returns The terminal-status and badge-scanning interface.
  */
-export function BarcodeSignIn() {
+export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetected, onAuthenticationStateChange }: BarcodeSignInProps) {
     const { signInWithBarcode } = useAuth();
     const { available, status, lastError } = useDeviceManager();
     const [state, setState] = useState<BarcodeSignInState>("loading");
     const [message, setMessage] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
     const requestInFlight = useRef(false);
+    const pendingCredential = useRef<string | null>(null);
 
     const terminalReady = state === "ready" || state === "validating" || state === "invalid" || state === "denied";
     /** Clears a prior scan error before asking the server for fresh terminal state. */
@@ -49,6 +61,10 @@ export function BarcodeSignIn() {
     }, [attempt, retryTerminalCheck]);
 
     useEffect(() => {
+        if (!active || ["unavailable", "revoked", "access-unavailable", "offline", "success"].includes(state)) pendingCredential.current = null;
+    }, [active, state]);
+
+    useEffect(() => {
         if (state !== "success") return;
         // Paint the confirmed outcome before starting the document navigation.
         // The old page keeps that feedback visible while the new one loads.
@@ -63,20 +79,27 @@ export function BarcodeSignIn() {
     }, [state]);
 
     const handleScan = useCallback(async ({ barcode }: { barcode: string }) => {
-        if (!terminalReady) return;
-        if (requestInFlight.current) return;
+        if (authenticationBlocked || state === "success" || requestInFlight.current) return;
         const credential = barcode.trim();
         if (!isValidBadgeBarcode(credential)) {
+            if (!active || !terminalReady) return;
             setState("invalid");
             setMessage("Este código no corresponde a un carnet de acceso. Escanea tu carnet.");
             return;
         }
+        onCredentialDetected();
+        if (!terminalReady) {
+            if (state === "loading") pendingCredential.current ??= credential;
+            return;
+        }
         requestInFlight.current = true;
+        onAuthenticationStateChange(true);
         setState("validating");
         setMessage(null);
         const error = await signInWithBarcode(credential);
         if (error) {
             requestInFlight.current = false;
+            onAuthenticationStateChange(false);
             setState(navigator.onLine ? "denied" : "offline");
             setMessage(error);
             return;
@@ -89,9 +112,20 @@ export function BarcodeSignIn() {
             ["kont-active-tenant-id", "kont-company-id", "kont-session-user-id"].forEach((key) => localStorage.removeItem(key));
         } catch { /* Storage restrictions must not prevent opening the confirmed session. */ }
         setState("success");
-    }, [signInWithBarcode, terminalReady]);
+    }, [active, authenticationBlocked, onAuthenticationStateChange, onCredentialDetected, signInWithBarcode, state, terminalReady]);
 
-    useDeviceSubscription("access", handleScan, terminalReady);
+    useEffect(() => {
+        if (authenticationBlocked) {
+            pendingCredential.current = null;
+            return;
+        }
+        if (state !== "ready" || !pendingCredential.current || requestInFlight.current) return;
+        const barcode = pendingCredential.current;
+        pendingCredential.current = null;
+        void handleScan({ barcode });
+    }, [authenticationBlocked, handleScan, state]);
+
+    useDeviceSubscription("access", handleScan, state !== "success", { captureAllKeyboardBursts: active });
 
     const heading = state === "success" ? "Acceso concedido"
         : state === "invalid" ? "Código no válido"

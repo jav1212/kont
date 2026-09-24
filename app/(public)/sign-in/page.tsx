@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, MailCheck } from "lucide-react";
@@ -22,7 +22,12 @@ function isUnconfirmedEmailError(msg: string): boolean {
         || lower.includes("correo no confirmado");
 }
 
-function SignInFormContent() {
+interface SignInFormContentProps {
+    readonly onAuthenticationStateChange: (inProgress: boolean) => void;
+    readonly onAuthenticationSucceeded: () => void;
+}
+
+function SignInFormContent({ onAuthenticationStateChange, onAuthenticationSucceeded }: SignInFormContentProps) {
     const { signIn, resendConfirmation } = useAuth();
     const router       = useRouter();
     const searchParams = useSearchParams();
@@ -87,14 +92,18 @@ function SignInFormContent() {
         if (!pass) { notify.error("La contraseña es requerida."); return; }
 
         setLoading(true);
+        onAuthenticationStateChange(true);
         const err = await signIn(normalizedEmail, pass);
         setLoading(false);
+        onAuthenticationStateChange(false);
 
         if (err) {
             notify.error(err);
             if (isUnconfirmedEmailError(err)) setNeedsConfirmation(true);
             return;
         }
+
+        onAuthenticationSucceeded();
 
         const redirectTo = resolvePostAuthenticationDestination(
             searchParams.get("redirect"),
@@ -188,12 +197,30 @@ function SignInFormContent() {
 function SignInMethod() {
     const searchParams = useSearchParams();
     const [method, setMethod] = useState<"password" | "barcode">(() => searchParams.get("mode") === "barcode" ? "barcode" : "password");
+    const [passwordAuthenticationInProgress, setPasswordAuthenticationInProgress] = useState(false);
+    const [passwordAuthenticationSucceeded, setPasswordAuthenticationSucceeded] = useState(false);
+    const [barcodeAuthenticationInProgress, setBarcodeAuthenticationInProgress] = useState(false);
+    const authenticationInProgress = passwordAuthenticationInProgress || passwordAuthenticationSucceeded || barcodeAuthenticationInProgress;
+    const showBarcode = useCallback(() => {
+        if (!passwordAuthenticationInProgress && !passwordAuthenticationSucceeded) setMethod("barcode");
+    }, [passwordAuthenticationInProgress, passwordAuthenticationSucceeded]);
     return <>
         <div className="mb-6 grid grid-cols-2 rounded-xl border border-border-light bg-surface-2 p-1" role="tablist" aria-label="Método de inicio de sesión">
-            <button type="button" role="tab" aria-selected={method === "password"} onClick={() => setMethod("password")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "password" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Correo</button>
-            <button type="button" role="tab" aria-selected={method === "barcode"} onClick={() => setMethod("barcode")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "barcode" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Carnet</button>
+            <button type="button" role="tab" aria-selected={method === "password"} disabled={authenticationInProgress} onClick={() => setMethod("password")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "password" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Correo</button>
+            <button type="button" role="tab" aria-selected={method === "barcode"} disabled={authenticationInProgress} onClick={() => setMethod("barcode")} className={`h-9 rounded-lg font-mono text-[11px] font-semibold uppercase tracking-[0.08em] ${method === "barcode" ? "bg-surface-1 text-foreground shadow-sm" : "text-text-tertiary"}`}>Carnet</button>
         </div>
-        {method === "password" ? <SignInFormContent /> : <BarcodeSignIn />}
+        {method === "password" && <SignInFormContent
+            onAuthenticationStateChange={setPasswordAuthenticationInProgress}
+            onAuthenticationSucceeded={() => setPasswordAuthenticationSucceeded(true)}
+        />}
+        <div hidden={method !== "barcode"} aria-hidden={method !== "barcode"}>
+            <BarcodeSignIn
+                active={method === "barcode"}
+                authenticationBlocked={passwordAuthenticationInProgress || passwordAuthenticationSucceeded}
+                onCredentialDetected={showBarcode}
+                onAuthenticationStateChange={setBarcodeAuthenticationInProgress}
+            />
+        </div>
     </>;
 }
 

@@ -10,11 +10,15 @@ import { isBadgeBarcode, mayDeliverRawBridgeScan } from "./barcode-access-policy
 /** Consumer domains for scanner data. Access is an exclusive credential flow. */
 export type DeviceContextName = "purchase" | "sale" | "product-capture" | "access";
 type Listener = (event: BarcodeScannedEvent) => void;
+interface DeviceSubscriptionOptions {
+    /** Captures every fast keyboard burst for an on-screen scanner workflow. */
+    readonly captureAllKeyboardBursts?: boolean;
+}
 interface DeviceManagerContextValue {
     enabled: boolean; setEnabled: (value: boolean) => void; available: boolean; paired: boolean; pairing: boolean;
     status: DeviceStatus; managerVersion: string | null; device: DeviceInfo | null; keyboardDetected: boolean; lastError: string | null; lastScan: BarcodeScannedEvent | null;
     requestPairing: () => void; forgetPairing: () => void; reconnect: () => void;
-    subscribe: (context: DeviceContextName, listener: Listener) => () => void;
+    subscribe: (context: DeviceContextName, listener: Listener, options?: DeviceSubscriptionOptions) => () => void;
 }
 const DeviceManagerContext = createContext<DeviceManagerContextValue | null>(null);
 const ENABLED_KEY = "kontave.devices.enabled"; const TOKEN_KEY = "kontave.devices.token";
@@ -42,6 +46,7 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
     const [status, setStatus] = useState<DeviceStatus>("disconnected"); const [managerVersion, setManagerVersion] = useState<string | null>(null); const [device, setDevice] = useState<DeviceInfo | null>(null); const [keyboardDetected, setKeyboardDetected] = useState(false); const [lastError, setLastError] = useState<string | null>(null); const [lastScan, setLastScan] = useState<BarcodeScannedEvent | null>(null); const [generation, setGeneration] = useState(0);
     const socketRef = useRef<WebSocket | null>(null); const listeners = useRef(new Map<DeviceContextName, Set<Listener>>()); const seen = useRef(new Set<string>()); const recentBarcodes = useRef(new Map<string, { connection: string; receivedAt: number }>()); const reportedErrors = useRef(new Set<string>()); const accessLeaseId = useRef<string | null>(null); const accessHeartbeat = useRef<ReturnType<typeof setInterval> | null>(null); const bridgeSupportsAccessCapture = useRef(false);
     const [accessListenerCount, setAccessListenerCount] = useState(0);
+    const [accessKeyboardCaptureCount, setAccessKeyboardCaptureCount] = useState(0);
     useEffect(() => setEnabledState(localStorage.getItem(ENABLED_KEY) === "true"), []);
     const setEnabled = useCallback((value: boolean) => { localStorage.setItem(ENABLED_KEY, String(value)); setEnabledState(value); if (!value) { setAvailable(false); setPaired(false); setKeyboardDetected(false); setStatus("disconnected"); } }, []);
     const reconnect = useCallback(() => setGeneration((value) => value + 1), []);
@@ -60,17 +65,21 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         if (accessLeaseId.current || !bridgeSupportsAccessCapture.current || accessListenerCount === 0 || document.visibilityState !== "visible" || !document.hasFocus() || !socket || socket.readyState !== WebSocket.OPEN) return;
         socket.send(JSON.stringify({ type: "barcode.access-capture.request", protocolVersion: DEVICE_PROTOCOL_VERSION }));
     }, [accessListenerCount]);
-    const subscribe = useCallback((context: DeviceContextName, listener: Listener) => {
+    const subscribe = useCallback((context: DeviceContextName, listener: Listener, options: DeviceSubscriptionOptions = {}) => {
         const group = listeners.current.get(context) ?? new Set<Listener>();
         group.add(listener);
         listeners.current.set(context, group);
-        if (context === "access") setAccessListenerCount(group.size);
+        if (context === "access") {
+            setAccessListenerCount(group.size);
+            if (options.captureAllKeyboardBursts) setAccessKeyboardCaptureCount((value) => value + 1);
+        }
         if (context === "access") requestAccessCapture();
         return () => {
             group.delete(listener);
             if (!group.size) listeners.current.delete(context);
             if (context === "access") {
                 setAccessListenerCount(group.size);
+                if (options.captureAllKeyboardBursts) setAccessKeyboardCaptureCount((value) => Math.max(0, value - 1));
                 if (!group.size) releaseAccessCapture();
             }
         };
@@ -121,7 +130,7 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         if (!enabled && accessListenerCount === 0) return;
         // Access must explain even a short invalid scan; product capture keeps
         // its usual minimum so ordinary typing does not become a product read.
-        const scanner = new KeyboardWedgeScanner({ minimumLength: accessListenerCount > 0 ? 1 : 4 });
+        const scanner = new KeyboardWedgeScanner({ minimumLength: accessKeyboardCaptureCount > 0 ? 1 : 4 });
         let editableSnapshot: EditableSnapshot | null = null;
         let burstTarget: EventTarget | null = null;
         const reset = () => { scanner.reset(); editableSnapshot = null; burstTarget = null; };
@@ -137,6 +146,13 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
             const scan = scanner.push({ key: event.key, code: event.code, shiftKey: event.shiftKey, capsLock: event.getModifierState("CapsLock") }, occurredAt);
             if (!scan) {
                 if (event.key === "Enter" || (event.key.length !== 1 && !["Shift", "CapsLock"].includes(event.key))) reset();
+                return;
+            }
+            const hasAccessListener = Boolean(listeners.current.get("access")?.size);
+            const accessReceivesScan = hasAccessListener
+                && (accessKeyboardCaptureCount > 0 || scan.badgeBarcode !== null || isBadgeBarcode(scan.barcode));
+            if (hasAccessListener && !accessReceivesScan) {
+                reset();
                 return;
             }
             event.preventDefault();
@@ -164,7 +180,7 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
             window.removeEventListener("blur", reset);
             document.removeEventListener("visibilitychange", reset);
         };
-    }, [deliverScan, enabled, accessListenerCount]);
+    }, [deliverScan, enabled, accessListenerCount, accessKeyboardCaptureCount]);
     useEffect(() => {
         if (!enabled && accessListenerCount === 0) return; let socket: WebSocket | null = null; let timer: ReturnType<typeof setTimeout> | undefined; let stopped = false; let retry = 0; const delays = [1000, 2000, 5000, 10000, 30000];
         const connect = () => { if (stopped) return; setStatus(retry ? "reconnecting" : "connecting"); const base = process.env.NEXT_PUBLIC_DEVICE_MANAGER_URL ?? "wss://localhost:47831"; const token = localStorage.getItem(TOKEN_KEY); const url = new URL(base); if (token) url.searchParams.set("token", token); socket = new WebSocket(url); socketRef.current = socket;
@@ -206,4 +222,13 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
     return <DeviceManagerContext.Provider value={value}>{children}</DeviceManagerContext.Provider>;
 }
 export function useDeviceManager() { const value = useContext(DeviceManagerContext); if (!value) throw new Error("useDeviceManager must be used inside DeviceManagerProvider"); return value; }
-export function useDeviceSubscription(context: DeviceContextName, listener: Listener, active = true): void { const { subscribe } = useDeviceManager(); const reference = useRef(listener); useEffect(() => { reference.current = listener; }, [listener]); useEffect(() => active ? subscribe(context, (event) => reference.current(event)) : undefined, [active, context, subscribe]); }
+/**
+ * Receives scans for a device workflow while the subscription is active.
+ *
+ * @param context - Consumer domain that owns delivered scans.
+ * @param listener - Invoked with each accepted scanner event.
+ * @param active - Whether the subscription should currently receive scans.
+ * @param options - Keyboard-capture behavior for the active consumer.
+ * @returns Nothing.
+ */
+export function useDeviceSubscription(context: DeviceContextName, listener: Listener, active = true, options?: DeviceSubscriptionOptions): void { const { subscribe } = useDeviceManager(); const reference = useRef(listener); const captureAllKeyboardBursts = options?.captureAllKeyboardBursts === true; useEffect(() => { reference.current = listener; }, [listener]); useEffect(() => active ? subscribe(context, (event) => reference.current(event), { captureAllKeyboardBursts }) : undefined, [active, captureAllKeyboardBursts, context, subscribe]); }

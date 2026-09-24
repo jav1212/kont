@@ -135,7 +135,13 @@ async function attachPendingReferralCode() {
 async function signIn(email: string, password: string): Promise<string | null> {
     dispatch({ type: "LOADING" });
     const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
-    if (error) { dispatch({ type: "SET_ERROR", error: error.message }); return error.message; }
+    if (error) {
+        const message = error.code === "invalid_credentials" || error.message.toLowerCase() === "invalid login credentials"
+            ? "Correo o contraseña incorrectos."
+            : error.message;
+        dispatch({ type: "SET_ERROR", error: message });
+        return message;
+    }
 
     // Verificar que no sea una cuenta de administrador
     try {

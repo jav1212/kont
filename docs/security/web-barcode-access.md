@@ -2,6 +2,12 @@
 
 Estado: el código está preparado, pero la funcionalidad no está desplegada ni activada en producción. El alcance funcional y las evidencias locales se mantienen en [Acceso por carnet en la Web](../architecture/web-barcode-access-plan.md).
 
+## Lectura defensiva desde el inicio de sesión
+
+La pantalla `/sign-in` mantiene los dos métodos visibles: **Correo** y **Carnet**. Mientras el operador usa Correo, una lectura rápida que contiene un carnet válido abre automáticamente Carnet y se valida como tal; así el valor del código no termina en los campos de correo o contraseña ni produce el mensaje técnico del proveedor. La escritura y el envío normales del formulario de correo conservan su comportamiento; el rechazo `invalid_credentials` se muestra como **Correo o contraseña incorrectos.** Los demás rechazos conservan su mensaje específico.
+
+La comprobación de la terminal puede seguir en curso cuando se lee el carnet. En ese caso sólo se conserva en memoria el primer código válido y se procesa cuando la terminal queda lista. La cola se descarta si la pantalla deja de estar activa, la terminal no está disponible o el acceso termina. La pantalla coordina ambos métodos para que no se emitan autenticaciones concurrentes: durante una autenticación se bloquea el cambio de método y una lectura no inicia una segunda solicitud.
+
 ## Modelo de acceso
 
 Un carnet impreso contiene un código `KONT-…` generado con 128 bits de entropía para Code 128. Es el único factor solicitado: una copia del carnet permite el acceso y debe tratarse como una credencial perdida. La base de datos conserva el hash usado para escanear y un solo carnet activo por titular y tenant; los nuevos carnets también guardan, sólo para reimpresión, el mismo valor cifrado con AES-256-GCM v1.
