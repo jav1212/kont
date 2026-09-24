@@ -1,6 +1,6 @@
 # Seguridad y operación del acceso por carnet en la Web
 
-Estado: el código está preparado, pero la funcionalidad no está desplegada ni activada en producción. El alcance funcional y las evidencias locales se mantienen en [Acceso por carnet en la Web](../architecture/web-barcode-access-plan.md).
+Estado: el acceso por carnet está activo en producción. El 24 de septiembre de 2026 se aplicó la migración 269 y `barcode_access_protection_ready()` devolvió `true`; falta validar un escaneo físico en caja. El alcance funcional se mantiene en [Acceso por carnet en la Web](../architecture/web-barcode-access-plan.md).
 
 ## Lectura defensiva desde el inicio de sesión
 
@@ -45,6 +45,14 @@ Las tablas `barcode_access_terminals`, `barcode_access_badges`, `barcode_access_
 La migración 255 añade una guarda de pre-solicitud de PostgREST y políticas RLS restrictivas a las tablas con RLS de `public`, `storage`, `realtime` y los esquemas `tenant_*`. Si el JWT pertenece a una sesión registrada de carnet, las consultas directas a datos, RPC, Storage y Realtime se rechazan. Las rutas Web revalidan sesión, terminal, carnet, membresía y tenant antes de operar. Logo y avatar se sirven mediante API Web para conservar esa protección.
 
 La función `barcode_access_protection_ready()` impide enrolar terminales si la guarda no está instalada, o si una tabla con RLS nueva no tiene la política restrictiva. Toda migración que agregue una tabla con RLS debe preservar esa política antes de que se active el acceso por carnet.
+
+### Recuperación si la protección deja de estar lista
+
+Si `SELECT public.barcode_access_protection_ready();` devuelve `false`, el acceso por carnet falla cerrado y una caja puede informar que la terminal no está lista. Una migración posterior puede haber creado una tabla con RLS dentro del alcance de la guarda de 255 sin añadirle `barcode_web_only`; por eso una base que ya tenía la protección puede quedar no preparada.
+
+Para recuperar una instalación parcial, ejecutar por SQL [269_restore_barcode_access_rls_guards.sql](../../supabase/migrations/269_restore_barcode_access_rls_guards.sql). Recorre las tablas con RLS de `public` y los esquemas `tenant_*`; en `storage` y `realtime` sólo considera tablas que ya tengan una política permisiva. Crea `barcode_web_only` sólo donde falta, para `authenticated` en tablas de aplicación y para `PUBLIC` en las tablas de proveedor. No modifica la función de preparación ni las políticas existentes. Puede ejecutarse de nuevo cuando las políticas existentes tengan el carácter restrictivo y los roles esperados; se detiene ante una política homónima permisiva o con roles inesperados para evitar relajar la protección. Reaplicarla después de migraciones que creen tablas con RLS en ese alcance sin la guarda.
+
+Después, comprobar `SELECT public.barcode_access_protection_ready();` y esperar `true`. En una caja enrolada, confirmar además que `GET /api/auth/barcode/session` devuelve `data.terminal.ready: true`. Esta reparación no rota terminales ni carnets, por lo que no exige reemitirlos. En producción se aplicó 269 y la comprobación de preparación devolvió `true`; el escaneo físico en caja sigue pendiente de validación.
 
 No hay promesa de funcionamiento sin conexión ni de identificación de hardware. La revocación toma efecto en la siguiente solicitud protegida; no retira datos que ya se hayan enviado al navegador.
 

@@ -1,6 +1,6 @@
 # Acceso por carnet en la Web
 
-Fecha: 2026-09-10. Estado: implementación preparada en el repositorio; no desplegada ni activada en producción.
+Fecha: 2026-09-10. Estado: acceso por carnet activo en producción. La migración 269 se aplicó el 24 de septiembre de 2026 y la comprobación de preparación devolvió `true`; queda validar el escaneo físico en caja.
 
 ## Alcance acordado
 
@@ -8,7 +8,7 @@ Un usuario de la Web inicia sesión al escanear un carnet, sin PIN. El carnet es
 
 Se conserva el inicio de sesión convencional para recuperación. El detalle de seguridad, operación y activación está en [Acceso por carnet en la Web](../security/web-barcode-access.md).
 
-## Implementado en el código pendiente de despliegue
+## Implementado
 
 - Un perfil de navegador se enrola como terminal para un tenant. Su secreto aleatorio se guarda sólo en una cookie `HttpOnly`, `Secure` en producción y `SameSite=Strict`; la terminal no equivale a una prueba de hardware.
 - Un propietario o administrador con el permiso canónico `access.manage` puede gestionar terminales y carnets en `/settings/access` desde una sesión por carnet o convencional; las guardas de validez de sesión y tenant se mantienen. La pantalla permite seleccionar miembros confirmados del tenant, emitirlos en lote y seleccionar por `badgeId` cuáles de los carnets activos reimprimibles se exportarán. Las emisiones mayores se dividen en grupos de hasta 50 destinatarios; el PDF contiene exactamente los carnets marcados en una o más hojas A4.
@@ -22,6 +22,8 @@ Se conserva el inicio de sesión convencional para recuperación. El detalle de 
 Las migraciones [254](../../supabase/migrations/254_barcode_access_foundation.sql) y [255](../../supabase/migrations/255_barcode_access_direct_data_guard.sql) son parte inseparable de esta entrega. La segunda impide que el JWT de una sesión de carnet acceda directamente a PostgREST/RPC, Storage o Realtime; esos recursos deben pasar por las rutas Web protegidas. Las rutas de imágenes actúan como proxy para logo y avatar.
 
 La migración [262](../../supabase/migrations/262_barcode_badge_reprinting.sql) añade el cifrado de reimpresión a la tabla existente y una RPC de emisión de cinco argumentos, exclusiva de `service_role`; mantiene compatible la variante anterior de cuatro argumentos. Los carnets anteriores necesitan una reemisión explícita para habilitar la reimpresión.
+
+La migración [269](../../supabase/migrations/269_restore_barcode_access_rls_guards.sql) recupera la preparación de acceso cuando una migración posterior a 255 añadió una tabla con RLS sin la política restrictiva `barcode_web_only`. Recorre las tablas con RLS de `public` y `tenant_*`, además de las tablas de `storage` y `realtime` que ya cuenten con una política permisiva. Añade la guarda sólo donde falta, para `authenticated` en aplicación y `PUBLIC` en proveedor, sin modificar la función de preparación ni las políticas existentes. Puede repetirse si las políticas existentes son restrictivas y tienen los roles esperados; se detiene ante una política homónima permisiva o con roles distintos. Tras aplicarla, verificar `SELECT public.barcode_access_protection_ready();` con resultado `true` y, en una caja enrolada, `GET /api/auth/barcode/session` con `data.terminal.ready: true`. No requiere reemitir carnets ni enrolar otra vez la terminal. En producción se aplicó 269 y la comprobación de preparación devolvió `true`; el escaneo físico en caja sigue pendiente de validación.
 
 ## Contrato Web
 
@@ -40,13 +42,9 @@ La migración [262](../../supabase/migrations/262_barcode_badge_reprinting.sql) 
 
 Los errores de validación de carnet son deliberadamente genéricos y las rutas de mutación requieren mismo origen. La emisión en lote se limita a 20 solicitudes por IP y tenant cada minuto; cada solicitud admite de 1 a 50 UUID de usuarios distintos del tenant. Las respuestas de emisión y reimpresión son `no-store`, están limitadas por tasa y se auditan; no exponen el código a persistencia o registros del navegador. En producción, la limitación de intentos falla cerrada si no están configurados Upstash Redis REST URL y token.
 
-## Activación pendiente
+## Validación operativa pendiente
 
-1. Aplicar las migraciones 254 y 255 en el orden indicado y comprobar que `barcode_access_protection_ready()` devuelve verdadero.
-2. Desplegar el código con `KONTAVE_BARCODE_ACCESS_ENABLED` distinto de `true`. En ese estado no se enrolan terminales ni se permiten inicios por carnet.
-3. Configurar `KONTAVE_BARCODE_ACCESS_ENABLED=true` y las credenciales de Upstash sólo para el piloto. En producción Upstash es obligatorio.
-4. Validar con una cuenta de prueba real de Supabase el ciclo completo de emisión, escaneo, renovación, bloqueo, revocación y el aislamiento de datos; también probar un lector USB tipo teclado y, si se usa, un Device Manager que anuncie `barcode.access-capture.v1`.
-5. Empezar con un tenant y una terminal. Mantener el interruptor en falso si falla cualquiera de esas comprobaciones.
+Validar en una caja enrolada un escaneo físico de carnet, incluido el lector USB tipo teclado y, si se usa, un Device Manager que anuncie `barcode.access-capture.v1`. La preparación de la base ya se confirmó en producción tras aplicar 269, pero esa comprobación no confirma el resultado de una lectura física.
 
 Para revertir, desactivar el interruptor para impedir nuevos inicios y conservar las migraciones, las comprobaciones y los tombstones de sesión. No se debe volver a una versión que devuelva un JWT de carnet sin las guardas de la migración 255 mientras pueda existir uno de esos JWT.
 
