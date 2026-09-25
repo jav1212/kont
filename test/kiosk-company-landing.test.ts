@@ -40,7 +40,7 @@ test("switching from kiosk to a standard company resolves its standard landing",
 test("switching between kiosk companies keeps the kiosk landing independent of the previous company", () => {
   assert.equal(
     resolveCompanyProfileLanding("kiosk", modules("sales", "inventory"), ["sales.read"], true),
-    "/sales",
+    "/sales/archive",
   );
   assert.equal(
     resolveCompanyProfileLanding("kiosk", modules("sales", "inventory"), ["sales.read", "sales.create"], true),

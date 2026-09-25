@@ -93,6 +93,7 @@ import { resolveDesktopSettings } from "./settings/desktop-settings";
 import {
   defaultModuleNavigationTarget,
   desktopBreadcrumbs,
+  permittedDesktopStaticNavigationTarget,
   desktopStaticNavigationTarget,
   moduleNavigationSections,
 } from "./module-navigation";
@@ -250,10 +251,15 @@ function DesktopAppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeModuleId =
     workspace.status === "ready" ? workspace.activeModuleId : null;
+  const activeWorkspaceScopes =
+    workspace.status === "ready"
+      ? workspace.workspaces.find((entry) => entry.id === workspace.activeWorkspaceId)
+          ?.scopes ?? []
+      : [];
   const [navigationModuleId, setNavigationModuleId] = useState(activeModuleId);
   const [activeNavigationTarget, setActiveNavigationTarget] =
     useState<NavigationTarget | null>(() =>
-      defaultModuleNavigationTarget(activeModuleId),
+      defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes),
     );
   const connectivity = useSyncExternalStore(
     desktopConnectivityStore.subscribe,
@@ -264,7 +270,13 @@ function DesktopAppShell({
   // A module owns its navigation history; switching modules starts at its portable default.
   if (navigationModuleId !== activeModuleId) {
     setNavigationModuleId(activeModuleId);
-    setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId));
+    setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes));
+  }
+  if (
+    activeNavigationTarget?.id === "sales.dashboard" &&
+    (!activeWorkspaceScopes.includes("sales.read") || !activeWorkspaceScopes.includes("sales.read.dashboard"))
+  ) {
+    setActiveNavigationTarget(defaultModuleNavigationTarget("sales", activeWorkspaceScopes));
   }
   useEffect(
     () =>
@@ -328,6 +340,7 @@ function DesktopAppShell({
   const navigationSections = moduleNavigationSections(
     activeModuleId,
     activeNavigationTarget,
+    activeWorkspaceScopes,
   );
   const breadcrumbs = desktopBreadcrumbs(
     activeNavigationTarget,
@@ -453,7 +466,7 @@ function DesktopAppShell({
           closeDrawer();
           if (itemId === "help") openExternal(itemId);
           else {
-            const target = desktopStaticNavigationTarget(itemId);
+            const target = permittedDesktopStaticNavigationTarget(itemId, activeWorkspaceScopes);
             if (target) setActiveNavigationTarget(target);
             else
               presentFeedback.execute(
@@ -557,7 +570,7 @@ function DesktopAppShell({
                 setActiveNavigationTarget(
                   settingsDetail
                     ? desktopStaticNavigationTarget("settings")
-                    : defaultModuleNavigationTarget(activeModuleId),
+                    : defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes),
                 )
               }
             >

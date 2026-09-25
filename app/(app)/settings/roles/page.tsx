@@ -54,6 +54,11 @@ const ACTION_LABELS: Record<string, string> = {
     manage: "Gestionar",
 };
 
+function permissionLabel(permission: Permission): string {
+    if (permission.code === "sales.read.dashboard") return "Ver tablero e indicadores de ventas";
+    return ACTION_LABELS[permission.action] ?? permission.action;
+}
+
 /**
  * Renders the organization role-permission settings and protects the owner role from changes.
  *
@@ -193,7 +198,7 @@ export default function RolesSettingsPage() {
                                                             {checked && <Check size={13} strokeWidth={3} />}
                                                         </span>
                                                         <span className="min-w-0 flex-1">
-                                                            <span className="block font-mono text-[12px] text-foreground">{ACTION_LABELS[permission.action] ?? permission.action}</span>
+                                                            <span className="block font-mono text-[12px] text-foreground">{permissionLabel(permission)}</span>
                                                             <span className="block font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5">{permission.description}</span>
                                                         </span>
                                                         <span className="font-mono text-[10px] text-[var(--text-disabled)] hidden sm:block">{permission.code}</span>

@@ -180,8 +180,13 @@ const supportedDestinations = new Set<StaticDestinationId>([
 export function moduleNavigationSections(
   moduleId: string | null,
   activeTarget: NavigationTarget | null,
+  scopes: readonly string[] = [],
 ): readonly WorkspaceSidebarSection[] {
-  const items = moduleId ? (DESKTOP_DESTINATIONS[moduleId] ?? []) : [];
+  const items = moduleId
+    ? (DESKTOP_DESTINATIONS[moduleId] ?? []).filter(
+        (item) => item.id !== "sales.dashboard" || scopes.includes("sales.read.dashboard"),
+      )
+    : [];
   const groups = new Map<string, NavigationItemPresentation[]>();
   for (const item of items) {
     const group = item.group ?? "";
@@ -203,10 +208,18 @@ export function moduleNavigationSections(
 
 export function defaultModuleNavigationTarget(
   moduleId: string | null,
+  scopes: readonly string[] = [],
 ): NavigationTarget | null {
-  const destination = moduleId
-    ? DESKTOP_DESTINATIONS[moduleId]?.[0]
-    : undefined;
+  const destinations = moduleId ? (DESKTOP_DESTINATIONS[moduleId] ?? []) : [];
+  const destination = moduleId === "sales"
+    ? scopes.includes("sales.read.dashboard") && scopes.includes("sales.read")
+      ? destinations.find((item) => item.id === "sales.dashboard")
+      : scopes.includes("sales.read") && scopes.includes("sales.create")
+        ? destinations.find((item) => item.id === "sales.point-of-sale")
+        : scopes.includes("sales.read")
+          ? destinations.find((item) => item.id === "sales.archive")
+          : undefined
+    : destinations[0];
   return destination ? staticNavigationTarget(destination.id) : null;
 }
 
@@ -215,6 +228,20 @@ export function desktopStaticNavigationTarget(
 ): NavigationTarget | null {
   if (!supportedDestinations.has(id as StaticDestinationId)) return null;
   return staticNavigationTarget(id as StaticDestinationId);
+}
+
+/**
+ * Resolves a Desktop route only when its explicit workspace grant permits it.
+ * @param id - Requested static navigation identifier.
+ * @param scopes - Exact permissions of the active workspace.
+ * @returns The permitted target, or null for an unavailable route.
+ */
+export function permittedDesktopStaticNavigationTarget(
+  id: string,
+  scopes: readonly string[],
+): NavigationTarget | null {
+  if (id === "sales.dashboard" && (!scopes.includes("sales.read") || !scopes.includes("sales.read.dashboard"))) return null;
+  return desktopStaticNavigationTarget(id);
 }
 
 export function desktopBreadcrumbs(

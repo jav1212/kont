@@ -4,6 +4,7 @@ import {
   getModuleVisibilityPermission,
   getOrganizationRouteAccess,
   hasOrganizationPermission,
+  resolveSalesLanding,
 } from "../../organizations/frontend/module-access-policy";
 
 /** Safe authenticated entry used immediately after a successful badge exchange. */
@@ -37,6 +38,8 @@ export function resolveBarcodeWorkspaceLanding(
   const visibility = getModuleVisibilityPermission(navigation.id);
   if (visibility && !hasOrganizationPermission(permissions, visibility))
     return "/tools";
+
+  if (navigation.id === "sales") return resolveSalesLanding(permissions);
 
   const routeAccess = getOrganizationRouteAccess(navigation.href);
   if (routeAccess.kind === "unknown") return "/tools";

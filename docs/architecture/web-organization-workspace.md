@@ -311,6 +311,26 @@ Siguen siendo la fuente de aprovisionamiento de los perfiles predeterminados
 de organizaciones existentes y futuras; una personalización local no modifica
 esas plantillas ni los valores predeterminados de otra organización.
 
+### Tablero de ventas
+
+`sales.read` conserva la consulta operativa de ventas, sus detalles y el
+archivo. `sales.read.dashboard` es una concesión independiente para el tablero
+y sus indicadores. La Web y Desktop exigen ambos permisos para mostrar o abrir
+el tablero; si el usuario puede vender, el destino alternativo es Punto de
+venta, y si solo puede consultar llega al archivo de ventas.
+
+El perfil predeterminado `cashier` conserva `sales.read` y, cuando también
+tiene `sales.create`, puede operar el Punto de venta. No recibe
+`sales.read.dashboard`, por lo que no ve el tablero ni sus indicadores. La
+pantalla de roles presenta ese permiso como **Ver tablero e indicadores de
+ventas** para que una organización pueda concederlo de forma explícita a un
+perfil local cuando lo necesite.
+
+La API nativa del tablero verifica `sales.read.dashboard` mediante la
+instantánea de autorización de la organización y conserva la capacidad de
+suscripción `sales.dashboard`. No convierte `sales.read` en una concesión
+implícita para datos analíticos.
+
 ## Puente de tenant operativo
 
 `requireTenant` resuelve el tenant legacy únicamente cuando su organización
@@ -368,6 +388,16 @@ permisos existentes ni los valores predeterminados usados al aprovisionar una
 organización. Revertir solo el código Web no revierte personalizaciones ya
 guardadas; para retirar la capacidad sin perderlas basta con volver a ocultar o
 denegar la mutación en la aplicación.
+
+[270_sales_dashboard_access_permission.sql](../../supabase/migrations/270_sales_dashboard_access_permission.sql)
+incorpora `sales.read.dashboard` a los catálogos compartido y de organización.
+Conserva el acceso al tablero de los roles activos que ya tienen `sales.read`,
+incluidos los roles personalizados, excepto `cashier`; elimina cualquier
+concesión previa de ese permiso a cajero. Las inserciones en permisos de rol
+activan el mecanismo existente de versión de autorización, por lo que las
+instantáneas de membresía se actualizan. La migración es aditiva y no cambia
+las políticas RLS de aislamiento por organización. Aplíquela antes de desplegar
+los consumidores Web, Desktop o nativos que exigen la nueva capacidad.
 
 La ruta de miembros a la que enlaza depende de
 [256_defer_direct_member_provisioning.sql](../../supabase/migrations/256_defer_direct_member_provisioning.sql):

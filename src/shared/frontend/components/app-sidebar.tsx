@@ -39,7 +39,7 @@ import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-up
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
-import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule } from "@/src/modules/organizations/frontend/module-access-policy";
+import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule, resolveSalesLanding } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { Tooltip } from "@heroui/react";
 
@@ -192,7 +192,13 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 if (permission && !organizationAccess.can(permission)) return false;
                 return true;
             })
-            .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
+            .map((mod) => ({
+                id: mod.id,
+                label: mod.label,
+                href: mod.id === "sales"
+                    ? resolveSalesLanding(organizationAccess.permissions ?? [])
+                    : mod.href,
+            })),
         WEB_SETTINGS_MODULE,
     ],
         [availableModuleCodes, organizationAccess, paidAccess, workspaceApplication.status]);

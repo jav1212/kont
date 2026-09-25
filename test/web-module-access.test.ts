@@ -4,6 +4,7 @@ import {
   getModuleVisibilityPermission,
   getOrganizationRouteAccess,
   hasOrganizationPermission,
+  resolveSalesLanding,
   resolveOrganizationRouteAccess,
 } from "../src/modules/organizations/frontend/module-access-policy";
 
@@ -82,6 +83,22 @@ test("organization configuration requires update permission", () => {
 test("read-only inventory user cannot open a creation workflow", () => {
   const inventoryCreate = getOrganizationRouteAccess("/inventory/operations/new");
   assert.equal(resolveOrganizationRouteAccess(inventoryCreate, { ...authenticated, permissions: ["inventory.read"] }), "denied");
+});
+
+test("the Sales dashboard needs its explicit read capability", () => {
+  const dashboard = getOrganizationRouteAccess("/sales");
+  assert.deepEqual(dashboard, { kind: "protected", permissions: ["sales.read", "sales.read.dashboard"] });
+  assert.equal(resolveOrganizationRouteAccess(dashboard, { ...authenticated, permissions: ["sales.read", "sales.create"] }), "denied");
+  assert.equal(resolveOrganizationRouteAccess(dashboard, { ...authenticated, permissions: ["sales.read", "sales.read.dashboard"] }), "allowed");
+});
+
+test("a cashier retains operational Sales access without the dashboard", () => {
+  const cashier = ["sales.read", "sales.create"];
+  assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess("/sales/archive"), { ...authenticated, permissions: cashier }), "allowed");
+  assert.equal(resolveOrganizationRouteAccess(getOrganizationRouteAccess("/sales/pos"), { ...authenticated, permissions: cashier }), "allowed");
+  assert.equal(resolveSalesLanding(cashier), "/sales/pos");
+  assert.equal(resolveSalesLanding(["sales.read"]), "/sales/archive");
+  assert.equal(resolveSalesLanding(["sales.read", "sales.read.dashboard"]), "/sales");
 });
 
 test("personal routes require a resolved authenticated session", () => {

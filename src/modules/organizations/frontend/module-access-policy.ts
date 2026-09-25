@@ -20,7 +20,7 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/inventory", ["inventory.read"]], ["/inventory/adjustments/generator", ["inventory.read", "inventory.create"]], ["/inventory/balance-report", ["inventory.read"]], ["/inventory/closings", ["inventory.read"]], ["/inventory/compras-pendientes", ["inventory.read"]], ["/inventory/compras-pendientes/[id]", ["inventory.read"]], ["/inventory/departments", ["inventory.read"]], ["/inventory/departments/[id]", ["inventory.read"]], ["/inventory/import", ["inventory.read", "inventory.create"]], ["/inventory/inventory-ledger", ["inventory.read"]], ["/inventory/islr-report", ["inventory.read"]], ["/inventory/movements", ["inventory.read"]], ["/inventory/operations", ["inventory.read"]], ["/inventory/operations/new", ["inventory.read", "inventory.create"]], ["/inventory/products", ["inventory.read"]], ["/inventory/products/[id]", ["inventory.read"]], ["/inventory/purchase-ledger", ["inventory.read"]], ["/inventory/report", ["inventory.read"]], ["/inventory/sales", ["inventory.read"]], ["/inventory/sales/generator", ["inventory.read", "inventory.create"]], ["/inventory/sales/new-manual", ["inventory.read", "inventory.create"]], ["/inventory/sales-ledger", ["inventory.read"]],
   ["/payroll", ["payroll.read"]], ["/payroll/ari", ["payroll.read"]], ["/payroll/employees", ["payroll.read", "employees.read"]], ["/payroll/history", ["payroll.read"]], ["/payroll/liquidations", ["payroll.read"]], ["/payroll/profit-sharing", ["payroll.read"]], ["/payroll/settings", ["payroll.read"]], ["/payroll/social-benefits", ["payroll.read"]], ["/payroll/tablero", ["payroll.read"]], ["/payroll/vacations", ["payroll.read"]],
   ["/purchases", ["purchases.read"]], ["/purchases/[id]", ["purchases.read"]], ["/purchases/archive", ["purchases.read"]], ["/purchases/import", ["purchases.read", "purchases.create", "inventory.create"]], ["/purchases/import-book", ["purchases.read", "purchases.create"]], ["/purchases/new", ["purchases.read", "purchases.create"]], ["/purchases/new/quick", ["purchases.read", "purchases.create"]], ["/purchases/new-manual", ["purchases.read", "purchases.create"]], ["/purchases/suppliers", ["purchases.read"]], ["/purchases/suppliers/[id]", ["purchases.read"]],
-  ["/sales", ["sales.read"]], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
+  ["/sales", ["sales.read", "sales.read.dashboard"]], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/receivables", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
   ["/settings/organization", ["organizations.update"]],
   ["/settings/members", ["members.read"]],
   ["/settings/roles", ["roles.read"]],
@@ -82,6 +82,25 @@ export function getOrganizationRouteAccess(pathname: string): OrganizationRouteA
  */
 export function hasOrganizationPermission(permissions: readonly string[], permission: `${string}.${string}`): boolean {
   return permissions.includes("*") || permissions.includes(permission);
+}
+
+/**
+ * Resolves the first permitted Sales destination without inferring access from
+ * a permission prefix. The board always needs its explicit capability.
+ *
+ * @param permissions - Effective permissions of the selected organization.
+ * @returns The Sales board, POS, or invoice archive available to the actor.
+ */
+export function resolveSalesLanding(permissions: readonly string[]): "/sales" | "/sales/pos" | "/sales/archive" {
+  if (
+    hasOrganizationPermission(permissions, "sales.read") &&
+    hasOrganizationPermission(permissions, "sales.read.dashboard")
+  ) return "/sales";
+  if (
+    hasOrganizationPermission(permissions, "sales.read") &&
+    hasOrganizationPermission(permissions, "sales.create")
+  ) return "/sales/pos";
+  return "/sales/archive";
 }
 
 /**

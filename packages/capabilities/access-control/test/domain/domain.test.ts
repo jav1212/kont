@@ -5,6 +5,7 @@ import { AuthorizationSource, PERMISSIONS, SameOrganizationPolicy, permissionCod
 test("permission catalog rejects unknown and misspelled permissions", () => {
   assert.equal(permissionCode(PERMISSIONS.BILLING_READ), "billing.read");
   assert.equal(permissionCode(PERMISSIONS.ACCESS_MANAGE), "access.manage");
+  assert.equal(permissionCode(PERMISSIONS.SALES_READ_DASHBOARD), "sales.read.dashboard");
   assert.throws(() => permissionCode("billing.delet"), /Unknown permission/);
   assert.throws(() => permissionCode("access.read"), /Unknown permission/);
 });

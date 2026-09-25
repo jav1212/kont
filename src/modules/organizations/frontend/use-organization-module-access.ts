@@ -12,13 +12,14 @@ export type OrganizationAccessState = OrganizationRouteAccessState;
  * Missing organization data and directory failures intentionally fail closed.
  *
  * @param pathname - Current Web pathname.
- * @returns The route requirement, access state, selected organization name, and permission predicate.
+ * @returns The route requirement, access state, selected organization name, effective permissions, and permission predicate.
  * @throws Error when called outside OrganizationProvider.
  */
 export function useOrganizationModuleAccess(pathname: string): {
   readonly routeAccess: OrganizationRouteAccess;
   readonly state: OrganizationAccessState;
   readonly organizationName: string | null;
+  readonly permissions: readonly string[];
   readonly can: (permission: `${string}.${string}`) => boolean;
 } {
   const { organization, loading, error } = useOrganization();
@@ -28,5 +29,11 @@ export function useOrganizationModuleAccess(pathname: string): {
     authStatus === "authenticated" && !!organization && !loading && !error && hasOrganizationPermission(organization.permissions, permission),
   [authStatus, error, loading, organization]);
   const state = resolveOrganizationRouteAccess(routeAccess, { authStatus, loading, error, permissions: organization?.permissions ?? null });
-  return { routeAccess, state, organizationName: organization?.name ?? null, can };
+  return {
+    routeAccess,
+    state,
+    organizationName: organization?.name ?? null,
+    permissions: organization?.permissions ?? [],
+    can,
+  };
 }

@@ -47,6 +47,8 @@ export const PERMISSIONS = {
   PURCHASES_CONFIRM: "purchases.confirm",
   PURCHASES_CANCEL: "purchases.cancel",
   SALES_READ: "sales.read",
+  SALES_READ_DASHBOARD: "sales.read.dashboard",
+  SALES_READ_REPORTING: "sales.read.reporting",
   SALES_CREATE: "sales.create",
   SALES_UPDATE: "sales.update",
   SALES_CONFIRM: "sales.confirm",

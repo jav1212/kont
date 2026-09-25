@@ -12,7 +12,7 @@ test("a cashier badge lands on its committed Sales module", () => {
       available("sales", "inventory", "tools", "companies"),
       ["companies.read", "inventory.read", "sales.read", "sales.create"],
     ),
-    "/sales",
+    "/sales/pos",
   );
 });
 

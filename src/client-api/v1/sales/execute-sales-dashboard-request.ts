@@ -43,7 +43,7 @@ export async function executeSalesDashboardRequest(
     const organization = organizationId(rawOrganizationId),
       company = companyId(rawCompanyId),
       occurredAt = new Date().toISOString(),
-      permission = permissionCode(PERMISSIONS.SALES_READ);
+      permission = permissionCode(PERMISSIONS.SALES_READ_DASHBOARD);
     const access = (
       await createOrganizationAccessActions().portfolio.execute(
         userId(identity.userId),

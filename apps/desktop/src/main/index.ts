@@ -60,6 +60,7 @@ import { DesktopPortalMonitoringSource } from "./portal-monitoring/desktop-porta
 import { DesktopSettingsController } from "./settings/desktop-settings-controller";
 import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller";
 import { DesktopSalesDashboardController } from "./sales/desktop-sales-dashboard-controller";
+import { hasSalesDashboardAccess } from "./sales/sales-dashboard-access";
 import { DesktopInventoryOperationsController } from "./inventory/desktop-inventory-operations-controller";
 import { DesktopPurchasingDashboardController } from "./purchasing/desktop-purchasing-dashboard-controller";
 import { DesktopProductsController } from "./products/desktop-products-controller";
@@ -328,12 +329,14 @@ function registerIpc(): void {
   ipcMain.handle(
     DESKTOP_IPC.getSalesDashboard,
     (_event, organizationId, companyId, query) =>
-      salesDashboardController().getDashboard(
+      hasSalesDashboardAccess(workspaceController().getState(), organizationId)
+        ? salesDashboardController().getDashboard(
         authenticatedActorId(),
         organizationId,
         companyId,
         query,
-      ),
+      )
+        : Promise.resolve({ ok: false as const, error: { code: "SALES_DASHBOARD_FORBIDDEN", message: "No tienes acceso al tablero de ventas.", requestId: null } }),
   );
   ipcMain.handle(
     DESKTOP_IPC.listInventoryEntries,
@@ -603,6 +606,7 @@ function salesDashboardController(): DesktopSalesDashboardController {
     throw new Error("Desktop sales dashboard is not initialized.");
   return salesDashboard;
 }
+
 
 function inventoryOperationsController(): DesktopInventoryOperationsController {
   if (!inventoryOperations)
