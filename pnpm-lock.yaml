@@ -270,6 +270,9 @@ importers:
       '@kontave/organizations':
         specifier: workspace:*
         version: link:../../packages/capabilities/organizations
+      '@kontave/sales':
+        specifier: workspace:*
+        version: link:../../packages/business/sales
       '@kontave/settings':
         specifier: workspace:*
         version: link:../../packages/experience/settings
@@ -793,6 +796,9 @@ importers:
 
   packages/business/sales:
     dependencies:
+      '@kontave/access-control':
+        specifier: workspace:*
+        version: link:../../capabilities/access-control
       '@kontave/companies':
         specifier: workspace:*
         version: link:../companies
