@@ -110,6 +110,23 @@ Notes:
 - Its `SECURITY DEFINER` lookup is read-only, uses a fixed catalog search path, and does not bypass table RLS for the write itself.
 - [document-organization-compatibility.sql](../../../test/document-organization-compatibility.sql) covers legacy and native metadata writes, invalid mappings, and RLS denial in a rolled-back transaction; it does not access object storage.
 
+### `public.shared_sales_receivables` and `public.shared_sales_receivable_payments`
+
+Purpose:
+- commercial accounts receivable created when a shared sales invoice confirms on credit
+- immutable partial-payment history in the debt or another accepted currency
+
+Key concepts:
+- a receivable is unique for `(tenant_id, sales_invoice_id)` and retains the identified customer, due date, original debt amount, debt currency and the sale-time exchange-rate snapshot
+- each payment retains received amount and currency, the payment-time rate snapshot, the amount applied to the debt, a tenant-scoped idempotency key, optional payment method and reference
+- the database derives the applied amount from both rate snapshots, rejects overpayments, serializes concurrent payments with a row lock, and marks the account `settled` only when its original principal is fully covered
+- source `identity` represents a VES-to-VES rate; `bcv`, `manual` and `legacy` preserve the origin of non-identity snapshots
+
+Notes:
+- The local files [20260925192503_sales_credit_receivables.sql](../../../supabase/migrations/20260925192503_sales_credit_receivables.sql), [20260925192914_sales_receivable_identity_rate_source.sql](../../../supabase/migrations/20260925192914_sales_receivable_identity_rate_source.sql), [20260925193135_credit_requires_identified_customer.sql](../../../supabase/migrations/20260925193135_credit_requires_identified_customer.sql) and [20260925193901_receivable_payment_idempotency_race.sql](../../../supabase/migrations/20260925193901_receivable_payment_idempotency_race.sql) form one deployment unit before clients use POS credit or receivable payments. Their timestamped prefixes match the migration entries applied through Supabase MCP.
+- confirmation creates the receivable only for a credit invoice with a due date, complete sale-rate snapshot and an identified customer. It does not backfill historical invoices.
+- authenticated users can read rows permitted by their active tenant membership. Only `service_role` can execute `shared_sales_receivable_apply_payment`; the Web API supplies the application permission check.
+
 ### `public.products`
 
 Purpose:

@@ -26,6 +26,11 @@ type RawInvoice = {
     sales_channel: string | null;
     due_date: string | null;
     payment_terms: string | null;
+    credit_currency: string | null;
+    credit_amount: number | string | null;
+    credit_exchange_rate: number | string | null;
+    credit_rate_effective_date: string | null;
+    credit_rate_source: 'bcv' | 'manual' | 'legacy' | 'identity' | null;
     status: string;
     subtotal: number | string | null;
     vat_amount: number | string | null;
@@ -96,6 +101,11 @@ const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     numero_factura: invoice.invoiceNumber, numero_control: invoice.controlNumber ?? '',
     fecha: invoice.date, periodo: invoice.period, periodo_manual: invoice.periodoManual ?? false,
     fecha_vencimiento: invoice.dueDate ?? null, condiciones_pago: invoice.paymentTerms ?? 'contado',
+    moneda_credito: invoice.creditCurrency ? normalizeCurrencyCode(invoice.creditCurrency) : null,
+    monto_credito: invoice.creditAmount ?? null,
+    tasa_credito: invoice.creditExchangeRate ?? null,
+    fecha_tasa_credito: invoice.creditRateEffectiveDate ?? null,
+    fuente_tasa_credito: invoice.creditRateSource ?? null,
     subtotal: invoice.subtotal, iva_monto: invoice.vatAmount, total: invoice.total, notas: invoice.notes,
     tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null, tasa_decimales: invoice.rateDecimals ?? null,
     currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [], taxes: invoice.impuestos ?? [],
@@ -162,6 +172,11 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         const { error } = await this.source.instance.from('shared_inventory_sales_invoices').update({
             currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [],
             sales_channel: invoice.salesChannel ?? 'administrative',
+            credit_currency_code: invoice.creditCurrency ? normalizeCurrencyCode(invoice.creditCurrency) : null,
+            credit_amount: invoice.creditAmount ?? null,
+            credit_exchange_rate: invoice.creditExchangeRate ?? null,
+            credit_rate_effective_date: invoice.creditRateEffectiveDate ?? null,
+            credit_rate_source: invoice.creditRateSource ?? null,
             financial_tax_currency_code: invoice.igtfPerceptionCurrencyCode ?? null,
             financial_tax_exchange_rate: invoice.igtfPerceptionExchangeRate ?? null,
         }).eq('tenant_id', this.tenantId).eq('id', saved.id);
@@ -224,6 +239,11 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             invoiceNumber: row.invoice_number, controlNumber: row.control_number ?? '', date: row.invoice_date,
             period: row.period, periodoManual: row.manual_period === true, dueDate: row.due_date,
             paymentTerms: row.payment_terms ?? 'contado', status: row.status as SalesInvoiceStatus,
+            creditCurrency: row.credit_currency ? normalizeCurrencyCode(row.credit_currency) : null,
+            creditAmount: row.credit_amount == null ? null : num(row.credit_amount),
+            creditExchangeRate: row.credit_exchange_rate == null ? null : num(row.credit_exchange_rate),
+            creditRateEffectiveDate: row.credit_rate_effective_date,
+            creditRateSource: row.credit_rate_source,
             subtotal: num(row.subtotal), vatAmount: num(row.vat_amount), total: num(row.total), notes: row.notes ?? '',
             currency: normalizeCurrencyCode(row.currency_code),
             exchangeRates: Array.isArray(row.exchange_rates) ? row.exchange_rates as AppliedExchangeRate[] : [],

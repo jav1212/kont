@@ -113,6 +113,17 @@ export interface SalesInvoice {
     /** Condiciones de pago — texto libre o uno de los presets. */
     paymentTerms?:   PaymentTerms | string;
 
+    /** Currency in which the customer owes the confirmed credit balance. */
+    creditCurrency?: CurrencyCode | null;
+    /** Original credit principal in creditCurrency, captured at confirmation. */
+    creditAmount?: number | null;
+    /** VES per unit of creditCurrency at sale time. */
+    creditExchangeRate?: number | null;
+    /** Effective date of the exchange rate used to establish the credit. */
+    creditRateEffectiveDate?: string | null;
+    /** Source of the rate captured for the credit. */
+    creditRateSource?: 'bcv' | 'manual' | 'legacy' | 'identity' | null;
+
     status:          SalesInvoiceStatus;
 
     currency?:       CurrencyCode;

@@ -41,6 +41,8 @@ This folder is organized by purpose so project documentation and planning stay e
 
 - [architecture/MODULES_CATALOG.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/architecture/MODULES_CATALOG.md)
 - [architecture/portable-package-hardening.md](architecture/portable-package-hardening.md)
+- [Cuentas por cobrar del POS](adr/0042-pos-credit-receivables.md)
+
 - [Organizaciones en la Web](architecture/web-organization-workspace.md)
 - [Lectura HID en el POS Web](architecture/web-pos-hid-scanning.md)
 - [Acceso por carnet en Web](architecture/web-barcode-access-plan.md)

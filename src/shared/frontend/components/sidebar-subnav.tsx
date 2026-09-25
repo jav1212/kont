@@ -113,6 +113,7 @@ const NAV_ITEM_ICONS: Record<string, LucideIcon> = {
     "/sales/customers": UserRound,
     "/sales/archive": Archive,
     "/sales/igtf-fortnightly": ReceiptText,
+    "/sales/receivables": ReceiptText,
     "/inventory": LayoutDashboard,
     "/inventory/products": Package,
     "/inventory/departments": Boxes,

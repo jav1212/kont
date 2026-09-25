@@ -188,6 +188,9 @@ export function PosSaleScreen() {
     const [documentType, setDocumentType] = useState<SalesDocumentType>("venta");
     const [discountType, setDiscountType] = useState<"porcentaje" | "monto">("porcentaje");
     const [discountValue, setDiscountValue] = useState(0);
+    const [isCreditSale, setIsCreditSale] = useState(false);
+    const [creditDueDate, setCreditDueDate] = useState("");
+    const [creditCurrency, setCreditCurrency] = useState<CurrencyCode>("VES");
     const [cartOpen, setCartOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [manualPrice, setManualPrice] = useState("");
@@ -198,6 +201,8 @@ export function PosSaleScreen() {
     const [completed, setCompleted] = useState<SalesInvoice | null>(null);
     const [generatingPdf, setGeneratingPdf] = useState(false);
     const isDeliveryNote = documentType === "nota_entrega";
+    const consumerFinalId = companyId ? `consumer-final:${companyId}` : "";
+    const selectedCustomer = customers.find((customer) => customer.id === customerId);
 
     useEffect(() => {
         if (!companyId) return;
@@ -430,6 +435,8 @@ export function PosSaleScreen() {
         adjustments: emptyLineAdjustments(),
     })), [cart]);
     const totals = useMemo(() => computeInvoiceTotals(lineInputs, headerAdjustment, 2, 0, [], 1, "VES", getRate), [getRate, headerAdjustment, lineInputs]);
+    const creditRate = getRate(creditCurrency);
+    const creditAmount = creditRate && creditRate > 0 ? round2(totals.total / creditRate) : null;
 
     function changeQuantity(productId: string, quantity: number) {
         if (quantity <= 0) setCart((current) => current.filter((line) => line.product.id !== productId));
@@ -445,6 +452,22 @@ export function PosSaleScreen() {
 
     async function finishSale() {
         if (!companyId || !customerId || cart.length === 0 || finishing) return;
+        if (isCreditSale && customerId === consumerFinalId) {
+            notify.error("Una venta a crédito requiere un cliente registrado, distinto de Consumidor final.");
+            return;
+        }
+        if (isCreditSale && !creditDueDate) {
+            notify.error("Indica la fecha de vencimiento del crédito.");
+            return;
+        }
+        if (isCreditSale && creditDueDate < date) {
+            notify.error("La fecha de vencimiento no puede ser anterior a la venta.");
+            return;
+        }
+        if (isCreditSale && (creditAmount == null || creditRate == null || creditRate <= 0)) {
+            notify.error(`No hay una tasa disponible para anclar el crédito en ${creditCurrency}.`);
+            return;
+        }
         setFinishing(true);
         const items: SalesInvoiceItem[] = cart.map((line, index) => ({
             productId: line.product.id, description: line.product.name, quantity: line.quantity,
@@ -458,9 +481,17 @@ export function PosSaleScreen() {
         }));
         const invoice: SalesInvoice = {
             companyId, customerId, documentType, salesChannel: "pos", invoiceNumber: "", controlNumber: "",
-            date, period: date.slice(0, 7), periodoManual: false, dueDate: null, paymentTerms: "contado", status: "borrador",
+            date, period: date.slice(0, 7), periodoManual: false,
+            dueDate: isCreditSale ? creditDueDate : null, paymentTerms: isCreditSale ? "credito" : "contado", status: "borrador",
             currency: "VES", exchangeRates: appliedRates, subtotal: totals.baseIVA, vatAmount: totals.ivaMonto,
-            total: totals.total, notes: isDeliveryNote ? "Nota de entrega POS" : "Venta rápida POS", descuentoTipo: headerAdjustment.descuentoTipo,
+            total: totals.total,
+            notes: isDeliveryNote ? "Nota de entrega POS" : isCreditSale ? `Saldo de crédito: ${money(creditAmount ?? 0)} ${creditCurrency}. Tasa inicial: Bs ${money(creditRate ?? 0)} por ${creditCurrency} al ${publishedDate ?? date}. Vence: ${creditDueDate}.` : "Venta rápida POS",
+            creditCurrency: isCreditSale ? creditCurrency : null,
+            creditAmount: isCreditSale ? creditAmount : null,
+            creditExchangeRate: isCreditSale ? creditRate : null,
+            creditRateEffectiveDate: isCreditSale ? publishedDate ?? date : null,
+            creditRateSource: isCreditSale ? isLocalCurrency(creditCurrency) ? "identity" : (appliedRates.find((rate) => normalizeCurrencyCode(rate.currencyCode) === creditCurrency)?.source ?? "bcv") : null,
+            descuentoTipo: headerAdjustment.descuentoTipo,
             descuentoValor: headerAdjustment.descuentoValor, descuentoMonto: totals.descuentoHeader, descuentoMoneda: "VES",
             recargoTipo: null, recargoValor: 0, recargoMonto: 0, recargoMoneda: "VES", impuestos: [],
         };
@@ -475,7 +506,7 @@ export function PosSaleScreen() {
     }
 
     function resetSale() {
-        setCart([]); setDiscountValue(0); setCompleted(null); setQuery("");
+        setCart([]); setDiscountValue(0); setIsCreditSale(false); setCreditDueDate(""); setCreditCurrency("VES"); setCompleted(null); setQuery("");
         if (companyId) void ensureConsumerFinal(companyId).then((customer) => customer?.id && setCustomerId(customer.id));
         requestAnimationFrame(() => searchRef.current?.focus());
     }
@@ -517,7 +548,7 @@ export function PosSaleScreen() {
             await generateSalesInvoicePdf({
                 issuer: { name: company.name, rif: company.rif ?? "", address: company.address, phone: company.phone },
                 customer: { name: customer.name, rif: customer.rif, address: customer.address },
-                invoice: { number: completed.invoiceNumber, controlNumber: completed.controlNumber ?? "", date: completed.date, paymentTerms: completed.paymentTerms, notes: completed.notes },
+                invoice: { number: completed.invoiceNumber, controlNumber: completed.controlNumber ?? "", date: completed.date, dueDate: completed.dueDate ?? null, paymentTerms: completed.paymentTerms, notes: completed.notes },
                 items: (completed.items ?? []).map((item, index) => ({ ...commonItems[index], vatRate: item.vatRate })),
                 totals: { subtotal: completed.subtotal, baseExempt: bases.exenta, baseTaxed8: bases.reducida_8, baseTaxed16: bases.general_16, iva8: round2(bases.reducida_8 * .08), iva16: round2(bases.general_16 * .16), ivaTotal: completed.vatAmount, total: completed.total },
             });
@@ -545,8 +576,22 @@ export function PosSaleScreen() {
         <div className="border-b border-border-light p-4">
             <div className="flex gap-2"><CustomerCombobox customerId={customerId} customers={customers} onChange={setCustomerId} /><button type="button" onClick={() => setCreatingCustomer(true)} className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border-light text-primary-500 hover:bg-primary-500/10" title="Nuevo cliente"><UserPlus size={16} /></button></div>
             <div className="mt-3 grid grid-cols-2 rounded-lg border border-border-light bg-surface-2 p-1">
-                {([["venta", "Factura"], ["nota_entrega", "Nota de entrega"]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setDocumentType(value)} className={`h-9 rounded-md text-[11px] font-semibold uppercase tracking-[.08em] transition ${documentType === value ? "bg-surface-1 text-primary-500 shadow-sm" : "text-[var(--text-tertiary)] hover:text-foreground"}`}>{label}</button>)}
+                {([["venta", "Factura"], ["nota_entrega", "Nota de entrega"]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => { setDocumentType(value); if (value === "nota_entrega") setIsCreditSale(false); }} className={`h-9 rounded-md text-[11px] font-semibold uppercase tracking-[.08em] transition ${documentType === value ? "bg-surface-1 text-primary-500 shadow-sm" : "text-[var(--text-tertiary)] hover:text-foreground"}`}>{label}</button>)}
             </div>
+            {!isDeliveryNote && <div className="mt-3 rounded-lg border border-border-light bg-surface-2 p-3">
+                <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <span><span className="block text-[12px] font-semibold text-foreground">Venta a crédito</span><span className="mt-0.5 block text-[10px] text-[var(--text-tertiary)]">Registra una cuenta por cobrar con saldo anclado.</span></span>
+                    <input type="checkbox" checked={isCreditSale} onChange={(event) => setIsCreditSale(event.target.checked)} className="size-4 accent-primary-500" />
+                </label>
+                {isCreditSale && <div className="mt-3 space-y-3 border-t border-border-light pt-3">
+                    <p className={`text-[11px] ${selectedCustomer?.id === consumerFinalId ? "text-red-600" : "text-[var(--text-secondary)]"}`}>{selectedCustomer?.id === consumerFinalId ? "Selecciona un cliente registrado para otorgar crédito." : "El saldo se conservará en la moneda seleccionada."}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        <label className="block"><span className="block font-mono text-[10px] uppercase tracking-[.1em] text-[var(--text-tertiary)]">Vencimiento</span><input aria-label="Fecha de vencimiento del crédito" type="date" min={date} value={creditDueDate} onChange={(event) => setCreditDueDate(event.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-2 text-[12px] outline-none focus:border-primary-500" /></label>
+                        <CurrencyCombobox label="Moneda de la deuda" value={creditCurrency} options={currencyOptions} onChange={setCreditCurrency}/>
+                    </div>
+                    <div className={`rounded-lg px-3 py-2 text-[11px] ${creditAmount == null ? "bg-red-500/5 text-red-600" : "bg-surface-1 text-[var(--text-secondary)]"}`}>{creditAmount == null ? `No hay tasa disponible para ${creditCurrency}.` : <><span>Saldo anclado: </span><strong className="font-mono text-foreground">{money(creditAmount)} {creditCurrency}</strong><span className="ml-2">· Tasa: Bs {money(creditRate)}</span></>}</div>
+                </div>}
+            </div>}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
             {cart.length === 0 ? <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-[var(--text-tertiary)]"><ShoppingCart size={34} strokeWidth={1.4} /><p className="text-[13px]">Consulta un producto y agrégalo para comenzar.</p></div> : cart.map((line) => <div key={line.product.id} className="border-b border-border-light p-4">
@@ -559,7 +604,7 @@ export function PosSaleScreen() {
         <div className="space-y-3 border-t border-border-light p-5 shadow-[0_-8px_24px_rgba(0,0,0,.04)]">
             <div className="grid grid-cols-[120px_1fr] gap-2"><select value={discountType} onChange={(event) => setDiscountType(event.target.value as typeof discountType)} className="h-9 rounded-lg border border-border-light bg-surface-1 px-2 text-[12px]"><option value="porcentaje">Descuento %</option><option value="monto">Descuento Bs</option></select><input type="number" min="0" value={discountValue || ""} onChange={(event) => setDiscountValue(Number(event.target.value))} placeholder="0" className="h-9 rounded-lg border border-border-light bg-surface-1 px-3 text-right font-mono text-[12px] outline-none focus:border-primary-500" /></div>
             <div className="space-y-1.5 text-[12px]"><div className="flex justify-between text-[var(--text-secondary)]"><span>Subtotal</span><span>Bs {money(totals.subtotalBruto)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>Descuento</span><span>− Bs {money(totals.descuentoHeader)}</span></div><div className="flex justify-between text-[var(--text-secondary)]"><span>IVA</span><span>Bs {money(totals.ivaMonto)}</span></div><div className="flex justify-between border-t border-border-light pt-2 text-[18px] font-bold text-foreground"><span>Total</span><span>Bs {money(totals.total)}</span></div></div>
-            <button type="button" onClick={finishSale} disabled={!cart.length || !customerId || finishing} className="h-12 w-full rounded-xl bg-primary-500 text-[13px] font-bold uppercase tracking-[.12em] text-white shadow-sm transition hover:bg-primary-600 disabled:opacity-50">{finishing ? "Confirmando…" : isDeliveryNote ? "Emitir nota de entrega" : "Finalizar venta"}</button>
+            <button type="button" onClick={finishSale} disabled={!cart.length || !customerId || finishing || (isCreditSale && (customerId === consumerFinalId || !creditDueDate || creditAmount == null))} className="h-12 w-full rounded-xl bg-primary-500 text-[13px] font-bold uppercase tracking-[.12em] text-white shadow-sm transition hover:bg-primary-600 disabled:opacity-50">{finishing ? "Confirmando…" : isDeliveryNote ? "Emitir nota de entrega" : isCreditSale ? "Registrar venta a crédito" : "Finalizar venta"}</button>
             <button type="button" onClick={() => { if (cart.length && window.confirm("¿Vaciar la venta actual?")) setCart([]); }} disabled={!cart.length} className="h-8 w-full text-[11px] uppercase tracking-[.1em] text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-40">Vaciar venta</button>
         </div>
     </div>;
@@ -599,6 +644,6 @@ export function PosSaleScreen() {
             <div className="mt-5 grid grid-cols-[auto_1fr] gap-2"><button type="button" onClick={closePriceInquiry} className="h-10 rounded-lg border border-border-light px-4 text-[12px]">Cerrar</button><button ref={addProductRef} type="button" onClick={selectedPrice?.resolved && selectedBasePrice > 0 ? addSelectedProduct : addManualPrice} disabled={selectedCompositePending || (selectedPrice?.resolved && selectedBasePrice > 0 ? false : !canAddManualPrice)} className="h-10 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">{selectedCompositePending ? "Composición pendiente" : selectedCartQuantity > 0 ? "Agregar otra unidad" : "Agregar a la venta"}</button></div>
         </div></div>}
         {creatingCustomer && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-md rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold">Nuevo cliente</h2><div className="mt-5 grid gap-3"><input autoFocus value={customerDraft.rif} onChange={(event) => setCustomerDraft((current) => ({ ...current, rif: event.target.value }))} placeholder="RIF o cédula" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/><input value={customerDraft.name} onChange={(event) => setCustomerDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre o razón social" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setCreatingCustomer(false)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={createCustomer} disabled={!customerDraft.rif.trim() || !customerDraft.name.trim()} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Crear cliente</button></div></div></div>}
-        {completed && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-7 text-center shadow-2xl"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><CheckCircle2 size={30}/></div><h2 className="mt-4 text-xl font-semibold">{completed.documentType === "nota_entrega" ? "Nota de entrega confirmada" : "Venta confirmada"}</h2><p className="mt-1 font-mono text-[12px] text-[var(--text-tertiary)]">{completed.documentType === "nota_entrega" ? "Nota de entrega" : "Factura"} Nº {completed.invoiceNumber}</p><p className="mt-5 font-mono text-3xl font-bold text-foreground">Bs {money(completed.total)}</p><div className="mt-6 grid gap-2"><button onClick={downloadPdf} disabled={generatingPdf} className="h-11 rounded-xl bg-primary-500 text-[12px] font-bold uppercase tracking-[.1em] text-white">{generatingPdf ? "Generando…" : completed.documentType === "nota_entrega" ? "Descargar nota" : "Descargar factura A4"}</button><Link href={`/sales/${completed.id}`} className="flex h-10 items-center justify-center rounded-xl border border-border-light text-[12px]">Abrir {completed.documentType === "nota_entrega" ? "nota de entrega" : "factura"}</Link><button onClick={resetSale} className="h-10 rounded-xl text-[12px] font-semibold text-primary-500">Nueva {completed.documentType === "nota_entrega" ? "nota de entrega" : "venta"}</button></div></div></div>}
+        {completed && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-7 text-center shadow-2xl"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><CheckCircle2 size={30}/></div><h2 className="mt-4 text-xl font-semibold">{completed.documentType === "nota_entrega" ? "Nota de entrega confirmada" : "Venta confirmada"}</h2><p className="mt-1 font-mono text-[12px] text-[var(--text-tertiary)]">{completed.documentType === "nota_entrega" ? "Nota de entrega" : "Factura"} Nº {completed.invoiceNumber}</p><p className="mt-5 font-mono text-3xl font-bold text-foreground">Bs {money(completed.total)}</p>{completed.paymentTerms === "credito" && completed.creditAmount != null && completed.creditCurrency && <div className="mt-3 rounded-xl bg-primary-500/10 p-3 text-sm"><p className="font-semibold">Saldo a crédito: {money(completed.creditAmount)} {normalizeCurrencyCode(completed.creditCurrency)}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Vence {completed.dueDate} · tasa inicial Bs {money(completed.creditExchangeRate ?? 0)}</p></div>}<div className="mt-6 grid gap-2"><button onClick={downloadPdf} disabled={generatingPdf} className="h-11 rounded-xl bg-primary-500 text-[12px] font-bold uppercase tracking-[.1em] text-white">{generatingPdf ? "Generando…" : completed.documentType === "nota_entrega" ? "Descargar nota" : "Descargar factura A4"}</button><Link href={`/sales/${completed.id}`} className="flex h-10 items-center justify-center rounded-xl border border-border-light text-[12px]">Abrir {completed.documentType === "nota_entrega" ? "nota de entrega" : "factura"}</Link><button onClick={resetSale} className="h-10 rounded-xl text-[12px] font-semibold text-primary-500">Nueva {completed.documentType === "nota_entrega" ? "nota de entrega" : "venta"}</button></div></div></div>}
     </div>;
 }

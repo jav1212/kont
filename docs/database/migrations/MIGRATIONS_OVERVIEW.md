@@ -179,6 +179,25 @@ Focus:
 - company contact data
 - company logo display rules in PDFs
 
+### POS credit receivables
+
+Main migrations:
+- `20260925192503_sales_credit_receivables.sql`
+- `20260925192914_sales_receivable_identity_rate_source.sql`
+- `20260925193135_credit_requires_identified_customer.sql`
+- `20260925193901_receivable_payment_idempotency_race.sql`
+
+Focus:
+- immutable sale and payment exchange-rate snapshots for credit sales in any currency available from the rate catalog
+- one tenant-scoped receivable per confirmed credit invoice, with an identified customer and due date
+- partial payments with an idempotency key, transactionally calculated debt application and overpayment rejection
+
+Apply all four migrations before deploying the POS credit flow or the accounts-receivable route. They are additive and do not retroactively create receivables for historical invoices. The payment RPC is exclusive to `service_role`; validate `sales.create` in the server route that invokes it. See [ADR 0042](../../adr/0042-pos-credit-receivables.md) for the contract and rollout constraints.
+
+The local timestamped prefixes match the migration entries applied through
+Supabase MCP, avoiding a collision or future reapplication with concurrent
+sales migrations.
+
 ## How to use this folder
 
 When a new migration is added:

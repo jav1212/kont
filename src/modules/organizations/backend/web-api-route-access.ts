@@ -129,6 +129,8 @@ const ROUTES: readonly RouteRule[] = [
   ["POST","/api/referrals/attach","referrals.manage"],
   ["GET","/api/sales/customers","sales.read"],
   ["GET","/api/sales/igtf-fortnightly","sales.read"],
+  ["GET","/api/sales/receivables","sales.read"],
+  ["POST","/api/sales/receivables","sales.create"],
   ["GET","/api/sales/[id]","sales.read"],
   ["GET","/api/fiscal/documents/[id]","sales.read"],
   ["GET","/api/fiscal/documents","sales.read"],
