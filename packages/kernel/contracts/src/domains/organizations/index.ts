@@ -135,6 +135,8 @@ export interface AccessibleOrganizationDto {
   readonly name: string;
   readonly avatarUrl: string | null;
   readonly relationship: WorkspaceRelationshipDto;
+  /** Effective serialized grants resolved by the server for this organization access path. */
+  readonly permissions: readonly string[];
   readonly accessPath: OrganizationAccessPathDto;
 }
 

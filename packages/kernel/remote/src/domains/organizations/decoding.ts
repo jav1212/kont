@@ -51,6 +51,7 @@ const accessibleOrganizationDtoShape: ResponseField<AccessibleOrganizationDto> =
     name: textField,
     avatarUrl: nullOr(textField),
     relationship: workspaceRelationshipDtoShape,
+    permissions: list(textField),
     accessPath: organizationAccessPathDtoShape,
   });
 

@@ -196,7 +196,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 id: mod.id,
                 label: mod.label,
                 href: mod.id === "sales"
-                    ? resolveSalesLanding(organizationAccess.permissions ?? [])
+                    ? resolveSalesLanding(organizationAccess.permissions ?? []) ?? "/tools"
                     : mod.href,
             })),
         WEB_SETTINGS_MODULE,

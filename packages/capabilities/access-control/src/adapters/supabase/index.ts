@@ -20,6 +20,16 @@ export class SupabaseAccessControlRepository implements AccessControlRepository 
     const row = authorizationSnapshotRowSchema.parse(data);
     return { membershipId: membershipId(row.id), membershipStatus: row.status, authorizationVersion: row.authorization_version, organizationStatus: row.organizations.status, role: mapRole(row.organization_roles) };
   }
+  async findSnapshots(userId: string, organizationIds: readonly string[]): Promise<ReadonlyMap<string, AuthorizationSnapshot>> {
+    const uniqueOrganizationIds = [...new Set(organizationIds)];
+    if (uniqueOrganizationIds.length === 0) return new Map();
+    const { data, error } = await this.client.from("organization_memberships").select(`id,status,authorization_version,organization_id,organizations(status),organization_roles(id,organization_id,code,name,description,kind,status,version,organization_role_permissions(permission_code))`).eq("user_id", userId).in("organization_id", uniqueOrganizationIds);
+    if (error) throw error;
+    return new Map((data ?? []).map((value) => {
+      const row = authorizationSnapshotRowSchema.parse(value);
+      return [row.organization_id, { membershipId: membershipId(row.id), membershipStatus: row.status, authorizationVersion: row.authorization_version, organizationStatus: row.organizations.status, role: mapRole(row.organization_roles) }];
+    }));
+  }
 }
 export class SupabaseAuthorizationAudit implements AuthorizationAudit {
   constructor(private readonly client: SupabaseClient) {}

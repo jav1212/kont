@@ -1,8 +1,4 @@
-import {
-  AuthorizationDenied,
-  PERMISSIONS,
-  permissionCode,
-} from "@kontave/access-control/domain";
+import { AuthorizationDenied } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId } from "@kontave/companies/domain";
 import { RequireModuleCapability } from "@kontave/modules/application";
@@ -17,7 +13,10 @@ import {
   DelegatedAccessFailure,
   OrganizationAccessPathKind,
 } from "@kontave/delegated-access/domain";
-import { SalesDashboardFailure } from "@kontave/sales/application";
+import {
+  SalesDashboardFailure,
+  salesDashboardAccessRequirement,
+} from "@kontave/sales/application";
 import { DelegatedPermissionScopePolicy } from "@kontave/workspace-context-application";
 import { authenticateClientRequest } from "../auth/auth-context";
 import { createCompanyActions } from "../companies/company-actions";
@@ -43,7 +42,7 @@ export async function executeSalesDashboardRequest(
     const organization = organizationId(rawOrganizationId),
       company = companyId(rawCompanyId),
       occurredAt = new Date().toISOString(),
-      permission = permissionCode(PERMISSIONS.SALES_READ_DASHBOARD);
+      permissions = salesDashboardAccessRequirement;
     const access = (
       await createOrganizationAccessActions().portfolio.execute(
         userId(identity.userId),
@@ -52,9 +51,8 @@ export async function executeSalesDashboardRequest(
     ).find((item) => item.organizationId === organization);
     if (
       !access ||
-      !new DelegatedPermissionScopePolicy().permits(
-        access.accessPath,
-        permission,
+      !permissions.every((permission) =>
+        new DelegatedPermissionScopePolicy().permits(access.accessPath, permission),
       )
     )
       return apiError(
@@ -69,11 +67,9 @@ export async function executeSalesDashboardRequest(
       throw new Error(
         "Native sales dashboard infrastructure is not configured.",
       );
-    if (access.accessPath.kind === OrganizationAccessPathKind.DirectMembership)
-      await createSupabaseAuthorization({
-        url,
-        serviceRoleKey: key,
-      }).require.execute({
+    if (access.accessPath.kind === OrganizationAccessPathKind.DirectMembership) {
+      const authorization = createSupabaseAuthorization({ url, serviceRoleKey: key });
+      await Promise.all(permissions.map((permission) => authorization.require.execute({
         actor: { userId: identity.userId, organizationId: organization },
         permission,
         resource: {
@@ -86,7 +82,8 @@ export async function executeSalesDashboardRequest(
           source: clientSource(request.headers.get("x-kontave-client")),
           occurredAt,
         },
-      });
+      })));
+    }
     await createCompanyActions().getOperational.execute(organization, company);
     const modules = createModulesInfrastructure({ url, serviceRoleKey: key });
     await new RequireModuleCapability(

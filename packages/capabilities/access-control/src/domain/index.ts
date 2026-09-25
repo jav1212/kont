@@ -73,6 +73,17 @@ export function permissionCode(value: string): PermissionCode {
   if (!permissionValues.has(value)) throw new TypeError(`Unknown permission: ${value}`);
   return value as PermissionCode;
 }
+/**
+ * Normalizes grants emitted by compatible authorization surfaces.
+ * A wildcard expands to the current catalog, while unknown future grants are
+ * intentionally ignored until this client understands their meaning.
+ * @param grants - Raw serialized grants from a role or compatibility surface.
+ * @returns Known effective permission codes from the current catalog.
+ */
+export function effectivePermissionCodes(grants: readonly string[]): readonly PermissionCode[] {
+  if (grants.includes("*")) return Object.values(PERMISSIONS).map(permissionCode);
+  return grants.filter((grant): grant is PermissionValue => permissionValues.has(grant)).map(permissionCode);
+}
 export function roleId(value: string): RoleId { return identifier(value, "roleId") as RoleId; }
 export function membershipId(value: string): MembershipId { return identifier(value, "membershipId") as MembershipId; }
 
@@ -140,11 +151,16 @@ export class ActiveAccessPolicy implements Policy {
   readonly name = "active-access";
   readonly version = "1";
   evaluate(_request: AuthorizationRequest, snapshot: AuthorizationSnapshot): AuthorizationDecision | null {
-    if (!snapshotIsActive(snapshot)) return deny(snapshot.organizationStatus === OrganizationStatus.Suspended ? AuthorizationReason.OrganizationSuspended : AuthorizationReason.MembershipInactive, this);
+    if (!isAuthorizationSnapshotActive(snapshot)) return deny(snapshot.organizationStatus === OrganizationStatus.Suspended ? AuthorizationReason.OrganizationSuspended : AuthorizationReason.MembershipInactive, this);
     return null;
   }
 }
-function snapshotIsActive(snapshot: AuthorizationSnapshot): boolean { return snapshot.organizationStatus === OrganizationStatus.Active && snapshot.membershipStatus === MembershipStatus.Active && snapshot.role.isActive(); }
+/**
+ * Determines whether a membership snapshot can contribute effective grants.
+ * @param snapshot - Membership, organization, and role state read atomically by an adapter.
+ * @returns Whether the organization, membership, and role are all active.
+ */
+export function isAuthorizationSnapshotActive(snapshot: AuthorizationSnapshot): boolean { return snapshot.organizationStatus === OrganizationStatus.Active && snapshot.membershipStatus === MembershipStatus.Active && snapshot.role.isActive(); }
 export class RequiredPermissionPolicy implements Policy {
   readonly name = "required-permission";
   readonly version = "1";

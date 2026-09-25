@@ -11,6 +11,8 @@ import {
   type DirectOrganizationAccessDirectory,
 } from "@kontave/workspace-context-application";
 import { createOrganizationsDirectory } from "@kontave/organizations/supabase";
+import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
+import { OrganizationAccessPermissions } from "./organization-access-capabilities";
 
 export function createOrganizationAccessActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,11 +45,15 @@ export function createOrganizationAccessActions() {
     url,
     serviceRoleKey,
   }).delegatedAccess;
+  const capabilities = new OrganizationAccessPermissions(
+    createSupabaseAuthorization({ url, serviceRoleKey }).repository,
+  );
   return {
     portfolio: new ListWorkspacePortfolio(
       directAccess,
       repository,
       organizations,
+      capabilities,
     ),
     resolvePath: new ResolveWorkspaceAccessPath(directAccess, repository),
     create: new CreateDelegatedAccess(repository),

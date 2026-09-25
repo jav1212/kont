@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import type { KontaveTheme } from "@kontave/ui/tokens";
+import { resolveSalesLanding } from "@kontave/sales/application";
 import {
   codedErrorFeedback,
   errorFeedback,
@@ -251,15 +252,15 @@ function DesktopAppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeModuleId =
     workspace.status === "ready" ? workspace.activeModuleId : null;
-  const activeWorkspaceScopes =
+  const activeWorkspacePermissions =
     workspace.status === "ready"
       ? workspace.workspaces.find((entry) => entry.id === workspace.activeWorkspaceId)
-          ?.scopes ?? []
+          ?.permissions ?? []
       : [];
   const [navigationModuleId, setNavigationModuleId] = useState(activeModuleId);
   const [activeNavigationTarget, setActiveNavigationTarget] =
     useState<NavigationTarget | null>(() =>
-      defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes),
+      defaultModuleNavigationTarget(activeModuleId, activeWorkspacePermissions),
     );
   const connectivity = useSyncExternalStore(
     desktopConnectivityStore.subscribe,
@@ -270,13 +271,13 @@ function DesktopAppShell({
   // A module owns its navigation history; switching modules starts at its portable default.
   if (navigationModuleId !== activeModuleId) {
     setNavigationModuleId(activeModuleId);
-    setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes));
+    setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId, activeWorkspacePermissions));
   }
   if (
     activeNavigationTarget?.id === "sales.dashboard" &&
-    (!activeWorkspaceScopes.includes("sales.read") || !activeWorkspaceScopes.includes("sales.read.dashboard"))
+    resolveSalesLanding(activeWorkspacePermissions) !== "dashboard"
   ) {
-    setActiveNavigationTarget(defaultModuleNavigationTarget("sales", activeWorkspaceScopes));
+    setActiveNavigationTarget(defaultModuleNavigationTarget("sales", activeWorkspacePermissions));
   }
   useEffect(
     () =>
@@ -340,7 +341,7 @@ function DesktopAppShell({
   const navigationSections = moduleNavigationSections(
     activeModuleId,
     activeNavigationTarget,
-    activeWorkspaceScopes,
+    activeWorkspacePermissions,
   );
   const breadcrumbs = desktopBreadcrumbs(
     activeNavigationTarget,
@@ -466,7 +467,7 @@ function DesktopAppShell({
           closeDrawer();
           if (itemId === "help") openExternal(itemId);
           else {
-            const target = permittedDesktopStaticNavigationTarget(itemId, activeWorkspaceScopes);
+            const target = permittedDesktopStaticNavigationTarget(itemId, activeWorkspacePermissions);
             if (target) setActiveNavigationTarget(target);
             else
               presentFeedback.execute(
@@ -570,7 +571,7 @@ function DesktopAppShell({
                 setActiveNavigationTarget(
                   settingsDetail
                     ? desktopStaticNavigationTarget("settings")
-                    : defaultModuleNavigationTarget(activeModuleId, activeWorkspaceScopes),
+                    : defaultModuleNavigationTarget(activeModuleId, activeWorkspacePermissions),
                 )
               }
             >

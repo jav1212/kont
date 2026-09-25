@@ -8,6 +8,7 @@ import {
   OrganizationAccessPathKind,
   delegatedAccessGrantId,
 } from "@kontave/delegated-access/domain";
+import { effectivePermissionCodes } from "@kontave/access-control/domain";
 import { organizationId, userId } from "@kontave/organizations/domain";
 import type {
   WorkspacePortfolioEntry,
@@ -43,6 +44,7 @@ function toAccessibleOrganization(
     name: dto.name,
     avatarUrl: dto.avatarUrl,
     relationship: dto.relationship,
+    permissions: effectivePermissionCodes(dto.permissions),
     accessPath: {
       kind,
       actorUserId: userId(dto.accessPath.actorUserId),

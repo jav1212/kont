@@ -326,6 +326,13 @@ pantalla de roles presenta ese permiso como **Ver tablero e indicadores de
 ventas** para que una organización pueda concederlo de forma explícita a un
 perfil local cuando lo necesite.
 
+El portafolio del workspace transporta permisos efectivos genéricos resueltos
+por el servidor para cada organización. Los clientes pasan esa lista a la
+política de `@kontave/sales`, que define los permisos necesarios para el tablero
+y selecciona el destino seguro de Ventas (tablero, Punto de venta, archivo o
+ninguno). Los scopes de delegación describen el camino de acceso y permanecen
+separados de esos permisos efectivos.
+
 La API nativa del tablero verifica `sales.read.dashboard` mediante la
 instantánea de autorización de la organización y conserva la capacidad de
 suscripción `sales.dashboard`. No convierte `sales.read` en una concesión

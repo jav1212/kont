@@ -160,6 +160,7 @@ function mapSnapshot(
           : "delegated",
       relationship: entry.relationship,
       scopes: entry.accessPath.scopes,
+      permissions: entry.permissions ?? [],
     })),
   };
 }

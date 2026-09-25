@@ -27,6 +27,8 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { PermissionCode } from "@kontave/access-control/domain";
+import { canReadSalesDashboard, resolveSalesLanding } from "@kontave/sales/application";
 import {
   applicationNavigation,
   resolveBreadcrumbs,
@@ -177,14 +179,21 @@ const supportedDestinations = new Set<StaticDestinationId>([
   "settings.devices",
 ]);
 
+/**
+ * Builds the sidebar sections for a module using server-resolved workspace grants.
+ * @param moduleId - Active business module, or null before workspace selection.
+ * @param activeTarget - Current destination used to mark the selected item.
+ * @param permissions - Effective permission grants for the active organization.
+ * @returns Visible navigation sections with the sales dashboard filtered by policy.
+ */
 export function moduleNavigationSections(
   moduleId: string | null,
   activeTarget: NavigationTarget | null,
-  scopes: readonly string[] = [],
+  permissions: readonly PermissionCode[] = [],
 ): readonly WorkspaceSidebarSection[] {
   const items = moduleId
     ? (DESKTOP_DESTINATIONS[moduleId] ?? []).filter(
-        (item) => item.id !== "sales.dashboard" || scopes.includes("sales.read.dashboard"),
+        (item) => item.id !== "sales.dashboard" || canReadSalesDashboard(permissions),
       )
     : [];
   const groups = new Map<string, NavigationItemPresentation[]>();
@@ -206,19 +215,25 @@ export function moduleNavigationSections(
   }));
 }
 
+/**
+ * Selects the module's initial destination from the shared sales access policy.
+ * @param moduleId - Active business module, or null before workspace selection.
+ * @param permissions - Effective permission grants for the active organization.
+ * @returns An allowed static destination, or null when none is available.
+ */
 export function defaultModuleNavigationTarget(
   moduleId: string | null,
-  scopes: readonly string[] = [],
+  permissions: readonly PermissionCode[] = [],
 ): NavigationTarget | null {
   const destinations = moduleId ? (DESKTOP_DESTINATIONS[moduleId] ?? []) : [];
+  const salesDestination = {
+    dashboard: "sales.dashboard",
+    "point-of-sale": "sales.point-of-sale",
+    archive: "sales.archive",
+    unavailable: null,
+  }[resolveSalesLanding(permissions)];
   const destination = moduleId === "sales"
-    ? scopes.includes("sales.read.dashboard") && scopes.includes("sales.read")
-      ? destinations.find((item) => item.id === "sales.dashboard")
-      : scopes.includes("sales.read") && scopes.includes("sales.create")
-        ? destinations.find((item) => item.id === "sales.point-of-sale")
-        : scopes.includes("sales.read")
-          ? destinations.find((item) => item.id === "sales.archive")
-          : undefined
+    ? destinations.find((item) => item.id === salesDestination)
     : destinations[0];
   return destination ? staticNavigationTarget(destination.id) : null;
 }
@@ -231,16 +246,16 @@ export function desktopStaticNavigationTarget(
 }
 
 /**
- * Resolves a Desktop route only when its explicit workspace grant permits it.
+ * Resolves a Desktop route only when its required workspace grant is effective.
  * @param id - Requested static navigation identifier.
- * @param scopes - Exact permissions of the active workspace.
+ * @param permissions - Effective permission grants for the active organization.
  * @returns The permitted target, or null for an unavailable route.
  */
 export function permittedDesktopStaticNavigationTarget(
   id: string,
-  scopes: readonly string[],
+  permissions: readonly PermissionCode[],
 ): NavigationTarget | null {
-  if (id === "sales.dashboard" && (!scopes.includes("sales.read") || !scopes.includes("sales.read.dashboard"))) return null;
+  if (id === "sales.dashboard" && !canReadSalesDashboard(permissions)) return null;
   return desktopStaticNavigationTarget(id);
 }
 

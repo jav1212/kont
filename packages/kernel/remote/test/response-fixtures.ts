@@ -37,6 +37,7 @@ export const accessibleOrganizationFixture = {
   name: "name-sample",
   avatarUrl: "avatarUrl-sample",
   relationship: "personal",
+  permissions: ["sales.read", "sales.read.dashboard"],
   accessPath: {
     kind: "kind-sample",
     actorUserId: "actorUserId-sample",

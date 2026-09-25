@@ -80,6 +80,28 @@ export interface DirectOrganizationAccessDirectory {
 export interface WorkspacePortfolioEntry extends AccessibleOrganization {
   readonly avatarUrl: string | null;
   readonly relationship: WorkspaceRelationship;
+  /** Effective grants resolved by the server; delegation scopes themselves are never permission grants. */
+  readonly permissions?: readonly PermissionCode[];
+}
+
+/** Server-derived capabilities that clients may consume without treating delegation scopes as role grants. */
+export interface WorkspacePortfolioCapabilities {
+  /** Effective grants resolved by the server for this organization access path. */
+  readonly permissions: readonly PermissionCode[];
+}
+
+/** Resolves additive, server-derived capability flags for a workspace portfolio. */
+export interface WorkspacePortfolioCapabilityResolver {
+  /**
+   * Resolves flags for every accessible workspace in one portfolio operation.
+   * @param userId - Authenticated actor that owns the portfolio.
+   * @param entries - Direct and delegated paths already proven effective.
+   * @returns Capability flags keyed by target organization identifier.
+   */
+  resolve(
+    userId: UserId,
+    entries: readonly WorkspacePortfolioEntry[],
+  ): Promise<ReadonlyMap<OrganizationId, WorkspacePortfolioCapabilities>>;
 }
 
 export interface WorkspacePortfolioSource {
@@ -277,6 +299,7 @@ export class ListWorkspacePortfolio {
     private readonly directAccess: DirectOrganizationAccessDirectory,
     private readonly delegatedAccess: DelegatedAccessRepository,
     private readonly presentations: OrganizationPresentationDirectory,
+    private readonly capabilities?: WorkspacePortfolioCapabilityResolver,
   ) {}
 
   async execute(userId: UserId, occurredAt: string): Promise<readonly WorkspacePortfolioEntry[]> {
@@ -292,8 +315,13 @@ export class ListWorkspacePortfolio {
       (await this.presentations.listByOrganizationIds(portfolio.map((item) => item.organizationId)))
         .map((item) => [item.organizationId, item.avatarUrl]),
     );
-    return portfolio
-      .map((item) => ({ ...item, avatarUrl: presentations.get(item.organizationId) ?? null }))
+    const entries = portfolio
+      .map((item) => ({ ...item, avatarUrl: presentations.get(item.organizationId) ?? null }));
+    const capabilities = this.capabilities
+      ? await this.capabilities.resolve(userId, entries)
+      : new Map<OrganizationId, WorkspacePortfolioCapabilities>();
+    return entries
+      .map((item) => ({ ...item, ...capabilities.get(item.organizationId) }))
       .sort((left, right) => left.name.localeCompare(right.name));
   }
 }

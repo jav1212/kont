@@ -1,8 +1,3 @@
-import {
-  PERMISSIONS,
-  permissionCode,
-  type PermissionCode,
-} from "@kontave/access-control/domain";
 import { ModuleCode, Platform } from "@kontave/modules/domain";
 import {
   companyId,
@@ -91,7 +86,7 @@ export function resolveDesktopSettings(input: {
     // Settings resolution only needs evidence that this Desktop installation exists.
     // A durable installation identity can replace this sentinel when that capability is introduced.
     installationId: "kontave-desktop",
-    permissions: resolvePermissions(activeWorkspace?.scopes ?? []),
+    permissions: new Set(activeWorkspace?.permissions ?? []),
     availableModules: new Set(
       workspace?.modules.map(({ id }) => id as ModuleCode) ?? [],
     ),
@@ -108,21 +103,6 @@ export function resolveDesktopSettings(input: {
       availability: entry.availability,
     })),
   }));
-}
-
-function resolvePermissions(
-  scopes: readonly string[],
-): ReadonlySet<PermissionCode> {
-  const values = scopes.includes("*") ? Object.values(PERMISSIONS) : scopes;
-  const permissions = new Set<PermissionCode>();
-  for (const value of values) {
-    try {
-      permissions.add(permissionCode(value));
-    } catch {
-      /* Older APIs may include scopes unknown to this client version. */
-    }
-  }
-  return permissions;
 }
 
 function translate(key: SettingsMessageKey): string {

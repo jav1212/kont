@@ -31,6 +31,7 @@ import {
 export * from "./sales-dashboard";
 export * from "./customer-receivables";
 export * from "./record-receivable-payment";
+export * from "./sales-dashboard-access-policy";
 export * from "./sales-performance-report";
 
 export interface CustomerRepository {

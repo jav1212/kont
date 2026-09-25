@@ -1,6 +1,11 @@
 import { AccessControlFailure, ActiveAccessPolicy, AuthorizationDenied, AuthorizationReason, RequiredPermissionPolicy, type PermissionCode, SameOrganizationPolicy, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionDefinition, type Policy, type Role, type RoleId } from "../domain";
 
-export interface AccessControlRepository { findSnapshot(userId: string, organizationId: string): Promise<AuthorizationSnapshot | null> }
+export interface AccessControlRepository {
+  /** @param userId Actor whose memberships are read. @param organizationId Organization to inspect. @returns The current authorization snapshot, if one exists. */
+  findSnapshot(userId: string, organizationId: string): Promise<AuthorizationSnapshot | null>;
+  /** @param userId Actor whose memberships are read. @param organizationIds Organizations to inspect in one repository operation. @returns Snapshots keyed by organization identifier. */
+  findSnapshots(userId: string, organizationIds: readonly string[]): Promise<ReadonlyMap<string, AuthorizationSnapshot>>;
+}
 export interface AuthorizationAudit { record(request: AuthorizationRequest, decision: AuthorizationDecision, snapshot: AuthorizationSnapshot | null): Promise<void> }
 export class EvaluateAuthorization {
   private readonly policies: readonly Policy[];

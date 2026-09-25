@@ -39,7 +39,7 @@ export function resolveBarcodeWorkspaceLanding(
   if (visibility && !hasOrganizationPermission(permissions, visibility))
     return "/tools";
 
-  if (navigation.id === "sales") return resolveSalesLanding(permissions);
+  if (navigation.id === "sales") return resolveSalesLanding(permissions) ?? "/tools";
 
   const routeAccess = getOrganizationRouteAccess(navigation.href);
   if (routeAccess.kind === "unknown") return "/tools";

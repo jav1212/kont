@@ -9,6 +9,7 @@ export function toAccessibleOrganizationDto(
     name: value.name,
     avatarUrl: value.avatarUrl,
     relationship: value.relationship,
+    permissions: value.permissions ?? [],
     accessPath: {
       kind: value.accessPath.kind,
       actorUserId: value.accessPath.actorUserId,

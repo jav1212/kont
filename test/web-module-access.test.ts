@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { salesDashboardAccessRequirement } from "@kontave/sales/application";
 import {
   getModuleVisibilityPermission,
   getOrganizationRouteAccess,
@@ -87,7 +88,7 @@ test("read-only inventory user cannot open a creation workflow", () => {
 
 test("the Sales dashboard needs its explicit read capability", () => {
   const dashboard = getOrganizationRouteAccess("/sales");
-  assert.deepEqual(dashboard, { kind: "protected", permissions: ["sales.read", "sales.read.dashboard"] });
+  assert.deepEqual(dashboard, { kind: "protected", permissions: salesDashboardAccessRequirement });
   assert.equal(resolveOrganizationRouteAccess(dashboard, { ...authenticated, permissions: ["sales.read", "sales.create"] }), "denied");
   assert.equal(resolveOrganizationRouteAccess(dashboard, { ...authenticated, permissions: ["sales.read", "sales.read.dashboard"] }), "allowed");
 });
@@ -99,6 +100,7 @@ test("a cashier retains operational Sales access without the dashboard", () => {
   assert.equal(resolveSalesLanding(cashier), "/sales/pos");
   assert.equal(resolveSalesLanding(["sales.read"]), "/sales/archive");
   assert.equal(resolveSalesLanding(["sales.read", "sales.read.dashboard"]), "/sales");
+  assert.equal(resolveSalesLanding([]), null);
 });
 
 test("personal routes require a resolved authenticated session", () => {

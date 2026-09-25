@@ -21,7 +21,7 @@ export function resolveCompanyProfileLanding(
   const hasModule = (module: ModuleCode) => availableModules.includes(module);
   const firstAvailable = (): string => {
     if (hasModule(ModuleCode.Payroll) && can("payroll.read")) return "/payroll/tablero";
-    if (hasModule(ModuleCode.Sales) && can("sales.read")) return resolveSalesLanding(permissions);
+    if (hasModule(ModuleCode.Sales) && can("sales.read")) return resolveSalesLanding(permissions) ?? "/tools";
     if (hasModule(ModuleCode.Purchases) && can("purchases.read")) return "/purchases";
     if (hasModule(ModuleCode.Inventory) && can("inventory.read")) return "/inventory";
     if (hasModule(ModuleCode.Accounting) && can("accounting.read")) return "/accounting";
@@ -33,7 +33,7 @@ export function resolveCompanyProfileLanding(
     return can("billing.read") ? "/settings/billing" : "/tools";
   if (hasModule(ModuleCode.Sales) && can("sales.read") && can("sales.create"))
     return "/sales/pos";
-  if (hasModule(ModuleCode.Sales) && can("sales.read")) return resolveSalesLanding(permissions);
+  if (hasModule(ModuleCode.Sales) && can("sales.read")) return resolveSalesLanding(permissions) ?? "/tools";
   if (hasModule(ModuleCode.Purchases) && can("purchases.read")) return "/purchases";
   if (hasModule(ModuleCode.Inventory) && can("inventory.read")) return "/inventory";
   return can("billing.read") ? "/settings/billing" : firstAvailable();

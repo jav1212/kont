@@ -1,3 +1,5 @@
+import type { PermissionCode } from "@kontave/access-control/domain";
+
 /** Organization workspace available to the authenticated user. */
 export interface DesktopWorkspaceEntry {
   readonly id: string;
@@ -5,7 +7,10 @@ export interface DesktopWorkspaceEntry {
   readonly avatarUrl?: string;
   readonly access: "direct" | "delegated";
   readonly relationship: "personal" | "member" | "delegated";
+  /** Delegation scope metadata used for access-path presentation. */
   readonly scopes: readonly string[];
+  /** Effective role or delegated grants resolved by the server. */
+  readonly permissions: readonly PermissionCode[];
 }
 
 /** Business module available within the active workspace. */

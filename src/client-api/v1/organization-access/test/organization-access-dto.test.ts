@@ -50,3 +50,11 @@ test("native organization access DTO preserves every explicit relationship", () 
     ["personal", "member", "delegated"],
   );
 });
+
+test("native organization access DTO emits server-derived effective permissions", () => {
+  assert.deepEqual(toAccessibleOrganizationDto({
+    ...entry(WorkspaceRelationship.Member),
+    permissions: [],
+  }).permissions, []);
+  assert.deepEqual(toAccessibleOrganizationDto(entry(WorkspaceRelationship.Member)).permissions, []);
+});
