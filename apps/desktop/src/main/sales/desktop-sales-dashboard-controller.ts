@@ -17,7 +17,11 @@ import type {
   OperationContextPort,
   SalesPort,
 } from "@kontave/client-contracts";
-import type { DesktopSalesDashboardResult } from "../../renderer-bridge";
+import type {
+  DesktopSalesDashboardResult,
+  DesktopSalesPerformanceReportQuery,
+  DesktopSalesPerformanceReportResult,
+} from "../../renderer-bridge";
 import {
   findClientOperationFailure,
   unwrapClientOperationResult,
@@ -93,6 +97,33 @@ export class DesktopSalesDashboardController {
     ).finally(() => this.inFlight.delete(requestKey));
     this.inFlight.set(requestKey, operation);
     return operation;
+  }
+
+  /**
+   * Loads a validated sales performance report through the portable sales port.
+   * @param actor Authenticated user identifier.
+   * @param organization Owning organization identifier.
+   * @param company Operational company identifier.
+   * @param raw Untrusted report period and dimension.
+   * @returns A desktop-safe performance report result.
+   */
+  async getPerformanceReport(
+    actor: unknown,
+    organization: unknown,
+    company: unknown,
+    raw: unknown,
+  ): Promise<DesktopSalesPerformanceReportResult> {
+    if (![actor, organization, company].every((value) => typeof value === "string" && value.length > 0)) {
+      return reportFailure(new Error("El contexto operativo no es válido."), "OPERATION_CONTEXT_INVALID");
+    }
+    const query = readPerformanceQuery(raw);
+    if (!query) return reportFailure(new Error("El período no es válido."), "SALES_REPORT_INVALID");
+    try {
+      const result = await this.sales.performanceReport(organization as string, company as string, query);
+      return { ok: true, value: unwrapClientOperationResult(result) };
+    } catch (cause: unknown) {
+      return reportFailure(cause, "SALES_REPORT_UNAVAILABLE");
+    }
   }
 
   private async load(
@@ -213,6 +244,31 @@ function readQuery(value: unknown): ValidSalesDashboardQuery | null {
   } catch {
     return null;
   }
+}
+
+function readPerformanceQuery(value: unknown): DesktopSalesPerformanceReportQuery | null {
+  if (typeof value !== "object" || value === null) return null;
+  const query = value as { from?: unknown; to?: unknown; dimension?: unknown };
+  if (typeof query.from !== "string" || typeof query.to !== "string") return null;
+  if (query.dimension !== "user" && query.dimension !== "role" && query.dimension !== "device") return null;
+  try {
+    const from = localDate(query.from);
+    const to = localDate(query.to);
+    const days = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
+    return from <= to && days <= 366 ? { from, to, dimension: query.dimension } : null;
+  } catch {
+    return null;
+  }
+}
+
+function reportFailure(cause: unknown, fallback: string): DesktopSalesPerformanceReportResult {
+  const clientFailure = findClientOperationFailure(cause);
+  if (clientFailure) return { ok: false, error: {
+    code: clientFailure.code,
+    message: publicFailureMessage(clientFailure.code),
+    requestId: clientFailure.requestId,
+  } };
+  return { ok: false, error: { code: fallback, message: publicFailureMessage(fallback), requestId: null } };
 }
 
 function failure(

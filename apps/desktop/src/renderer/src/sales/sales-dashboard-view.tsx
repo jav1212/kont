@@ -28,10 +28,12 @@ import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type {
   SalesDashboardDailyPointDto,
   SalesDashboardDocumentDto,
+  SalesPerformanceReportDto,
 } from "@kontave/client-contracts";
 import type {
   DesktopSalesDashboardQuery,
   DesktopSalesDashboardSnapshot,
+  DesktopSalesPerformanceReportQuery,
 } from "../../../renderer-bridge";
 
 interface Props {
@@ -51,6 +53,10 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [month, setMonth] = useState("");
   const [displayCurrency, setDisplayCurrency] = useState("VES");
+  const [reportDimension, setReportDimension] = useState<"user" | "role" | "device">("user");
+  const [performanceReport, setPerformanceReport] = useState<SalesPerformanceReportDto>();
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string>();
 
   const accept = (value: DesktopSalesDashboardSnapshot): void => {
     setSnapshot(value);
@@ -106,6 +112,31 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
       active = false;
     };
   }, [organizationId, companyId]);
+
+  useEffect(() => {
+    const period = snapshot?.dashboard.period;
+    if (!period) return;
+    let active = true;
+    setPerformanceReport(undefined);
+    setReportLoading(true);
+    setReportError(undefined);
+    const query: DesktopSalesPerformanceReportQuery = {
+      from: period.from,
+      to: period.to,
+      dimension: reportDimension,
+    };
+    void window.kontave.sales
+      .getPerformanceReport(organizationId, companyId, query)
+      .then((result) => {
+        if (!active) return;
+        if (result.ok) setPerformanceReport(result.value);
+        else setReportError(result.error.message);
+      })
+      .finally(() => {
+        if (active) setReportLoading(false);
+      });
+    return () => { active = false; };
+  }, [organizationId, companyId, snapshot?.dashboard.period.from, snapshot?.dashboard.period.to, reportDimension]);
 
   if (loading && !snapshot) return <DashboardSkeleton />;
   if (!snapshot)
@@ -228,6 +259,44 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
           value={format(dashboard.summary.averageTicketAmount.amount)}
         />
       </div>
+      <section className="inventory-dashboard__tables" aria-busy={reportLoading}>
+        <article className="inventory-dashboard__table">
+          <div className="inventory-dashboard__table-heading">
+            <div>
+              <h3>Rendimiento de ventas</h3>
+              <Text>Facturación confirmada agrupada por atribución histórica.</Text>
+            </div>
+            <OptionPicker
+              label="Agrupar por"
+              value={reportDimension}
+              options={[
+                { value: "user", label: "Usuario", description: "Vendedor que confirmó" },
+                { value: "role", label: "Rol", description: "Rol vigente al confirmar" },
+                { value: "device", label: "Dispositivo", description: "Terminal registrada" },
+              ]}
+              onValueChange={(value) => {
+                if (value === "user" || value === "role" || value === "device") setReportDimension(value);
+              }}
+            />
+          </div>
+          {reportError ? <Text role="alert">{reportError}</Text> : null}
+          {!reportError && reportLoading && !performanceReport ? <Skeleton variant="text" width="100%" height={36} /> : null}
+          {performanceReport ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead><tr><th className="py-2">{reportDimension === "user" ? "Usuario" : reportDimension === "role" ? "Rol" : "Dispositivo"}</th><th className="py-2 text-right">Ventas</th><th className="py-2 text-right">Total bruto (VES)</th></tr></thead>
+                <tbody>{performanceReport.rows.length === 0 ? <tr><td className="py-4 text-center text-[var(--text-tertiary)]" colSpan={3}>Sin ventas atribuidas en este período.</td></tr> : performanceReport.rows.map((row) => (
+                  <tr key={row.key} className="border-t border-border-light">
+                    <td className="py-2">{row.label}{!row.attributed ? <span className="ml-2 text-xs text-[var(--text-tertiary)]">Sin atribución</span> : null}</td>
+                    <td className="py-2 text-right">{row.invoiceCount.toLocaleString("es-VE")}</td>
+                    <td className="py-2 text-right font-mono">{formatPresentation(row.grossAmount.amount, "VES", null)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : null}
+        </article>
+      </section>
       <div className="sales-dashboard__draft-indicator">
         <FileClock />
         <Text>

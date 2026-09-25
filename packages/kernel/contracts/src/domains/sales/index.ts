@@ -55,6 +55,28 @@ export interface SalesDashboardQuery {
   readonly limit?: number;
 }
 
+export type SalesPerformanceDimensionDto = "user" | "role" | "device";
+export interface SalesPerformanceRowDto {
+  readonly key: string;
+  readonly label: string;
+  readonly attributed: boolean;
+  readonly invoiceCount: number;
+  readonly grossAmount: SalesAmountDto;
+}
+export interface SalesPerformanceReportDto {
+  readonly period: { readonly from: string; readonly to: string };
+  readonly dimension: SalesPerformanceDimensionDto;
+  readonly currency: "VES";
+  readonly rows: readonly SalesPerformanceRowDto[];
+  readonly generatedAt: string;
+}
+export interface SalesPerformanceReportQuery {
+  readonly from: string;
+  readonly to: string;
+  readonly dimension: SalesPerformanceDimensionDto;
+  readonly currency?: "VES";
+}
+
 /** Application-facing port for sales read models. */
 export interface SalesPort {
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Dashboard query. @returns Sales dashboard. */
@@ -63,4 +85,18 @@ export interface SalesPort {
     companyId: string,
     query: SalesDashboardQuery,
   ): Promise<SalesDashboardDto>;
+
+  /**
+   * Reads sales grouped by the requested historical attribution dimension.
+   * @param organizationId Owning organization.
+   * @param companyId Operational company.
+   * @param query Period and grouping dimension.
+   * @returns Sales performance report with exact VES totals.
+   * @throws KontaveRemoteFailure when authorization, transport, or response validation fails.
+   */
+  performanceReport(
+    organizationId: string,
+    companyId: string,
+    query: SalesPerformanceReportQuery,
+  ): Promise<SalesPerformanceReportDto>;
 }

@@ -13,8 +13,11 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi-card";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { useSales } from "@/src/modules/sales/frontend/hooks/use-sales";
 import type { SalesInvoiceStatus } from "@/src/modules/sales/backend/domain/sales-invoice";
+import type { SalesPerformanceReportDto, SalesPerformanceDimensionDto } from "@kontave/client-contracts";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,6 +74,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 
 export default function SalesDashboardPage() {
     const { companyId } = useCompany();
+    const { organization } = useOrganization();
     const {
         salesInvoices, loadingSalesInvoices,
         loadSalesInvoices, deleteSalesInvoice,
@@ -82,10 +86,39 @@ export default function SalesDashboardPage() {
     const [typeFilter, setTypeFilter] = useState<DocumentTypeFilter>("all");
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [reportDimension, setReportDimension] = useState<SalesPerformanceDimensionDto>("user");
+    const [performanceReport, setPerformanceReport] = useState<SalesPerformanceReportDto | null>(null);
+    const [loadingPerformanceReport, setLoadingPerformanceReport] = useState(false);
+    const [performanceReportError, setPerformanceReportError] = useState<string | null>(null);
 
     useEffect(() => {
         if (companyId) loadSalesInvoices(companyId);
     }, [companyId, loadSalesInvoices]);
+
+    useEffect(() => {
+        if (!companyId || !organization) return;
+        let cancelled = false;
+        const [year, month] = period.split("-").map(Number);
+        const from = `${period}-01`;
+        const to = new Date(year, month, 0).toISOString().slice(0, 10);
+        const params = new URLSearchParams({ from, to, dimension: reportDimension, currency: "VES" });
+        setLoadingPerformanceReport(true);
+        setPerformanceReportError(null);
+        void apiFetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/sales/reporting?${params}`)
+            .then(async (response) => {
+                const payload = await response.json() as { data?: SalesPerformanceReportDto; error?: { message?: string } };
+                if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo cargar el reporte.");
+                if (!cancelled) setPerformanceReport(payload.data ?? null);
+            })
+            .catch((error: unknown) => {
+                if (!cancelled) {
+                    setPerformanceReport(null);
+                    setPerformanceReportError(error instanceof Error ? error.message : "No se pudo cargar el reporte.");
+                }
+            })
+            .finally(() => { if (!cancelled) setLoadingPerformanceReport(false); });
+        return () => { cancelled = true; };
+    }, [companyId, organization, period, reportDimension]);
 
     const inPeriod = useMemo(
         () => salesInvoices.filter((f) => f.period === period),
@@ -182,6 +215,45 @@ export default function SalesDashboardPage() {
                     <DashboardKpiCard label="Total facturado" value={`Bs ${fmtN(kpi.totalBs)}`} color="primary" loading={loadingSalesInvoices} sublabel="suma de facturas confirmadas" />
                     <DashboardKpiCard label="IVA del período" value={`Bs ${fmtN(kpi.ivaBs)}`} color="default" loading={loadingSalesInvoices} sublabel="débito fiscal acumulado" />
                 </div>
+
+                <section className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-border-light flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Rendimiento de ventas</h2>
+                            <p className="mt-1 text-xs text-[var(--text-secondary)]">Ventas confirmadas · montos en bolívares</p>
+                        </div>
+                        <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden" role="group" aria-label="Agrupar reporte de ventas">
+                            {([
+                                ["user", "Usuario"], ["role", "Rol"], ["device", "Dispositivo"],
+                            ] as const).map(([dimension, label], index) => (
+                                <button key={dimension} type="button" onClick={() => setReportDimension(dimension)} aria-pressed={reportDimension === dimension}
+                                    className={["px-3 h-9 text-[11px] uppercase tracking-[0.1em] transition-colors", index > 0 ? "border-l border-border-light" : "", reportDimension === dimension ? "bg-primary-500/10 text-primary-500" : "text-[var(--text-secondary)] hover:bg-surface-2"].join(" ")}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    {loadingPerformanceReport ? (
+                        <p className="px-5 py-8 text-center text-xs text-[var(--text-secondary)]">Cargando reporte…</p>
+                    ) : performanceReportError ? (
+                        <p role="alert" className="px-5 py-8 text-center text-xs text-danger-500">{performanceReportError}</p>
+                    ) : !performanceReport?.rows.length ? (
+                        <p className="px-5 py-8 text-center text-xs text-[var(--text-secondary)]">No hay ventas confirmadas para agrupar en este período.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead><tr className="border-b border-border-light text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]"><th className="px-5 py-3">{reportDimension === "user" ? "Usuario" : reportDimension === "role" ? "Rol" : "Dispositivo"}</th><th className="px-5 py-3 text-right">Facturas</th><th className="px-5 py-3 text-right">Total vendido</th></tr></thead>
+                                <tbody>{performanceReport.rows.map((row) => (
+                                    <tr key={row.key} className="border-b border-border-light last:border-0">
+                                        <td className="px-5 py-3 text-foreground">{row.label}{!row.attributed && <span className="ml-2 text-[10px] text-[var(--text-tertiary)]">Sin atribución</span>}</td>
+                                        <td className="px-5 py-3 text-right tabular-nums text-[var(--text-secondary)]">{row.invoiceCount}</td>
+                                        <td className="px-5 py-3 text-right tabular-nums text-foreground">Bs {fmtN(Number(row.grossAmount.amount))}</td>
+                                    </tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
 
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="inline-flex items-center gap-1 rounded-lg border border-border-light bg-surface-1 px-1 h-9">

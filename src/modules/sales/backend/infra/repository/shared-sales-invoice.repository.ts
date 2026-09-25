@@ -169,9 +169,11 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         return this.findById(saved.id);
     }
 
-    async confirm(id: string, allowNegativeStock = false): Promise<Result<SalesInvoice>> {
-        return this.callFunction<RawInvoice>('shared_inventory_sales_invoice_confirm', {
-            p_tenant_id: this.tenantId, p_invoice_id: id, p_allow_negative_stock: allowNegativeStock,
+    async confirm(id: string, actorUserId: string, allowNegativeStock = false, registerId?: string): Promise<Result<SalesInvoice>> {
+        return this.callFunction<RawInvoice>('shared_inventory_sales_invoice_confirm_with_register', {
+            p_tenant_id: this.tenantId, p_invoice_id: id,
+            p_allow_negative_stock: allowNegativeStock, p_actor_user_id: actorUserId,
+            p_sales_register_id: registerId ?? null,
         }).then((result) => result.isFailure ? Result.fail(result.getError()) : this.load(result.getValue()));
     }
 

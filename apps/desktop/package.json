@@ -26,6 +26,7 @@
     "@kontave/client-remote": "workspace:*",
     "@kontave/client-runtime": "workspace:*",
     "@kontave/client-updates": "workspace:*",
+    "@kontave/sales": "workspace:*",
     "@kontave/ui": "workspace:*",
     "@kontave/devices": "workspace:*",
     "@kontave/modules": "workspace:*",

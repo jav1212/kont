@@ -246,6 +246,13 @@ const bridge: KontaveRendererBridge = {
         companyId,
         query,
       ),
+    getPerformanceReport: (organizationId, companyId, query) =>
+      ipcRenderer.invoke(
+        DESKTOP_IPC.getSalesPerformanceReport,
+        organizationId,
+        companyId,
+        query,
+      ),
   },
   purchasing: {
     getDashboard: (organizationId, companyId, query) =>

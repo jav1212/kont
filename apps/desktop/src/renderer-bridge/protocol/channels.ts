@@ -54,6 +54,7 @@ export const DESKTOP_IPC = {
   postInventoryOperation: "inventory:operation-post",
   reverseInventoryOperation: "inventory:operation-reverse",
   getSalesDashboard: "sales:dashboard",
+  getSalesPerformanceReport: "sales:performance-report",
   getPurchasingDashboard: "purchasing:dashboard",
   listProducts: "products:list",
   getProductPermissions: "products:permissions",

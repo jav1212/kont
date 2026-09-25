@@ -29,6 +29,7 @@ import {
 } from "../domain";
 
 export * from "./sales-dashboard";
+export * from "./sales-performance-report";
 
 export interface CustomerRepository {
   /** @param id Customer identifier. @returns The customer, or `null` when absent. */

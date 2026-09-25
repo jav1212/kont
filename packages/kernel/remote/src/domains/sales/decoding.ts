@@ -4,11 +4,14 @@ import type {
   SalesAmountDto,
   SalesDashboardDailyPointDto,
   SalesDashboardDocumentDto,
+  SalesPerformanceReportDto,
+  SalesPerformanceRowDto,
 } from "@kontave/client-contracts";
 import type { Decoder } from "../../decoding";
 import {
   textField,
   numberField,
+  booleanField,
   shape,
   list,
   nullOr,
@@ -83,4 +86,28 @@ const salesDashboardDtoShape: ResponseField<SalesDashboardDto> =
  */
 export const salesDashboard: Decoder<SalesDashboardDto> = responseDto(
   salesDashboardDtoShape,
+);
+
+const salesPerformanceRowDtoShape: ResponseField<SalesPerformanceRowDto> = shape<SalesPerformanceRowDto>({
+  key: textField,
+  label: textField,
+  attributed: booleanField,
+  invoiceCount: numberField,
+  grossAmount: salesAmountDtoShape,
+});
+const salesPerformanceReportDtoShape: ResponseField<SalesPerformanceReportDto> = shape<SalesPerformanceReportDto>({
+  period: shape({ from: textField, to: textField }),
+  dimension: literal("user", "role", "device"),
+  currency: literal("VES"),
+  rows: list(salesPerformanceRowDtoShape),
+  generatedAt: textField,
+});
+
+/**
+ * Validates a sales performance report response.
+ * @param value Untrusted response data.
+ * @returns The validated report, preserving serialized monetary amounts, or null when malformed.
+ */
+export const salesPerformanceReport: Decoder<SalesPerformanceReportDto> = responseDto(
+  salesPerformanceReportDtoShape,
 );

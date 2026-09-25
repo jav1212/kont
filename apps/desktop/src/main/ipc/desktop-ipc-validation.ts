@@ -167,6 +167,7 @@ function validateQuery(channel: string, args: readonly unknown[]): unknown {
   if (channel === DESKTOP_IPC.getInventoryDashboard) return optionalDashboard(args[2], decodeInventoryDashboardQuery);
   if (channel === DESKTOP_IPC.getPurchasingDashboard) return optionalDashboard(args[2], decodePurchasingDashboardQuery);
   if (channel === DESKTOP_IPC.getSalesDashboard) return optionalDashboard(args[2], decodeSalesDashboardQuery);
+  if (channel === DESKTOP_IPC.getSalesPerformanceReport) return decodeSalesPerformanceReportQuery(args[2]);
   if (channel === DESKTOP_IPC.listProducts) {
     segment(args[0]); segment(args[1]); return decodeProductListQuery(args[2]);
   }
@@ -250,7 +251,7 @@ function normalizedMutation(_channel: string, args: readonly unknown[], value: u
 function normalizedQuery(channel: string, args: readonly unknown[], value: unknown): readonly unknown[] {
   if (channel === DESKTOP_IPC.getSettingsSnapshot)
     return value as readonly unknown[];
-  if (channel === DESKTOP_IPC.getInventoryDashboard || channel === DESKTOP_IPC.getPurchasingDashboard || channel === DESKTOP_IPC.getSalesDashboard) return [decodeClientIdentifier(args[0]), decodeClientIdentifier(args[1]), value];
+  if (channel === DESKTOP_IPC.getInventoryDashboard || channel === DESKTOP_IPC.getPurchasingDashboard || channel === DESKTOP_IPC.getSalesDashboard || channel === DESKTOP_IPC.getSalesPerformanceReport) return [decodeClientIdentifier(args[0]), decodeClientIdentifier(args[1]), value];
   if (channel === DESKTOP_IPC.listInventoryEntries || channel === DESKTOP_IPC.listInventoryOutputs || channel === DESKTOP_IPC.listInventoryOperations || channel === DESKTOP_IPC.listProducts || channel === DESKTOP_IPC.listProductCategoryOverview) return [decodeClientIdentifier(args[0]), decodeClientIdentifier(args[1]), value];
   if (channel === DESKTOP_IPC.getProductPermissions || channel === DESKTOP_IPC.selectWorkspace || channel === DESKTOP_IPC.selectWorkspaceModule || channel === DESKTOP_IPC.selectWorkspaceCompany || channel === DESKTOP_IPC.openExternalDestination) return [decodeClientIdentifier(args[0])];
   if (args.length === 3) return [decodeClientIdentifier(args[0]), decodeClientIdentifier(args[1]), decodeClientIdentifier(args[2])];
@@ -270,7 +271,15 @@ function isInventoryMutation(channel: string): boolean {
   return channel === DESKTOP_IPC.createInventoryOperation || channel === DESKTOP_IPC.updateInventoryOperation || channel === DESKTOP_IPC.postInventoryOperation || channel === DESKTOP_IPC.reverseInventoryOperation;
 }
 function isQuery(channel: string): boolean {
-  return channel === DESKTOP_IPC.getSettingsSnapshot || channel === DESKTOP_IPC.listInventoryEntries || channel === DESKTOP_IPC.listInventoryOutputs || channel === DESKTOP_IPC.listInventoryOperations || channel === DESKTOP_IPC.getInventoryDashboard || channel === DESKTOP_IPC.getPurchasingDashboard || channel === DESKTOP_IPC.getSalesDashboard || channel === DESKTOP_IPC.listProducts || channel === DESKTOP_IPC.getProductPermissions || channel === DESKTOP_IPC.getProduct || channel === DESKTOP_IPC.listProductMovements || channel === DESKTOP_IPC.listProductCategories || channel === DESKTOP_IPC.getProductCategory || channel === DESKTOP_IPC.listProductCategoryOverview || channel === DESKTOP_IPC.getProductUnitEconomics || channel === DESKTOP_IPC.getInventoryOperation || channel === DESKTOP_IPC.selectWorkspace || channel === DESKTOP_IPC.selectWorkspaceModule || channel === DESKTOP_IPC.selectWorkspaceCompany || channel === DESKTOP_IPC.openExternalDestination;
+  return channel === DESKTOP_IPC.getSettingsSnapshot || channel === DESKTOP_IPC.listInventoryEntries || channel === DESKTOP_IPC.listInventoryOutputs || channel === DESKTOP_IPC.listInventoryOperations || channel === DESKTOP_IPC.getInventoryDashboard || channel === DESKTOP_IPC.getPurchasingDashboard || channel === DESKTOP_IPC.getSalesDashboard || channel === DESKTOP_IPC.getSalesPerformanceReport || channel === DESKTOP_IPC.listProducts || channel === DESKTOP_IPC.getProductPermissions || channel === DESKTOP_IPC.getProduct || channel === DESKTOP_IPC.listProductMovements || channel === DESKTOP_IPC.listProductCategories || channel === DESKTOP_IPC.getProductCategory || channel === DESKTOP_IPC.listProductCategoryOverview || channel === DESKTOP_IPC.getProductUnitEconomics || channel === DESKTOP_IPC.getInventoryOperation || channel === DESKTOP_IPC.selectWorkspace || channel === DESKTOP_IPC.selectWorkspaceModule || channel === DESKTOP_IPC.selectWorkspaceCompany || channel === DESKTOP_IPC.openExternalDestination;
+}
+
+function decodeSalesPerformanceReportQuery(value: unknown): unknown {
+  const query = strictRecord(value, ["from", "to", "dimension"]);
+  if (typeof query.from !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(query.from)) invalid();
+  if (typeof query.to !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(query.to)) invalid();
+  if (query.dimension !== "user" && query.dimension !== "role" && query.dimension !== "device") invalid();
+  return { from: query.from, to: query.to, dimension: query.dimension };
 }
 function command(value: unknown): void {
   if (!isPlainRecord(value) || JSON.stringify(value).length > 64_000) invalid();
@@ -313,6 +322,7 @@ const ARITY: Readonly<Record<string, number>> = {
   [DESKTOP_IPC.selectWorkspace]: 1, [DESKTOP_IPC.selectWorkspaceModule]: 1, [DESKTOP_IPC.selectWorkspaceCompany]: 1, [DESKTOP_IPC.openExternalDestination]: 1,
   [DESKTOP_IPC.getSettingsSnapshot]: 2, [DESKTOP_IPC.updateSettingsProfile]: 1, [DESKTOP_IPC.updateSettingsPreferences]: 1, [DESKTOP_IPC.updateSettingsOrganization]: 2, [DESKTOP_IPC.changeSettingsPassword]: 2, [DESKTOP_IPC.revokeSettingsSession]: 1,
   [DESKTOP_IPC.getInventoryDashboard]: 3, [DESKTOP_IPC.getSalesDashboard]: 3, [DESKTOP_IPC.getPurchasingDashboard]: 3,
+  [DESKTOP_IPC.getSalesPerformanceReport]: 3,
   [DESKTOP_IPC.listInventoryEntries]: 3, [DESKTOP_IPC.listInventoryOutputs]: 3, [DESKTOP_IPC.listInventoryOperations]: 3, [DESKTOP_IPC.getInventoryOperation]: 3, [DESKTOP_IPC.createInventoryOperation]: 3, [DESKTOP_IPC.updateInventoryOperation]: 4, [DESKTOP_IPC.postInventoryOperation]: 4, [DESKTOP_IPC.reverseInventoryOperation]: 4,
   [DESKTOP_IPC.listProducts]: 3, [DESKTOP_IPC.getProductPermissions]: 1, [DESKTOP_IPC.getProduct]: 3, [DESKTOP_IPC.createProduct]: 3, [DESKTOP_IPC.updateProduct]: 4, [DESKTOP_IPC.setProductStatus]: 5, [DESKTOP_IPC.listProductMovements]: 4, [DESKTOP_IPC.updateProductInventoryProfile]: 4, [DESKTOP_IPC.listProductCategories]: 3, [DESKTOP_IPC.createProductCategory]: 3, [DESKTOP_IPC.updateProductCategory]: 4, [DESKTOP_IPC.setProductCategoryStatus]: 5, [DESKTOP_IPC.getProductCategory]: 3, [DESKTOP_IPC.listProductCategoryOverview]: 3, [DESKTOP_IPC.getProductUnitEconomics]: 4, [DESKTOP_IPC.updateProductSalePricing]: 4, [DESKTOP_IPC.updateProductTaxation]: 4,
 };

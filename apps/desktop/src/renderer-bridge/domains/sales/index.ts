@@ -2,6 +2,8 @@ import type {
   ExchangeRateSetDto,
   OperationalDefaultsDto,
   SalesDashboardDto,
+  SalesPerformanceDimensionDto,
+  SalesPerformanceReportDto,
 } from "@kontave/client-contracts";
 import type { DesktopResult } from "../../core/result";
 export interface DesktopSalesDashboardSnapshot {
@@ -17,10 +19,21 @@ export interface DesktopSalesDashboardQuery {
 }
 export type DesktopSalesDashboardResult =
   DesktopResult<DesktopSalesDashboardSnapshot>;
+export interface DesktopSalesPerformanceReportQuery {
+  readonly from: string;
+  readonly to: string;
+  readonly dimension: SalesPerformanceDimensionDto;
+}
+export type DesktopSalesPerformanceReportResult = DesktopResult<SalesPerformanceReportDto>;
 export interface DesktopSalesApi {
   getDashboard(
     organizationId: string,
     companyId: string,
     query?: DesktopSalesDashboardQuery,
   ): Promise<DesktopSalesDashboardResult>;
+  getPerformanceReport(
+    organizationId: string,
+    companyId: string,
+    query: DesktopSalesPerformanceReportQuery,
+  ): Promise<DesktopSalesPerformanceReportResult>;
 }

@@ -31,6 +31,8 @@ export type TenantContext = {
     effectiveOwnerId: string;
     /** Present only for a terminal-bound carnet session, already checked server-side. */
     barcodeSession?: boolean;
+    /** Registered browser terminal ID, present only after the terminal session was verified. */
+    barcodeTerminalId?: string;
 };
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -105,7 +107,7 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
     });
     if (!resolved) throw new TenantForbiddenError();
     const legacyContext: TenantContext = {
-        ...(barcode.registered ? { barcodeSession: true } : {}), userId, tenantId: resolved.tenantId,
+        ...(barcode.registered ? { barcodeSession: true, barcodeTerminalId: barcode.terminalId } : {}), userId, tenantId: resolved.tenantId,
         schemaName: tenantSchemaName(resolved.tenantId),
         actingAs: resolved.isOwner ? null : { ownerId: resolved.tenantId, role: resolved.role as TenantRole },
         role: resolved.role as TenantRole, effectiveOwnerId: resolved.tenantId,

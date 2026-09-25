@@ -61,6 +61,7 @@ import { DesktopSettingsController } from "./settings/desktop-settings-controlle
 import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller";
 import { DesktopSalesDashboardController } from "./sales/desktop-sales-dashboard-controller";
 import { hasSalesDashboardAccess } from "./sales/sales-dashboard-access";
+import { hasSalesPerformanceReportAccess } from "./sales/sales-performance-report-access";
 import { DesktopInventoryOperationsController } from "./inventory/desktop-inventory-operations-controller";
 import { DesktopPurchasingDashboardController } from "./purchasing/desktop-purchasing-dashboard-controller";
 import { DesktopProductsController } from "./products/desktop-products-controller";
@@ -337,6 +338,19 @@ function registerIpc(): void {
         query,
       )
         : Promise.resolve({ ok: false as const, error: { code: "SALES_DASHBOARD_FORBIDDEN", message: "No tienes acceso al tablero de ventas.", requestId: null } }),
+  );
+  ipcMain.handle(
+    DESKTOP_IPC.getSalesPerformanceReport,
+    (_event, organizationId, companyId, query) =>
+      hasSalesPerformanceReportAccess(workspaceController().getState(), organizationId)
+        ? salesDashboardController().getPerformanceReport(
+            authenticatedActorId(), organizationId, companyId, query,
+          )
+        : Promise.resolve({ ok: false as const, error: {
+            code: "SALES_REPORT_FORBIDDEN",
+            message: "No tienes acceso a los reportes de ventas.",
+            requestId: null,
+          } }),
   );
   ipcMain.handle(
     DESKTOP_IPC.listInventoryEntries,
