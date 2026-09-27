@@ -15,15 +15,32 @@ import {
   taxCode,
   taxDecision,
   TaxationFailure,
-  type ProductTaxProfile,
   type TaxDecision,
+  type TaxCode,
   type TaxRule,
+  type TaxTreatment,
 } from "../domain";
 
 export const VENEZUELAN_IVA = taxCode("IVA");
 
+/** Tax classification contract shared by company-owned product and service profiles. */
+export interface VatClassificationProfile {
+  readonly jurisdiction: string;
+  /**
+   * Finds the effective classification for a tax and date.
+   * @param code - Tax code to resolve.
+   * @param value - Effective date in `YYYY-MM-DD` format.
+   * @returns The treatment and its audit provenance.
+   */
+  assignmentAt(code: TaxCode, value: string): {
+    readonly treatment: TaxTreatment;
+    readonly legalBasis: string;
+    readonly classificationVersion: string;
+  };
+}
+
 export interface ResolveVenezuelanVatInput {
-  readonly profile: ProductTaxProfile;
+  readonly profile: VatClassificationProfile;
   readonly rules: readonly TaxRule[];
   readonly operationDate: string;
   readonly lineReference: string;

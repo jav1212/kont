@@ -33,6 +33,8 @@ export * from "./customer-receivables";
 export * from "./record-receivable-payment";
 export * from "./sales-dashboard-access-policy";
 export * from "./sales-performance-report";
+export * from "./prepare-service-sale-fiscal-document";
+export * from "./prepare-confirmed-service-invoice";
 
 export interface CustomerRepository {
   /** @param id Customer identifier. @returns The customer, or `null` when absent. */

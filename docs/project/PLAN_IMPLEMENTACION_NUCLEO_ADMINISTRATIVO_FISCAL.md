@@ -1,6 +1,6 @@
 # Implementación del núcleo administrativo y fiscal y migración controlada de Web
 
-Fecha: 23/09/2026. Estado: ejecución parcial; C1 tiene persistencia y consultas implementadas, pendiente validación SQL aislada.
+Fecha: 27/09/2026. Estado: C1 y el corte técnico de C2 están implementados y validados en Supabase; falta desplegar la Web para disponibilidad global; cada empresa deberá completar su configuración fiscal antes de preparar documentos.
 
 Alcance confirmado: fortalecer el núcleo de Kontave mediante sus paquetes y llevarlo a la Web de producción por cortes controlados. El modo hotel está excluido; requerirá aceptación comercial y planificación independiente.
 
@@ -8,9 +8,9 @@ Este documento convierte el [plan estratégico de cumplimiento](PLAN_CUMPLIMIENT
 
 ### Avance de ejecución
 
-Primer corte parcialmente completado en el repositorio: `@kontave/fiscal` publica contratos de persistencia, coordinación de aplicación, adaptador Supabase RPC-only y paginación por cursor estable. La migración aditiva 268 define documentos fiscales, comandos del proveedor, intentos de red, eventos append-only, alcance tenant/organización/empresa, RPC idempotentes y protección de documentos emitidos. Se conectaron `GET /api/fiscal/documents`, `GET /api/fiscal/documents/[id]` y `GET /api/fiscal/documents/[id]/events`, protegidos con `sales.read` y validación server-side de tenant, organización y empresa. Siguen pendientes escritura desde API/Web, integración con ventas y ejecución de la migración en una base aislada.
+El corte implementado prepara borradores fiscales para facturas administrativas de venta confirmadas que contienen únicamente servicios en VES. Cada línea debe llevar un código de clasificación tributaria de servicio vigente; no admite IGTF ni ajustes globales. Antes de persistir, el servidor comprueba la identidad fiscal completa de emisor y cliente, la jurisdicción, los totales y la fecha de operación. Conserva en cada determinación la regla y clasificación que la originaron. Los reintentos devuelven el documento ya creado y rechazan un conflicto de origen, emisor o fecha.
 
-Verificado al 23/09/2026: `corepack pnpm --filter @kontave/fiscal check` pasó; `corepack pnpm --filter @kontave/fiscal test` pasó (20 casos); el lint dirigido pasó; la auditoría clasificó 159 rutas API; `corepack pnpm build` pasó con las tres rutas fiscales. El lint global reportó errores en archivos ajenos a fiscal. Sigue pendiente probar la migración en una base PostgreSQL aislada: no hay `psql`, Supabase CLI ni `pg_format`, y el daemon de Docker local no está activo. La migración no se aplicó en producción ni en un proyecto Supabase remoto. Próximo corte: preparar documentos fiscales desde ventas con snapshots tributarios reproducibles, sin habilitar emisión.
+Las migraciones 268, 281 y 282 están aplicadas en el proyecto Supabase `fvantswxhepvkloygcvc`. Las dos pruebas de humo remotas se revirtieron al terminar: comprobaron persistencia, consulta, eventos, reintentos, aislamiento por tenant/organización/empresa y rechazo de escrituras directas o RPC por usuarios autenticados. La prueba con el escritor heredado también confirmó que una línea sin identificador conserva el código tributario de servicio. No quedaron documentos ni eventos de prueba persistidos. El corte se expone a todas las organizaciones cuando la Web se despliegue; no usa piloto ni banderas de activación por empresa. La configuración incompleta bloquea únicamente la preparación inválida de esa empresa.
 
 ## 1. Resultado esperado y reglas de ejecución
 
@@ -24,7 +24,7 @@ Cada corte sigue esta secuencia:
 2. Implementar dominio/aplicación y contratos en el paquete propietario.
 3. Incorporar persistencia, autorización y API compatibles.
 4. Integrar una experiencia Web acotada.
-5. Probar el circuito y habilitarlo gradualmente en la empresa piloto.
+5. Probar el circuito y desplegarlo para todas las organizaciones cuando sus datos fiscales cumplan los requisitos.
 6. Retirar el camino anterior cuando se cumplan las condiciones de salida.
 
 Los cortes de fundamento pueden desplegarse sin exposición operativa; no cuentan como funcionalidad terminada para usuarios. No acumular varios módulos de dominio sin conectar el primer circuito completo. Las ventanas temporales de compatibilidad de datos/APIs no deben convertirse en wrappers permanentes ni duplicación de reglas.
@@ -73,10 +73,10 @@ Ruta principal: C0 → C1 → C2 → C3 → C4 → C5 → C6 → C7 → C8. Desc
 | Corte | Entregable demostrable | Condición para pasar al siguiente |
 | --- | --- | --- |
 | C0 | Contratos, inventario, decisiones de emisión y baseline | Alcance del primer circuito y reglas de compatibilidad definidos |
-| C1 | Documento y auditoría persistidos con controles de acceso | No se altera un emitido; aislamiento y restauración comprobados |
-| C2 | Cálculo fiscal autoritativo y versionado | Casos tributarios validados, snapshots y reglas vigentes reproducibles |
+| C1 | Documento y auditoría persistidos con controles de acceso | Implementado y comprobado en Supabase mediante RPC, eventos append-only, aislamiento y bloqueo de escrituras directas |
+| C2 | Cálculo fiscal autoritativo y versionado | Preparación de borradores de servicios implementada; queda cargar y validar reglas, clasificaciones e identidades fiscales de cada empresa |
 | C3 | Emisión recuperable por un canal | Contrato externo probado; incertidumbre y reintentos sin duplicación |
-| C4 | Venta de servicio Web con emisión, cobro básico y corrección | Primer circuito completo aceptado en piloto |
+| C4 | Venta de servicio Web con emisión, cobro básico y corrección | Primer circuito completo aceptado para despliegue global |
 | C5 | Venta de bienes, despacho y devolución conciliados | Una operación física única; corrección fiscal independiente |
 | C6 | Caja y cuentas comerciales | Arqueo, anticipos, saldos, reembolsos y pagos conciliados |
 | C7 | Compras/retenciones/contabilidad conectadas | Reportes y asientos conciliados por documento y período |
@@ -86,12 +86,12 @@ Ruta principal: C0 → C1 → C2 → C3 → C4 → C5 → C6 → C7 → C8. Desc
 
 - Inventariar clientes Web/Desktop/Mobile, rutas antiguas y v1, RPC, permisos y tablas que pueden guardar, confirmar, desconfirmar o borrar una venta.
 - Revisar cómo los RPC efectivos calculan costo de salida: detectar cualquier uso del precio de venta como costo de inventario antes de validar márgenes o asientos. La valoración pertenece a inventario.
-- Registrar baseline de pruebas/builds y deudas preexistentes; identificar operaciones reales del piloto y volúmenes esperados.
+- Registrar baseline de pruebas/builds y deudas preexistentes; identificar operaciones reales y volúmenes esperados por organización.
 - Elegir una modalidad emisora y obtener su contrato técnico, consulta de estado, credenciales de prueba y reglas de numeración. Si es hardware, fijar modelo/firmware y acceso a equipo real.
 - Confirmar aplicabilidad normativa y casos fiscales con responsable tributario; no cargar fixtures como reglas legales.
 - Diseñar ADR para emisión/estados, auditoría, tesorería y estrategia de migración. Registrar qué paquete es el único escritor de cada entidad.
-- Definir retención, RPO/RTO, disponibilidad, objetivos de latencia y ventana de observación del piloto según operación real.
-- Seleccionar empresa piloto y permisos: operador, supervisor, auditor, soporte. Separar privilegios de plataforma y de empresa.
+- Definir retención, RPO/RTO, disponibilidad, objetivos de latencia y ventana de observación del despliegue global según operación real.
+- Definir permisos de operador, supervisor, auditor y soporte para todas las organizaciones. Separar privilegios de plataforma y de empresa.
 
 Salida: inventario versionado, decisiones, matriz de permisos, escenarios con resultados esperados, mapa de datos y tickets estimados. Las decisiones externas pendientes tienen propietario y bloquean únicamente el entregable dependiente.
 
@@ -141,7 +141,7 @@ Salida: pruebas de contrato y de recuperación aprobadas. No se expone emisión 
 - Definir recuperación cuando emisión y cobro no concluyen juntos. La factura aceptada no desaparece porque falle el registro del cobro: queda excepción conciliable, con política explícita de saldo.
 - Implementar fixture de venta de servicio para no introducir inventario en este primer corte. Probar también cobro rechazado, parcial y repetido según alcance mínimo aprobado.
 
-Salida: una empresa piloto completa factura, consulta, cobro y nota correctiva con su evidencia. Ninguna operación nueva vuelve al modelo anterior por apagar una bandera.
+Salida: todas las organizaciones con configuración fiscal completa pueden facturar, consultar, cobrar y corregir con evidencia. Ninguna operación nueva vuelve al modelo anterior por apagar una bandera.
 
 ### C5 — Bienes, inventario y devoluciones
 
@@ -205,7 +205,7 @@ Una lectura dual temporal necesita reglas de precedencia y deduplicación por id
 | Desarrollo | Fixtures y simulador | Dominio, errores, concurrencia y fallos reproducibles |
 | Staging | Datos anonimizados, BD representativa y proveedor de prueba | Migraciones, permisos, contratos y E2E; restauración |
 | Producción desactivada | Esquema/API compatibles, sin nuevos comandos habilitados | Salud, compatibilidad de versión anterior y lectura histórica |
-| Piloto | Empresa/terminal/canal acordados; configuración protegida en servidor | Casos reales autorizados y cierre conciliado; supervisión de pendientes |
+| Despliegue global | Organizaciones, terminales y canal acordados; configuración protegida en servidor | Casos reales autorizados y cierre conciliado; supervisión de pendientes |
 | Expansión | Cohortes acordadas por volumen y riesgo | Misma evidencia, sin incidentes críticos abiertos ni diferencias inexplicadas |
 | Retiro | Sin writers/operaciones pendientes del camino anterior | Inventario de consumidores vacío y procedimientos actualizados |
 
@@ -266,17 +266,17 @@ Primer lote de tickets listo para desglosar:
 | ID | Ticket | Dependencia | Criterio de cierre |
 | --- | --- | --- | --- |
 | IMP-001 | Inventario de comandos de venta y RPC efectivos | Ninguna | Todas las entradas de escritura y sus permisos mapeados |
-| IMP-002 | Matriz fiscal y contrato del canal piloto | Ninguna | Casos, evidencias y recuperación conocidos; pendientes externos asignados |
+| IMP-002 | Matriz fiscal y contrato del canal de emisión | Ninguna | Casos, evidencias y recuperación conocidos; pendientes externos asignados |
 | IMP-003 | ADR de estados, auditoría, tesorería y migración | 001–002 | Ownership y política de históricos/rollback sin ambigüedad |
 | IMP-004 | Entorno aislado y baseline de pruebas | 001 | Comandos reproducibles y datos de prueba anonimizados |
 | IMP-005 | Modelo/puertos de aplicación fiscal y auditoría | 003 | Pruebas de invariantes, estados e idempotencia |
 | IMP-006 | Migración aditiva y commit transaccional | 004–005 | Pruebas SQL de aislamiento, unicidad e inmutabilidad |
 | IMP-007 | Respaldo/restauración con conciliación | 004; completar con 006 | Recuperación medida de documentos, eventos y archivos |
-| IMP-008 | Consulta Web fiscal y bitácora autorizada | 006 | Consulta individual, listado paginado y bitácora por empresa implementados, sin habilitar emisión; falta verificación SQL aislada |
+| IMP-008 | Consulta Web fiscal y bitácora autorizada | 006 | Consulta individual, listado paginado y bitácora por empresa implementados, sin habilitar emisión; verificación SQL realizada |
 
 ## 9. Criterio de cierre del programa
 
-El núcleo queda fortalecido cuando el piloto y las cohortes acordadas pueden emitir/corregir por el canal elegido, cobrar y conciliar caja, inventario y contabilidad; los cambios históricos están protegidos; la recuperación está ensayada; los consumidores anteriores no pueden saltarse controles; y los responsables disponen de manuales, alertas y evidencia por versión.
+El núcleo queda fortalecido cuando todas las organizaciones con configuración fiscal válida pueden emitir/corregir por el canal elegido, cobrar y conciliar caja, inventario y contabilidad; los cambios históricos están protegidos; la recuperación está ensayada; los consumidores anteriores no pueden saltarse controles; y los responsables disponen de manuales, alertas y evidencia por versión.
 
 El modo hotel no bloquea este cierre. Desktop y Mobile conservarán compatibilidad con los contratos que consumen, pero la paridad funcional completa en esas superficies requiere alcance separado.
 
@@ -291,4 +291,17 @@ El modo hotel no bloquea este cierre. Desktop y Mobile conservarán compatibilid
 - [Fuente operativa compartida](../adr/0030-shared-operational-schema-as-single-source.md).
 - [Observabilidad y distinción de auditoría](../standards/observability.md).
 
-En esta fase se añadieron contratos, coordinación de aplicación, adaptador Supabase, lectura individual, listado paginado y consulta de bitácora por empresa en `@kontave/fiscal`, junto con pruebas unitarias y la migración aditiva 268. La escritura por API/Web, activación por empresa, reglas tributarias autoritativas, emisión, conciliación, migración de históricos y despliegues permanecen pendientes. No se modificó la base de datos remota.
+### Estado operativo del corte C2 — 27/09/2026
+
+La persistencia fiscal se creó mediante la migración 268; la 281 añadió perfiles y asignaciones tributarias versionadas para servicios, y la 282 normaliza identificadores estables de líneas que los escritores heredados omiten. Las tres están registradas y aplicadas en Supabase: 268 (`20260927211749`), 281 (`20260927205746`) y 282 (`20260927211759`). El corte ofrece rutas para consultar y cambiar la clasificación de servicios y para preparar un borrador desde una factura de venta confirmada. Si esa venta se modifica o desconfirma después de preparar el borrador, un reintento devuelve `409` y conserva el snapshot existente. Este corte no incluye cancelación, reemplazo o emisión de borradores; tampoco se debe borrar evidencia ni recrear el origen para resolver ese conflicto. Los cobros, las notas correctivas, la conciliación y el modo hotel siguen fuera de este corte.
+
+La validación final del corte aprobó 45 pruebas de ventas, 21 fiscales y 20 tributarias, además de tres chequeos de tipos. El build final de producción (`corepack pnpm build`) pasó, junto con la auditoría de autorización de rutas (83 páginas, 68 entradas de navegación y 164 handlers tenant). El lint dirigido del corte no produjo errores ni advertencias. La prueba SQL con PGlite y las pruebas de humo remotas verificaron la persistencia y el aislamiento; las verificaciones remotas se revirtieron y no dejaron perfiles, facturas, eventos ni documentos de prueba.
+
+Para preparar un borrador, cada empresa debe contar con RIF y domicilio fiscal del emisor, identidad fiscal completa de los clientes que se vayan a facturar y perfiles de servicio con una regla IVA vigente y fundamento legal aprobado. La Web se despliega globalmente aunque alguna empresa aún no reúna esas condiciones; el servidor rechaza únicamente la operación incompleta. La inspección remota encontró 57 organizaciones y 74 empresas: dos empresas carecen de RIF y once de domicilio, distribuidas en diez organizaciones. Hay dos reglas IVA (gravado al 16 % y exento al 0 %) y ninguna clasificación de servicio ni venta confirmada compuesta solo por servicios. Sus fundamentos y la versión `legacy-production-1` requieren revisión tributaria; no se modificaron datos fiscales ni reglas automáticamente.
+
+#### Runbook de despliegue y recuperación
+
+1. Desplegar la Web que incluye el formulario administrativo, las rutas fiscales y sus permisos para todas las organizaciones.
+2. Completar y revisar los datos fiscales y clasificaciones de cada organización; la aplicación debe rechazar la preparación cuando falte alguno.
+3. Verificar en producción que una factura de servicio válida crea un borrador consultable y que un reintento devuelve ese mismo documento. Confirmar que no exista emisión externa en este corte.
+4. Ante un fallo de aplicación, volver al binario Web anterior y conservar el esquema, documentos y eventos como evidencia. No eliminar tablas, columnas ni migraciones; toda corrección posterior debe ser aditiva y conciliada.

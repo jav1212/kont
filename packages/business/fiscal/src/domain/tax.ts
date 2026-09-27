@@ -1,6 +1,7 @@
 import { compareDecimal, exactDecimal, sameCurrency, type ExactDecimal, type Money } from "@kontave/monetary/domain";
 import type { FiscalDocumentLineId } from "./identifiers";
 import { FiscalFailure } from "./fiscal-failure";
+import { fiscalDate, type FiscalDate } from "./temporal";
 
 export type FiscalTaxCategory = "taxable" | "exempt" | "exonerated" | "not_subject" | "perceived" | "other";
 export type FiscalTaxCalculationMode = "tax_exclusive" | "tax_inclusive";
@@ -18,6 +19,14 @@ export interface FiscalTaxDetermination {
   readonly amount: Money;
   readonly jurisdiction: string;
   readonly ruleVersion: string;
+  /** Commercial operation date used when resolving this historical tax result. */
+  readonly operationDate?: FiscalDate;
+  /** Legal basis of the effective legal tax rule. */
+  readonly legalBasis?: string;
+  /** Version of the company-owned tax classification selected for the operation. */
+  readonly classificationVersion?: string;
+  /** Legal basis of the company-owned tax classification selected for the operation. */
+  readonly classificationLegalBasis?: string;
   readonly source: FiscalTaxSource;
 }
 
@@ -54,11 +63,33 @@ export function fiscalTaxDetermination(input: FiscalTaxDetermination): FiscalTax
   if (input.source.kind === "payment" && !input.source.paymentKey.trim()) {
     throw new FiscalFailure("FISCAL_TAX_INVALID", "Payment tax source requires a payment key.");
   }
-  return { ...input, taxCode, jurisdiction, ruleVersion, rate };
+  const auditEvidence = {
+    ...(input.operationDate === undefined ? {} : { operationDate: fiscalDate(input.operationDate) }),
+    ...optionalAuditProperty("legalBasis", input.legalBasis, 500, "legal basis"),
+    ...optionalAuditProperty("classificationVersion", input.classificationVersion, 128, "classification version"),
+    ...optionalAuditProperty("classificationLegalBasis", input.classificationLegalBasis, 500, "classification legal basis"),
+  };
+  return {
+    ...input,
+    taxCode,
+    jurisdiction,
+    ruleVersion,
+    rate,
+    ...auditEvidence,
+  };
 }
 
 function required(value: string, limit: number, name: string): string {
   const normalized = value.trim();
   if (!normalized || normalized.length > limit) throw new FiscalFailure("FISCAL_TAX_INVALID", `Fiscal ${name} is invalid.`);
   return normalized;
+}
+
+function optionalAuditProperty<Key extends "legalBasis" | "classificationVersion" | "classificationLegalBasis">(
+  key: Key,
+  value: string | undefined,
+  limit: number,
+  name: string,
+): Partial<Pick<FiscalTaxDetermination, Key>> {
+  return value === undefined ? {} : { [key]: required(value, limit, name) } as Pick<FiscalTaxDetermination, Key>;
 }

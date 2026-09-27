@@ -1,10 +1,10 @@
 # Plan de fortalecimiento administrativo y fiscal de Kontave
 
-Fecha de evaluación: 23 de septiembre de 2026. Estado: propuesta para discusión y priorización; no constituye una certificación ni una declaración de cumplimiento.
+Fecha de evaluación: 27 de septiembre de 2026. Estado: plan en ejecución; el fundamento de persistencia y preparación de borradores está aplicado y verificado, sin constituir una certificación ni una declaración de cumplimiento.
 
 Desglose técnico: [plan de implementación del núcleo y migración controlada de Web](PLAN_IMPLEMENTACION_NUCLEO_ADMINISTRATIVO_FISCAL.md), con cortes, ownership, pruebas, tratamiento de históricos y despliegue gradual. El modo hotel permanece fuera de esa implementación.
 
-Avance de implementación: ya hay un primer fundamento aditivo en `@kontave/fiscal`, el adaptador RPC de servidor, la migración 268, consulta individual, listado Web paginado y consulta de bitácora protegidos por organización y empresa. Emisión, escritura desde API/Web y validación de SQL en una base aislada siguen pendientes. La migración no se ha aplicado a ningún entorno remoto.
+Avance de implementación: `@kontave/fiscal` persiste documentos y eventos mediante RPC, y las migraciones 268, 281 y 282 están aplicadas y verificadas en Supabase. La Web prepara borradores desde facturas administrativas de servicios confirmadas en VES, con clasificación tributaria versionada, validación server-side de identidades y totales, y reintentos idempotentes. Si cambia o se desconfirma la venta de origen, el reintento devuelve `409` y conserva su snapshot; no hay cancelación ni reemplazo de borradores en este corte. El despliegue Web todavía no se ha realizado. Ninguna operación se emite ante un canal fiscal en este corte.
 
 ## 1. Decisión estratégica propuesta
 
@@ -35,7 +35,7 @@ Consecuencias para el plan:
 
 ## 3. Método y límites de la evaluación
 
-La evaluación combina inspección estática del repositorio, decisiones arquitectónicas y búsqueda normativa. No se accedió a la base productiva, configuración del proveedor cloud, credenciales, equipos fiscales, respaldos externos ni expedientes administrativos. No se ejecutaron pruebas funcionales ni de penetración.
+La evaluación combina inspección estática del repositorio, decisiones arquitectónicas, búsqueda normativa y verificaciones limitadas de esquema y aislamiento en Supabase. No se evaluaron credenciales, equipos fiscales, respaldos externos ni expedientes administrativos. No se acredita emisión fiscal real ni una prueba de penetración.
 
 Estados usados: **base** significa que existe código o una capacidad parcial; **integración por verificar** exige demostrar el circuito completo; **no evidenciado** no equivale a inexistencia fuera del repositorio. No se asigna un porcentaje de cumplimiento sin inventario de requisitos y pruebas reproducibles.
 
@@ -44,8 +44,8 @@ Estados usados: **base** significa que existe código o una capacidad parcial; *
 | ID | Requisito de la referencia | Situación observada / alcance pendiente | Prioridad y evidencia de cierre |
 | --- | --- | --- | --- |
 | NOR-01 | Requisitos y solicitud de homologación | Referencia normativa requiere actualización; expediente legal externo no evaluado | P0: matriz de aplicabilidad revisada por responsable tributario, fuentes oficiales y modalidad seleccionada |
-| FIS-01 | Facturas, notas de crédito y débito | Existe modelo de dominio con esos tipos, snapshots, conciliación de totales y evidencia de emisión; falta demostrar persistencia y emisión completa | P0: emitir, consultar, corregir y conciliar documentos con evidencia del canal real |
-| FIS-02 | Integridad e inalterabilidad | El dominio restringe edición del documento emitido; eso no demuestra protección en BD, APIs o accesos privilegiados | P0: modificación y borrado rechazados; correcciones vinculadas; detección de alteraciones privilegiadas |
+| FIS-01 | Facturas, notas de crédito y débito | Borradores persistidos y consultables para ventas de servicios confirmadas; no hay emisión, notas ni conciliación completa | P0: emitir, consultar, corregir y conciliar documentos con evidencia del canal real |
+| FIS-02 | Integridad e inalterabilidad | Persistencia RPC-only, eventos y bloqueo de escrituras directas verificados en el corte; faltan correcciones y operación de emitidos | P0: modificación y borrado rechazados; correcciones vinculadas; detección de alteraciones privilegiadas |
 | FIS-03 | Corrección de operaciones confirmadas | El flujo heredado permite desconfirmar ventas y revertir movimientos; confirmar comercialmente no acredita emisión fiscal | P0: distinguir ambos estados y bloquear vuelta a borrador cuando exista emisión; corrección con documento y efectos compensatorios aplicables |
 | AUD-01 | Bitácora de accesos, cambios, anulaciones, reimpresiones y correcciones | Hay observabilidad y trazabilidad en áreas concretas; no se ha demostrado una bitácora fiscal completa y protegida | P0: catálogo de eventos y pruebas de cobertura, integridad, exportación y permisos |
 | TAX-01 | IVA, divisas y BCV | Existen dinero exacto, políticas tributarias versionadas y adaptador BCV; falta validar reglas reales y su uso en cada flujo | P0: casos aprobados por contador, vigencias y snapshots reproducibles |
@@ -88,20 +88,20 @@ Las duraciones son rangos iniciales de planificación, no compromisos. Suponen d
 
 | Fase | Trabajo y entregables | Responsable principal | Dependencia | Duración orientativa / salida |
 | --- | --- | --- | --- | --- |
-| 0. Alcance y aplicabilidad | Inventario de requisitos, fuentes oficiales, tipo de contribuyente, canal emisor, casos fiscales y empresa piloto | Producto + asesor tributario + arquitectura | Ninguna | 1–2 semanas; alcance y matriz de aceptación acordados |
+| 0. Alcance y aplicabilidad | Inventario de requisitos, fuentes oficiales, tipo de contribuyente, canal emisor y casos fiscales de las organizaciones | Producto + asesor tributario + arquitectura | Ninguna | 1–2 semanas; alcance y matriz de aceptación acordados |
 | 1. Controles transversales | Persistencia fiscal, auditoría, permisos, respaldo/restauración, reglas y snapshots; migraciones compatibles | Backend + operación + QA | Fase 0 | 3–5 semanas; pruebas de integridad, aislamiento y restauración aprobadas |
 | 2. Circuito fiscal completo | Una modalidad real; venta, impuestos, emisión, cobro básico, notas, reimpresión, consulta y conciliación | Backend + Web/Desktop según canal + QA | Fase 1 y contrato/equipo disponible | 4–6 semanas; circuito probado con fallos y evidencia externa |
 | 3. Administración comercial | Caja y arqueos, cuentas por cobrar/pagar, anticipos, retenciones aplicables, reportes y enlace contable | Backend + presentación + contador | Fase 2; diseño financiero puede adelantarse | 3–5 semanas; cierre diario y conciliación sin diferencias inexplicadas |
-| 4. Piloto y liberación del núcleo | Migración ensayada, formación, pruebas con administración/caja/contador, soporte, contingencia y evidencias por versión | Producto + QA + operación | Fase 3 | 2–4 semanas; acta de aceptación y criterios operativos cumplidos |
-| H. Modo hotel opcional | Descubrimiento propio; reservas, habitaciones, tarifas, estancia, consumos, A&B y cierre nocturno; o integración equivalente con PMS | Producto hotelero + ingeniería + QA | Núcleo aceptado y ampliación contratada | Estimación y piloto separados después del descubrimiento |
+| 4. Liberación global del núcleo | Migración ensayada, formación, pruebas con administración/caja/contador, soporte, contingencia y evidencias por versión | Producto + QA + operación | Fase 3 | 2–4 semanas; organizaciones con datos fiscales válidos y criterios operativos cumplidos |
+| H. Modo hotel opcional | Descubrimiento propio; reservas, habitaciones, tarifas, estancia, consumos, A&B y cierre nocturno; o integración equivalente con PMS | Producto hotelero + ingeniería + QA | Núcleo aceptado y ampliación contratada | Estimación y despliegue separados después del descubrimiento |
 
-Si todo se ejecuta secuencialmente, la suma orientativa para fortalecer y pilotar el núcleo es 13–22 semanas bajo los supuestos de equipo indicados. Un piloto fiscal acotado puede evaluarse al terminar la fase 2. La ampliación hotelera se cotiza y planifica por separado; no se incluyen PMS, channel manager, motor de reservas público ni todos los modelos de impresora en ese plazo.
+Si todo se ejecuta secuencialmente, la suma orientativa para fortalecer y liberar el núcleo es 13–22 semanas bajo los supuestos de equipo indicados. La ampliación hotelera se cotiza y planifica por separado; no se incluyen PMS, channel manager, motor de reservas público ni todos los modelos de impresora en ese plazo.
 
 ## 7. Primer ciclo de trabajo: diez días hábiles
 
 | Ventana | Resultado concreto | Responsable |
 | --- | --- | --- |
-| Días 1–2 | Elegir empresa piloto, contribuyente, canal fiscal y superficies; recopilar documentos reales anonimizados | Producto + contador |
+| Días 1–2 | Confirmar contribuyentes, canal fiscal y superficies; recopilar documentos reales anonimizados | Producto + contador |
 | Días 2–4 | Matriz requisito → fuente → aplicabilidad → control → prueba → evidencia → versión; inventario de APIs, BD, dispositivos y proveedores | Arquitectura + asesor tributario |
 | Días 3–5 | Demostrar los flujos existentes y marcar código conectado, parcial y ausente; revisar accesos privilegiados y respaldo real | Ingeniería + operación |
 | Días 5–7 | Decisiones de persistencia fiscal, auditoría, contingencia, tesorería e integración; presupuesto de infraestructura y proveedor | Arquitectura + producto |
@@ -138,7 +138,7 @@ La duración de conservación, RPO (pérdida máxima tolerable) y RTO (tiempo de
 
 Este apartado conserva la trazabilidad con el documento recibido. Solo se activa si el cliente acepta el modo hotel; no debe generar implementación anticipada de reservas, habitaciones o restaurante dentro del núcleo.
 
-El descubrimiento debe describir reservas individuales y de grupo, cancelaciones/no-show, tarifas por fecha, planes con alimentos, ocupación, habitaciones fuera de servicio, limpieza y cambios de habitación. Debe definir qué entra al piloto y qué se posterga expresamente.
+El descubrimiento debe describir reservas individuales y de grupo, cancelaciones/no-show, tarifas por fecha, planes con alimentos, ocupación, habitaciones fuera de servicio, limpieza y cambios de habitación. Debe definir qué entra al alcance inicial y qué se posterga expresamente.
 
 La cuenta de estancia reúne cargos con origen y fecha operativa: alojamiento, restaurante, minibar y otros servicios. Se necesitan reglas de transferencia de cargos, pagadores múltiples, facturación a empresa, división de cuenta, cortes parciales y anticipos. El cierre nocturno debe ser repetible sin duplicar cargos y permitir gestionar estancias aún abiertas.
 
@@ -167,12 +167,12 @@ Indicadores mínimos: duplicados fiscales detectados (objetivo 0), diferencias d
 | Confundir arquitectura disponible con operación lista | Demostración por circuito y evidencia, no por número de pantallas o paquetes |
 | Dependencia de proveedor o dispositivo | Puerto de emisión, contrato de consulta/recuperación y pruebas por versión |
 | Doble emisión por caída de red | Idempotencia durable, resultado incierto y conciliación externa |
-| Alcance excesivo del hotel | Un hotel piloto y una modalidad fiscal; backlog explícito para siguientes cortes |
+| Alcance excesivo del hotel | Descubrimiento acotado y una modalidad fiscal; backlog explícito para siguientes cortes |
 | Migración de documentos históricos | Preservar origen e identidad; importar y conciliar sin reemitir documentos |
 | Cambio de proveedor a mitad de operación | Plan de portabilidad de documentos y acuses, sin renumerar historia |
 | Presupuesto incompleto | Incluir ingeniería, QA, asesoría tributaria, equipo fiscal, proveedor digital, almacenamiento, backups, monitoreo, firma de instaladores si aplica, formación y soporte |
 
-Decisión ya tomada: núcleo administrativo/fiscal primero y modo hotel condicionado. Pendientes de fase 0: modalidad y proveedor emisor; Web/Desktop/Mobile del piloto; número de empresas, establecimientos y cajas; conectividad esperada; alcance de integración con la contabilidad existente; equipo y presupuesto disponibles. PMS propio o integrado se decidirá dentro de la ampliación hotelera. No hay estimación monetaria responsable sin estas variables y cotizaciones.
+Decisión ya tomada: núcleo administrativo/fiscal primero y modo hotel condicionado. El corte de borradores se despliega de forma global, sin piloto ni banderas por organización. Antes de la emisión real siguen pendientes la modalidad y proveedor emisor, la revisión tributaria de las reglas y fundamentos, la cobertura de datos fiscales, las superficies Web/Desktop/Mobile, número de establecimientos y cajas, conectividad, integración contable, equipo y presupuesto. PMS propio o integrado se decidirá dentro de la ampliación hotelera. No hay estimación monetaria responsable sin estas variables y cotizaciones.
 
 ## 12. Evidencia interna de partida
 
@@ -187,3 +187,7 @@ Decisión ya tomada: núcleo administrativo/fiscal primero y modo hotel condicio
 - [Contabilidad existente](../../src/modules/accounting/backend/infrastructure/accounting-factory.ts): capacidades que se deben aprovechar y conciliar con la emisión fiscal.
 
 Este plan añade únicamente documentación de trabajo. No modifica código, infraestructura, datos ni el documento original del usuario.
+
+Actualización 27/09/2026: el corte usa facturas administrativas confirmadas, no `SalesOrder`, y requiere que sean exclusivamente de servicios en VES. Las migraciones remotas ya aplicadas permiten perfiles de servicio versionados y persistencia fiscal. La inspección encontró 57 organizaciones y 74 empresas; dos empresas no tienen RIF y once no tienen domicilio, en diez organizaciones. No existen clasificaciones de servicios ni ventas confirmadas solo de servicios para preparar. Las dos reglas IVA existentes (gravado al 16 % y exento al 0 %), sus fundamentos y su versión `legacy-production-1` requieren validación del responsable tributario; no se cambiaron datos fiscales ni reglas automáticamente. El siguiente trabajo es completar esas configuraciones y desplegar la Web globalmente; el modo hotel continúa condicionado a aceptación comercial.
+
+La validación de implementación aprobó 86 pruebas focalizadas entre ventas, fiscal y tributación, tres chequeos de tipos, lint de los archivos fiscales nuevos y pruebas SQL locales/remotas de persistencia y aislamiento. La emisión ante un canal fiscal no formó parte de esas verificaciones.

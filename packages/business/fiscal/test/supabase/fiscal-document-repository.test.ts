@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { encodeFiscalDocument, SupabaseFiscalDocumentRepository } from "../../src/adapters/supabase";
+import { decodeFiscalDocument, encodeFiscalDocument, SupabaseFiscalDocumentRepository } from "../../src/adapters/supabase";
+import { FiscalDocument, fiscalDate } from "../../src/domain";
 import { fiscalInvoiceFixture } from "../../src/testing";
 
 test("Supabase adapter persists exact bigint snapshots through the scoped RPC", async () => {
@@ -40,6 +41,26 @@ test("Supabase adapter persists exact bigint snapshots through the scoped RPC", 
   assert.equal(result.document.id, document.id);
   assert.equal(result.document.totals.payableAmount.minorAmount, document.totals.payableAmount.minorAmount);
   assert.equal(result.replayed, false);
+});
+
+test("fiscal snapshot codec preserves optional tax operation and legal evidence", () => {
+  const base = fiscalInvoiceFixture();
+  const document = new FiscalDocument({
+    ...base,
+    taxDeterminations: base.taxDeterminations.map((determination) => ({
+      ...determination,
+      operationDate: fiscalDate("2026-09-27"),
+      legalBasis: "IVA law",
+      classificationVersion: "service-v4",
+      classificationLegalBasis: "Service classification",
+    })),
+  });
+
+  const decoded = decodeFiscalDocument(JSON.parse(encodeFiscalDocument(document)));
+  assert.equal(decoded.taxDeterminations[0]?.operationDate, "2026-09-27");
+  assert.equal(decoded.taxDeterminations[0]?.legalBasis, "IVA law");
+  assert.equal(decoded.taxDeterminations[0]?.classificationVersion, "service-v4");
+  assert.equal(decoded.taxDeterminations[0]?.classificationLegalBasis, "Service classification");
 });
 
 test("Supabase adapter scopes document reads to tenant, organization, and company", async () => {

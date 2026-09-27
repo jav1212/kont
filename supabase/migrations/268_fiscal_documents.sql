@@ -389,11 +389,27 @@ begin
         raise exception 'FISCAL_DOCUMENT_OUTSIDE_COMPANY';
     end if;
 
-    if p_created_by is not null and not exists (
-        select 1 from public.organization_memberships membership
-        where membership.organization_id = p_organization_id
-          and membership.user_id = p_created_by
-          and membership.status = 'active'
+    if p_created_by is not null and not (
+        exists (
+            select 1 from public.organization_memberships membership
+            where membership.organization_id = p_organization_id
+              and membership.user_id = p_created_by
+              and membership.status = 'active'
+        ) or exists (
+            select 1
+            from public.organization_delegation_member_assignments assignment
+            join public.organization_delegations delegation
+              on delegation.id = assignment.delegation_id
+            join public.organization_delegation_scopes scope
+              on scope.delegation_id = delegation.id
+             and scope.scope = 'sales'
+            where assignment.user_id = p_created_by
+              and assignment.status = 'active'
+              and delegation.client_organization_id = p_organization_id
+              and delegation.status = 'active'
+              and delegation.valid_from <= now()
+              and (delegation.valid_until is null or delegation.valid_until > now())
+        )
     ) then
         raise exception 'FISCAL_DOCUMENT_ACTOR_OUTSIDE_ORGANIZATION';
     end if;
@@ -418,8 +434,7 @@ begin
            and v_document.id = btrim(p_document_id)
            and v_document.document_status = 'draft'
            and v_document.document_snapshot = p_document_snapshot
-           and v_document.created_by is not distinct from p_created_by
-           and v_document.created_at = p_occurred_at then
+           and v_document.created_by is not distinct from p_created_by then
             return jsonb_build_object('document', to_jsonb(v_document), 'replayed', true);
         end if;
         raise exception 'FISCAL_DOCUMENT_IDEMPOTENCY_CONFLICT';

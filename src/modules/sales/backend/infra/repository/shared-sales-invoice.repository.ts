@@ -66,6 +66,7 @@ type RawItem = {
     id: string;
     invoice_id: string;
     product_id: string | null;
+    service_tax_code: string | null;
     description: string;
     quantity: number | string | null;
     unit_price: number | string | null;
@@ -120,7 +121,9 @@ const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
 });
 
 const itemPayload = (item: SalesInvoiceItem): Record<string, unknown> => ({
-    id: item.id ?? '', producto_id: item.productId ?? null, descripcion: item.description,
+    id: item.id ?? crypto.randomUUID(), producto_id: item.productId ?? null,
+    service_tax_code: item.productId == null ? item.serviceTaxCode ?? null : null,
+    descripcion: item.description,
     cantidad: item.quantity, precio_unitario: item.unitPrice, total_linea: item.totalLine,
     iva_alicuota: item.vatRate, moneda: item.currency, precio_moneda: item.currencyPrice ?? null,
     tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null, descuento_tipo: item.descuentoTipo ?? null,
@@ -261,6 +264,7 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             confirmedAt: row.confirmed_at,
             items: rawItems.map((item) => ({
                 id: item.id, invoiceId: item.invoice_id, productId: item.product_id,
+                serviceTaxCode: item.service_tax_code,
                 description: item.description, quantity: num(item.quantity), unitPrice: num(item.unit_price),
                 totalLine: num(item.line_total), vatRate: (item.vat_rate ?? 'general_16') as VatRate,
                 currency: normalizeCurrencyCode(item.currency) as ItemCurrency,

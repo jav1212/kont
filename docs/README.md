@@ -23,6 +23,8 @@ This folder is organized by purpose so project documentation and planning stay e
 
 ### Project
 
+- [Resumen ejecutivo del sistema](project/RESUMEN_EJECUTIVO.md)
+- [Documento integral de módulos y modos sectoriales](project/DOCUMENTACION_INTEGRAL_SISTEMA.md)
 - [project/PROJECT_DOCUMENTATION.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/project/PROJECT_DOCUMENTATION.md)
 
 ### Database
@@ -39,10 +41,10 @@ This folder is organized by purpose so project documentation and planning stay e
 
 ### Architecture
 
-- [architecture/MODULES_CATALOG.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/architecture/MODULES_CATALOG.md)
-- [architecture/portable-package-hardening.md](architecture/portable-package-hardening.md)
 - [Cuentas por cobrar del POS](adr/0042-pos-credit-receivables.md)
 
+- [architecture/MODULES_CATALOG.md](/Users/haldrimmolina/Documents/GitHub/kont/docs/architecture/MODULES_CATALOG.md)
+- [architecture/portable-package-hardening.md](architecture/portable-package-hardening.md)
 - [Organizaciones en la Web](architecture/web-organization-workspace.md)
 - [Lectura HID en el POS Web](architecture/web-pos-hid-scanning.md)
 - [Acceso por carnet en Web](architecture/web-barcode-access-plan.md)

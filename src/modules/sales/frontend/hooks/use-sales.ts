@@ -13,6 +13,14 @@ import { notify } from '@/src/shared/frontend/notify';
 
 export type { Customer, SalesInvoice, SalesInvoiceItem, IgtfFortnightlyReport };
 
+/** Result returned after a fiscal draft has been prepared or replayed. */
+export interface FiscalDraftPreparation {
+    /** Stable identifier of the persisted fiscal draft. */
+    readonly documentId: string;
+    /** Whether the server returned the pre-existing idempotent draft. */
+    readonly replayed: boolean;
+}
+
 function reportError(fallback: string, e: unknown): void {
     notify.error(e instanceof Error ? e.message : fallback);
 }
@@ -225,6 +233,22 @@ export function useSales() {
         }
     }, [refetchFullInvoice]);
 
+    const prepareFiscalDraft = useCallback(async (invoiceId: string, companyId: string): Promise<FiscalDraftPreparation | null> => {
+        try {
+            const params = new URLSearchParams({ companyId });
+            const res = await apiFetch(`/api/fiscal/sales/${encodeURIComponent(invoiceId)}/prepare?${params.toString()}`, { method: 'POST' });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al preparar borrador fiscal'); return null; }
+            const documentId = typeof json.data?.document?.id === 'string' ? json.data.document.id : '';
+            if (!documentId) { notify.error('El borrador fiscal no devolvió un identificador.'); return null; }
+            notify.success(json.data?.replayed ? 'El borrador fiscal ya estaba preparado.' : 'Borrador fiscal preparado.');
+            return { documentId, replayed: Boolean(json.data?.replayed) };
+        } catch (error) {
+            reportError('Error al preparar borrador fiscal', error);
+            return null;
+        }
+    }, []);
+
     // ── IGTF Quincena Report ──────────────────────────────────────────────────
 
     // Returns { data, error } so the caller can decide whether to toast.
@@ -261,7 +285,7 @@ export function useSales() {
         loadCustomers, saveCustomer, ensureConsumerFinal, deleteCustomer,
         // invoice actions
         loadSalesInvoices, loadSalesInvoice, saveSalesInvoice,
-        deleteSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice,
+        deleteSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice, prepareFiscalDraft,
         // IGTF report
         fetchIgtfFortnightly,
     };

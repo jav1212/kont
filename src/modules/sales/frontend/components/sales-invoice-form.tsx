@@ -4,7 +4,7 @@
 // Para drafts es totalmente editable; para confirmadas pasa a read-only y
 // expone botones Confirmar / Desconfirmar / Descargar PDF.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { Trash2, FileText, CheckCircle2, Lock, Unlock, Save, UserRound, CalendarDays, Plus, X } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -35,6 +35,7 @@ import { CurrencyAdjustmentRow } from "@/src/modules/inventory/frontend/componen
 import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components/invoice-taxes-section";
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
 import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
+import { ServiceTaxClassificationEditor } from "./service-tax-classification-editor";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -91,7 +92,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const {
         customers, loadCustomers, saveCustomer,
         currentSalesInvoice, loadingSalesInvoice, loadSalesInvoice,
-        saveSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice,
+        saveSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice, prepareFiscalDraft,
     } = useSales();
 
     // Form state
@@ -118,6 +119,18 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [saving, setSaving]               = useState(false);
     const [confirming, setConfirming]       = useState(false);
     const [unconfirming, setUnconfirming]   = useState(false);
+    const [preparingFiscalDraft, setPreparingFiscalDraft] = useState(false);
+    const [fiscalDraftId, setFiscalDraftId] = useState<string | null>(null);
+    const [classificationLineIndex, setClassificationLineIndex] = useState<number | null>(null);
+    const activeCompanyIdRef = useRef(companyId);
+    const activeInvoiceIdRef = useRef(currentSalesInvoice?.id ?? invoiceId);
+
+    useEffect(() => {
+        activeCompanyIdRef.current = companyId;
+        activeInvoiceIdRef.current = currentSalesInvoice?.id ?? invoiceId;
+        setFiscalDraftId(null);
+        setClassificationLineIndex(null);
+    }, [companyId, currentSalesInvoice?.id, invoiceId]);
     const [generatingPdf, setGeneratingPdf] = useState(false);
 
     useEffect(() => {
@@ -479,6 +492,21 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         setUnconfirming(false);
     }
 
+    async function handlePrepareFiscalDraft() {
+        if (!currentSalesInvoice?.id || !companyId) return;
+        const requestedCompanyId = companyId;
+        const requestedInvoiceId = currentSalesInvoice.id;
+        setPreparingFiscalDraft(true);
+        const prepared = await prepareFiscalDraft(requestedInvoiceId, companyId);
+        if (prepared && activeCompanyIdRef.current === requestedCompanyId && activeInvoiceIdRef.current === requestedInvoiceId) setFiscalDraftId(prepared.documentId);
+        setPreparingFiscalDraft(false);
+    }
+
+    const fiscalPreparationEligible = isConfirmed
+        && !isDeliveryNote
+        && items.length > 0
+        && items.every((item) => !item.productId && item.description.trim() && item.serviceTaxCode?.trim());
+
     async function handleDownloadPdf() {
         if (!currentSalesInvoice || !company || !customerObj) return;
         if (!company.rif) { notify.error("La empresa no tiene RIF configurado."); return; }
@@ -701,6 +729,25 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                         onProductSelect={(product) => selectProduct(idx, product.id!)}
                                         onClear={() => updateItem(idx, { productId: null, description: "" })}
                                     />
+                                    {!it.productId && <BaseInput.Field
+                                        aria-label="Código fiscal del servicio"
+                                        label="Código fiscal del servicio"
+                                        value={it.serviceTaxCode ?? ""}
+                                        onValueChange={(value) => updateItem(idx, { serviceTaxCode: value.trim() || null })}
+                                        placeholder="Código configurado en clasificación fiscal"
+                                        description="Debe existir en la clasificación fiscal de la empresa para preparar el borrador."
+                                        isReadOnly={isReadOnly}
+                                    />}
+                                    {!it.productId && !isReadOnly && (
+                                        <BaseButton.Root
+                                            className="mt-2"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setClassificationLineIndex(idx)}
+                                        >
+                                            Configurar clasificación
+                                        </BaseButton.Root>
+                                    )}
                                     {isReadOnly && it.compositionSnapshot?.length ? <div className="mt-2 rounded-md bg-surface-2 px-2.5 py-2 text-[10px] text-[var(--text-secondary)]"><p className="font-semibold uppercase tracking-[.1em] text-[var(--text-tertiary)]">Componentes utilizados</p>{it.compositionSnapshot.map((component) => <p key={component.productId} className="mt-1 truncate"><span className="font-mono text-foreground">{component.quantity.toLocaleString("es-VE", { maximumFractionDigits: 4 })} {component.measureUnit}</span> · {component.name}{component.code ? ` (${component.code})` : ""}</p>)}</div> : null}
                                 </div>
                                 <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
@@ -796,6 +843,9 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>{saving ? "Guardando…" : "Guardar borrador"}</BaseButton.Root>
                             </>}
                             {isConfirmed && <>
+                                {!isDeliveryNote && <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handlePrepareFiscalDraft} disabled={preparingFiscalDraft || !fiscalPreparationEligible}>{preparingFiscalDraft ? "Preparando borrador…" : "Preparar borrador fiscal"}</BaseButton.Root>}
+                                {!isDeliveryNote && !fiscalPreparationEligible && <p className="text-[11px] leading-snug text-[var(--text-tertiary)]">El borrador fiscal requiere una factura confirmada compuesta solo por servicios, cada uno con código fiscal.</p>}
+                                {fiscalDraftId && <div className="rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-[11px] text-[var(--text-secondary)]"><p className="font-semibold text-foreground">Borrador fiscal preparado</p><p className="mt-1 break-all font-mono">ID: {fiscalDraftId}</p><p className="mt-1">Este identificador corresponde a un borrador; no confirma emisión fiscal.</p></div>}
                                 <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>{generatingPdf ? "Generando…" : isDeliveryNote ? "Descargar Nota de Entrega" : "Descargar PDF legal"}</BaseButton.Root>
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
                             </>}
@@ -803,6 +853,18 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     </InvoiceSummaryCard>
                 </aside>
             </div>
+            {companyId && classificationLineIndex !== null && (
+                <ServiceTaxClassificationEditor
+                    companyId={companyId}
+                    serviceCode={items[classificationLineIndex]?.serviceTaxCode ?? ""}
+                    isOpen
+                    onClose={() => setClassificationLineIndex(null)}
+                    onServiceCodeSaved={(serviceTaxCode) => {
+                        updateItem(classificationLineIndex, { serviceTaxCode });
+                        setClassificationLineIndex(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

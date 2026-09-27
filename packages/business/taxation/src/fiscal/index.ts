@@ -17,6 +17,7 @@ export function toFiscalTaxDetermination(decision: TaxDecision): FiscalTaxDeterm
     amount: decision.amount,
     jurisdiction: decision.jurisdiction,
     ruleVersion: decision.ruleVersion,
+    legalBasis: decision.legalBasis,
     source: fiscalSource(decision),
   });
 }

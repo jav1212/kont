@@ -10,6 +10,7 @@ import {
   type TaxRule,
   type TaxTreatment,
 } from "../domain";
+export * from "./service-taxation";
 
 /** Actor and tenant scope required by product-taxation operations. */
 export interface TaxationContext {

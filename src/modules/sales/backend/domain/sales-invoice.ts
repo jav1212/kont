@@ -55,6 +55,8 @@ export interface SalesInvoiceItem {
     invoiceId?:      string;
     /** Optional product link — null for service-only lines. */
     productId?:      string | null;
+    /** Versioned company service-tax classification code for service-only lines. */
+    serviceTaxCode?: string | null;
     productName?:    string;
     /** Free-text description (mandatory; copies product name when productId is set). */
     description:    string;

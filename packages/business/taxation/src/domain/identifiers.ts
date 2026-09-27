@@ -1,9 +1,11 @@
 import { TaxationFailure } from "./taxation-failure";
 
 declare const taxProfileIdBrand: unique symbol;
+declare const serviceTaxProfileIdBrand: unique symbol;
 declare const taxRuleIdBrand: unique symbol;
 declare const taxCodeBrand: unique symbol;
 export type ProductTaxProfileId = string & { readonly [taxProfileIdBrand]: true };
+export type ServiceTaxProfileId = string & { readonly [serviceTaxProfileIdBrand]: true };
 export type TaxRuleId = string & { readonly [taxRuleIdBrand]: true };
 export type TaxCode = string & { readonly [taxCodeBrand]: true };
 
@@ -15,6 +17,16 @@ export type TaxCode = string & { readonly [taxCodeBrand]: true };
  */
 export function productTaxProfileId(value: string): ProductTaxProfileId {
   return identifier(value, 128, "profile") as ProductTaxProfileId;
+}
+
+/**
+ * Validates and brands a service tax-profile identifier.
+ * @param value - Untrusted identifier.
+ * @returns The normalized profile identifier.
+ * @throws {TaxationFailure} When empty or longer than 128 characters.
+ */
+export function serviceTaxProfileId(value: string): ServiceTaxProfileId {
+  return identifier(value, 128, "service profile") as ServiceTaxProfileId;
 }
 
 /**

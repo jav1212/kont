@@ -3,6 +3,11 @@ import type { AuthorizationDecision, AuthorizationRequest, AuthorizationSnapshot
 export class InMemoryAccessControlRepository implements AccessControlRepository {
   constructor(private readonly entries: readonly { userId: string; snapshot: AuthorizationSnapshot }[] = []) {}
   async findSnapshot(userId: string, organizationId: string) { return this.entries.find((item) => item.userId === userId && item.snapshot.role.organizationId === organizationId)?.snapshot ?? null; }
+  async findSnapshots(userId: string, organizationIds: readonly string[]) {
+    return new Map(this.entries
+      .filter((item) => item.userId === userId && organizationIds.includes(item.snapshot.role.organizationId ?? ""))
+      .map((item) => [item.snapshot.role.organizationId!, item.snapshot]));
+  }
 }
 export class RecordingAuthorizationAudit implements AuthorizationAudit {
   readonly entries: Array<{ request: AuthorizationRequest; decision: AuthorizationDecision; snapshot: AuthorizationSnapshot | null }> = [];

@@ -19,6 +19,7 @@ import {
   type TaxRule,
 } from "../../domain";
 import { z } from "zod";
+export { SupabaseServiceTaxationRepository, createSupabaseServiceTaxationRepository } from "./service-taxation";
 
 const assignmentSchema = z.object({
   taxCode: z.string(),
