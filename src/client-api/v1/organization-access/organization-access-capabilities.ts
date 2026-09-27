@@ -44,7 +44,7 @@ export class OrganizationAccessPermissions implements WorkspacePortfolioCapabili
     const snapshots = await this.authorization.findSnapshots(actorUserId, directOrganizationIds);
     return new Map(entries.map((entry) => {
       const permissions = entry.accessPath.kind === OrganizationAccessPathKind.DirectMembership
-        ? this.directPermissions(snapshots.get(entry.organizationId))
+        ? this.directPermissions(snapshots.get(entry.organizationId) ?? null)
         : this.delegatedPermissions(entry);
       return [entry.organizationId, { permissions }];
     }));

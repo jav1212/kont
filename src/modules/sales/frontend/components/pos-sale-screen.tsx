@@ -589,7 +589,7 @@ export function PosSaleScreen() {
                         <label className="block"><span className="block font-mono text-[10px] uppercase tracking-[.1em] text-[var(--text-tertiary)]">Vencimiento</span><input aria-label="Fecha de vencimiento del crédito" type="date" min={date} value={creditDueDate} onChange={(event) => setCreditDueDate(event.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-border-light bg-surface-1 px-2 text-[12px] outline-none focus:border-primary-500" /></label>
                         <CurrencyCombobox label="Moneda de la deuda" value={creditCurrency} options={currencyOptions} onChange={setCreditCurrency}/>
                     </div>
-                    <div className={`rounded-lg px-3 py-2 text-[11px] ${creditAmount == null ? "bg-red-500/5 text-red-600" : "bg-surface-1 text-[var(--text-secondary)]"}`}>{creditAmount == null ? `No hay tasa disponible para ${creditCurrency}.` : <><span>Saldo anclado: </span><strong className="font-mono text-foreground">{money(creditAmount)} {creditCurrency}</strong><span className="ml-2">· Tasa: Bs {money(creditRate)}</span></>}</div>
+                    <div className={`rounded-lg px-3 py-2 text-[11px] ${creditAmount == null || creditRate == null ? "bg-red-500/5 text-red-600" : "bg-surface-1 text-[var(--text-secondary)]"}`}>{creditAmount == null || creditRate == null ? `No hay tasa disponible para ${creditCurrency}.` : <><span>Saldo anclado: </span><strong className="font-mono text-foreground">{money(creditAmount)} {creditCurrency}</strong><span className="ml-2">· Tasa: Bs {money(creditRate)}</span></>}</div>
                 </div>}
             </div>}
         </div>

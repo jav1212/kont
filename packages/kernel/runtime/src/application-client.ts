@@ -249,6 +249,8 @@ export function createKontaveApplicationClient(
   const sales = createPortFeature<SalesPort>({
     dashboard: (organizationId, companyId, query) =>
       options.ports.sales.dashboard(organizationId, companyId, query),
+    performanceReport: (organizationId, companyId, query) =>
+      options.ports.sales.performanceReport(organizationId, companyId, query),
   });
 
   const runtimes = [

@@ -23,6 +23,10 @@ export class ConfirmSalesInvoiceUseCase extends UseCase<Input, SalesInvoice> {
         if (draftResult.isFailure) return Result.fail(draftResult.getError());
         const draft = draftResult.getValue();
         if (draft.paymentTerms === 'credito') {
+            const invoiceId = draft.id;
+            if (!invoiceId) return Result.fail('Credit sale requires a persisted invoice');
+            const debtorId = draft.customerId;
+            if (!debtorId) return Result.fail('Credit sale requires an identified customer');
             try {
                 if (!draft.creditCurrency || draft.creditAmount === null || draft.creditAmount === undefined
                     || draft.creditExchangeRate === null || draft.creditExchangeRate === undefined
@@ -31,11 +35,11 @@ export class ConfirmSalesInvoiceUseCase extends UseCase<Input, SalesInvoice> {
                 }
                 const debtCurrency = currency(draft.creditCurrency, 8);
                 createCustomerReceivableFromConfirmedCreditInvoice({
-                    receivableId: customerReceivableId(draft.id),
+                    receivableId: customerReceivableId(invoiceId),
                     companyId: companyId(draft.companyId),
-                    customerId: customerId(draft.customerId),
-                    customerIdentified: !draft.customerId.startsWith('consumer-final:'),
-                    invoiceReference: draft.id,
+                    customerId: customerId(debtorId),
+                    customerIdentified: !debtorId.startsWith('consumer-final:'),
+                    invoiceReference: invoiceId,
                     saleDate: salesDate(draft.date),
                     principal: moneyFromDecimal(String(draft.creditAmount), debtCurrency),
                     debtVesRate: {

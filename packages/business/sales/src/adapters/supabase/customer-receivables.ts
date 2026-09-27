@@ -2,7 +2,6 @@ import {
   customerReceivableId,
   receivablePaymentId,
   CustomerReceivable,
-  type CustomerReceivable,
   type CustomerReceivableState,
   type ReceivablePayment,
 } from "../../domain/customer-receivable";
@@ -100,7 +99,7 @@ export class SupabaseCustomerReceivablesAdapter implements CustomerReceivablesRe
     if (lookupError) throw unavailable(lookupError);
     if (!receivableRow) throw new SalesFailure("SALES_NOT_FOUND", "Customer receivable does not exist.");
     const account = receivableRow as unknown as ReceivableRow;
-    const current = (await this.list({ companyId: account.company_id })).find((item) => item.id === request.receivableId);
+    const current = (await this.list({ companyId: companyId(account.company_id) })).find((item) => item.id === request.receivableId);
     if (!current) throw new SalesFailure("SALES_NOT_FOUND", "Customer receivable does not exist.");
     const expected = current.recordPayment(request.payment);
     const { error } = await this.client.rpc("shared_sales_receivable_apply_payment", {
@@ -116,7 +115,7 @@ export class SupabaseCustomerReceivablesAdapter implements CustomerReceivablesRe
       p_reference: null,
     });
     if (error) throw mapPaymentError(error);
-    const refreshed = (await this.list({ companyId: account.company_id })).find((item) => item.id === request.receivableId);
+    const refreshed = (await this.list({ companyId: companyId(account.company_id) })).find((item) => item.id === request.receivableId);
     const payment = refreshed?.payments.find((entry) => entry.idempotencyKey === request.payment.idempotencyKey);
     if (!refreshed || !payment) throw unavailable(new Error("Payment was not visible after the atomic commit."));
     return { receivable: refreshed, payment, replayed: expected.replayed };
