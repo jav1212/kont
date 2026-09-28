@@ -19,6 +19,7 @@ import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser
 import type { SalesInvoiceStatus } from "@/src/modules/sales/backend/domain/sales-invoice";
 import type { SalesPerformanceReportDto, SalesPerformanceDimensionDto } from "@kontave/client-contracts";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { generateSalesPerformanceReportPdf } from "@/src/modules/sales/frontend/utils/sales-performance-report-pdf";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -235,6 +236,10 @@ export default function SalesDashboardPage() {
                             <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Rendimiento de ventas</h2>
                             <p className="mt-1 text-xs text-[var(--text-secondary)]">Ventas confirmadas · montos en bolívares</p>
                         </div>
+                        <BaseButton.Root variant="secondary" size="sm" leftIcon={<FileText size={14} strokeWidth={2} />} disabled={loadingPerformanceReport || !performanceReport?.rows.length}
+                            onClick={() => { if (performanceReport) void generateSalesPerformanceReportPdf(performanceReport, { name: organization?.name ?? "Empresa", rif: companyId ?? "" }); }}>
+                            Emitir PDF
+                        </BaseButton.Root>
                         <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden" role="group" aria-label="Agrupar reporte de ventas">
                             {([
                                 ["user", "Usuario"], ["role", "Rol"], ["device", "Dispositivo"],
