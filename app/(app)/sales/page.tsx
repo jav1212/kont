@@ -264,7 +264,7 @@ export default function SalesDashboardPage() {
                                 <thead><tr className="border-b border-border-light text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]"><th className="px-5 py-3">{reportDimension === "user" ? "Usuario" : reportDimension === "role" ? "Rol" : "Dispositivo"}</th><th className="px-5 py-3 text-right">Facturas</th><th className="px-5 py-3 text-right">Total vendido</th></tr></thead>
                                 <tbody>{performanceReport.rows.map((row) => (
                                     <tr key={row.key} className="border-b border-border-light last:border-0">
-                                        <td className="px-5 py-3 text-foreground">{row.label}{!row.attributed && <span className="ml-2 text-[10px] text-[var(--text-tertiary)]">Sin atribución</span>}</td>
+                                        <td className="px-5 py-3 text-foreground">{row.attributed ? row.label : "Sin atribución histórica"}</td>
                                         <td className="px-5 py-3 text-right tabular-nums text-[var(--text-secondary)]">{row.invoiceCount}</td>
                                         <td className="px-5 py-3 text-right tabular-nums text-foreground">Bs {fmtN(Number(row.grossAmount.amount))}</td>
                                     </tr>
