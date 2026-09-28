@@ -273,8 +273,9 @@ El directorio exige membresía y organización activas, con un rol activo asigna
 a esa misma organización. Además, la organización debe tener un
 `legacy_tenant_id` persistido y el usuario debe poder operar ese tenant como
 propietario o miembro aceptado y no revocado. Una sesión por carnet queda
-restringida al tenant de su terminal. Las rutas de detalle verifican que el
-tenant seleccionado corresponda a la organización solicitada.
+restringida al tenant que el servidor registró para el carnet. Las rutas de
+detalle verifican que el tenant seleccionado corresponda a la organización
+solicitada.
 
 El adaptador compartido resuelve permisos mediante `role_id`,
 `organization_roles` y `organization_role_permissions`. Una asignación ausente,
@@ -348,11 +349,14 @@ solicitado explícitamente debe estar activo y ser propio o tener una membresía
 aceptada y no revocada; un tenant suspendido o sin puente se deniega, sin
 retroceder a otra organización.
 
-Las sesiones de carnet continúan fijadas al tenant de su terminal. No pueden
-cambiar de tenant mediante el encabezado ni usar un fallback cuando el tenant
-fijado deja de estar activo. El directorio histórico de membresías aplica el
-mismo filtro de organizaciones activas, de modo que una selección persistida en
-el navegador no puede restaurar un espacio suspendido.
+Las sesiones de carnet quedan fijadas al tenant registrado por el servidor, sin
+depender de una terminal. Un escaneo puede sustituir al operador sólo si el
+workspace autorizado de la sesión previa pertenece a esa misma organización;
+una sesión bloqueada o inactiva conserva esa misma frontera al recuperarse. No
+pueden cambiar de tenant mediante el encabezado ni usar un fallback cuando el
+tenant fijado deja de estar activo. El directorio histórico de membresías aplica
+el mismo filtro de organizaciones activas, de modo que una selección persistida
+en el navegador no puede restaurar un espacio suspendido.
 
 Esta resolución limita el contexto tenant antes de las rutas API. No reemplaza
 la autorización de recursos: cada ruta conserva sus permisos de servidor y sus

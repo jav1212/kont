@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decryptBarcodeBadge, encryptBarcodeBadge, hasSameOrigin, issueBarcodeBadge, reprintBarcodeBadge, resolveBarcodeTerminal, sessionIdFromAccessToken, terminalFromCookie } from './barcode-access-service';
+import { decryptBarcodeBadge, encryptBarcodeBadge, findLoginBadge, hasSameOrigin, issueBarcodeBadge, registerBarcodeSession, reprintBarcodeBadge, resolveBarcodeTerminal, sessionIdFromAccessToken, terminalFromCookie, validateBarcodeAccessSession } from './barcode-access-service';
 import { createHash, randomBytes } from 'node:crypto';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -15,6 +15,28 @@ test('extracts only a UUID Supabase session claim', () => {
     assert.equal(sessionIdFromAccessToken(tokenWithPayload({ session_id: sessionId })), sessionId);
     assert.equal(sessionIdFromAccessToken(tokenWithPayload({ session_id: 'not-a-uuid' })), null);
     assert.equal(sessionIdFromAccessToken('not-a-jwt'), null);
+});
+
+test('registers an unenrolled badge session with an explicit SQL null terminal argument', async (t) => {
+    let rpcArguments: Record<string, unknown> | undefined;
+    t.mock.method(ServerSupabaseSource.prototype, 'connect', () => ({
+        rpc: async (_functionName: string, arguments_: Record<string, unknown>) => {
+            rpcArguments = arguments_;
+            return { data: { id: 'registry-id', expires_at: '2026-12-01T00:00:00.000Z' }, error: null };
+        },
+        from: (table: string) => {
+            assert.equal(table, 'barcode_access_audit');
+            return { insert: async () => ({ error: null }) };
+        },
+    }) as unknown as SupabaseClient);
+
+    await registerBarcodeSession({
+        supabaseSessionId: '00000000-0000-4000-8000-000000000001', userId: 'user-a', tenantId: 'tenant-a',
+        badgeId: 'badge-a', expiresAt: '2026-12-01T00:00:00.000Z',
+    });
+
+    assert.equal(Object.hasOwn(rpcArguments!, 'p_terminal_id'), true);
+    assert.equal(rpcArguments!.p_terminal_id, null);
 });
 
 test('encrypted badges can only be restored with their original tenant, user, and hash', async (t) => {
@@ -32,6 +54,88 @@ test('encrypted badges can only be restored with their original tenant, user, an
     await assert.rejects(async () => decryptBarcodeBadge({ tenantId: 'tenant-b', userId: input.userId, codeHash, ciphertext }), /badge_reprint_unavailable/);
     const tampered = `${ciphertext.slice(0, -1)}${ciphertext.endsWith('A') ? 'B' : 'A'}`;
     await assert.rejects(async () => decryptBarcodeBadge({ tenantId: input.tenantId, userId: input.userId, codeHash, ciphertext: tampered }), /badge_reprint_unavailable/);
+});
+
+test('login lookup derives the tenant from the credential hash', async (t) => {
+    const badge = { id: 'badge-a', user_id: 'tenant-a', tenant_id: 'tenant-a', status: 'active' };
+    const filters: unknown[][] = [];
+    const query = { select: () => query, eq: (...args: unknown[]) => { filters.push(args); return query; }, maybeSingle: async () => ({ data: badge, error: null }) };
+    t.mock.method(ServerSupabaseSource.prototype, 'connect', () => ({
+        rpc: async () => ({ data: true, error: null }),
+        from: (table: string) => {
+            assert.equal(table, 'barcode_access_badges');
+            return query;
+        },
+    }) as unknown as SupabaseClient);
+
+    assert.deepEqual(await findLoginBadge('KONT-0123456789abcdefghijkl'), {
+        id: badge.id, userId: badge.user_id, tenantId: badge.tenant_id,
+    });
+    assert.equal(filters.some(([field]) => field === 'tenant_id'), false);
+    assert.equal(filters.some(([field]) => field === 'code_hash'), true);
+});
+
+test('unbound sessions ignore a leftover terminal cookie while retaining their tenant scope', async (t) => {
+    let terminalReads = 0;
+    const session = {
+        id: 'session-row', tenant_id: 'tenant-a', terminal_id: null,
+        expires_at: '2999-01-01T00:00:00.000Z', last_activity_at: new Date().toISOString(),
+        badge_id: 'badge-a', status: 'active',
+    };
+    const sessionQuery = { select: () => sessionQuery, eq: () => sessionQuery, maybeSingle: async () => ({ data: session, error: null }) };
+    const badgeQuery = { select: () => badgeQuery, eq: () => badgeQuery, maybeSingle: async () => ({ data: { status: 'active' }, error: null }) };
+    const tenantQuery = { select: () => tenantQuery, eq: () => tenantQuery, maybeSingle: async () => ({ data: { status: 'active' }, error: null }) };
+    const previous = process.env.KONTAVE_BARCODE_ACCESS_ENABLED;
+    process.env.KONTAVE_BARCODE_ACCESS_ENABLED = 'true';
+    t.after(() => {
+        if (previous === undefined) delete process.env.KONTAVE_BARCODE_ACCESS_ENABLED;
+        else process.env.KONTAVE_BARCODE_ACCESS_ENABLED = previous;
+    });
+    t.mock.method(ServerSupabaseSource.prototype, 'connect', () => ({
+        rpc: async () => ({ data: true, error: null }),
+        from: (table: string) => {
+            if (table === 'barcode_access_sessions') return sessionQuery;
+            if (table === 'barcode_access_badges') return badgeQuery;
+            if (table === 'tenants') return tenantQuery;
+            if (table === 'barcode_access_terminals') {
+                terminalReads += 1;
+                throw new Error('An unbound session must not read terminal state.');
+            }
+            throw new Error(`Unexpected table: ${table}`);
+        },
+    }) as unknown as SupabaseClient);
+
+    const status = await validateBarcodeAccessSession('tenant-a', '00000000-0000-4000-8000-000000000001', 'legacy-terminal-cookie');
+    assert.deepEqual(status.tenantId, 'tenant-a');
+    assert.equal(status.active, true);
+    assert.equal(status.terminalId, undefined);
+    assert.equal(terminalReads, 0);
+});
+
+test('unbound sessions fail closed when direct-data protection is unavailable', async (t) => {
+    const session = {
+        id: 'session-row', tenant_id: 'tenant-a', terminal_id: null,
+        expires_at: '2999-01-01T00:00:00.000Z', last_activity_at: new Date().toISOString(),
+        badge_id: 'badge-a', status: 'active',
+    };
+    const sessionQuery = { select: () => sessionQuery, eq: () => sessionQuery, maybeSingle: async () => ({ data: session, error: null }) };
+    const previous = process.env.KONTAVE_BARCODE_ACCESS_ENABLED;
+    process.env.KONTAVE_BARCODE_ACCESS_ENABLED = 'true';
+    t.after(() => {
+        if (previous === undefined) delete process.env.KONTAVE_BARCODE_ACCESS_ENABLED;
+        else process.env.KONTAVE_BARCODE_ACCESS_ENABLED = previous;
+    });
+    t.mock.method(ServerSupabaseSource.prototype, 'connect', () => ({
+        rpc: async () => ({ data: false, error: null }),
+        from: (table: string) => {
+            if (table === 'barcode_access_sessions') return sessionQuery;
+            throw new Error(`Protection failure must stop before reading ${table}.`);
+        },
+    }) as unknown as SupabaseClient);
+
+    assert.deepEqual(await validateBarcodeAccessSession('tenant-a', '00000000-0000-4000-8000-000000000001'), {
+        registered: true, active: false, id: 'session-row',
+    });
 });
 
 test('reprinting restores the same active credential without issuing or rotating a badge', async (t) => {

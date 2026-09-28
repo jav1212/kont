@@ -8,8 +8,7 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BARCODE_LOGIN_LANDING_HREF } from "@/src/modules/workspace/frontend/barcode-workspace-landing";
 
-type TerminalReason = "not_enrolled" | "revoked" | "access_unavailable";
-type BarcodeSignInState = "loading" | "ready" | "unavailable" | "revoked" | "access-unavailable" | "validating" | "invalid" | "denied" | "offline" | "success";
+type BarcodeSignInState = "loading" | "ready" | "access-unavailable" | "validating" | "invalid" | "denied" | "offline" | "success";
 interface BarcodeSignInProps {
     /** Makes this scanner surface visible and enables feedback for reader input. */
     readonly active: boolean;
@@ -25,7 +24,7 @@ interface BarcodeSignInProps {
  * Renders the exclusive scanner surface used to exchange a badge for a session.
  *
  * @param props - Visibility, authentication coordination, and scan-detection callbacks.
- * @returns The terminal-status and badge-scanning interface.
+ * @returns The badge-scanning interface.
  */
 export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetected, onAuthenticationStateChange }: BarcodeSignInProps) {
     const { signInWithBarcode } = useAuth();
@@ -36,9 +35,9 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
     const requestInFlight = useRef(false);
     const pendingCredential = useRef<string | null>(null);
 
-    const terminalReady = state === "ready" || state === "validating" || state === "invalid" || state === "denied";
-    /** Clears a prior scan error before asking the server for fresh terminal state. */
-    const retryTerminalCheck = useCallback(() => {
+    const scannerReady = state === "ready" || state === "validating" || state === "invalid" || state === "denied";
+    /** Clears a prior scan error before checking general access availability. */
+    const retryAvailabilityCheck = useCallback(() => {
         setMessage(null);
         setState("loading");
         setAttempt((value) => value + 1);
@@ -47,21 +46,20 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
     useEffect(() => {
         let cancelled = false;
         void fetch("/api/auth/barcode/session", { cache: "no-store" })
-            .then(async (response) => ({ response, body: response.ok ? await response.json() as { data?: { terminal?: { ready?: boolean; reason?: TerminalReason } } } : null }))
+            .then(async (response) => ({ response, body: response.ok ? await response.json() as { data?: { terminal?: { ready?: boolean } } } : null }))
             .then(({ response, body }) => {
                 if (cancelled) return;
                 if (!response.ok || typeof body?.data?.terminal?.ready !== "boolean") { setState("access-unavailable"); return; }
-                if (body.data.terminal.ready) { setState("ready"); return; }
-                setState(body.data.terminal.reason === "revoked" ? "revoked" : body.data.terminal.reason === "access_unavailable" ? "access-unavailable" : "unavailable");
+                setState(body.data.terminal.ready ? "ready" : "access-unavailable");
             })
             .catch(() => { if (!cancelled) setState(navigator.onLine ? "access-unavailable" : "offline"); });
-        const retryOnReconnect = retryTerminalCheck;
+        const retryOnReconnect = retryAvailabilityCheck;
         window.addEventListener("online", retryOnReconnect);
         return () => { cancelled = true; window.removeEventListener("online", retryOnReconnect); };
-    }, [attempt, retryTerminalCheck]);
+    }, [attempt, retryAvailabilityCheck]);
 
     useEffect(() => {
-        if (!active || ["unavailable", "revoked", "access-unavailable", "offline", "success"].includes(state)) pendingCredential.current = null;
+        if (!active || ["access-unavailable", "offline", "success"].includes(state)) pendingCredential.current = null;
     }, [active, state]);
 
     useEffect(() => {
@@ -82,13 +80,13 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
         if (authenticationBlocked || state === "success" || requestInFlight.current) return;
         const credential = barcode.trim();
         if (!isValidBadgeBarcode(credential)) {
-            if (!active || !terminalReady) return;
+            if (!active || !scannerReady) return;
             setState("invalid");
             setMessage("Este código no corresponde a un carnet de acceso. Escanea tu carnet.");
             return;
         }
         onCredentialDetected();
-        if (!terminalReady) {
+        if (!scannerReady) {
             if (state === "loading") pendingCredential.current ??= credential;
             return;
         }
@@ -105,14 +103,8 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
             return;
         }
 
-        // The route handler writes Supabase cookies. A document navigation makes
-        // every client provider bootstrap against that new identity. Clear the
-        // previous operator's tenant selection before any destination mounts.
-        try {
-            ["kont-active-tenant-id", "kont-company-id", "kont-session-user-id"].forEach((key) => localStorage.removeItem(key));
-        } catch { /* Storage restrictions must not prevent opening the confirmed session. */ }
         setState("success");
-    }, [active, authenticationBlocked, onAuthenticationStateChange, onCredentialDetected, signInWithBarcode, state, terminalReady]);
+    }, [active, authenticationBlocked, onAuthenticationStateChange, onCredentialDetected, scannerReady, signInWithBarcode, state]);
 
     useEffect(() => {
         if (authenticationBlocked) {
@@ -131,16 +123,12 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
         : state === "invalid" ? "Código no válido"
         : state === "denied" ? "Acceso no validado"
         : state === "validating" ? "Validando carnet…"
-        : state === "loading" ? "Verificando terminal…"
-        : state === "unavailable" ? "Terminal no habilitada"
-        : state === "revoked" ? "Terminal revocada"
+        : state === "loading" ? "Verificando acceso…"
         : state === "access-unavailable" ? "Acceso temporalmente no disponible"
         : "Escanea tu carnet";
     const defaultMessage = state === "success" ? "Abriendo tu espacio de trabajo…"
         : state === "validating" ? "Estamos comprobando tu acceso. Espera un momento."
-        : state === "unavailable" ? "Pide a un administrador que habilite este navegador en Configuración → Acceso."
-        : state === "revoked" ? "Pide a un administrador que habilite de nuevo este navegador."
-        : state === "access-unavailable" ? "No pudimos verificar el acceso de esta terminal. Intenta de nuevo en unos instantes."
+        : state === "access-unavailable" ? "No pudimos verificar el acceso. Intenta de nuevo en unos instantes."
         : state === "offline" ? "Necesitas conexión para validar el carnet."
         : "Acerca el código de barras al lector para ingresar.";
     const icon = state === "success"
@@ -162,8 +150,8 @@ export function BarcodeSignIn({ active, authenticationBlocked, onCredentialDetec
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-text-tertiary">
                 {message ?? defaultMessage}
             </p>
-            {terminalReady && <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">{available ? `Lector local: ${status}` : lastError ?? "Lector USB tipo teclado listo"}</p>}
-            {(state === "offline" || state === "unavailable" || state === "revoked" || state === "access-unavailable") && <BaseButton.Root size="sm" variant="secondary" className="mt-5" onClick={retryTerminalCheck}>Reintentar</BaseButton.Root>}
+            {scannerReady && <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">{available ? `Lector local: ${status}` : lastError ?? "Lector USB tipo teclado listo"}</p>}
+            {(state === "offline" || state === "access-unavailable") && <BaseButton.Root size="sm" variant="secondary" className="mt-5" onClick={retryAvailabilityCheck}>Reintentar</BaseButton.Root>}
             {(state === "denied" || state === "invalid") && (
                 <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.1em] text-danger">
                     <ScanBarcode className="h-3.5 w-3.5" aria-hidden /> Intenta escanear de nuevo

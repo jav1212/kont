@@ -39,7 +39,7 @@ try {
         CREATE POLICY fixture_read ON storage.objects FOR SELECT TO authenticated USING (true);
         GRANT SELECT ON storage.objects TO authenticated;
     `);
-    for (const name of ['254_barcode_access_foundation.sql', '255_barcode_access_direct_data_guard.sql']) {
+    for (const name of ['254_barcode_access_foundation.sql', '255_barcode_access_direct_data_guard.sql', '284_barcode_access_without_terminal_enrollment.sql']) {
         await db.exec(await readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8'));
     }
     // Production readiness distinguishes provider tables: a permissive
@@ -149,9 +149,18 @@ try {
     assert.equal((await db.query('SELECT status FROM public.barcode_access_sessions WHERE supabase_session_id=$1', [providerSession])).rows[0].status, 'locked');
     assert.equal((await db.query("SELECT count(*)::int AS count FROM public.barcode_access_sessions WHERE terminal_id=$1 AND status='active'", [terminal])).rows[0].count, 1);
 
+    const browserOne = '00000000-0000-4000-8000-000000000006';
+    const browserTwo = '00000000-0000-4000-8000-000000000007';
+    await db.query('INSERT INTO auth.sessions VALUES ($1,$2), ($3,$2)', [browserOne, member, browserTwo]);
+    await db.query("SELECT * FROM public.barcode_access_register_session($1,$2,$3,NULL,$4,now()+interval '8 hours')", [browserOne, member, owner, badge.id]);
+    await db.query("SELECT * FROM public.barcode_access_register_session($1,$2,$3,NULL,$4,now()+interval '8 hours')", [browserTwo, member, owner, badge.id]);
+    assert.equal((await db.query('SELECT status FROM public.barcode_access_sessions WHERE supabase_session_id=$1', [browserOne])).rows[0].status, 'active');
+    assert.equal((await db.query('SELECT terminal_id FROM public.barcode_access_sessions WHERE supabase_session_id=$1', [browserTwo])).rows[0].terminal_id, null);
+    assert.equal((await db.query("SELECT count(*)::int AS count FROM public.barcode_access_sessions WHERE badge_id=$1 AND terminal_id IS NULL AND status='active'", [badge.id])).rows[0].count, 2);
+
     // Both current and revoked JWTs are denied direct data access; regular
     // provider sessions retain their existing permissive RLS behavior.
-    for (const sid of [providerSession, nextSession]) {
+    for (const sid of [providerSession, nextSession, browserOne, browserTwo]) {
         await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ session_id: sid, sub: member, role: 'authenticated' })]);
         await db.exec('SET ROLE authenticated');
         assert.equal((await db.query('SELECT * FROM public.fixture_private_data')).rows.length, 0);
@@ -168,8 +177,17 @@ try {
     await db.exec(`SELECT set_config('request.jwt.claims','{}',false)`);
     await db.query('DELETE FROM auth.sessions WHERE id=$1', [nextSession]);
     assert.equal((await db.query('SELECT count(*)::int AS count FROM public.barcode_access_sessions WHERE supabase_session_id=$1', [nextSession])).rows[0].count, 1);
+    await assert.rejects(
+        db.query("SELECT * FROM public.barcode_access_register_session($1,$2,$3,NULL,$4,now()+interval '8 hours')", [browserTwo, member, outsider, badge.id]),
+        /BARCODE_BADGE_UNAVAILABLE/,
+    );
+    await db.query("UPDATE public.barcode_access_badges SET status='revoked' WHERE id=$1", [badge.id]);
+    await assert.rejects(
+        db.query("SELECT * FROM public.barcode_access_register_session($1,$2,$3,NULL,$4,now()+interval '8 hours')", [browserTwo, member, owner, badge.id]),
+        /BARCODE_BADGE_UNAVAILABLE/,
+    );
     await db.query('DELETE FROM public.tenants WHERE id=$1', [owner]);
-    assert.equal((await db.query('SELECT count(*)::int AS count FROM public.barcode_access_sessions WHERE tenant_id=$1', [owner])).rows[0].count, 2);
+    assert.equal((await db.query('SELECT count(*)::int AS count FROM public.barcode_access_sessions WHERE tenant_id=$1', [owner])).rows[0].count, 4);
 
     await db.exec('CREATE TABLE public.new_unprotected_table(id integer); ALTER TABLE public.new_unprotected_table ENABLE ROW LEVEL SECURITY');
     assert.equal((await db.query('SELECT public.barcode_access_protection_ready() AS ready')).rows[0].ready, false);

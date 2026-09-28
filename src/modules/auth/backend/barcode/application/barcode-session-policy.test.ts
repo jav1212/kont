@@ -11,6 +11,10 @@ test('permits only a current session with its enrolled terminal', () => {
     assert.equal(isBarcodeSessionActive({ ...active(), cookieTerminalId: null }), false);
 });
 
+test('permits a current credential session without browser enrollment', () => {
+    assert.equal(isBarcodeSessionActive({ ...active(), registeredTerminalId: null, cookieTerminalId: null, terminalStatus: null, terminalReady: false }), true);
+});
+
 test('denies idle, revoked, suspended, and expired session facts', () => {
     assert.equal(isBarcodeSessionActive({ ...active(), lastActivityAt: '2026-09-10T11:55:00.000Z' }), false);
     assert.equal(isBarcodeSessionActive({ ...active(), badgeStatus: 'revoked' }), false);

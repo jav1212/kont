@@ -37,7 +37,7 @@ test("HID restores React state across stalls, and POS owns preview focus", async
             import { createRoot } from 'react-dom/client';
             import { DeviceManagerProvider, useDeviceSubscription } from './src/shared/frontend/devices/device-manager-provider';
             import { PosSaleScreen } from './src/modules/sales/frontend/components/pos-sale-screen';
-            window.scans = []; window.failures = [];
+            window.scans = []; window.badges = []; window.failures = [];
             localStorage.setItem('kontave.devices.enabled', 'true');
             window.WebSocket = class { static OPEN = 1; readyState = 0; close() {} };
             function Probe() {
@@ -46,6 +46,7 @@ test("HID restores React state across stalls, and POS owns preview focus", async
                 const [normalized, setNormalized] = useState('seed');
                 const [revision, setRevision] = useState(0);
                 useDeviceSubscription('sale', scan => window.scans.push({ barcode: scan.barcode, text, number, normalized }));
+                useDeviceSubscription('access', scan => window.badges.push(scan.barcode));
                 return <><input aria-label="Text" value={text} onChange={e => setText(e.target.value)} />
                     <input aria-label="Number" type="number" value={number} onChange={e => setNumber(e.target.value)} />
                     <textarea aria-label="Normalized" value={normalized} onChange={e => setNormalized(e.target.value.replace(/[0-9]/g, ''))} />
@@ -127,6 +128,9 @@ test("HID restores React state across stalls, and POS owns preview focus", async
         await page.keyboard.press("Enter");
         await expect(page.getByLabel("Number", { exact: true })).toHaveValue("12.50");
         assert.equal(await page.evaluate(() => window.scans.length), 4);
+        assert.deepEqual(await page.evaluate(() => window.badges), [], "An active badge listener must not capture product scans.");
+        await scan("KONT-AbCdEfGhIjKlMnOpQrSt_");
+        assert.deepEqual(await page.evaluate(() => window.badges), ["KONT-AbCdEfGhIjKlMnOpQrSt_"], "A complete badge must be reserved for the active operator switcher.");
 
         // Human typing retains normal editing, navigation, and Enter behavior.
         await page.getByLabel("Text").fill("");

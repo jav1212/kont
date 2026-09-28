@@ -209,8 +209,8 @@ export async function recordBarcodeLoginDenial(terminal?: { id: string; tenant_i
  *
  * @param userId - Authenticated Supabase user identifier.
  * @param supabaseSessionId - Session UUID claim from the verified Supabase JWT.
- * @param terminalCookie - Browser enrollment credential, required for active access.
- * @returns Active tenant and terminal scope only when all revocation checks pass.
+ * @param terminalCookie - Browser enrollment credential required only by legacy terminal-bound sessions.
+ * @returns Active tenant scope only when all revocation checks pass.
  * @throws Error when the registry or an authorization dependency cannot be read.
  */
 export async function validateBarcodeAccessSession(userId: string, supabaseSessionId: string, terminalCookie?: string): Promise<BarcodeSessionValidation> {
@@ -218,17 +218,20 @@ export async function validateBarcodeAccessSession(userId: string, supabaseSessi
     const { data, error } = await source.from('barcode_access_sessions').select('id,tenant_id,terminal_id,expires_at,last_activity_at,badge_id,status').eq('supabase_session_id', supabaseSessionId).eq('user_id', userId).maybeSingle();
     if (error) throw new Error('barcode_session_lookup_failed');
     if (!data) return { registered: false, active: false };
-    if (data.status !== 'active' || new Date(data.expires_at).getTime() <= Date.now() || new Date(data.last_activity_at).getTime() + 5 * 60 * 1000 <= Date.now()) return { registered: true, active: false, id: data.id };
+    if (data.status !== 'active' || new Date(data.expires_at).getTime() <= Date.now() || new Date(data.last_activity_at).getTime() + 5 * 60 * 1000 <= Date.now()) return { registered: true, active: false, id: data.id, tenantId: data.tenant_id };
+    if (!data.terminal_id && !(await isBarcodeAccessProtectionReady())) return { registered: true, active: false, id: data.id };
     const [terminal, badge, membership, tenant] = await Promise.all([
-        source.from('barcode_access_terminals').select('status,protection_ready').eq('id', data.terminal_id).maybeSingle(),
+        data.terminal_id
+            ? source.from('barcode_access_terminals').select('status,protection_ready').eq('id', data.terminal_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
         source.from('barcode_access_badges').select('status').eq('id', data.badge_id).maybeSingle(),
         hasTenantMembership(data.tenant_id, userId),
         source.from('tenants').select('status').eq('id', data.tenant_id).maybeSingle(),
     ]);
     if (terminal.error || badge.error || tenant.error) throw new Error('barcode_session_dependency_lookup_failed');
-    const cookieTerminal = terminalCookie ? await terminalFromCookie(terminalCookie) : null;
-    if (!isBarcodeSessionActive({ status: data.status, expiresAt: data.expires_at, lastActivityAt: data.last_activity_at, terminalStatus: terminal.data?.status ?? null, terminalReady: !!terminal.data?.protection_ready, badgeStatus: badge.data?.status ?? null, membershipActive: membership, tenantStatus: tenant.data?.status ?? null, cookieTerminalId: cookieTerminal?.id ?? null, registeredTerminalId: data.terminal_id, now: Date.now() })) return { registered: true, active: false, id: data.id };
-    return { registered: true, active: true, id: data.id, tenantId: data.tenant_id, terminalId: data.terminal_id, expiresAt: data.expires_at, idleExpiresAt: new Date(new Date(data.last_activity_at).getTime() + 5 * 60 * 1000).toISOString() };
+    const cookieTerminal = data.terminal_id && terminalCookie ? await terminalFromCookie(terminalCookie) : null;
+    if (!isBarcodeSessionActive({ status: data.status, expiresAt: data.expires_at, lastActivityAt: data.last_activity_at, terminalStatus: terminal.data?.status ?? null, terminalReady: !!terminal.data?.protection_ready, badgeStatus: badge.data?.status ?? null, membershipActive: membership, tenantStatus: tenant.data?.status ?? null, cookieTerminalId: cookieTerminal?.id ?? null, registeredTerminalId: data.terminal_id, now: Date.now() })) return { registered: true, active: false, id: data.id, tenantId: data.tenant_id };
+    return { registered: true, active: true, id: data.id, tenantId: data.tenant_id, ...(data.terminal_id ? { terminalId: data.terminal_id } : {}), expiresAt: data.expires_at, idleExpiresAt: new Date(new Date(data.last_activity_at).getTime() + 5 * 60 * 1000).toISOString() };
 }
 
 /**
@@ -474,32 +477,31 @@ export async function revokeBarcodeBadge(input: { tenantId: string; badgeId: str
 }
 
 /**
- * Resolves a valid badge for a protected terminal without returning its code.
+ * Resolves a valid badge without exposing its code or trusting a browser-selected tenant.
  *
- * @param terminal - Validated terminal scope.
  * @param barcode - Scanner-provided credential.
- * @returns Badge and user IDs when login may proceed, otherwise null.
+ * @returns Badge, user, and server-resolved tenant IDs when login may proceed, otherwise null.
  */
-export async function findLoginBadge(terminal: TerminalRow, barcode: string): Promise<{ id: string; userId: string } | null> {
+export async function findLoginBadge(barcode: string): Promise<{ id: string; userId: string; tenantId: string } | null> {
     if (!/^KONT-[A-Za-z0-9_-]{20,25}$/.test(barcode)) return null;
     const source = new ServerSupabaseSource().instance;
-    const { data } = await source.from('barcode_access_badges').select('id,user_id,tenant_id,status').eq('tenant_id', terminal.tenant_id).eq('code_hash', credentialHash(barcode)).maybeSingle();
-    if (!data || data.status !== 'active' || !(await hasTenantMembership(terminal.tenant_id, data.user_id))) return null;
-    return { id: data.id, userId: data.user_id };
+    const { data } = await source.from('barcode_access_badges').select('id,user_id,tenant_id,status').eq('code_hash', credentialHash(barcode)).maybeSingle();
+    if (!data || data.status !== 'active' || !(await hasTenantMembership(data.tenant_id, data.user_id))) return null;
+    return { id: data.id, userId: data.user_id, tenantId: data.tenant_id };
 }
 
 /**
  * Registers a newly minted Supabase session under barcode access controls.
  *
- * @param input - Validated badge, terminal, Supabase session ID, and expiry.
+ * @param input - Validated badge, optional legacy terminal, Supabase session ID, and expiry.
  * @returns The barcode session metadata.
  * @throws Error when the registration cannot be committed.
  */
-export async function registerBarcodeSession(input: { supabaseSessionId: string; userId: string; tenantId: string; terminalId: string; badgeId: string; expiresAt: string }): Promise<{ id: string; expiresAt: string }> {
+export async function registerBarcodeSession(input: { supabaseSessionId: string; userId: string; tenantId: string; terminalId?: string; badgeId: string; expiresAt: string }): Promise<{ id: string; expiresAt: string }> {
     const source = new ServerSupabaseSource().instance;
-    const { data, error } = await source.rpc('barcode_access_register_session', { p_supabase_session_id: input.supabaseSessionId, p_user_id: input.userId, p_tenant_id: input.tenantId, p_terminal_id: input.terminalId, p_badge_id: input.badgeId, p_expires_at: input.expiresAt });
+    const { data, error } = await source.rpc('barcode_access_register_session', { p_supabase_session_id: input.supabaseSessionId, p_user_id: input.userId, p_tenant_id: input.tenantId, p_terminal_id: input.terminalId ?? null, p_badge_id: input.badgeId, p_expires_at: input.expiresAt });
     if (error || !data) throw new Error('session_register_failed');
-    await audit({ tenant_id: input.tenantId, terminal_id: input.terminalId, badge_id: input.badgeId, user_id: input.userId, event: 'login_allowed' });
+    await audit({ tenant_id: input.tenantId, terminal_id: input.terminalId ?? null, badge_id: input.badgeId, user_id: input.userId, event: 'login_allowed' });
     return { id: data.id, expiresAt: data.expires_at };
 }
 

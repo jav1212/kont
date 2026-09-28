@@ -15,6 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ModuleCode } from "@kontave/modules/domain";
 import { useAuth } from "../../auth/frontend/hooks/use-auth";
 import { BarcodeSessionGuard } from "../../auth/frontend/components/barcode-session-guard";
+import { WorkspaceBarcodeSessionSwitcher } from "../../auth/frontend/components/workspace-barcode-session-switcher";
 import { ActiveTenantContext } from "../../memberships/frontend/context/active-tenant-context";
 import { OrganizationContext } from "../../organizations/frontend/context/organization-context";
 import { CompanyContext } from "../../companies/frontend/hooks/use-companies";
@@ -341,6 +342,10 @@ function AuthenticatedApplication({
               }
               unmountContent={!available || !operationReady}
             >
+              <WorkspaceBarcodeSessionSwitcher
+                controller={controller}
+                active={available && operationReady}
+              />
               {available && operationReady ? (
                 <div
                   key={`${actorId}:${snapshot.tenantId}:${snapshot.workspace.activeCompany?.id ?? ""}`}

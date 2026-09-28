@@ -16,7 +16,7 @@ export function getBarcodeAccessActions() {
         issueBadges: new BarcodeOperation(adapter.issueBarcodeBadges),
         listBadges: new BarcodeOperation(adapter.listBarcodeBadges),
         revokeBadge: new BarcodeOperation(adapter.revokeBarcodeBadge),
-        findLoginBadge: new BarcodeOperation((input: { terminal: Parameters<typeof adapter.findLoginBadge>[0]; barcode: string }) => adapter.findLoginBadge(input.terminal, input.barcode)),
+        findLoginBadge: new BarcodeOperation((input: { barcode: string }) => adapter.findLoginBadge(input.barcode)),
         registerSession: new BarcodeOperation(adapter.registerBarcodeSession),
         reprintBadge: new BarcodeOperation(adapter.reprintBarcodeBadge),
         reprintBadges: new BarcodeOperation(adapter.reprintBarcodeBadges),

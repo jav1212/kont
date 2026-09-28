@@ -17,17 +17,26 @@ try {
     const barcodeAttemptWaiters = new Map();
     const waitForBarcodeAttempt = (expected) => attempts >= expected
         ? Promise.resolve()
-        : new Promise((resolve) => barcodeAttemptWaiters.set(expected, resolve));
+        : new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                barcodeAttemptWaiters.delete(expected);
+                reject(new Error(`Timed out waiting for barcode attempt ${expected}; received ${attempts}.`));
+            }, 15_000);
+            barcodeAttemptWaiters.set(expected, () => {
+                clearTimeout(timeout);
+                resolve();
+            });
+        });
     let finishAttempt;
-    let holdTerminalCheck = false;
-    let releaseTerminalCheck;
+    let holdAvailabilityCheck = false;
+    let releaseAvailabilityCheck;
     let passwordAttempts = 0;
     let finishPasswordAttempt;
     let loginAccepted = false;
     await page.route('**/api/**', async (route) => {
         const path = new URL(route.request().url()).pathname;
         if (path === '/api/auth/barcode/session') {
-            if (holdTerminalCheck) await new Promise((resolve) => { releaseTerminalCheck = resolve; });
+            if (holdAvailabilityCheck) await new Promise((resolve) => { releaseAvailabilityCheck = resolve; });
             if (session.status === 502) return route.fulfill({ status: 502, contentType: 'text/html', body: '<h1>Bad gateway</h1>' });
             return route.fulfill({ status: session.status, json: { data: { registered: false, active: false, terminal: session.terminal } } });
         }
@@ -97,42 +106,35 @@ try {
     assert.equal(attempts, 2, 'The first credential scanned from Correo must be submitted once.');
     finishAttempt();
     await page.getByRole('heading', { name: 'Acceso no validado', exact: true }).waitFor();
-    holdTerminalCheck = true;
+    holdAvailabilityCheck = true;
     await page.goto(`${origin}/sign-in`);
     await page.locator('input[type=email]').waitFor();
     await page.keyboard.type(credential, { delay: 1 });
     await page.keyboard.press('Enter');
-    await page.getByRole('heading', { name: 'Verificando terminal…' }).waitFor();
-    assert.equal(attempts, 2, 'The terminal check must defer, rather than lose, the first credential read from Correo.');
-    holdTerminalCheck = false;
-    releaseTerminalCheck();
+    await page.getByRole('heading', { name: 'Verificando acceso…' }).waitFor();
+    assert.equal(attempts, 2, 'The availability check must defer, rather than lose, the first credential read from Correo.');
+    holdAvailabilityCheck = false;
+    releaseAvailabilityCheck();
     await page.getByRole('heading', { name: 'Validando carnet…' }).waitFor();
     await waitForBarcodeAttempt(3);
-    assert.equal(attempts, 3, 'The deferred credential must authenticate once when the terminal becomes ready.');
+    assert.equal(attempts, 3, 'The deferred credential must authenticate once when access is available.');
     finishAttempt();
     await page.getByRole('heading', { name: 'Acceso no validado', exact: true }).waitFor();
     session = { status: 200, terminal: { ready: false } };
     await page.goto(`${origin}/sign-in?mode=barcode`);
-    await page.getByRole('heading', { name: 'Terminal no habilitada' }).waitFor();
-    session = { status: 200, terminal: { ready: false, reason: 'not_enrolled' } };
-    await page.goto(`${origin}/sign-in?mode=barcode`);
-    await page.getByRole('heading', { name: 'Terminal no habilitada' }).waitFor();
+    await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).waitFor();
     await page.keyboard.type(credential, { delay: 1 });
     await page.keyboard.press('Enter');
-    assert.equal(attempts, 3, 'An unenrolled terminal must not subscribe to login scans.');
-    session = { status: 200, terminal: { ready: false, reason: 'revoked' } };
-    await page.goto(`${origin}/sign-in?mode=barcode`);
-    await page.getByRole('heading', { name: 'Terminal revocada' }).waitFor();
-    assert.equal(attempts, 3, 'A revoked terminal must not subscribe to login scans.');
+    assert.equal(attempts, 3, 'An unavailable service must not subscribe to login scans.');
     session = { status: 200, terminal: { ready: false, reason: 'access_unavailable' } };
     await page.goto(`${origin}/sign-in?mode=barcode`);
     await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).waitFor();
-    assert.equal(await page.getByRole('heading', { name: 'Terminal no habilitada' }).count(), 0);
+    assert.equal(await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).count(), 1);
     assert.equal(attempts, 3, 'An unavailable access service must not subscribe to login scans.');
     session = { status: 503, terminal: { ready: false } };
     await page.goto(`${origin}/sign-in?mode=barcode`);
     await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).waitFor();
-    assert.equal(await page.getByRole('heading', { name: 'Terminal no habilitada' }).count(), 0, 'Server errors must not be presented as an unenrolled browser.');
+    assert.equal(await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).count(), 1, 'Server errors must be presented as temporary access failures.');
     session = { status: 502, terminal: { ready: false } };
     await page.goto(`${origin}/sign-in?mode=barcode`);
     await page.getByRole('heading', { name: 'Acceso temporalmente no disponible' }).waitFor();
@@ -186,7 +188,7 @@ try {
     assert.equal(attempts, 6, 'A confirmed login must ignore new scans while its destination is loading.');
     finishLanding();
     await page.waitForURL('**/tools?barcode-landing=1');
-    console.log('PASS: automatic badge detection from Correo, normal password Enter, authentication concurrency, pending terminal scan, invalid format feedback, server denial, success navigation, duplicate suppression, terminal recovery, and Spanish keyboard/Caps Lock credential preservation.');
+    console.log('PASS: automatic badge detection from Correo, normal password Enter, authentication concurrency, pending access check, invalid format feedback, server denial, success navigation, duplicate suppression, access recovery, and Spanish keyboard/Caps Lock credential preservation.');
 } catch (error) {
     console.error(error.stack);
     process.exitCode = 1;

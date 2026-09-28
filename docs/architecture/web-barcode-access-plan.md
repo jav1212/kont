@@ -1,61 +1,59 @@
 # Acceso por carnet en la Web
 
-Fecha: 2026-09-10. Estado: acceso por carnet activo en producción. La migración 269 se aplicó el 24 de septiembre de 2026 y la comprobación de preparación devolvió `true`; queda validar el escaneo físico en caja.
+Estado: la migración [284](../../supabase/migrations/284_barcode_access_without_terminal_enrollment.sql) se aplicó correctamente en producción. La restauración posterior de las guardas RLS y su evidencia operativa se documentan en [Seguridad y operación del acceso por carnet](../security/web-barcode-access.md). No se ha desplegado código Web ni se ha realizado una prueba real de autenticación para este cambio.
 
-## Alcance acordado
+## Alcance
 
-Un usuario de la Web inicia sesión al escanear un carnet, sin PIN. El carnet es una credencial reutilizable y copiable por decisión de producto; no demuestra presencia física ni identidad de hardware. El primer alcance es únicamente la Web: no incluye Desktop, Mobile, asistencia laboral ni control de acceso físico.
+Un usuario de la Web inicia sesión al escanear un carnet, sin PIN ni registro previo del navegador. Dentro de un workspace autenticado, una lectura también puede cambiar el operador sin pedir una recarga manual: la aplicación reconstruye el contexto con el actor y los permisos del carnet. El carnet es una credencial reutilizable y copiable por decisión de producto; no demuestra presencia física ni identidad de hardware. El alcance es únicamente Web: no incluye Desktop, Mobile, asistencia laboral ni control de acceso físico.
 
-Se conserva el inicio de sesión convencional para recuperación. El detalle de seguridad, operación y activación está en [Acceso por carnet en la Web](../security/web-barcode-access.md).
+El inicio convencional se conserva para recuperación. El lector valida la disponibilidad global del servicio y cualquier navegador puede intercambiar un carnet válido. No hay enrolamiento automático ni requisito de cookie de terminal. En el primer inicio el tenant se deriva del carnet; al cambiar de operador, el navegador puede comunicar su workspace actual como pista, pero el servidor lo autoriza antes de compararlo con el tenant resuelto del carnet.
 
-## Implementado
+## Comportamiento tras aplicar 284
 
-- Un perfil de navegador se enrola como terminal para un tenant. Su secreto aleatorio se guarda sólo en una cookie `HttpOnly`, `Secure` en producción y `SameSite=Strict`; la terminal no equivale a una prueba de hardware.
-- Un propietario o administrador con el permiso canónico `access.manage` puede gestionar terminales y carnets en `/settings/access` desde una sesión por carnet o convencional; las guardas de validez de sesión y tenant se mantienen. La pantalla permite seleccionar miembros confirmados del tenant, emitirlos en lote y seleccionar por `badgeId` cuáles de los carnets activos reimprimibles se exportarán. Las emisiones mayores se dividen en grupos de hasta 50 destinatarios; el PDF contiene exactamente los carnets marcados en una o más hojas A4.
-- Cada carnet usa un valor `KONT-…` compatible con Code 128 y 128 bits de entropía. El hash conserva la validación de escaneo; los nuevos carnets guardan además el valor cifrado AES-256-GCM v1, exclusivamente del lado servidor, para reimprimir el mismo carnet activo. El valor completo se devuelve sólo al emitir o reimprimir, mediante una respuesta `no-store`; la pantalla lo conserva sólo en memoria para la exportación de la sesión actual. Reemitir o revocar el carnet revoca sus sesiones; reimprimir no.
-- `POST /api/auth/barcode` valida terminal y carnet y genera una sesión Supabase real para el titular. El servidor la registra con su tenant, terminal y carnet; no acepta un usuario elegido por el navegador.
-- En `/sign-in`, un lector puede reconocer un carnet válido aunque esté seleccionada la pestaña **Correo**: abre **Carnet** y lo valida, evitando que el código se trate como correo o contraseña. La entrada normal del formulario convencional mantiene su flujo; el rechazo `invalid_credentials` se muestra como **Correo o contraseña incorrectos.** y los demás rechazos conservan su mensaje específico. Si la terminal aún se verifica, sólo el primer carnet válido queda en memoria hasta que pueda validarse. La coordinación de ambos métodos impide solicitudes de autenticación concurrentes.
-- La sesión de carnet vence tras cinco minutos sin actividad real o al cabo de ocho horas. El middleware y las rutas con tenant vuelven a validarla y fijan su tenant, aun si llegan cabeceras o parámetros distintos.
-- El bloqueo revoca la sesión exacta en el servidor. Una notificación entre pestañas recarga las vistas antiguas cuando otra sesión reemplaza la suya; la respuesta tardía de bloqueo no borra las cookies de un nuevo inicio de sesión.
-- Los códigos con prefijo `KONT-` se separan de la captura de productos. El Device Bridge actualizado puede entregar un carnet sólo a una pantalla de acceso que posee una concesión exclusiva.
+- En `/sign-in`, una lectura válida abre **Carnet** incluso si está seleccionada la pestaña **Correo**. La coordinación entre ambos métodos evita autenticaciones concurrentes. Mientras se comprueba la disponibilidad general, la interfaz conserva en memoria sólo la primera lectura válida.
+- `POST /api/auth/barcode` busca el hash del carnet activo y obtiene en el servidor su titular y tenant. Si el navegador ya presenta una sesión, sólo permite el intercambio cuando su workspace autorizado coincide con la organización del carnet; una sesión bloqueada o inactiva sólo puede recuperarse con un carnet de esa misma organización. La verificación ocurre antes de emitir la nueva sesión, por lo que un carnet rechazado preserva la cookie y la sesión válidas del operador anterior. Un navegador anónimo puede iniciar su primera sesión por carnet.
+- Dentro del workspace, el listener de acceso reserva únicamente un valor completo `KONT-…`; los escaneos de productos conservan su ruta de POS. Tras un intercambio válido, se eliminan las pistas locales de tenant, empresa, módulo, barra lateral y actor; después se navega al destino de aterrizaje y se vuelve a construir el workspace desde la autorización de servidor del nuevo actor. Esto evita conservar permisos o contexto del operador anterior incluso cuando ambos pertenecen a la misma organización. Las demás pestañas reciben el reemplazo de sesión, descartan las mismas pistas y se reinician en ese destino.
+- El servidor crea una sesión Supabase real y registra su `session_id`, tenant, carnet, vencimiento y actividad. Las sesiones nuevas dejan `terminal_id` en `NULL`; por tanto, un mismo carnet puede mantener sesiones activas en navegadores distintos.
+- La sesión vence tras cinco minutos sin actividad humana real o tras ocho horas desde su creación. El middleware y las rutas con tenant vuelven a validarla y fijan el tenant registrado, aun si llegan cabeceras o parámetros distintos.
+- Revocar o reemitir un carnet invalida todas sus sesiones activas, incluidas las abiertas desde navegadores distintos. Reimprimir conserva el mismo carnet y no invalida sesiones.
+- `/settings/access` muestra solamente la administración de carnets: emitir, reemitir, reimprimir, exportar y revocar. El permiso canónico sigue siendo `access.manage`.
+- Los códigos con prefijo `KONT-` se separan de la captura de productos. El Device Bridge puede entregarlos sólo a una pantalla de acceso que tenga la concesión exclusiva `barcode.access-capture.v1`.
 
-Las migraciones [254](../../supabase/migrations/254_barcode_access_foundation.sql) y [255](../../supabase/migrations/255_barcode_access_direct_data_guard.sql) son parte inseparable de esta entrega. La segunda impide que el JWT de una sesión de carnet acceda directamente a PostgREST/RPC, Storage o Realtime; esos recursos deben pasar por las rutas Web protegidas. Las rutas de imágenes actúan como proxy para logo y avatar.
+Cada carnet usa un valor `KONT-…` compatible con Code 128 y 128 bits de entropía. Se guarda su hash para validación y, en carnets nuevos, el valor cifrado AES-256-GCM v1 sólo en el servidor para reimpresión. El valor completo se devuelve únicamente al emitir o reimprimir, mediante una respuesta `no-store`, y la pantalla lo mantiene sólo en memoria para la exportación actual.
 
-La migración [262](../../supabase/migrations/262_barcode_badge_reprinting.sql) añade el cifrado de reimpresión a la tabla existente y una RPC de emisión de cinco argumentos, exclusiva de `service_role`; mantiene compatible la variante anterior de cuatro argumentos. Los carnets anteriores necesitan una reemisión explícita para habilitar la reimpresión.
+## Compatibilidad de terminales heredadas
 
-La migración [269](../../supabase/migrations/269_restore_barcode_access_rls_guards.sql) recupera la preparación de acceso cuando una migración posterior a 255 añadió una tabla con RLS sin la política restrictiva `barcode_web_only`. Recorre las tablas con RLS de `public` y `tenant_*`, además de las tablas de `storage` y `realtime` que ya cuenten con una política permisiva. Añade la guarda sólo donde falta, para `authenticated` en aplicación y `PUBLIC` en proveedor, sin modificar la función de preparación ni las políticas existentes. Puede repetirse si las políticas existentes son restrictivas y tienen los roles esperados; se detiene ante una política homónima permisiva o con roles distintos. Tras aplicarla, verificar `SELECT public.barcode_access_protection_ready();` con resultado `true` y, en una caja enrolada, `GET /api/auth/barcode/session` con `data.terminal.ready: true`. No requiere reemitir carnets ni enrolar otra vez la terminal. En producción se aplicó 269 y la comprobación de preparación devolvió `true`; el escaneo físico en caja sigue pendiente de validación.
+Las tablas y rutas de terminales existentes se conservan para compatibilidad. No forman parte de la interfaz de configuración ni se usan para inicios nuevos. Una sesión heredada que tenga `terminal_id` mantiene sus guardas: validación de terminal, revocación de terminal y reemplazo de la sesión activa de esa terminal. La migración 284 no borra terminales, cookies ni sesiones existentes.
 
 ## Contrato Web
 
 | Ruta | Uso |
 | --- | --- |
-| `GET`/`POST /api/access/terminals` | Listar o enrolar la terminal del navegador con una sesión de tenant autorizada. |
-| `POST /api/access/terminals/:id/revoke` | Revocar una terminal y sus sesiones de carnet. |
-| `GET`/`POST /api/access/badges` | Listar o emitir/reemplazar un carnet; la respuesta de emisión contiene el código sólo esa vez. |
-| `POST /api/access/badges/batch` | Emitir carnets para entre 1 y 50 UUID de usuarios distintos del tenant. `replaceExisting` sólo reemplaza carnets activos cuando es `true`; cada resultado indica emisión o un fallo por usuario. |
-| `POST /api/access/badges/:id/revoke` | Revocar un carnet y sus sesiones. |
-| `POST /api/access/badges/:id/print` | Reimprimir un carnet activo con cifrado; conserva sus sesiones. |
-| `POST /api/access/badges/print` | Preparar entre 1 y 1.000 carnets activos seleccionados para PDF; falla sin respuesta de credenciales si alguno no puede reimprimirse. |
-| `POST /api/auth/barcode` | Intercambiar un escaneo válido por una sesión registrada. |
-| `GET`/`POST /api/auth/barcode/session` | Consultar el estado o registrar actividad humana; la consulta no amplía la sesión. |
+| `GET`/`POST /api/access/badges` | Listar o emitir/reemplazar un carnet; la emisión devuelve el código sólo esa vez. |
+| `POST /api/access/badges/batch` | Emitir carnets para entre 1 y 50 usuarios distintos del tenant. `replaceExisting` sólo reemplaza activos cuando es `true`. |
+| `POST /api/access/badges/:id/revoke` | Revocar el carnet y todas sus sesiones activas. |
+| `POST /api/access/badges/:id/print` | Reimprimir un carnet activo cifrado; conserva sus sesiones. |
+| `POST /api/access/badges/print` | Preparar entre 1 y 1.000 carnets activos seleccionados para PDF. |
+| `POST /api/auth/barcode` | Intercambiar un carnet válido por una sesión registrada, sin requisito de terminal. |
+| `GET`/`POST /api/auth/barcode/session` | Consultar disponibilidad global y sesión, o registrar actividad humana. La consulta no amplía la sesión. |
 | `POST /api/auth/barcode/lock` | Bloquear la sesión registrada mostrada por esa pestaña. |
 
-Los errores de validación de carnet son deliberadamente genéricos y las rutas de mutación requieren mismo origen. La emisión en lote se limita a 20 solicitudes por IP y tenant cada minuto; cada solicitud admite de 1 a 50 UUID de usuarios distintos del tenant. Las respuestas de emisión y reimpresión son `no-store`, están limitadas por tasa y se auditan; no exponen el código a persistencia o registros del navegador. En producción, la limitación de intentos falla cerrada si no están configurados Upstash Redis REST URL y token.
+`GET`/`POST /api/access/terminals` y `POST /api/access/terminals/:id/revoke` permanecen como API heredada de compatibilidad; no deben añadirse a nuevos clientes.
 
-## Validación operativa pendiente
+Los errores de validación son deliberadamente genéricos y las mutaciones requieren mismo origen. En producción, los límites de intentos fallan cerrados si faltan las credenciales de Upstash Redis. Las respuestas que contienen un código son `no-store`, están limitadas por tasa y se auditan sin guardar la credencial en registros o persistencia del navegador.
 
-Validar en una caja enrolada un escaneo físico de carnet, incluido el lector USB tipo teclado y, si se usa, un Device Manager que anuncie `barcode.access-capture.v1`. La preparación de la base ya se confirmó en producción tras aplicar 269, pero esa comprobación no confirma el resultado de una lectura física.
+## Datos y migración
 
-Para revertir, desactivar el interruptor para impedir nuevos inicios y conservar las migraciones, las comprobaciones y los tombstones de sesión. No se debe volver a una versión que devuelva un JWT de carnet sin las guardas de la migración 255 mientras pueda existir uno de esos JWT.
+Las migraciones [254](../../supabase/migrations/254_barcode_access_foundation.sql), [255](../../supabase/migrations/255_barcode_access_direct_data_guard.sql), [262](../../supabase/migrations/262_barcode_badge_reprinting.sql) y [269](../../supabase/migrations/269_restore_barcode_access_rls_guards.sql) siguen siendo requisitos del acceso por carnet. La 255 impide que un JWT de sesión por carnet acceda directamente a PostgREST/RPC, Storage o Realtime; esos recursos pasan por rutas Web protegidas.
 
-## Evidencia actual
+La migración 269 recupera la preparación de acceso cuando una migración posterior a 255 crea una tabla con RLS sin la política restrictiva `barcode_web_only`. Recorre las tablas con RLS de `public` y `tenant_*`, además de las tablas permisivas de `storage` y `realtime`; añade la guarda sólo donde falta y se detiene ante una política homónima incompatible. En producción se aplicó el 24 de septiembre de 2026 y `barcode_access_protection_ready()` devolvió `true`. La reparación no rota terminales, carnets ni sesiones heredadas.
 
-- Las cinco pruebas del PDF de carnets cubren la tarjeta individual, tres tarjetas normales por página y los nombres largos. [test-barcode-reprinting-sql.mjs](../../scripts/test-barcode-reprinting-sql.mjs) ejecuta las migraciones 254, 255 y 262 contra una base efímera para comprobar la compatibilidad del RPC, el cifrado, las políticas y la auditoría; pasaron nueve pruebas de servicio y operación para reimpresión activa sin RPC, revocación y tenant cruzado, legado `409`, clave ausente sin rotación y AES con alteración o AAD inválido.
+La [migración 284](../../supabase/migrations/284_barcode_access_without_terminal_enrollment.sql) permite `terminal_id` nulo en `barcode_access_sessions` y actualiza `barcode_access_register_session`. Cuando recibe un terminal no nulo preserva las comprobaciones y el reemplazo de sesión heredados; cuando recibe `NULL`, valida carnet, tenant, membresía y sesión del proveedor sin serializar sesiones por navegador. Se aplicó en producción como `20260928161941_barcode_access_without_terminal_enrollment`.
 
-- `pnpm build` finalizó correctamente.
-- `pnpm test:barcode` pasó con 23 pruebas Node enfocadas en las reglas de acceso, sesión, carnet y Bridge.
-- `pnpm test:barcode:sql` pasó contra PGlite desechable y ejecutó las migraciones reales: reemplazo de carnet, aislamiento de tenant, reemplazo de sesión de terminal, denegación directa de RLS/RPC/Storage y lectura de preparación. PGlite está fijado como módulo temporal externo, no como dependencia declarada del proyecto; el script documenta `PGLITE_MODULE_PATH`.
-- `pnpm test:barcode:web` pasó con Chromium sin interfaz y respuestas simuladas: comprueba el contrato de la interfaz, no una sesión real del proveedor.
-- El lint global informa 18 errores y 340 advertencias en archivos no tocados; las auditorías `audit:routes` y `audit:shared` no tienen una línea base disponible para atribuirles un resultado en esta entrega.
+Para revertir el cambio de aplicación, detener nuevos intercambios por carnet mediante el interruptor de función y conservar las migraciones, guardas y tombstones. No se debe restaurar una versión que exija una terminal para una sesión ya registrada con `terminal_id` nulo.
 
-No se han aplicado migraciones ni se ha desplegado o activado la función. La integración real con Supabase y la lectura física siguen pendientes.
+## Validación pendiente
+
+Antes de habilitar el flujo Web en producción, validar una sesión por el mismo carnet en dos navegadores, confirmar que ambos registros tienen `terminal_id = NULL`, revocar el carnet y comprobar que ambas sesiones quedan invalidadas. Validar además el cambio de operador dentro de una misma organización, incluidos permisos distintos, el rechazo de un carnet de otra organización sin perder la sesión previa y la recuperación de una sesión bloqueada con un carnet de la misma organización. También falta validar una lectura física USB/HID en caja.
+
+La validación enfocada de esta corrección aprobó `pnpm test:barcode` (63/63) y `pnpm test:barcode:workspace` (12/12); el primero cubre el registro con `p_terminal_id` explícitamente nulo. Las pruebas Chromium simuladas [barcode-pos-browser.test.mjs](../../test/barcode-pos-browser.test.mjs) y [barcode-workspace-switcher-browser.test.mjs](../../test/barcode-workspace-switcher-browser.test.mjs) aprobaron (2/2), junto con el ESLint focalizado y `tsc --noEmit` en la raíz. Esta evidencia no acredita un despliegue de código Web, autenticación real ni lectura física.

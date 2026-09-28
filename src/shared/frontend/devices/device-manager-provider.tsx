@@ -44,7 +44,7 @@ function restoreEditableTarget(snapshot: EditableSnapshot | null): void {
 export function DeviceManagerProvider({ children }: { children: React.ReactNode }) {
     const [enabled, setEnabledState] = useState(false); const [available, setAvailable] = useState(false); const [paired, setPaired] = useState(false); const [pairing, setPairing] = useState(false);
     const [status, setStatus] = useState<DeviceStatus>("disconnected"); const [managerVersion, setManagerVersion] = useState<string | null>(null); const [device, setDevice] = useState<DeviceInfo | null>(null); const [keyboardDetected, setKeyboardDetected] = useState(false); const [lastError, setLastError] = useState<string | null>(null); const [lastScan, setLastScan] = useState<BarcodeScannedEvent | null>(null); const [generation, setGeneration] = useState(0);
-    const socketRef = useRef<WebSocket | null>(null); const listeners = useRef(new Map<DeviceContextName, Set<Listener>>()); const seen = useRef(new Set<string>()); const recentBarcodes = useRef(new Map<string, { connection: string; receivedAt: number }>()); const reportedErrors = useRef(new Set<string>()); const accessLeaseId = useRef<string | null>(null); const accessHeartbeat = useRef<ReturnType<typeof setInterval> | null>(null); const bridgeSupportsAccessCapture = useRef(false);
+    const socketRef = useRef<WebSocket | null>(null); const listeners = useRef(new Map<DeviceContextName, Set<Listener>>()); const seen = useRef(new Set<string>()); const recentBarcodes = useRef(new Map<string, { connection: string; receivedAt: number }>()); const reportedErrors = useRef(new Set<string>()); const accessLeaseId = useRef<string | null>(null); const accessHeartbeat = useRef<ReturnType<typeof setInterval> | null>(null); const bridgeSupportsAccessCapture = useRef(false); const accessKeyboardCaptureCountRef = useRef(0);
     const [accessListenerCount, setAccessListenerCount] = useState(0);
     const [accessKeyboardCaptureCount, setAccessKeyboardCaptureCount] = useState(0);
     useEffect(() => setEnabledState(localStorage.getItem(ENABLED_KEY) === "true"), []);
@@ -71,7 +71,7 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         listeners.current.set(context, group);
         if (context === "access") {
             setAccessListenerCount(group.size);
-            if (options.captureAllKeyboardBursts) setAccessKeyboardCaptureCount((value) => value + 1);
+            if (options.captureAllKeyboardBursts) { accessKeyboardCaptureCountRef.current += 1; setAccessKeyboardCaptureCount((value) => value + 1); }
         }
         if (context === "access") requestAccessCapture();
         return () => {
@@ -79,7 +79,7 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
             if (!group.size) listeners.current.delete(context);
             if (context === "access") {
                 setAccessListenerCount(group.size);
-                if (options.captureAllKeyboardBursts) setAccessKeyboardCaptureCount((value) => Math.max(0, value - 1));
+                if (options.captureAllKeyboardBursts) { accessKeyboardCaptureCountRef.current = Math.max(0, accessKeyboardCaptureCountRef.current - 1); setAccessKeyboardCaptureCount((value) => Math.max(0, value - 1)); }
                 if (!group.size) releaseAccessCapture();
             }
         };
@@ -89,10 +89,14 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         seen.current.add(event.eventId);
         if (seen.current.size > 200) seen.current.delete(seen.current.values().next().value!);
 
-        // A badge is a credential. While the access screen owns capture, it
-        // cannot reach product subscribers, lastScan, or scanner deduplication.
+        // A badge is a credential. An active access subscriber owns only that
+        // reserved namespace; product scans must remain available to the
+        // workspace that is waiting for a cashier to change operator.
         const access = listeners.current.get("access");
-        if (access?.size) {
+        if (
+            access?.size &&
+            (accessKeyboardCaptureCountRef.current > 0 || isBadgeBarcode(event.barcode))
+        ) {
             access.forEach((listener) => listener(event));
             return;
         }
@@ -146,13 +150,6 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
             const scan = scanner.push({ key: event.key, code: event.code, shiftKey: event.shiftKey, capsLock: event.getModifierState("CapsLock") }, occurredAt);
             if (!scan) {
                 if (event.key === "Enter" || (event.key.length !== 1 && !["Shift", "CapsLock"].includes(event.key))) reset();
-                return;
-            }
-            const hasAccessListener = Boolean(listeners.current.get("access")?.size);
-            const accessReceivesScan = hasAccessListener
-                && (accessKeyboardCaptureCount > 0 || scan.badgeBarcode !== null || isBadgeBarcode(scan.barcode));
-            if (hasAccessListener && !accessReceivesScan) {
-                reset();
                 return;
             }
             event.preventDefault();

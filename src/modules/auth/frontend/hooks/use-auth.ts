@@ -14,12 +14,22 @@
 import { useEffect, useReducer, useCallback } from "react";
 import type { Auth } from "@/src/modules/auth/backend/domain/auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import {
+    resetWorkspaceSelectionForBarcodeSession,
+    resolveBarcodeSessionActor,
+    getBarcodeSessionTabId,
+} from "@/src/modules/auth/frontend/barcode-workspace-session";
 
-const TENANT_STORAGE_KEYS = ["kont-active-tenant-id", "kont-company-id", "kont-active-module", "sidebar-module", "kont-session-user-id"] as const;
+const BARCODE_SESSION_CHANNEL = "kontave-barcode-session";
 
 function clearTenantSelection(): void {
     if (typeof window === "undefined") return;
-    TENANT_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+    try {
+        resetWorkspaceSelectionForBarcodeSession(localStorage);
+    } catch {
+        // Storage may be unavailable in a restricted browser context. The
+        // server session remains authoritative when the page is reloaded.
+    }
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -63,10 +73,10 @@ function dispatch(action: AuthAction) {
 
 // ── API fetch helper (para las acciones que van al servidor) ──────────────────
 
-async function apiFetch(path: string, body?: object) {
+async function apiFetch(path: string, body?: object, headers?: HeadersInit) {
     const res  = await fetch(path, {
         method:  body !== undefined ? "POST" : "GET",
-        headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+        headers: body !== undefined ? { "Content-Type": "application/json", ...headers } : headers,
         body:    body !== undefined ? JSON.stringify(body) : undefined,
     });
     const json = await res.json();
@@ -76,12 +86,27 @@ async function apiFetch(path: string, body?: object) {
 // ── Bootstrap — suscribe al estado de sesión del browser client ───────────────
 
 let _bootstrapped = false;
+let _barcodeSessionChannel: BroadcastChannel | null = null;
 
 function bootstrap() {
     if (_bootstrapped) return;
     _bootstrapped = true;
 
     const supabase = getSupabaseBrowser();
+
+    if (typeof BroadcastChannel !== "undefined") {
+        _barcodeSessionChannel = new BroadcastChannel(BARCODE_SESSION_CHANNEL);
+        _barcodeSessionChannel.onmessage = (event: MessageEvent<{ type?: string; sourceId?: string | null }>) => {
+            if (event.data.type !== "session-changed") return;
+            if (event.data.sourceId && event.data.sourceId === getBarcodeSessionTabId()) return;
+            // Cookies are shared across tabs, but React and browser storage are
+            // not a safe workspace handoff mechanism. Reload each old view so
+            // it starts only from the replacement actor's cookie.
+            dispatch({ type: "LOADING" });
+            clearTenantSelection();
+            window.location.replace("/tools?barcode-landing=1");
+        };
+    }
 
     // Lee la sesión actual inmediatamente
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -179,33 +204,54 @@ async function signOut(): Promise<void> {
  * Starts a Web session after the server validates a scanned access badge.
  *
  * @param barcode - Credential received from the scanner; never persisted by this client.
+ * @param tenantId - Committed workspace tenant used to constrain an operator replacement.
  * @returns A display-safe failure message, or null when session cookies were issued.
  */
-async function signInWithBarcode(barcode: string): Promise<string | null> {
-    dispatch({ type: "LOADING" });
+async function signInWithBarcode(barcode: string, tenantId?: string | null): Promise<string | null> {
     try {
-        const { ok, json } = await apiFetch("/api/auth/barcode", { barcode });
-        if (!ok) {
-            const message = typeof json.error === "string" ? json.error : "No se pudo validar el carnet.";
-            dispatch({ type: "SET_ERROR", error: message });
-            return message;
+        let activeTenantId: string | null = tenantId ?? null;
+        try {
+            if (!activeTenantId) activeTenantId = typeof window === "undefined"
+                ? null
+                : localStorage.getItem("kont-active-tenant-id");
+        } catch {
+            // The server will still authenticate ordinary public sign-in when
+            // browser storage is restricted.
         }
+        const { ok, json } = await apiFetch(
+            "/api/auth/barcode",
+            { barcode },
+            activeTenantId ? { "X-Tenant-Id": activeTenantId } : undefined,
+        );
+        if (!ok) {
+            return typeof json.error === "string" ? json.error : "No se pudo validar el carnet.";
+        }
+        const user = resolveBarcodeSessionActor(json);
+        if (!user) {
+            return "No se pudo iniciar la sesión. Intenta de nuevo.";
+        }
+        // Do this synchronously before rendering another business screen. A
+        // same-organization operator may still have different permissions.
+        clearTenantSelection();
+        dispatch({ type: "SET_USER", user });
         const registryId = json.data?.session?.id;
         if (typeof registryId === "string" && typeof BroadcastChannel !== "undefined") {
-            const channel = new BroadcastChannel("kontave-barcode-session");
-            channel.postMessage({ type: "session-changed", sessionId: registryId });
-            channel.close();
+            try {
+                const channel = new BroadcastChannel("kontave-barcode-session");
+                channel.postMessage({ type: "session-changed", sessionId: registryId, sourceId: getBarcodeSessionTabId() });
+                channel.close();
+            } catch {
+                // Other tabs will reconcile on their next protected request.
+            }
         }
         return null;
     } catch {
-        const message = "No se pudo conectar para validar el carnet.";
-        dispatch({ type: "SET_ERROR", error: message });
-        return message;
+        return "No se pudo conectar para validar el carnet.";
     }
 }
 
 /**
- * Ends the active badge session while preserving this browser's terminal enrollment.
+ * Ends the active badge session while preserving the current browser state.
  *
  * @param expectedSessionId - Registry identity displayed by this tab, preventing stale locks.
  * @returns A display-safe failure message, or null when the session was locked.
@@ -254,7 +300,7 @@ export function useAuth() {
         signIn:          useCallback((email: string, password: string) => signIn(email, password), []),
         signUp:          useCallback((email: string, password: string, name?: string, phone?: string) => signUp(email, password, name, phone), []),
         signOut:         useCallback(() => signOut(), []),
-        signInWithBarcode: useCallback((barcode: string) => signInWithBarcode(barcode), []),
+        signInWithBarcode: useCallback((barcode: string, tenantId?: string | null) => signInWithBarcode(barcode, tenantId), []),
         lockBarcodeSession: useCallback((expectedSessionId?: string) => lockBarcodeSession(expectedSessionId), []),
         resetPassword:   useCallback((email: string) => resetPassword(email), []),
         resendConfirmation: useCallback((email: string) => resendConfirmation(email), []),

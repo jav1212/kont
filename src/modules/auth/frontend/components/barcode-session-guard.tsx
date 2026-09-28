@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { mustLeaveForBarcodeSession, reconcileBarcodeSession, shouldReportBarcodeActivity } from "@/src/modules/auth/frontend/barcode-session-policy";
+import { getBarcodeSessionTabId } from "@/src/modules/auth/frontend/barcode-workspace-session";
 
 const CHANNEL_NAME = "kontave-barcode-session";
 const ACTIVITY_DEBOUNCE_MS = 30_000;
@@ -16,7 +17,6 @@ interface BarcodeSession {
     sessionId?: string;
     expiresAt?: string;
     idleExpiresAt?: string;
-    terminal?: { ready: boolean; id?: string; name?: string; tenantId?: string };
     tenantId?: string;
 }
 
@@ -101,10 +101,11 @@ export function BarcodeSessionGuard({
         const activeSessionId = session.sessionId;
         const broadcast = new BroadcastChannel(CHANNEL_NAME);
         channel.current = broadcast;
-        broadcast.onmessage = (event: MessageEvent<{ type?: string; sessionId?: string }>) => {
+        broadcast.onmessage = (event: MessageEvent<{ type?: string; sessionId?: string; sourceId?: string | null }>) => {
+            if (event.data.sourceId && event.data.sourceId === getBarcodeSessionTabId()) return;
             if (event.data.type === "session-changed" && event.data.sessionId !== activeSessionId) {
                 setState("expired");
-                window.location.replace("/");
+                window.location.replace("/tools?barcode-landing=1");
                 return;
             }
             if (event.data.type === "lock" && event.data.sessionId === activeSessionId) void lock(activeSessionId, false);
@@ -142,7 +143,7 @@ export function BarcodeSessionGuard({
                 if (outcome === "expired" || !response.ok) void lock(activeSessionId, true);
                 if (outcome === "changed") {
                     setState("expired");
-                    window.location.replace("/");
+                    window.location.replace("/tools?barcode-landing=1");
                 }
                 if (outcome === "active") deadline = idleDeadline(body.data?.idleExpiresAt);
             }).catch(() => void lock(activeSessionId, true));
