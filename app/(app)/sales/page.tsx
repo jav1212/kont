@@ -15,6 +15,7 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { useSales } from "@/src/modules/sales/frontend/hooks/use-sales";
+import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import type { SalesInvoiceStatus } from "@/src/modules/sales/backend/domain/sales-invoice";
 import type { SalesPerformanceReportDto, SalesPerformanceDimensionDto } from "@kontave/client-contracts";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
@@ -104,7 +105,19 @@ export default function SalesDashboardPage() {
         const params = new URLSearchParams({ from, to, dimension: reportDimension, currency: "VES" });
         setLoadingPerformanceReport(true);
         setPerformanceReportError(null);
-        void apiFetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/sales/reporting?${params}`)
+        void (async () => {
+            const { data: { session }, error: sessionError } = await getSupabaseBrowser().auth.getSession();
+            if (sessionError || !session?.access_token) {
+                throw new Error("La sesión no es válida o expiró. Vuelve a iniciar sesión.");
+            }
+            return apiFetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/sales/reporting?${params}`, {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    "X-Kontave-Client": "web",
+                },
+                cache: "no-store",
+            });
+        })()
             .then(async (response) => {
                 const payload = await response.json() as { data?: SalesPerformanceReportDto; error?: { message?: string } };
                 if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo cargar el reporte.");
@@ -238,7 +251,13 @@ export default function SalesDashboardPage() {
                     ) : performanceReportError ? (
                         <p role="alert" className="px-5 py-8 text-center text-xs text-danger-500">{performanceReportError}</p>
                     ) : !performanceReport?.rows.length ? (
-                        <p className="px-5 py-8 text-center text-xs text-[var(--text-secondary)]">No hay ventas confirmadas para agrupar en este período.</p>
+                        <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
+                            <span className="mb-3 flex size-11 items-center justify-center rounded-full border border-border-light bg-surface-2 text-[var(--text-tertiary)]" aria-hidden="true">
+                                <FileText size={18} strokeWidth={1.7} />
+                            </span>
+                            <p className="text-[12px] font-semibold text-foreground">Sin ventas confirmadas</p>
+                            <p className="mt-1 max-w-sm text-xs text-[var(--text-secondary)]">Cuando haya ventas en este período, aquí aparecerá su distribución.</p>
+                        </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs">
