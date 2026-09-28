@@ -1,5 +1,6 @@
 import { companyId } from "@kontave/companies/domain";
 import { SupabaseFiscalDocumentRepository } from "@kontave/fiscal/supabase";
+import { ReviseFiscalDocument, type FiscalDraftCandidateBuilder } from "@kontave/fiscal/application";
 import { fiscalDate, fiscalTaxDetermination } from "@kontave/fiscal/domain";
 import { toFiscalTaxDeterminations } from "@kontave/taxation/fiscal";
 import { GetResolvedServiceTaxation } from "@kontave/taxation/application";
@@ -49,6 +50,7 @@ export function createSalesFiscalActions(input: {
 }): {
   readonly scope: FiscalPersistenceScope;
   readonly prepareConfirmedServiceInvoice: PrepareConfirmedServiceInvoiceFiscalDocument;
+  readonly reviseFiscalDocument: ReviseFiscalDocument;
 } {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,13 +93,21 @@ export function createSalesFiscalActions(input: {
       };
     },
   };
-  return {
-    scope,
-    prepareConfirmedServiceInvoice: new PrepareConfirmedServiceInvoiceFiscalDocument(
+  const documents = new SupabaseFiscalDocumentRepository(readers.client);
+  const prepareConfirmedServiceInvoice = new PrepareConfirmedServiceInvoiceFiscalDocument(
       readers.invoices,
       readers.issuers,
       taxes,
-      new SupabaseFiscalDocumentRepository(readers.client),
-    ),
+      documents,
+    );
+  const candidates: FiscalDraftCandidateBuilder = {
+    reconstruct: ({ sourceId, ...candidateInput }) => prepareConfirmedServiceInvoice.reconstructCandidate({
+      ...candidateInput, invoiceId: sourceId,
+    }),
+  };
+  return {
+    scope,
+    prepareConfirmedServiceInvoice,
+    reviseFiscalDocument: new ReviseFiscalDocument(documents, candidates),
   };
 }

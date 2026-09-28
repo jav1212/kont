@@ -13,7 +13,9 @@ import { createSalesFiscalActions } from "@/src/modules/sales/backend/infra/fisc
  * @throws Expected source, identity, or taxation failures are returned as client errors.
  */
 export const POST = withTenantPermission("sales.create", async (request, tenant) => {
-  const id = new URL(request.url).pathname.split("/").filter(Boolean).at(-2) ?? "";
+  const rawId = new URL(request.url).pathname.split("/").filter(Boolean).at(-2) ?? "";
+  let id = "";
+  try { id = decodeURIComponent(rawId); } catch { return Response.json({ error: "Identidad de factura inválida." }, { status: 400 }); }
   const requestedCompanyId = new URL(request.url).searchParams.get("companyId")?.trim() ?? "";
   if (!id || id.length > 256 || !requestedCompanyId || requestedCompanyId.length > 256) {
     return Response.json({ error: "Identidad de factura o empresa inválida." }, { status: 400 });

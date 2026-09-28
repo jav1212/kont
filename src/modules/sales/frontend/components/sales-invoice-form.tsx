@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
+import { ContextLink } from "@/src/shared/frontend/components/context-link";
 import { Trash2, FileText, CheckCircle2, Lock, Unlock, Save, UserRound, CalendarDays, Plus, X } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -845,7 +846,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                             {isConfirmed && <>
                                 {!isDeliveryNote && <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handlePrepareFiscalDraft} disabled={preparingFiscalDraft || !fiscalPreparationEligible}>{preparingFiscalDraft ? "Preparando borrador…" : "Preparar borrador fiscal"}</BaseButton.Root>}
                                 {!isDeliveryNote && !fiscalPreparationEligible && <p className="text-[11px] leading-snug text-[var(--text-tertiary)]">El borrador fiscal requiere una factura confirmada compuesta solo por servicios, cada uno con código fiscal.</p>}
-                                {fiscalDraftId && <div className="rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-[11px] text-[var(--text-secondary)]"><p className="font-semibold text-foreground">Borrador fiscal preparado</p><p className="mt-1 break-all font-mono">ID: {fiscalDraftId}</p><p className="mt-1">Este identificador corresponde a un borrador; no confirma emisión fiscal.</p></div>}
+                                {fiscalDraftId && <div className="rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-[11px] text-[var(--text-secondary)]"><p className="font-semibold text-foreground">Borrador fiscal preparado</p><p className="mt-1 break-all font-mono">ID: {fiscalDraftId}</p><ContextLink href={`/sales/fiscal/${encodeURIComponent(fiscalDraftId)}`} className="mt-2 inline-block font-semibold text-primary-500 underline">Abrir borrador fiscal</ContextLink><p className="mt-1">Este identificador corresponde a un borrador; no confirma emisión fiscal.</p></div>}
                                 <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>{generatingPdf ? "Generando…" : isDeliveryNote ? "Descargar Nota de Entrega" : "Descargar PDF legal"}</BaseButton.Root>
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
                             </>}

@@ -41,6 +41,27 @@ test("persists a reconciled fiscal draft from a confirmed classified service inv
   assert.equal(repository.persisted[0]?.idempotencyKey, `prepare_legacy_sales_invoice:${invoice.id}`);
 });
 
+test("reconstructs a revision candidate with the source version and without persisting", async () => {
+  const invoice = confirmedInvoice({ sourceUpdatedAt: "2026-09-28T10:00:00.000Z" });
+  const repository = memoryRepository();
+
+  const candidate = await createUseCase(invoice, repository).reconstructCandidate(command());
+
+  assert.equal(candidate.sourceUpdatedAt, invoice.sourceUpdatedAt);
+  assert.equal(candidate.document.status, "draft");
+  assert.equal(repository.persisted.length, 0);
+});
+
+test("rejects a revision candidate when the source omits its concurrency version", async () => {
+  const repository = memoryRepository();
+
+  await assert.rejects(
+    () => createUseCase(confirmedInvoice(), repository).reconstructCandidate(command()),
+    (error: unknown) => error instanceof SalesFailure && error.code === "SALES_FISCAL_PREPARATION_INVALID",
+  );
+  assert.equal(repository.persisted.length, 0);
+});
+
 test("rejects a replay after a snapshotted commercial source field changes and preserves the original snapshot", async () => {
   const original = confirmedInvoice();
   const edited = confirmedInvoice({

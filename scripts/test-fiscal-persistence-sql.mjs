@@ -71,6 +71,11 @@ try {
             organization_id uuid NOT NULL,
             PRIMARY KEY (tenant_id, id)
         );
+        CREATE TABLE public.shared_inventory_sales_invoices (
+            tenant_id uuid NOT NULL, id text NOT NULL, company_id text NOT NULL,
+            status text NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),
+            PRIMARY KEY (tenant_id, id)
+        );
         CREATE TABLE public.organization_memberships (
             organization_id uuid NOT NULL,
             user_id uuid NOT NULL,
@@ -106,6 +111,10 @@ try {
         INSERT INTO auth.users(id) VALUES ('${actorA}'), ('${actorB}'), ('${actorOutside}');
         INSERT INTO public.shared_companies(tenant_id,id,organization_id) VALUES
             ('${tenantA}','${company}','${organizationA}'), ('${tenantB}','${company}','${organizationB}');
+        INSERT INTO public.shared_inventory_sales_invoices(tenant_id,id,company_id,status,updated_at) VALUES
+            ('${tenantA}','sales-1','${company}','confirmada','${occurredAt}'),
+            ('${tenantA}','sales-2','${company}','confirmada','${occurredAt}'),
+            ('${tenantA}','sales-3','${company}','confirmada','${occurredAt}');
         INSERT INTO public.organization_memberships(organization_id,user_id,status) VALUES
             ('${organizationA}','${actorA}','active'), ('${organizationB}','${actorB}','active');
         INSERT INTO public.organization_delegations(id,client_organization_id,status,valid_from) VALUES
@@ -241,6 +250,43 @@ try {
     `);
     await db.exec(await readFile(new URL('../supabase/migrations/281_service_tax_classifications.sql', import.meta.url), 'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/282_service_tax_classification_stable_line_ids.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/283_fiscal_draft_revisions.sql', import.meta.url), 'utf8'));
+
+    const revisedSnapshot = { ...draftSnapshot('document-2'), marker: 'revised' };
+    const revised = (await db.query(
+        `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) AS result`,
+        [tenantA, organizationA, company, 'document-2', 1, 'Service update.', 'revise-1', actorA, occurredAt, JSON.stringify(revisedSnapshot), occurredAt],
+    )).rows[0].result;
+    assert.equal(revised.revision, 2);
+    assert.equal(revised.document.document_snapshot.marker, 'revised');
+    const replayedRevision = (await db.query(
+        `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) AS result`,
+        [tenantA, organizationA, company, 'document-2', 1, 'Service update.', 'revise-1', actorA, occurredAt, JSON.stringify(revisedSnapshot), occurredAt],
+    )).rows[0].result;
+    assert.equal(replayedRevision.replayed, true);
+    assert.equal(replayedRevision.revision, 2);
+    assert.equal(replayedRevision.document.document_snapshot.marker, 'revised');
+    const revisionEvent = (await db.query(
+        `SELECT payload FROM public.shared_fiscal_document_events WHERE tenant_id=$1 AND document_id='document-2' AND event_type='fiscal_document.revised'`, [tenantA],
+    )).rows[0];
+    assert.equal(revisionEvent.payload.fromRevision, 1);
+    assert.equal(revisionEvent.payload.toRevision, 2);
+    assert.equal(revisionEvent.payload.previousSnapshot.id, 'document-2');
+    assert.equal(revisionEvent.payload.replacementSnapshot.marker, 'revised');
+    await assert.rejects(db.query(
+        `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11)`,
+        [tenantA, organizationA, company, 'document-2', 1, 'Another update.', 'revise-2', actorA, occurredAt, JSON.stringify(revisedSnapshot), occurredAt],
+    ), /FISCAL_DOCUMENT_REVISION_CONFLICT/);
+    await assert.rejects(db.query(
+        `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11)`,
+        [tenantA, organizationA, company, 'document-1', 1, 'Issued documents cannot be revised.', 'revise-issued', actorA, occurredAt, JSON.stringify(draftSnapshot('document-1')), occurredAt],
+    ), /FISCAL_DOCUMENT_TRANSITION_INVALID/);
+    await persist('document-3', 'sales-3', 'prepare-3');
+    await db.query(`UPDATE public.shared_inventory_sales_invoices SET updated_at='2026-09-28T00:00:00.000Z' WHERE tenant_id=$1 AND id='sales-3'`, [tenantA]);
+    await assert.rejects(db.query(
+        `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11)`,
+        [tenantA, organizationA, company, 'document-3', 1, 'Source changed.', 'revise-source', actorA, occurredAt, JSON.stringify(draftSnapshot('document-3')), occurredAt],
+    ), /FISCAL_DOCUMENT_SOURCE_CONFLICT/);
     await db.query(
         `INSERT INTO public.shared_service_tax_profiles(
             tenant_id,id,company_id,service_code,fiscal_unit_code,jurisdiction

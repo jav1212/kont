@@ -135,6 +135,7 @@ const ROUTES: readonly RouteRule[] = [
   ["GET","/api/fiscal/documents/[id]","sales.read"],
   ["GET","/api/fiscal/documents","sales.read"],
   ["GET","/api/fiscal/documents/[id]/events","sales.read"],
+  ["POST","/api/fiscal/documents/[id]/revise","sales.update"],
   ["POST","/api/fiscal/service-taxonomy","sales.update"],
   ["GET","/api/fiscal/service-taxonomy","sales.read"],
   ["POST","/api/fiscal/sales/[id]/prepare","sales.create"],

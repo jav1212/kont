@@ -89,6 +89,53 @@ export interface PersistFiscalDocumentResult {
   readonly replayed: boolean;
 }
 
+/** Durable metadata that accompanies a fiscal snapshot without changing its legal content. */
+export interface FiscalDocumentMetadata {
+  readonly revision: number;
+  readonly source: FiscalDocumentSourceIdentity;
+  readonly canRevise: boolean;
+}
+
+/** One optimistic, auditable replacement of an unissued fiscal draft. */
+export interface ReviseFiscalDocumentInput {
+  readonly scope: FiscalPersistenceScope;
+  readonly documentId: string;
+  readonly expectedRevision: number;
+  readonly reason: string;
+  readonly idempotencyKey: string;
+  readonly actorId: string;
+  readonly occurredAt: string;
+  readonly replacement: FiscalDocument;
+  /** Source row version captured while reconstructing the candidate. */
+  readonly expectedSourceUpdatedAt: string;
+}
+
+/** Result of a draft revision or its exact idempotent replay. */
+export interface ReviseFiscalDocumentResult {
+  readonly document: FiscalDocument;
+  readonly revision: number;
+  readonly replayed: boolean;
+}
+
+/** Optional extension used by consumers that need draft-revision metadata. */
+export interface FiscalDocumentRevisionRepository {
+  /**
+   * Reads the source identity and revision state needed before rebuilding a draft.
+   * @param scope - Tenant, organization, and company that own the document.
+   * @param documentId - Durable fiscal-document identity.
+   * @returns Metadata, or `null` when the document is outside the scope or absent.
+   * @throws {@link FiscalFailure} When the scoped persistence query fails.
+   */
+  findMetadata(scope: FiscalPersistenceScope, documentId: string): Promise<FiscalDocumentMetadata | null>;
+  /**
+   * Atomically replaces an eligible draft using its expected revision and source row version.
+   * @param input - Authorized replacement candidate, idempotency key, and CAS preconditions.
+   * @returns The persisted replacement or an exact idempotent replay.
+   * @throws {@link FiscalFailure} When issuance history, source, CAS, or idempotency prohibits revision.
+   */
+  revise(input: ReviseFiscalDocumentInput): Promise<ReviseFiscalDocumentResult>;
+}
+
 /**
  * Defines the transaction boundary for durable fiscal-document persistence.
  *

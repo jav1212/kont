@@ -6,7 +6,9 @@ import { resolveCanonicalTenantAuthorization, withTenantPermission } from "@/src
 /** Lists the immutable audit events for a fiscal document in an authorized company. */
 export const GET = withTenantPermission("sales.read", async (request, tenant) => {
   const query = new URL(request.url).searchParams;
-  const documentId = new URL(request.url).pathname.split("/").at(-2) ?? "";
+  const rawDocumentId = new URL(request.url).pathname.split("/").at(-2) ?? "";
+  let documentId = "";
+  try { documentId = decodeURIComponent(rawDocumentId); } catch { return Response.json({ error: "Identificador de documento inválido." }, { status: 400 }); }
   const requestedCompanyId = query.get("companyId")?.trim() ?? "";
   const rawLimit = query.get("limit");
   const limit = rawLimit === null ? 50 : Number(rawLimit);

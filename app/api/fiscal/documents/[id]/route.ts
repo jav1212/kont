@@ -5,7 +5,9 @@ import { resolveCanonicalTenantAuthorization, withTenantPermission } from "@/src
 
 /** Reads one fiscal snapshot after checking the caller's organization and company scope. */
 export const GET = withTenantPermission("sales.read", async (request, tenant) => {
-  const documentId = new URL(request.url).pathname.split("/").pop() ?? "";
+  const rawDocumentId = new URL(request.url).pathname.split("/").pop() ?? "";
+  let documentId = "";
+  try { documentId = decodeURIComponent(rawDocumentId); } catch { return Response.json({ error: "Identificador de documento inválido." }, { status: 400 }); }
   const requestedCompanyId = new URL(request.url).searchParams.get("companyId")?.trim() ?? "";
   if (!documentId || documentId.length > 256 || !requestedCompanyId || requestedCompanyId.length > 256) {
     return Response.json({ error: "Identificador de documento o empresa inválido." }, { status: 400 });
@@ -32,7 +34,13 @@ export const GET = withTenantPermission("sales.read", async (request, tenant) =>
       companyId: companyId(requestedCompanyId),
     }, documentId);
     if (!document) return Response.json({ error: "Documento fiscal no encontrado." }, { status: 404 });
-    return Response.json({ data: JSON.parse(encodeFiscalDocument(document)) });
+    const metadata = await repository.findMetadata({
+      tenantId: tenant.tenantId, organizationId: authorization.organizationId, companyId: companyId(requestedCompanyId),
+    }, documentId);
+    if (!metadata) return Response.json({ error: "Documento fiscal no encontrado." }, { status: 404 });
+    return Response.json({ data: JSON.parse(encodeFiscalDocument(document)), metadata: {
+      revision: metadata.revision, source: metadata.source, canRevise: metadata.canRevise,
+    } });
   } catch {
     return Response.json({ error: "No fue posible consultar el documento fiscal." }, { status: 500 });
   }

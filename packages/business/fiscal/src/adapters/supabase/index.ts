@@ -10,6 +10,10 @@ import {
   type FiscalPersistenceScope,
   type PersistFiscalDocumentInput,
   type PersistFiscalDocumentResult,
+  type FiscalDocumentRevisionRepository,
+  type FiscalDocumentMetadata,
+  type ReviseFiscalDocumentInput,
+  type ReviseFiscalDocumentResult,
 } from "../../domain";
 import { FiscalFailure } from "../../domain/fiscal-failure";
 import { decodeFiscalDocument, encodeFiscalDocument } from "./persistence-codecs";
@@ -19,7 +23,7 @@ export { decodeFiscalDocument, encodeFiscalDocument } from "./persistence-codecs
 type StoredDocument = { readonly document_snapshot: unknown };
 
 /** Persists fiscal aggregates through scoped, service-role-only PostgreSQL RPCs. */
-export class SupabaseFiscalDocumentRepository implements FiscalDocumentRepository {
+export class SupabaseFiscalDocumentRepository implements FiscalDocumentRepository, FiscalDocumentRevisionRepository {
   /**
    * Creates the fiscal persistence adapter.
    * @param client - Server-side Supabase client with service-role RPC access.
@@ -47,6 +51,55 @@ export class SupabaseFiscalDocumentRepository implements FiscalDocumentRepositor
     if (data === null) return null;
     const row = asRecord(data, "Fiscal document query returned an invalid row.");
     return decodeFiscalDocument((row as StoredDocument).document_snapshot);
+  }
+
+  /**
+   * Reads revision metadata through the same scoped persistence boundary as the snapshot.
+   * @param scope - Tenant, organization, and company that own the document.
+   * @param documentId - Durable fiscal-document identity.
+   * @returns Revision metadata, or `null` when the scoped document is absent.
+   * @throws {FiscalFailure} When the RPC response is unavailable or malformed.
+   */
+  async findMetadata(scope: FiscalPersistenceScope, documentId: string): Promise<FiscalDocumentMetadata | null> {
+    const { data, error } = await this.client.rpc("shared_fiscal_document_metadata", {
+      p_tenant_id: scope.tenantId, p_organization_id: scope.organizationId,
+      p_company_id: scope.companyId, p_document_id: documentId,
+    });
+    if (error) throw persistenceFailure(error.message);
+    if (data === null) return null;
+    const row = asRecord(data, "Fiscal document metadata query returned an invalid row.");
+    const revision = Number(row.draft_revision);
+    const source = asRecord(row.source, "Fiscal document metadata omitted its source.");
+    if (!Number.isInteger(revision) || revision < 1 || typeof row.can_revise !== "boolean") {
+      throw new FiscalFailure("FISCAL_DOCUMENT_INVALID", "Fiscal document metadata is invalid.");
+    }
+    return { revision, canRevise: row.can_revise, source: { kind: required(source.kind, "source kind"), id: required(source.id, "source id") } };
+  }
+
+  /**
+   * Atomically replaces a still-unissued draft after server-side reconstruction.
+   * @param input - Scoped candidate, source-version guard, and idempotency command.
+   * @returns The replacement snapshot and revision number, or an exact replay.
+   * @throws {FiscalFailure} When persistence rejects the state, source, CAS, or command key.
+   */
+  async revise(input: ReviseFiscalDocumentInput): Promise<ReviseFiscalDocumentResult> {
+    const { data, error } = await this.client.rpc("shared_fiscal_document_revise_draft", {
+      p_tenant_id: input.scope.tenantId, p_organization_id: input.scope.organizationId,
+      p_company_id: input.scope.companyId, p_document_id: input.documentId,
+      p_expected_revision: input.expectedRevision, p_reason: input.reason,
+      p_idempotency_key: input.idempotencyKey, p_actor_id: input.actorId,
+      p_expected_source_updated_at: input.expectedSourceUpdatedAt,
+      p_replacement_snapshot: JSON.parse(encodeFiscalDocument(input.replacement)) as Record<string, unknown>,
+      p_occurred_at: input.occurredAt,
+    });
+    if (error) throw persistenceFailure(error.message);
+    const result = asRecord(data, "Fiscal document revision returned an invalid result.");
+    const row = asRecord(result.document, "Fiscal document revision omitted its document.");
+    const revision = Number(result.revision);
+    if (!Number.isInteger(revision) || revision < 1 || typeof result.replayed !== "boolean") {
+      throw new FiscalFailure("FISCAL_DOCUMENT_INVALID", "Fiscal document revision result is invalid.");
+    }
+    return { document: decodeFiscalDocument((row as StoredDocument).document_snapshot), revision, replayed: result.replayed };
   }
 
   /**
@@ -235,6 +288,7 @@ function persistenceFailure(message: string): FiscalFailure {
     "FISCAL_DOCUMENT_NOT_FOUND",
     "FISCAL_DOCUMENT_IDEMPOTENCY_CONFLICT",
     "FISCAL_DOCUMENT_SOURCE_CONFLICT",
+    "FISCAL_DOCUMENT_REVISION_CONFLICT",
     "FISCAL_DOCUMENT_IMMUTABLE",
     "FISCAL_DOCUMENT_OUTSIDE_COMPANY",
     "FISCAL_DOCUMENT_ACTOR_OUTSIDE_ORGANIZATION",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decodeFiscalDocument, encodeFiscalDocument, SupabaseFiscalDocumentRepository } from "../../src/adapters/supabase";
-import { FiscalDocument, fiscalDate } from "../../src/domain";
+import { FiscalDocument, FiscalFailure, fiscalDate } from "../../src/domain";
 import { fiscalInvoiceFixture } from "../../src/testing";
 
 test("Supabase adapter persists exact bigint snapshots through the scoped RPC", async () => {
@@ -41,6 +41,30 @@ test("Supabase adapter persists exact bigint snapshots through the scoped RPC", 
   assert.equal(result.document.id, document.id);
   assert.equal(result.document.totals.payableAmount.minorAmount, document.totals.payableAmount.minorAmount);
   assert.equal(result.replayed, false);
+});
+
+test("Supabase adapter preserves revision conflicts from the scoped RPC", async () => {
+  const document = fiscalInvoiceFixture();
+  const client = {
+    async rpc() {
+      return { data: null, error: { message: "FISCAL_DOCUMENT_REVISION_CONFLICT" } };
+    },
+  } as unknown as SupabaseClient;
+
+  await assert.rejects(
+    () => new SupabaseFiscalDocumentRepository(client).revise({
+      scope: { tenantId: "tenant-1", organizationId: "organization-1", companyId: document.companyId },
+      documentId: document.id,
+      expectedRevision: 1,
+      reason: "Commercial update.",
+      idempotencyKey: "revise-1",
+      actorId: "user-1",
+      expectedSourceUpdatedAt: "2026-09-28T10:00:00.000Z",
+      replacement: document,
+      occurredAt: "2026-09-28T10:00:01.000Z",
+    }),
+    (error: unknown) => error instanceof FiscalFailure && error.code === "FISCAL_DOCUMENT_REVISION_CONFLICT",
+  );
 });
 
 test("fiscal snapshot codec preserves optional tax operation and legal evidence", () => {

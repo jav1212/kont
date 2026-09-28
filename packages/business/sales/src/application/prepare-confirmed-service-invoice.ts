@@ -45,6 +45,8 @@ export interface ConfirmedServiceInvoice {
   readonly documentType: "venta" | "nota_entrega";
   readonly status: "borrador" | "confirmada" | "anulada";
   readonly invoiceDate: string;
+  /** Version captured from the authoritative source read and used to prevent revision races. */
+  readonly sourceUpdatedAt?: string;
   readonly currencyCode: string;
   readonly subtotal: Money;
   readonly vatAmount: Money;
@@ -139,7 +141,9 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
     readonly invoiceId: string;
     readonly actorId: string;
     readonly occurredAt: string;
-  }): Promise<PersistFiscalDocumentResult> {
+    /** Builds a validated replacement candidate without reading or writing fiscal persistence. */
+    readonly persist?: boolean;
+  }): Promise<PersistFiscalDocumentResult & { readonly sourceUpdatedAt?: string }> {
     const identity = `legacy-sales-invoice:${input.scope.companyId}:${input.invoiceId}`;
     if (identity.length > 128 || !input.actorId.trim()) {
       throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "Fiscal preparation identity is invalid.");
@@ -168,7 +172,7 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
     }
     const issuer = await this.issuers.find(input.scope);
     const id = fiscalDocumentId(identity);
-    const prior = await this.documents.find(input.scope, id);
+    const prior = input.persist === false ? null : await this.documents.find(input.scope, id);
     if (prior !== null) {
       if (!isEligibleCommercialSource(invoice) || !matchesPreparedCommercialSource(prior, invoice, operationDate) || !matchesPreparedIssuer(prior, issuer)) {
         throw new FiscalFailure("FISCAL_DOCUMENT_SOURCE_CONFLICT", "La fuente comercial o la identidad fiscal cambió después de preparar el borrador fiscal.");
@@ -246,6 +250,7 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
       },
       status: "draft", number: null, issuedAt: null, issueDate: null, issuanceEvidence: null,
     });
+    if (input.persist === false) return { document, replayed: false, sourceUpdatedAt: invoice.sourceUpdatedAt ?? "" };
     return this.documents.persist({
       scope: input.scope,
       source: { kind: "legacy_sales_invoice", id: invoice.id },
@@ -254,6 +259,25 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
       actorId: input.actorId,
       occurredAt: input.occurredAt,
     });
+  }
+
+  /**
+   * Reconstructs a candidate and captures the source version that persistence compares under lock.
+   * @param input - Authorized source identity and reconstruction timestamp.
+   * @returns Revalidated draft content and the version read from the commercial source.
+   * @throws {SalesFailure} When the source has no concurrency version.
+   */
+  async reconstructCandidate(input: {
+    readonly scope: FiscalPersistenceScope;
+    readonly invoiceId: string;
+    readonly actorId: string;
+    readonly occurredAt: string;
+  }): Promise<{ readonly document: FiscalDocument; readonly sourceUpdatedAt: string }> {
+    const result = await this.execute({ ...input, persist: false });
+    if (!result.sourceUpdatedAt) {
+      throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "La fuente comercial no expuso su versión de concurrencia.");
+    }
+    return { document: result.document, sourceUpdatedAt: result.sourceUpdatedAt };
   }
 }
 

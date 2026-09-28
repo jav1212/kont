@@ -64,6 +64,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/sales/receivables",      label: "Cuentas por cobrar", group: "Operaciones" },
         { href: "/sales/customers",        label: "Clientes",            group: "Catálogos"   },
         { href: "/sales/archive",          label: "Archivo de facturas", group: "Operaciones" },
+        { href: "/sales/fiscal",           label: "Documentos fiscales", group: "Operaciones" },
         { href: "/sales/igtf-fortnightly", label: "IGTF Quincenal",      group: "Reportes"    },
     ],
     inventory: [

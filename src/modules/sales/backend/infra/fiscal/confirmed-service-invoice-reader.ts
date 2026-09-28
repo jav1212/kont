@@ -13,6 +13,7 @@ import { SalesFailure } from "@kontave/sales/domain";
 
 type InvoiceRow = {
   id: string; company_id: string; customer_id: string; invoice_number: string;
+  updated_at: string;
   invoice_date: string; document_type: string | null; status: string;
   currency_code: string | null; subtotal: number | string; vat_amount: number | string;
   total: number | string; discount_amount: number | string | null;
@@ -45,7 +46,7 @@ export class SupabaseConfirmedServiceInvoiceReader implements ConfirmedServiceIn
   /** {@inheritDoc ConfirmedServiceInvoiceReader.find} */
   async find(scope: FiscalPersistenceScope, invoiceId: string): Promise<ConfirmedServiceInvoice | null> {
     const { data: rawInvoice, error: invoiceError } = await this.client.from("shared_inventory_sales_invoices")
-      .select("id,company_id,customer_id,invoice_number,invoice_date,document_type,status,currency_code,subtotal,vat_amount,total,discount_amount,discount_currency,surcharge_amount,surcharge_currency,financial_tax_amount")
+      .select("id,company_id,customer_id,invoice_number,invoice_date,updated_at,document_type,status,currency_code,subtotal,vat_amount,total,discount_amount,discount_currency,surcharge_amount,surcharge_currency,financial_tax_amount")
       .eq("tenant_id", this.tenantId).eq("company_id", scope.companyId).eq("id", invoiceId).maybeSingle();
     if (invoiceError) throw invoiceError;
     if (!rawInvoice) return null;
@@ -86,6 +87,7 @@ export class SupabaseConfirmedServiceInvoiceReader implements ConfirmedServiceIn
       documentType: invoice.document_type === "nota_entrega" ? "nota_entrega" : "venta",
       status: invoice.status === "confirmada" ? "confirmada" : invoice.status === "anulada" ? "anulada" : "borrador",
       invoiceDate: invoice.invoice_date,
+      sourceUpdatedAt: invoice.updated_at,
       currencyCode,
       subtotal: money(invoice.subtotal),
       vatAmount: money(invoice.vat_amount),
