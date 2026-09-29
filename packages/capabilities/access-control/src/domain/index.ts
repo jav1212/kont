@@ -74,6 +74,19 @@ export function permissionCode(value: string): PermissionCode {
   return value as PermissionCode;
 }
 /**
+ * Decodes persisted grants that this client understands without granting an
+ * unknown future permission or treating a persisted wildcard as full access.
+ * @param grants - Permission values read from persistence.
+ * @returns Known explicit permission codes, in source order.
+ */
+export function knownPermissionCodes(
+  grants: readonly string[],
+): readonly PermissionCode[] {
+  return grants
+    .filter((grant): grant is PermissionValue => permissionValues.has(grant))
+    .map(permissionCode);
+}
+/**
  * Normalizes grants emitted by compatible authorization surfaces.
  * A wildcard expands to the current catalog, while unknown future grants are
  * intentionally ignored until this client understands their meaning.

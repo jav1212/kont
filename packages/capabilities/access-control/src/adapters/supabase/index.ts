@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { EvaluateAuthorization, RequireAuthorization, type AccessControlAdministration, type AccessControlRepository, type AuthorizationAudit } from "../../application";
-import { AccessControlFailure, Role, membershipId, permissionCode, roleId, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionCode } from "../../domain";
+import { AccessControlFailure, Role, membershipId, knownPermissionCodes, roleId, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionCode } from "../../domain";
 import { authorizationSnapshotRowSchema, permissionRowSchema, roleRowSchema, type RoleRow } from "./persistence-codecs";
 
 export interface AccessControlSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
@@ -40,7 +40,7 @@ export class SupabaseAuthorizationAudit implements AuthorizationAudit {
 }
 export class SupabaseAccessControlAdministration implements AccessControlAdministration {
   constructor(private readonly client: SupabaseClient) {}
-  async listPermissions(){const{data,error}=await this.client.from("access_control_permissions").select("code,resource,action,description").order("resource").order("action");if(error)throw error;return permissionRowSchema.array().parse(data??[]).map(row=>({...row,code:permissionCode(row.code)}));}
+  async listPermissions(){const{data,error}=await this.client.from("access_control_permissions").select("code,resource,action,description").order("resource").order("action");if(error)throw error;return permissionRowSchema.array().parse(data??[]).flatMap(row=>{const [code]=knownPermissionCodes([row.code]);return code?[{...row,code}]:[];});}
   async listRoles(organizationId:string){const{data,error}=await this.client.from("organization_roles").select("id,organization_id,code,name,description,kind,status,version,organization_role_permissions(permission_code)").eq("organization_id",organizationId).eq("status","active").order("name");if(error)throw error;return roleRowSchema.array().parse(data??[]).map(mapRole);}
   async findRole(targetRoleId: ReturnType<typeof roleId>): Promise<Role | null> {
     const { data, error } = await this.client.from("organization_roles").select("id,organization_id,code,name,description,kind,status,version,organization_role_permissions(permission_code)").eq("id", targetRoleId).maybeSingle();
@@ -56,5 +56,5 @@ export class SupabaseAccessControlAdministration implements AccessControlAdminis
   async archiveRoleVersioned(targetRoleId:ReturnType<typeof roleId>,expectedVersion:number){const{data,error}=await this.client.rpc("access_control_archive_role",{p_role_id:targetRoleId,p_expected_version:expectedVersion}).single();if(error)throw mapWriteError(error);return mapRole(roleRowSchema.parse(data));}
 }
 function mapWriteError(error:{message:string}){for(const [code,message] of [["ROLE_VERSION_CONFLICT","Role changed in another client."],["ROLE_IN_USE","A role in use cannot be archived."],["ROLE_NOT_FOUND","Role not found."],["ROLE_INVALID","Role data is invalid."]] as const){if(error.message.includes(code))return new AccessControlFailure(code,message);}return error;}
-function mapRole(row: RoleRow): Role { return new Role({ id: roleId(row.id), organizationId: row.organization_id, code: row.code, name: row.name, description: row.description, kind: row.kind, status: row.status, version: row.version, permissions: row.organization_role_permissions.map((item) => permissionCode(item.permission_code)) }); }
+function mapRole(row: RoleRow): Role { return new Role({ id: roleId(row.id), organizationId: row.organization_id, code: row.code, name: row.name, description: row.description, kind: row.kind, status: row.status, version: row.version, permissions: knownPermissionCodes(row.organization_role_permissions.map((item) => item.permission_code)) }); }
 export type { PermissionCode };
