@@ -4,6 +4,13 @@ import { KeyboardWedgeScanner, type KeyboardWedgeKey } from "../src/shared/front
 
 const badge = "KONT-AbCdEfGhIjKlMnOpQrSt_";
 
+test("malformed keyboard events clear the pending scanner burst without throwing", () => {
+    const scanner = new KeyboardWedgeScanner({ minimumLength: 1 });
+    scanner.push({ key: "A", code: "KeyA", shiftKey: false, capsLock: false }, 100);
+    assert.equal(scanner.push({} as KeyboardWedgeKey, 105), null);
+    assert.equal(scanner.push({ key: "Enter", code: "Enter", shiftKey: false, capsLock: false }, 110), null);
+});
+
 function keyFor(character: string, logical = character, capsLock = false): KeyboardWedgeKey {
     if (/^[A-Za-z]$/.test(character)) {
         const upper = character === character.toUpperCase();

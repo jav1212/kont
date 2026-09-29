@@ -17,19 +17,19 @@ function environment(
   return browser;
 }
 
-test("the browser probe reaches the Client API with a receiver-bound fetch", async () => {
+test("the browser probe reaches the public Client API health endpoint with a receiver-bound fetch", async () => {
   let requestUrl: URL | null = null;
   const browser = environment(function (this: BrowserConnectivityEnvironment, input) {
     assert.equal(this, browser);
     requestUrl = new URL(input);
-    return Promise.resolve(new Response(null, { status: 401 }));
+    return Promise.resolve(new Response(null, { status: 204 }));
   });
 
   assert.deepEqual(
     await createBrowserConnectivityProbe(browser).check(),
     { reachable: true },
   );
-  assert.equal(requestUrl?.pathname, "/api/client/v1/organization-access");
+  assert.equal(requestUrl?.pathname, "/api/client/v1/health");
 });
 
 test("the browser probe preserves network and service failures from the Client API probe", async () => {
@@ -75,7 +75,7 @@ test("an offline browser does not issue a reachability request", async () => {
   let calls = 0;
   const browser = environment(async () => {
     calls += 1;
-    return new Response(null, { status: 401 });
+    return new Response(null, { status: 204 });
   }, false);
   const probe = createBrowserConnectivityProbe(browser);
 
