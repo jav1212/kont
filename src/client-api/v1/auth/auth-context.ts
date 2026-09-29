@@ -7,6 +7,7 @@ import {
 import { ObserveAuthenticatedSession } from "@kontave/auth/application";
 import { createSupabaseAuthenticatedSessionRegistry } from "@kontave/auth/supabase";
 import { validateBarcodeAccessSession } from "@/src/modules/auth/backend/barcode/barcode-access-service";
+import { requireClientCompanySecurity } from "@/src/modules/security/backend/client-company-security";
 
 export async function authenticateClientRequest(
   request: Request,
@@ -56,6 +57,7 @@ export async function authenticateClientRequest(
     }
     throw cause;
   }
+  await requireClientCompanySecurity(request, identity.userId, { url, serviceRoleKey });
   return identity;
 }
 

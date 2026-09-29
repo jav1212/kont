@@ -29,6 +29,12 @@ importers:
       '@heroui/theme':
         specifier: ^2.4.26
         version: 2.4.26(tailwindcss@4.2.1)
+      '@kontave/audit-trail':
+        specifier: workspace:*
+        version: link:packages/capabilities/audit-trail
+      '@kontave/payment-orders':
+        specifier: workspace:*
+        version: link:packages/business/payment-orders
       '@kontave/access-control':
         specifier: workspace:*
         version: link:packages/capabilities/access-control
@@ -1319,6 +1325,26 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+
+  packages/capabilities/audit-trail:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+
+  packages/business/payment-orders:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
 
 packages:
 

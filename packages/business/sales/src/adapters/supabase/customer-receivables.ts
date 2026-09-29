@@ -12,6 +12,9 @@ import { salesDate, salesInstant } from "../../domain/temporal";
 import { currency, exactDecimal, moneyFromDecimal, moneyToDecimal } from "@kontave/monetary/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { companyId } from "@kontave/companies/domain";
+import { z } from "zod";
+
+const reversalRow = z.object({ id: z.string().min(1), payment_id: z.string().min(1), actor_id: z.string().min(1), reason: z.string().min(1), occurred_at: z.string().min(1) });
 
 interface ReceivableRow {
   readonly id: string;
@@ -67,6 +70,16 @@ export class SupabaseCustomerReceivablesAdapter implements CustomerReceivablesRe
     if (paymentResult.error) throw unavailable(paymentResult.error);
     if (invoiceResult.error) throw unavailable(invoiceResult.error);
     const payments = (paymentResult.data ?? []) as unknown as PaymentRow[];
+    const paymentIds = payments.map((payment) => payment.id);
+    const reversalResult = paymentIds.length ? await this.client.from("shared_sales_payment_reversals")
+      .select("id,payment_id,actor_id,reason,occurred_at").eq("tenant_id", this.tenantId).in("payment_id", paymentIds) : { data: [], error: null };
+    // Existing Web consumers can be deployed before migration 294. An absent
+    // reversal table has no reversals; every other database failure stays fatal.
+    const reversalsNotInstalled = reversalResult.error && ["42P01", "PGRST205"].includes(reversalResult.error.code);
+    if (reversalResult.error && !reversalsNotInstalled) throw unavailable(reversalResult.error);
+    const decodedReversals = reversalRow.array().safeParse(reversalsNotInstalled ? [] : reversalResult.data);
+    if (!decodedReversals.success) throw unavailable(decodedReversals.error);
+    const reversals = new Map(decodedReversals.data.map((row) => [row.payment_id, row]));
     const invoiceDates = new Map(((invoiceResult.data ?? []) as { id: string; invoice_date: string }[]).map((invoice) => [invoice.id, invoice.invoice_date]));
     return accounts.map((account) => {
       const principalCurrency = currency(account.debt_currency_code, 8);
@@ -85,8 +98,12 @@ export class SupabaseCustomerReceivablesAdapter implements CustomerReceivablesRe
           source: account.rate_source,
         },
         dueDate: salesDate(account.due_date),
-        payments: payments.filter((payment) => payment.receivable_id === account.id).map((payment) => toDomainPayment(payment, principalCurrency)),
-        version: payments.filter((payment) => payment.receivable_id === account.id).length,
+        payments: payments.filter((payment) => payment.receivable_id === account.id).map((payment) => {
+          const receipt = toDomainPayment(payment, principalCurrency);
+          const reversal = reversals.get(payment.id);
+          return reversal ? { ...receipt, reversal: { id: reversal.id, reason: reversal.reason, actorId: reversal.actor_id, occurredAt: salesInstant(reversal.occurred_at) } } : receipt;
+        }),
+        version: payments.filter((payment) => payment.receivable_id === account.id).reduce((version, payment) => version + (reversals.has(payment.id) ? 2 : 1), 0),
       };
       return new CustomerReceivable(state);
     });
@@ -155,6 +172,8 @@ function unavailable(cause: unknown): SalesFailure {
 }
 
 function mapPaymentError(cause: { readonly message: string }): SalesFailure {
+  if (cause.message.includes("IDEMPOTENCY_CONFLICT")) return new SalesFailure("SALES_RECEIVABLE_IDEMPOTENCY_CONFLICT", "Payment intent conflicts with an existing receipt.", { cause });
+  if (cause.message.includes("EXCEEDS_BALANCE")) return new SalesFailure("SALES_RECEIVABLE_PAYMENT_EXCEEDS_BALANCE", "Payment exceeds the remaining receivable balance.", { cause });
   if (cause.message.includes("exceeds")) return new SalesFailure("SALES_RECEIVABLE_PAYMENT_EXCEEDS_BALANCE", "Payment exceeds the remaining receivable balance.", { cause });
   if (cause.message.includes("not found")) return new SalesFailure("SALES_NOT_FOUND", "Open customer receivable does not exist.", { cause });
   return unavailable(cause);

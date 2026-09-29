@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ISource } from '../domain/repository/source.repository';
+import { webAuditHeaders } from '@/src/modules/security/backend/web-audit-context';
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
@@ -14,7 +15,7 @@ const resilientFetch: typeof fetch = async (input, init) => {
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
-            return await nativeFetch(input, init);
+            return await nativeFetch(input, { ...init, headers: webAuditHeaders(init?.headers ?? (input instanceof Request ? input.headers : undefined)) });
         } catch (error) {
             lastError = error;
             if (attempt + 1 < attempts) {

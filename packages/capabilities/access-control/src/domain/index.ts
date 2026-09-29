@@ -65,6 +65,54 @@ export const PERMISSIONS = {
   MODULES_MANAGE: "modules.manage",
   DELEGATED_ACCESS_READ: "organization_delegations.read",
   DELEGATED_ACCESS_MANAGE: "organization_delegations.manage",
+  /** Grants visibility of one business module. */
+  MODULE_ACCESS: "modules.access",
+  /** Grants use of a named report. */
+  REPORTS_RUN: "reports.run",
+  /** Grants use of a named toolbar action. */
+  TOOLBAR_ACTIONS_USE: "toolbar_actions.use",
+  /** Grants use of a named data table. */
+  TABLES_ACCESS: "tables.access",
+  /** Grants execution of a named business process. */
+  PROCESSES_EXECUTE: "processes.execute",
+  /** Grants voiding or cancelling a posted business document. */
+  DOCUMENTS_VOID: "documents.void",
+  /** Grants generation of a printable business document. */
+  DOCUMENTS_PRINT: "documents.print",
+  /** Grants selection of an enabled sale price list. */
+  SALES_PRICE_LISTS_USE: "sales.price_lists.use",
+  /** Grants an explicitly configured exception to the negative-stock policy. */
+  INVENTORY_NEGATIVE_STOCK_USE: "inventory.negative_stock.use",
+  /** Grants invoicing a customer whose credit profile is over its limit. */
+  SALES_OVERDRAWN_CUSTOMER_BILL: "sales.overdrawn_customer.bill",
+  /** Grants reversal of an already-recorded customer payment. */
+  SALES_RECEIVABLE_PAYMENTS_REVERSE: "sales.receivable_payments.reverse",
+  /** Grants access to the immutable operational audit trail. */
+  AUDIT_READ: "audit.read",
+  /** Grants administrative payment-order creation. */
+  PAYMENT_ORDERS_CREATE: "payment_orders.create",
+  /** Grants administrative payment-order edits. */
+  PAYMENT_ORDERS_UPDATE: "payment_orders.update",
+  /** Grants deletion of a draft payment order. */
+  PAYMENT_ORDERS_DELETE: "payment_orders.delete",
+  /** Grants cancellation of a payment order. */
+  PAYMENT_ORDERS_VOID: "payment_orders.void",
+  /** Grants access to payment orders. */
+  PAYMENT_ORDERS_READ: "payment_orders.read",
+  /** Grants company-branch creation. */
+  BRANCHES_CREATE: "branches.create",
+  /** Grants company-branch visibility. */
+  BRANCHES_READ: "branches.read",
+  /** Grants selecting the actor's working branch. */
+  BRANCHES_SELECT: "branches.select",
+  /** Grants assigning users to company branches. */
+  BRANCHES_ASSIGN_USERS: "branches.assign_users",
+  /** Grants selecting a branch outside the actor's assigned set. */
+  BRANCHES_SELECT_ANY: "branches.select_any",
+  /** Grants branch-level commercial consolidation. */
+  BRANCHES_CONSOLIDATE: "branches.consolidate",
+  /** Grants reporting and viewing branch online presence. */
+  BRANCHES_CONNECT: "branches.connect",
 } as const;
 
 type PermissionValue = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -73,6 +121,7 @@ export function permissionCode(value: string): PermissionCode {
   if (!permissionValues.has(value)) throw new TypeError(`Unknown permission: ${value}`);
   return value as PermissionCode;
 }
+
 /**
  * Decodes persisted grants that this client understands without granting an
  * unknown future permission or treating a persisted wildcard as full access.
@@ -95,7 +144,72 @@ export function knownPermissionCodes(
  */
 export function effectivePermissionCodes(grants: readonly string[]): readonly PermissionCode[] {
   if (grants.includes("*")) return Object.values(PERMISSIONS).map(permissionCode);
-  return grants.filter((grant): grant is PermissionValue => permissionValues.has(grant)).map(permissionCode);
+  return knownPermissionCodes(grants);
+}
+
+/** Business decisions which must be authorized by a consumer before execution. */
+export const BusinessAuthorizationOperation = {
+  AccessModule: "access_module",
+  RunReport: "run_report",
+  UseToolbarAction: "use_toolbar_action",
+  AccessTable: "access_table",
+  ExecuteProcess: "execute_process",
+  VoidRecord: "void_record",
+  PrintDocument: "print_document",
+  UsePriceList: "use_price_list",
+  AllowNegativeStock: "allow_negative_stock",
+  BillOverdrawnCustomer: "bill_overdrawn_customer",
+  ReverseReceivablePayment: "reverse_receivable_payment",
+} as const;
+export type BusinessAuthorizationOperation = typeof BusinessAuthorizationOperation[keyof typeof BusinessAuthorizationOperation];
+
+/**
+ * Resolves the permission required for a cross-module commercial exception.
+ * CRUD operations stay resource-specific because each aggregate already owns
+ * a distinct permission such as `sales.create` or `inventory.update`.
+ * @param operation - Business decision requested by a consumer.
+ * @returns Permission whose grant is required before the decision executes.
+ */
+export function requiredBusinessOperationPermission(operation: BusinessAuthorizationOperation): PermissionCode {
+  const permissions: Record<BusinessAuthorizationOperation, PermissionCode> = {
+    [BusinessAuthorizationOperation.AccessModule]: permissionCode(PERMISSIONS.MODULE_ACCESS),
+    [BusinessAuthorizationOperation.RunReport]: permissionCode(PERMISSIONS.REPORTS_RUN),
+    [BusinessAuthorizationOperation.UseToolbarAction]: permissionCode(PERMISSIONS.TOOLBAR_ACTIONS_USE),
+    [BusinessAuthorizationOperation.AccessTable]: permissionCode(PERMISSIONS.TABLES_ACCESS),
+    [BusinessAuthorizationOperation.ExecuteProcess]: permissionCode(PERMISSIONS.PROCESSES_EXECUTE),
+    [BusinessAuthorizationOperation.VoidRecord]: permissionCode(PERMISSIONS.DOCUMENTS_VOID),
+    [BusinessAuthorizationOperation.PrintDocument]: permissionCode(PERMISSIONS.DOCUMENTS_PRINT),
+    [BusinessAuthorizationOperation.UsePriceList]: permissionCode(PERMISSIONS.SALES_PRICE_LISTS_USE),
+    [BusinessAuthorizationOperation.AllowNegativeStock]: permissionCode(PERMISSIONS.INVENTORY_NEGATIVE_STOCK_USE),
+    [BusinessAuthorizationOperation.BillOverdrawnCustomer]: permissionCode(PERMISSIONS.SALES_OVERDRAWN_CUSTOMER_BILL),
+    [BusinessAuthorizationOperation.ReverseReceivablePayment]: permissionCode(PERMISSIONS.SALES_RECEIVABLE_PAYMENTS_REVERSE),
+  };
+  return permissions[operation];
+}
+
+/** Target types whose grants require a per-resource allow-list in addition to a role permission. */
+export const ScopedAccessTargetKind = {
+  Module: "module",
+  Report: "report",
+  ToolbarAction: "toolbar_action",
+  Table: "table",
+  Process: "process",
+  PriceList: "price_list",
+} as const;
+export type ScopedAccessTargetKind = typeof ScopedAccessTargetKind[keyof typeof ScopedAccessTargetKind];
+export interface ScopedAccessTarget { readonly kind: ScopedAccessTargetKind; readonly id: string }
+
+/** Maps an operation to its mandatory individual-resource target, when applicable. */
+export function requiredScopedTargetKind(operation: BusinessAuthorizationOperation): ScopedAccessTargetKind | null {
+  switch (operation) {
+    case BusinessAuthorizationOperation.AccessModule: return ScopedAccessTargetKind.Module;
+    case BusinessAuthorizationOperation.RunReport: return ScopedAccessTargetKind.Report;
+    case BusinessAuthorizationOperation.UseToolbarAction: return ScopedAccessTargetKind.ToolbarAction;
+    case BusinessAuthorizationOperation.AccessTable: return ScopedAccessTargetKind.Table;
+    case BusinessAuthorizationOperation.ExecuteProcess: return ScopedAccessTargetKind.Process;
+    case BusinessAuthorizationOperation.UsePriceList: return ScopedAccessTargetKind.PriceList;
+    default: return null;
+  }
 }
 export function roleId(value: string): RoleId { return identifier(value, "roleId") as RoleId; }
 export function membershipId(value: string): MembershipId { return identifier(value, "membershipId") as MembershipId; }
@@ -186,7 +300,7 @@ export class RequiredPermissionPolicy implements Policy {
 export class AuthorizationDenied extends Error {
   constructor(readonly decision: AuthorizationDecision) { super("Access denied."); this.name = "AuthorizationDenied"; }
 }
-export type AccessControlFailureCode = "CANNOT_GRANT_UNOWNED_PERMISSION" | "CANNOT_ASSIGN_OWNER" | "SYSTEM_ROLE_IMMUTABLE" | "ROLE_IN_USE" | "ROLE_OUTSIDE_ORGANIZATION" | "ROLE_NOT_FOUND" | "ROLE_VERSION_CONFLICT" | "ROLE_INVALID" | "ACCESS_CONTROL_REPOSITORY_UNAVAILABLE";
+export type AccessControlFailureCode = "CANNOT_GRANT_UNOWNED_PERMISSION" | "CANNOT_ASSIGN_OWNER" | "SYSTEM_ROLE_IMMUTABLE" | "ROLE_IN_USE" | "ROLE_OUTSIDE_ORGANIZATION" | "ROLE_NOT_FOUND" | "ROLE_VERSION_CONFLICT" | "ROLE_INVALID" | "SCOPED_GRANT_INVALID" | "ACCESS_CONTROL_REPOSITORY_UNAVAILABLE";
 export class AccessControlFailure extends Error { constructor(readonly code: AccessControlFailureCode, message: string) { super(message); this.name = "AccessControlFailure"; } }
 function deny(reason: AuthorizationReason, policy: Policy): AuthorizationDecision { return { allowed: false, reason, matchedPolicy: policy.name, policyVersion: policy.version }; }
 function identifier(value: string, field: string): string { const normalized = value.trim(); if (!normalized || normalized.length > 128) throw new TypeError(`${field} is invalid.`); return normalized; }

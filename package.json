@@ -80,7 +80,9 @@
     "sonner": "^1.7.4",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6",
-    "jsbarcode": "^3.12.3"
+    "jsbarcode": "^3.12.3",
+    "@kontave/audit-trail": "workspace:*",
+    "@kontave/payment-orders": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

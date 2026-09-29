@@ -405,3 +405,6 @@ async function requireDispatch(repository: GoodsDispatchRepository, id: GoodsDis
   if (!dispatch) throw new SalesFailure("SALES_NOT_FOUND", "Goods dispatch does not exist.");
   return dispatch;
 }
+
+export * from "./customer-credit-authorization";
+export * from "./secured-sales";

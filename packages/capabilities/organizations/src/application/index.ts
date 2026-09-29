@@ -8,6 +8,7 @@ import {
   type OrganizationId,
   type UserId,
 } from "../domain";
+export * from "./user-administration";
 import { dynamicNavigationTarget, type NavigationTarget } from "@kontave/navigation";
 
 export interface OrganizationDirectory {

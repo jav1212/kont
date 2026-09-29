@@ -29,6 +29,7 @@ import {
   profilePresentationRowSchema,
   type CompanyRow,
 } from "./persistence-codecs";
+export * from "./user-security";
 
 export interface OrganizationsSupabaseConfiguration {
   readonly url: string;

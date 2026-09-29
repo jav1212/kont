@@ -8,3 +8,5 @@ export * from "./quantity";
 export * from "./sales-failure";
 export * from "./sales-order";
 export * from "./temporal";
+
+export * from "./customer-credit";

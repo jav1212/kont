@@ -10,7 +10,7 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { notify } from "@/src/shared/frontend/notify";
 
 type Receivable = { id: string; sales_invoice_id: string; customer_id: string; debt_currency_code: string; original_amount: number; debt_exchange_rate: number; due_date: string; status: string };
-type ReceivablePayment = { id: string; receivable_id: string; applied_debt_amount: number; occurred_at: string; received_amount: number; received_currency_code: string; exchange_rate_to_ves: number };
+type ReceivablePayment = { reversed?: boolean; id: string; receivable_id: string; applied_debt_amount: number; occurred_at: string; received_amount: number; received_currency_code: string; exchange_rate_to_ves: number };
 type ScreenData = { accounts: Receivable[]; payments: ReceivablePayment[]; invoices: Array<{ id: string; invoice_number: string; invoice_date: string }>; customers: Array<{ id: string; name: string; rif: string }> };
 
 const amount = (value: number) => value.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -38,7 +38,7 @@ export function SalesReceivablesScreen() {
     useEffect(() => { void refresh(); }, [refresh]);
 
     const accountRows = useMemo(() => data.accounts.map((account) => {
-        const paid = data.payments.filter((payment) => payment.receivable_id === account.id).reduce((sum, payment) => sum + Number(payment.applied_debt_amount), 0);
+        const paid = data.payments.filter((payment) => payment.receivable_id === account.id && !payment.reversed).reduce((sum, payment) => sum + Number(payment.applied_debt_amount), 0);
         return { account, paid, balance: Math.max(0, Number(account.original_amount) - paid), customer: data.customers.find((customer) => customer.id === account.customer_id), invoice: data.invoices.find((invoice) => invoice.id === account.sales_invoice_id) };
     }), [data]);
     const selectedAccount = accountRows.find((row) => row.account.id === selected);
@@ -94,7 +94,7 @@ export function SalesReceivablesScreen() {
                 <h3 className="text-sm font-semibold">Historial de abonos</h3>
                 {data.payments.filter((payment) => payment.receivable_id === selectedAccount.account.id).length === 0
                     ? <p className="mt-2 text-xs text-[var(--text-secondary)]">Sin abonos registrados.</p>
-                    : <div className="mt-2 space-y-2">{data.payments.filter((payment) => payment.receivable_id === selectedAccount.account.id).map((payment) => <div key={payment.id} className="rounded-lg bg-surface-2 px-3 py-2 text-xs"><div className="flex justify-between gap-2"><span>{new Date(payment.occurred_at).toLocaleDateString("es-VE")}</span><strong className="font-mono">{amount(Number(payment.received_amount))} {normalizeCurrencyCode(payment.received_currency_code)}</strong></div><p className="mt-1 text-[var(--text-secondary)]">Aplicado: {amount(Number(payment.applied_debt_amount))} {normalizeCurrencyCode(selectedAccount.account.debt_currency_code)} · tasa: {amount(Number(payment.exchange_rate_to_ves))} Bs/{normalizeCurrencyCode(payment.received_currency_code)}</p></div>)}</div>}
+                    : <div className="mt-2 space-y-2">{data.payments.filter((payment) => payment.receivable_id === selectedAccount.account.id).map((payment) => <div key={payment.id} className="rounded-lg bg-surface-2 px-3 py-2 text-xs"><div className="flex justify-between gap-2"><span>{new Date(payment.occurred_at).toLocaleDateString("es-VE")}</span><strong className="font-mono">{amount(Number(payment.received_amount))} {normalizeCurrencyCode(payment.received_currency_code)}</strong></div><p className="mt-1 text-[var(--text-secondary)]">{payment.reversed ? "Revertido: " : "Aplicado: "}{amount(Number(payment.applied_debt_amount))} {normalizeCurrencyCode(selectedAccount.account.debt_currency_code)} · tasa: {amount(Number(payment.exchange_rate_to_ves))} Bs/{normalizeCurrencyCode(payment.received_currency_code)}</p></div>)}</div>}
             </div>}
         </section>
     </div>;

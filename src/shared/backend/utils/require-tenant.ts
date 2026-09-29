@@ -8,6 +8,9 @@ import { AuthorizationSource, permissionCode as canonicalPermissionCode, type Au
 import { createAccessControlActions } from '@/src/client-api/v1/access-control/access-control-actions';
 import { resolveWebApiPermission } from '@/src/modules/organizations/backend/web-api-route-access';
 import { hasWebCommercialAccess } from './require-commercial-access';
+import { webSecurityScopeSchema, type WebSecurityScope } from '@/src/modules/security/backend/web-operation-policy';
+import { allowsWebRequest } from '@/src/modules/security/backend/web-request-security';
+import { withWebAuditContext } from '@/src/modules/security/backend/web-audit-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +36,8 @@ export type TenantContext = {
     barcodeSession?: boolean;
     /** Registered browser terminal ID, present only after the terminal session was verified. */
     barcodeTerminalId?: string;
+    /** Current membership restrictions resolved only by the authenticated server boundary. */
+    security?: WebSecurityScope;
 };
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -118,8 +123,15 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
         throw new TenantForbiddenError();
     }
     const role = legacyRoleFromCanonical(authorization.snapshot.role.code);
+    const securityResult = await server.instance.rpc('web_user_security_scope', {
+        p_actor_id: userId, p_organization_id: authorization.organizationId, p_credential_session: !barcode.registered,
+    });
+    const security = webSecurityScopeSchema.safeParse(securityResult.data);
+    if (securityResult.error || !security.success || security.data.tenantId !== legacyContext.tenantId
+        || security.data.organizationId !== authorization.organizationId) throw new TenantForbiddenError();
     return {
         ...legacyContext,
+        security: security.data,
         role,
         actingAs: role === 'owner' ? null : { ownerId: legacyContext.tenantId, role },
     };
@@ -154,6 +166,10 @@ export async function requirePermission(
                 context: { requestId: crypto.randomUUID(), source: AuthorizationSource.Web, occurredAt: new Date().toISOString() },
             });
             allowed = await hasWebCommercialAccess(context.tenantId, permission);
+            if (allowed && options?.req && context.security) {
+                allowed = await allowsWebRequest(options.req, context.security, authorization.snapshot.role.permissions,
+                    permission, new ServerSupabaseSource().instance);
+            }
         }
     } catch {
         // An unavailable, malformed, suspended, or unauthorized canonical
@@ -264,7 +280,7 @@ export function withTenantPermissions(
             await requirePermission(tenant, permission, { req });
         }
         return handler(req, tenant);
-    }, { inferPermission: false });
+    }, { inferPermission: false, auditPermission: permissions[0] });
 }
 
 // ── withTenant wrapper ────────────────────────────────────────────────────────
@@ -272,7 +288,7 @@ export function withTenantPermissions(
 /** Envuelve una API route con auth automática e inyección de TenantContext */
 export function withTenant(
     handler: (req: Request, tenant: TenantContext) => Promise<Response>,
-    options?: { readonly inferPermission?: boolean },
+    options?: { readonly inferPermission?: boolean; readonly auditPermission?: PermissionCode },
 ) {
     return async (req: Request): Promise<Response> => {
         try {
@@ -281,7 +297,9 @@ export function withTenant(
             if (inferredPermission) {
                 await requirePermission(tenant, inferredPermission, { req });
             }
-            return await handler(req, tenant);
+            return await withWebAuditContext({ actorId: tenant.userId, tenantId: tenant.tenantId,
+                permission: options?.auditPermission ?? inferredPermission ?? 'companies.read',
+                deviceId: tenant.barcodeTerminalId }, () => handler(req, tenant));
         } catch (err) {
             if (err instanceof TenantAuthError) {
                 return Response.json({ error: 'No autenticado' }, { status: 401 });

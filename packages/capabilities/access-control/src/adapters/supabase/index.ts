@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { EvaluateAuthorization, RequireAuthorization, type AccessControlAdministration, type AccessControlRepository, type AuthorizationAudit } from "../../application";
 import { AccessControlFailure, Role, membershipId, knownPermissionCodes, roleId, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionCode } from "../../domain";
 import { authorizationSnapshotRowSchema, permissionRowSchema, roleRowSchema, type RoleRow } from "./persistence-codecs";
+export * from "./scoped-grants";
 
 export interface AccessControlSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
 export function createSupabaseAuthorization(configuration: AccessControlSupabaseConfiguration) {
@@ -48,6 +49,7 @@ export class SupabaseAccessControlAdministration implements AccessControlAdminis
     return mapRole(roleRowSchema.parse(data));
   }
   async countActiveMemberships(targetRoleId: ReturnType<typeof roleId>) { const { count, error } = await this.client.from("organization_memberships").select("id", { count: "exact", head: true }).eq("role_id", targetRoleId).eq("status", "active"); if (error) throw error; return count ?? 0; }
+  async countAssociatedMemberships(targetRoleId: ReturnType<typeof roleId>) { const { count, error } = await this.client.from("organization_memberships").select("id", { count: "exact", head: true }).eq("role_id", targetRoleId); if (error) throw error; return count ?? 0; }
   async assignRole(targetMembershipId: string, targetRoleId: ReturnType<typeof roleId>) { const { error } = await this.client.rpc("access_control_assign_membership_role", { p_membership_id: targetMembershipId, p_role_id: targetRoleId }); if (error) throw error; }
   async replacePermissions(targetRoleId: ReturnType<typeof roleId>, permissions: readonly PermissionCode[]) { const { error } = await this.client.rpc("access_control_replace_role_permissions", { p_role_id: targetRoleId, p_permissions: permissions }); if (error) throw error; }
   async archiveRole(targetRoleId: ReturnType<typeof roleId>) { const { error } = await this.client.from("organization_roles").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", targetRoleId).eq("kind", "custom"); if (error) throw error; }

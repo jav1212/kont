@@ -46,7 +46,7 @@ export function receivablePaymentId(value: string): ReceivablePaymentId {
 }
 
 /** Immutable snapshot of a currency's identity and supported precision. */
-export interface ReceivableCurrencySnapshot extends CurrencyDefinition {}
+export type ReceivableCurrencySnapshot = CurrencyDefinition;
 
 /** Immutable VES-per-unit rate captured when a receivable is opened or a payment is accepted. */
 export interface ReceivableVesRateSnapshot {
@@ -64,6 +64,16 @@ export interface ReceivablePayment {
   readonly receivedAmount: Money;
   readonly receivedVesRate: ReceivableVesRateSnapshot;
   readonly appliedDebtAmount: Money;
+  readonly occurredAt: SalesInstant;
+  /** Separate immutable reversal evidence; the original receipt amounts remain unchanged. */
+  readonly reversal?: ReceivablePaymentReversal;
+}
+
+/** Immutable evidence attached to a receipt after a separately authorized reversal. */
+export interface ReceivablePaymentReversal {
+  readonly id: string;
+  readonly reason: string;
+  readonly actorId: string;
   readonly occurredAt: SalesInstant;
 }
 
@@ -181,7 +191,7 @@ export class CustomerReceivable {
    * @returns The non-negative remaining debt.
    */
   get balance(): Money {
-    const paidMinor = this.payments.reduce((total, payment) => total + payment.appliedDebtAmount.minorAmount, 0n);
+    const paidMinor = this.payments.reduce((total, payment) => total + (payment.reversal ? 0n : payment.appliedDebtAmount.minorAmount), 0n);
     return moneyFromMinor(this.principal.minorAmount - paidMinor, this.principal.currency);
   }
 
@@ -239,7 +249,16 @@ function snapshotPayment(payment: ReceivablePayment, debtCurrency: CurrencyDefin
     receivedVesRate: snapshotRate(payment.receivedVesRate, payment.receivedAmount.currency),
     appliedDebtAmount: snapshotMoney(payment.appliedDebtAmount),
     occurredAt: payment.occurredAt,
+    ...(payment.reversal === undefined ? {} : { reversal: snapshotReversal(payment.reversal, payment.occurredAt) }),
   });
+}
+
+function snapshotReversal(reversal: ReceivablePaymentReversal, paymentAt: SalesInstant): ReceivablePaymentReversal {
+  const occurredAt = salesInstant(reversal.occurredAt);
+  if (Date.parse(occurredAt) < Date.parse(paymentAt) || !reversal.reason.trim() || reversal.reason.trim().length > 500) {
+    throw paymentInvalid("Payment reversal evidence is invalid.");
+  }
+  return Object.freeze({ id: required(reversal.id, "reversal id"), reason: reversal.reason.trim(), actorId: required(reversal.actorId, "reversal actor"), occurredAt });
 }
 
 function snapshotMoney(value: Money): Money {

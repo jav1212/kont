@@ -38,6 +38,8 @@ export const GET = withTenantPermission("sales.read", async (req, { tenantId }) 
     }));
     const payments = records.flatMap((record) => record.payments.map((payment) => ({
       id: payment.id,
+      reversed: !!payment.reversal,
+      reversal: payment.reversal ?? null,
       receivable_id: record.id,
       applied_debt_amount: moneyToDecimal(payment.appliedDebtAmount),
       occurred_at: payment.occurredAt,
@@ -86,7 +88,7 @@ export const POST = withTenantPermission("sales.create", async (req, { tenantId 
         occurredAt: salesInstant(now),
       },
     });
-    return Response.json({ data: { payment: result.payment, replayed: result.replayed } });
+    return Response.json({ data: { payment: { ...result.payment, receivedAmount: moneyToDecimal(result.payment.receivedAmount), appliedDebtAmount: moneyToDecimal(result.payment.appliedDebtAmount) }, replayed: result.replayed } });
   } catch (error) {
     return failureResponse(error);
   }

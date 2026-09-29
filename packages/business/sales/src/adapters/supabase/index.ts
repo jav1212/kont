@@ -137,3 +137,5 @@ function mapRpcFailure(error: { readonly message: string }): SalesDashboardFailu
     cause: error,
   });
 }
+
+export * from "./secured-sales";

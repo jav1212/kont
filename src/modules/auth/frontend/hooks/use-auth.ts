@@ -159,31 +159,27 @@ async function attachPendingReferralCode() {
 
 async function signIn(email: string, password: string): Promise<string | null> {
     dispatch({ type: "LOADING" });
-    const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
-    if (error) {
-        const message = error.code === "invalid_credentials" || error.message.toLowerCase() === "invalid login credentials"
-            ? "Correo o contraseña incorrectos."
-            : error.message;
+    try {
+        const { ok, json } = await apiFetch("/api/auth/sign-in", { email, password });
+        if (!ok) {
+            const message = typeof json.error === "string" ? json.error : "No se pudo verificar la autenticación.";
+            dispatch({ type: "SET_ERROR", error: message });
+            return message;
+        }
+        const { data: { session }, error } = await getSupabaseBrowser().auth.getSession();
+        if (error || !session?.user) {
+            const message = "No se pudo iniciar la sesión. Intenta nuevamente.";
+            dispatch({ type: "SET_ERROR", error: message });
+            return message;
+        }
+        dispatch({ type: "SET_USER", user: { id: session.user.id, email: session.user.email! } });
+        return null;
+    } catch {
+        const message = "No se pudo conectar para verificar la autenticación.";
         dispatch({ type: "SET_ERROR", error: message });
         return message;
     }
 
-    // Verificar que no sea una cuenta de administrador
-    try {
-        const res  = await fetch("/api/auth/verify-not-admin");
-        const json = await res.json();
-        if (json.isAdmin) {
-            await getSupabaseBrowser().auth.signOut();
-            const msg = "Correo o contraseña incorrectos.";
-            dispatch({ type: "SET_ERROR", error: msg });
-            return msg;
-        }
-    } catch {
-        // Si el chequeo falla no bloqueamos el login — el middleware igual protege
-    }
-
-    // onAuthStateChange dispara SET_USER automáticamente
-    return null;
 }
 
 async function signUp(email: string, password: string, name?: string, phone?: string): Promise<string | null> {
