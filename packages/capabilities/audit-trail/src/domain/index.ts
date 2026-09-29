@@ -6,18 +6,23 @@ export type AuditValue =
   | string
   | readonly AuditValue[]
   | { readonly [key: string]: AuditValue };
-/** Entity families covered by AUD-016 through AUD-022. */
-export type AuditedEntityType =
-  | "invoice"
-  | "payment_order"
-  | "receivable_payment_reversal"
-  | "customer"
-  | "product"
-  | "employee"
-  | "payroll_receipt"
-  | "accounting_entry";
-/** Mutations whose facts must be retained permanently. */ export type AuditAction =
-  "create" | "update" | "delete" | "cancel";
+/** Entity families accepted by audit queries and covered by AUD-016 through AUD-022. */
+export const AUDITED_ENTITY_TYPES = [
+  "invoice",
+  "payment_order",
+  "receivable_payment_reversal",
+  "customer",
+  "product",
+  "employee",
+  "payroll_receipt",
+  "accounting_entry",
+] as const;
+/** Entity families accepted by audit queries and covered by AUD-016 through AUD-022. */
+export type AuditedEntityType = (typeof AUDITED_ENTITY_TYPES)[number];
+/** Mutations whose facts must be retained permanently. */
+export const AUDIT_ACTIONS = ["create", "update", "delete", "cancel"] as const;
+/** Mutations whose facts must be retained permanently. */
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 /** Scope preventing tenant, organization, or company boundary crossings. */ export interface AuditScope {
   readonly tenantId: string;
   readonly organizationId: string;

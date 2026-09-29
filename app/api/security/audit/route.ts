@@ -1,21 +1,13 @@
 import { z } from "zod";
+import { AUDITED_ENTITY_TYPES, AUDIT_ACTIONS } from "@kontave/audit-trail/domain";
 import {
   auditTrail,
   requireSecurityWebScope,
   securityErrorResponse,
   SecurityWebHttpError,
 } from "@/src/modules/security/backend/web-security";
-const entity = z.enum([
-  "invoice",
-  "payment_order",
-  "receivable_payment_reversal",
-  "customer",
-  "product",
-  "employee",
-  "payroll_receipt",
-  "accounting_entry",
-]);
-const action = z.enum(["create", "update", "delete", "cancel"]);
+const entity = z.enum(AUDITED_ENTITY_TYPES);
+const action = z.enum(AUDIT_ACTIONS);
 export async function GET(request: Request): Promise<Response> {
   try {
     const scope = await requireSecurityWebScope(request);

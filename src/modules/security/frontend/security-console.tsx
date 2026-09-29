@@ -9,6 +9,8 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { notify } from "@/src/shared/frontend/notify";
+import { DebouncedQuery } from "@kontave/client-interaction";
+import { AUDIT_ACTIONS, AUDITED_ENTITY_TYPES } from "@kontave/audit-trail/domain";
 
 const grantCategories = [
   {
@@ -96,6 +98,13 @@ type AuditPage = {
   total: number;
   offset: number;
   limit: number;
+};
+type AuditQuery = {
+  companyId: string;
+  entityType: string;
+  entityId: string;
+  actions: string;
+  offset: number;
 };
 type Order = {
   id: string;
@@ -753,51 +762,47 @@ function SecurityConsolePanel(): React.JSX.Element {
 function AuditConsolePanel(): React.JSX.Element {
   const { companyId } = useCompany();
   const { state } = useOrganizationModuleAccess("/settings/audit");
-  const [page, setPage] = useState<AuditPage | null>(null);
+  const [loadedPage, setLoadedPage] = useState<{ key: string; page: AuditPage } | null>(null);
   const [entityType, setEntityType] = useState("");
   const [entityId, setEntityId] = useState("");
   const [actions, setActions] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const activeCompany = useRef(companyId);
-  useEffect(() => {
-    activeCompany.current = companyId;
-    const timer = window.setTimeout(() => {
-      setPage(null);
-      setOpen(null);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [companyId]);
-  const load = useCallback(
-    async (offset = 0) => {
-      if (!companyId) return;
-      try {
-        const query = new URLSearchParams({
-          companyId,
-          offset: String(offset),
-          limit: "50",
-        });
-        if (entityType) query.set("entityType", entityType);
-        if (entityId) query.set("entityId", entityId);
-        if (actions) query.set("actions", actions);
-        const next = await request<AuditPage>(`/api/security/audit?${query}`);
-        if (activeCompany.current === companyId) setPage(next);
-      } catch (error) {
-        notify.error(
-          error instanceof Error
-            ? error.message
-            : "No se pudo cargar la auditoría.",
-        );
-      }
-    },
-    [actions, companyId, entityId, entityType],
-  );
+  const queryRunner = useRef<DebouncedQuery<AuditQuery, AuditPage> | null>(null);
+  if (queryRunner.current == null) {
+    queryRunner.current = new DebouncedQuery(
+      (filters) => {
+        const query = new URLSearchParams({ companyId: filters.companyId, offset: String(filters.offset), limit: "50" });
+        if (filters.entityType) query.set("entityType", filters.entityType);
+        if (filters.entityId.trim()) query.set("entityId", filters.entityId.trim());
+        if (filters.actions) query.set("actions", filters.actions);
+        const controller = new AbortController();
+        return { result: request<AuditPage>(`/api/security/audit?${query}`, { signal: controller.signal }), cancel: () => controller.abort() };
+      },
+      { schedule: (callback, delay) => window.setTimeout(callback, delay), cancel: (handle) => window.clearTimeout(handle as number) },
+    );
+  }
+  const filterKey = JSON.stringify({ companyId, entityType, entityId: entityId.trim(), actions });
+  const page = loadedPage?.key === filterKey ? loadedPage.page : null;
+  const load = useCallback(async (offset = 0, immediate = false) => {
+    if (!companyId || !queryRunner.current) return;
+    const result = await (immediate
+      ? queryRunner.current.runImmediately({ companyId, entityType, entityId, actions, offset })
+      : queryRunner.current.schedule({ companyId, entityType, entityId, actions, offset }));
+    if (result.status === "completed") setLoadedPage({ key: filterKey, page: result.value });
+    else if (result.status === "failed") notify.error(
+      result.error instanceof Error ? result.error.message : "No se pudo cargar la auditoría.",
+      { deduplicationKey: "security:audit:query" },
+    );
+  }, [actions, companyId, entityId, entityType, filterKey]);
   useEffect(() => {
     if (state !== "allowed") return;
-    const timer = window.setTimeout(() => {
-      void load();
-    }, 0);
-    return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => {
+      window.clearTimeout(timer);
+      queryRunner.current?.cancel();
+    };
   }, [load, state]);
+  useEffect(() => () => queryRunner.current?.cancel(), []);
   if (state !== "allowed")
     return (
       <div className="py-8 text-sm text-[var(--text-tertiary)]">
@@ -810,25 +815,27 @@ function AuditConsolePanel(): React.JSX.Element {
       subtitle="Hechos inmutables de la empresa seleccionada."
     >
       <div className="grid gap-3 md:grid-cols-4">
-        <BaseInput.Field
-          label="Tipo"
-          placeholder="invoice, customer…"
-          value={entityType}
-          onValueChange={setEntityType}
-        />
+        <label className="grid gap-1 text-sm">
+          Tipo
+          <select className="h-10 rounded-md border border-border-light bg-surface-1 px-3" value={entityType} onChange={(event) => setEntityType(event.target.value)}>
+            <option value="">Todos</option>
+            {AUDITED_ENTITY_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+          </select>
+        </label>
         <BaseInput.Field
           label="ID de entidad"
           value={entityId}
           onValueChange={setEntityId}
         />
-        <BaseInput.Field
-          label="Acciones"
-          helperText="create,update,delete,cancel"
-          value={actions}
-          onValueChange={setActions}
-        />
+        <label className="grid gap-1 text-sm">
+          Acción
+          <select className="h-10 rounded-md border border-border-light bg-surface-1 px-3" value={actions} onChange={(event) => setActions(event.target.value)}>
+            <option value="">Todas</option>
+            {AUDIT_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
+          </select>
+        </label>
         <div className="flex items-end">
-          <BaseButton.Root size="sm" onPress={() => load()}>
+          <BaseButton.Root size="sm" onPress={() => void load(0, true)}>
             Filtrar
           </BaseButton.Root>
         </div>
@@ -886,7 +893,7 @@ function AuditConsolePanel(): React.JSX.Element {
             <BaseButton.Root
               size="sm"
               variant="outline"
-              onPress={() => load(Math.max(0, (page?.offset ?? 0) - 50))}
+              onPress={() => void load(Math.max(0, (page?.offset ?? 0) - 50), true)}
               isDisabled={!page || page.offset === 0}
             >
               Anterior
@@ -899,7 +906,7 @@ function AuditConsolePanel(): React.JSX.Element {
             <BaseButton.Root
               size="sm"
               variant="outline"
-              onPress={() => load((page?.offset ?? 0) + 50)}
+              onPress={() => void load((page?.offset ?? 0) + 50, true)}
               isDisabled={
                 !page || page.offset + page.entries.length >= page.total
               }

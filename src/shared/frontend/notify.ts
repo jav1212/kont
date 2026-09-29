@@ -32,6 +32,8 @@ export interface NotifyOpts {
     description?: string;
     duration?:    number;
     id?:          string | number;
+    /** Stable key that updates an existing toast for the same recurring failure. */
+    deduplicationKey?: string;
     /** Backend-generated incident code; absent means this is a client-side error. */
     errorCode?:   string;
     /** Non-sensitive diagnostic context persisted with client-side incidents. */
@@ -61,9 +63,10 @@ export const notify = {
                 },
             });
         }
-        const { errorCode: _errorCode, errorMetadata: _errorMetadata, action, description, ...toastOpts } = opts ?? {};
+        const { errorCode: _errorCode, errorMetadata: _errorMetadata, deduplicationKey, action, description, ...toastOpts } = opts ?? {};
         return toast.error(message, {
             ...toastOpts,
+            ...(deduplicationKey ? { id: deduplicationKey } : {}),
             description: description ?? `Código: ${code}`,
             action: action ?? {
                 label: "Copiar código",

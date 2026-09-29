@@ -1,3 +1,5 @@
+export * from "./debounced-query";
+
 /** Opaque identifier assigned to one interaction block lease. */
 export type InteractionBlockToken = string;
 /** Business cause that requires globally blocking client interaction. */
