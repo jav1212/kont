@@ -1,5 +1,6 @@
 import {
   RemoteOperationContextPort,
+  createRequestCancellation,
   decodeOperationalDefaultsDto,
   type RemoteTransport,
 } from "@kontave/client-remote";
@@ -36,28 +37,36 @@ export function createWebOperationContext(
         );
       const headers = new Headers(init.headers);
       headers.set("X-Tenant-Id", organization.legacyTenantId);
-      const response = await request(path.replace("/api/client/v1/", "/api/"), {
-        ...init,
-        headers,
-        signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
-        cache: "no-store",
-      });
-      const payload = (await response.json()) as { data?: T; code?: string };
-      if (!response.ok || !payload.data) {
-        const code =
-          response.status === 409
-            ? "OPERATION_CONTEXT_VERSION_CONFLICT"
-            : response.status === 403
-              ? "OPERATION_CONTEXT_ACCESS_DENIED"
-              : "OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE";
-        throw new OperationContextFailure(
-          code,
-          response.status === 409
-            ? "El contexto cambió. Recarga antes de intentarlo nuevamente."
-            : "No se pudo obtener el contexto operativo.",
+      const cancellation = createRequestCancellation(signal, 15_000);
+      try {
+        const response = await request(
+          path.replace("/api/client/v1/", "/api/"),
+          {
+            ...init,
+            headers,
+            signal: cancellation.signal,
+            cache: "no-store",
+          },
         );
+        const payload = (await response.json()) as { data?: T; code?: string };
+        if (!response.ok || !payload.data) {
+          const code =
+            response.status === 409
+              ? "OPERATION_CONTEXT_VERSION_CONFLICT"
+              : response.status === 403
+                ? "OPERATION_CONTEXT_ACCESS_DENIED"
+                : "OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE";
+          throw new OperationContextFailure(
+            code,
+            response.status === 409
+              ? "El contexto cambió. Recarga antes de intentarlo nuevamente."
+              : "No se pudo obtener el contexto operativo.",
+          );
+        }
+        return payload.data;
+      } finally {
+        cancellation.dispose();
       }
-      return payload.data;
     },
   };
   const remote = new RemoteOperationContextPort(transport);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createRequestCancellation } from "@kontave/client-remote";
 import type { AvailableOrganizationModule } from "@kontave/modules/application";
 import { moduleId, type ModuleCode } from "@kontave/modules/domain";
 import {
@@ -102,17 +103,22 @@ export function createWebWorkspaceSource(
     signal: AbortSignal,
     tenant?: string,
   ): Promise<T> {
-    const response = await request(path, {
-      signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
-      cache: "no-store",
-      headers: tenant ? { "X-Tenant-Id": tenant } : undefined,
-    });
-    const payload: unknown = await response.json();
-    if (!response.ok)
-      throw new Error(
-        "No se pudo cargar el espacio de trabajo. Vuelve a intentarlo.",
-      );
-    return z.object({ data: schema }).parse(payload).data;
+    const cancellation = createRequestCancellation(signal, 15_000);
+    try {
+      const response = await request(path, {
+        signal: cancellation.signal,
+        cache: "no-store",
+        headers: tenant ? { "X-Tenant-Id": tenant } : undefined,
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok)
+        throw new Error(
+          "No se pudo cargar el espacio de trabajo. Vuelve a intentarlo.",
+        );
+      return z.object({ data: schema }).parse(payload).data;
+    } finally {
+      cancellation.dispose();
+    }
   }
   return {
     async directory(signal) {
