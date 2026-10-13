@@ -4,6 +4,8 @@ import type {
   ApiSuccess,
 } from "@kontave/client-contracts";
 import { registerEnvelopeExecutor } from "./response-envelope";
+export { createRequestCancellation } from "./request-cancellation";
+export type { RequestCancellation } from "./request-cancellation";
 
 export type KontaveClientPlatform = "desktop" | "mobile" | "web";
 export type KontaveRequest = (
