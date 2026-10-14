@@ -6,4 +6,3 @@ export * from "./tax-decision";
 export * from "./tax-rule";
 export * from "./taxation-failure";
 export * from "./temporal";
-export * from "./bank-debit-tax";

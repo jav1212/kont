@@ -11,8 +11,6 @@ import { purchasingDocumentId, supplierId } from "../../domain/identifiers";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 export * from "./supplier-invoice-match";
-export * from "./purchase-branch-consolidation";
-export * from "./purchase-branch-invoice-confirmation";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const decimal = z.string().refine(
