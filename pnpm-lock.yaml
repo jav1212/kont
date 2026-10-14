@@ -29,15 +29,12 @@ importers:
       '@heroui/theme':
         specifier: ^2.4.26
         version: 2.4.26(tailwindcss@4.2.1)
-      '@kontave/audit-trail':
-        specifier: workspace:*
-        version: link:packages/capabilities/audit-trail
-      '@kontave/payment-orders':
-        specifier: workspace:*
-        version: link:packages/business/payment-orders
       '@kontave/access-control':
         specifier: workspace:*
         version: link:packages/capabilities/access-control
+      '@kontave/audit-trail':
+        specifier: workspace:*
+        version: link:packages/capabilities/audit-trail
       '@kontave/auth':
         specifier: workspace:*
         version: link:packages/capabilities/auth
@@ -89,6 +86,9 @@ importers:
       '@kontave/organizations':
         specifier: workspace:*
         version: link:packages/capabilities/organizations
+      '@kontave/payment-orders':
+        specifier: workspace:*
+        version: link:packages/business/payment-orders
       '@kontave/payments':
         specifier: workspace:*
         version: link:packages/business/payments
@@ -653,6 +653,15 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/business/payment-orders:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/business/payments:
     dependencies:
       '@kontave/billing':
@@ -764,6 +773,12 @@ importers:
       '@kontave/products':
         specifier: workspace:*
         version: link:../products
+      '@kontave/tax-reporting':
+        specifier: workspace:*
+        version: link:../tax-reporting
+      '@kontave/taxation':
+        specifier: workspace:*
+        version: link:../taxation
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -823,12 +838,43 @@ importers:
       '@kontave/products':
         specifier: workspace:*
         version: link:../products
+      '@kontave/tax-reporting':
+        specifier: workspace:*
+        version: link:../tax-reporting
+      '@kontave/taxation':
+        specifier: workspace:*
+        version: link:../taxation
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+    devDependencies:
+      fake-indexeddb:
+        specifier: 6.2.4
+        version: 6.2.4
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/business/tax-reporting:
+    dependencies:
+      '@kontave/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
+      '@kontave/monetary':
+        specifier: workspace:*
+        version: link:../../monetary
+      '@kontave/taxation':
+        specifier: workspace:*
+        version: link:../taxation
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -904,6 +950,15 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.3.6
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/capabilities/audit-trail:
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -1325,26 +1380,6 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
-
-  packages/capabilities/audit-trail:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-
-  packages/business/payment-orders:
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
 
 packages:
 
@@ -6177,6 +6212,10 @@ packages:
     resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
     engines: {node: '>= 10.17.0'}
     hasBin: true
+
+  fake-indexeddb@6.2.4:
+    resolution: {integrity: sha512-INKeIKEtSViN4yVtEWEUqbsqmaIy7Ls+MfU0yxQVXg67pOJ/sH1ZxcVrP8XrKULUFohcPD9gnmym+qBfEybACw==}
+    engines: {node: '>=18'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -15503,6 +15542,8 @@ snapshots:
       '@types/yauzl': 2.10.3
     transitivePeerDependencies:
       - supports-color
+
+  fake-indexeddb@6.2.4: {}
 
   fast-deep-equal@3.1.3: {}
 
