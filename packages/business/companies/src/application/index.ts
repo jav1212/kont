@@ -1,5 +1,6 @@
 import { CompanyFailure, type Company, type CompanyId } from "../domain";
 import type { OrganizationId } from "@kontave/organizations/domain";
+export * from "./document-numbering-series";
 
 export interface CompanyRepository {
   listByOrganization(organizationId: OrganizationId): Promise<readonly Company[]>;

@@ -3,6 +3,7 @@ import type { CompanyRepository } from "../../application";
 import { Company, CompanyCountry, CompanyFailure, CompanyStatus, companyId, taxId, type CompanyId } from "../../domain";
 import { organizationId, type OrganizationId } from "@kontave/organizations/domain";
 import { companyRowSchema } from "./persistence-codecs";
+export { createSupabaseCompanyDocumentSeriesConfigurationRepository, SupabaseCompanyDocumentSeriesConfigurationRepository } from "./document-numbering-series";
 
 export function createCompanyRepository(configuration: { readonly url: string; readonly serviceRoleKey: string }): CompanyRepository {
   return new SupabaseCompanyRepository(createClient(configuration.url, configuration.serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }));

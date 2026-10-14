@@ -1,6 +1,6 @@
 import type { OrganizationId } from "@kontave/organizations/domain";
 import type { CompanyId } from "./index";
-import { CompanyFailure } from "./company-failure";
+import { CompanyFailure } from "./index";
 import { documentSeriesNextNumber } from "./index";
 
 /** Commercial document families understood by the portable numbering capability. */

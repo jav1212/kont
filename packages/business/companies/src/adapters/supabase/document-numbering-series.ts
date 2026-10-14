@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
 import type {
   CompanyDocumentSeriesConfigurationRepository,
   ConfigureCompanyDocumentSeriesSelectionRuleCommand,
@@ -12,7 +13,15 @@ import {
   type CompanyDocumentNumberingSeries,
   type CompanyDocumentSeriesSelectionRule,
 } from "../../domain";
-import type { CompanySupabaseConfiguration, CompanySupabaseSource } from "./index";
+
+interface CompanyDocumentSeriesRpcSource {
+  rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+interface CompanyDocumentSeriesSupabaseConfiguration {
+  readonly url: string;
+  readonly serviceRoleKey: string;
+}
 
 const scope = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("company"), organizationId: z.string().uuid(), companyId: z.string().min(1) }),
@@ -32,27 +41,26 @@ const selectionRuleRow = z.object({
  * @param configuration - Trusted service-role configuration.
  * @returns Injectable RPC source.
  */
-export type CompanyDocumentSeriesSourceFactory = (configuration: CompanySupabaseConfiguration) => CompanySupabaseSource;
-
 /**
  * Creates a persistence adapter for series configuration only. It deliberately omits number
  * allocation because allocating a number requires an atomic document-owned issuance transaction.
  * @param configuration - Trusted service-role Supabase credentials.
- * @param sourceFactory - Internal factory used by the package's Supabase composition root.
  * @returns Configuration-only document series repository.
  * @throws {CompanyFailure} When configuration persistence is unavailable.
  */
 export function createSupabaseCompanyDocumentSeriesConfigurationRepository(
-  configuration: CompanySupabaseConfiguration,
-  sourceFactory: CompanyDocumentSeriesSourceFactory,
+  configuration: CompanyDocumentSeriesSupabaseConfiguration,
 ): CompanyDocumentSeriesConfigurationRepository {
-  return new SupabaseCompanyDocumentSeriesConfigurationRepository(sourceFactory(configuration));
+  const source = createClient(configuration.url, configuration.serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }) as unknown as CompanyDocumentSeriesRpcSource;
+  return new SupabaseCompanyDocumentSeriesConfigurationRepository(source);
 }
 
 /** Supabase RPC adapter for company document-series configuration. */
 export class SupabaseCompanyDocumentSeriesConfigurationRepository implements CompanyDocumentSeriesConfigurationRepository {
   /** @param source - Injectable trusted RPC source. @returns Adapter instance. */
-  constructor(private readonly source: CompanySupabaseSource) {}
+  constructor(private readonly source: CompanyDocumentSeriesRpcSource) {}
 
   /** {@inheritDoc CompanyDocumentSeriesConfigurationRepository.createSeries} */
   async createSeries(command: CreateCompanyDocumentNumberingSeriesCommand): Promise<CompanyDocumentNumberingSeries> {

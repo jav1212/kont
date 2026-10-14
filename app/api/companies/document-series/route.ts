@@ -1,6 +1,6 @@
 import { companyId, companyDocumentType, CompanyFailure, type CompanyDocumentType } from "@kontave/companies/domain";
 import { withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
-import { getCompanyAdministrationWebContext } from "@/src/modules/companies/backend/administration-web";
+import { getCompanyDocumentSeriesWebContext } from "@/src/modules/companies/backend/document-series-web";
 import { z } from "zod";
 
 const documentTypeSchema = z.enum([
@@ -30,7 +30,7 @@ export const GET = withTenantPermission("companies.read", async (request, tenant
   const company = new URL(request.url).searchParams.get("companyId")?.trim() ?? "";
   if (!company || company.length > 128) return Response.json({ error: "Empresa inválida." }, { status: 400 });
   try {
-    const context = await getCompanyAdministrationWebContext(tenant, company);
+    const context = await getCompanyDocumentSeriesWebContext(tenant, company);
     if (!context) return Response.json({ error: "Empresa no encontrada." }, { status: 404 });
     const actor = context.actions.scope();
     const scope = { kind: "company" as const, organizationId: actor.organizationId, companyId: companyId(context.company.id) };
@@ -50,7 +50,7 @@ export const POST = withTenantPermission("companies.update", async (request, ten
   const idempotencyKey = request.headers.get("Idempotency-Key")?.trim() ?? "";
   if (idempotencyKey.length < 8 || idempotencyKey.length > 128) return Response.json({ error: "Se requiere una clave de idempotencia válida." }, { status: 400 });
   try {
-    const context = await getCompanyAdministrationWebContext(tenant, parsed.data.companyId);
+    const context = await getCompanyDocumentSeriesWebContext(tenant, parsed.data.companyId);
     if (!context) return Response.json({ error: "Empresa no encontrada." }, { status: 404 });
     const actor = context.actions.scope();
     const company = companyId(context.company.id);
