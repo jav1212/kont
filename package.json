@@ -53,6 +53,7 @@
     "@kontave/pricing": "workspace:*",
     "@kontave/unit-economics": "workspace:*",
     "@kontave/taxation": "workspace:*",
+    "@kontave/tax-reporting": "workspace:*",
     "@kontave/referrals": "workspace:*",
     "@heroui/accordion": "^2.2.29",
     "@heroui/input": "^2.4.33",

@@ -116,6 +116,9 @@ importers:
       '@kontave/sales':
         specifier: workspace:*
         version: link:packages/business/sales
+      '@kontave/tax-reporting':
+        specifier: workspace:*
+        version: link:packages/business/tax-reporting
       '@kontave/taxation':
         specifier: workspace:*
         version: link:packages/business/taxation

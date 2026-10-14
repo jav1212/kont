@@ -1,7 +1,6 @@
 import type { OrganizationId } from "@kontave/organizations/domain";
 import type { CompanyId } from "./index";
 import { CompanyFailure } from "./index";
-import { documentSeriesNextNumber } from "./index";
 
 /** Commercial document families understood by the portable numbering capability. */
 export type CompanyDocumentType =
@@ -89,6 +88,14 @@ export function companyDocumentSeriesPrefix(value: string | null): string | null
 }
 /** @param value - Maximum allocatable sequence. @returns Validated maximum. @throws {CompanyFailure} When outside the portable eight-digit bound. */
 export function companyDocumentSeriesMaximum(value: number): number { return documentSeriesNextNumber(value); }
+
+/** Validates the eight-digit maximum supported by persisted company document numbering. @param value - Proposed last allocatable number. @returns Validated positive number. @throws {CompanyFailure} When outside the supported bound. */
+export function documentSeriesNextNumber(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 99_999_999) {
+    throw new CompanyFailure("COMPANY_DOCUMENT_NUMBER_INVALID", "The next document number is invalid.");
+  }
+  return value;
+}
 /** @param scope - Scope receiving the rule. @param policy - Requested selection policy. @param defaultSeriesId - Optional default series UUID. @returns Validated policy fields. @throws {CompanyFailure} When rule fields conflict. */
 export function companyDocumentSeriesSelectionPolicy(scope: CompanyDocumentSeriesScope, policy: CompanyDocumentSeriesSelectionPolicy, defaultSeriesId: string | null): { readonly policy: CompanyDocumentSeriesSelectionPolicy; readonly defaultSeriesId: string | null } {
   const normalizedScope = companyDocumentSeriesScope(scope);
