@@ -2,7 +2,7 @@ import { encodeFiscalDocument } from "@kontave/fiscal/supabase";
 import { FiscalFailure } from "@kontave/fiscal/domain";
 import { SalesFailure } from "@kontave/sales/domain";
 import { TaxationFailure } from "@kontave/taxation/domain";
-import { createSalesFiscalActions } from "@/src/modules/sales/backend/infra/fiscal/sales-fiscal-factory";
+import { createSupabaseConfirmedServiceFiscalActions } from "@kontave/sales/supabase";
 import { resolveCanonicalTenantAuthorization, withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
 
@@ -58,7 +58,12 @@ export const POST = withTenantPermission("sales.update", async (request, tenant)
   if (!data) return Response.json({ error: "Empresa no encontrada." }, { status: 404 });
 
   try {
-    const actions = createSalesFiscalActions({
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceRoleKey) return Response.json({ error: "La revisión fiscal no está configurada." }, { status: 503 });
+    const actions = createSupabaseConfirmedServiceFiscalActions({
+      url,
+      serviceRoleKey,
       tenantId: tenant.tenantId,
       actorId: tenant.userId,
       organizationId: authorization.organizationId,

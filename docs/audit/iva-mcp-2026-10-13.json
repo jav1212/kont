@@ -1,0 +1,45 @@
+{
+  "observedAt": "2026-10-13",
+  "projectUrl": "https://fvantswxhepvkloygcvc.supabase.co",
+  "method": "Supabase MCP migration application and read-only SQL verification",
+  "query": "select current_database() as database_name, current_user as database_user, (select count(*) from information_schema.tables where table_schema='public' and table_name like 'shared_tax_reporting_%') as reporting_tables, (select count(*) from information_schema.tables where table_schema='public' and table_name in ('shared_company_tax_rule_catalogs','shared_company_tax_rules','shared_tax_counterparty_profiles','shared_taxation_configuration_idempotency','shared_supplier_invoice_matches')) as taxation_and_match_tables, (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('shared_tax_reporting_fact_append','shared_tax_reporting_fact_list','read_iva_legacy_sources','save_native_company_tax_rule_catalog','get_native_tax_counterparty_profile','shared_supplier_invoice_match_confirm_with_tax_fact','confirm_native_sales_invoice_with_document_series_and_tax_fact_secure','confirm_native_sales_invoice_tax_issuance_secure')) as expected_iva_functions;",
+  "beforeMigrationResult": {
+    "databaseName": "postgres",
+    "databaseUser": "postgres",
+    "reportingTables": 0,
+    "taxationAndMatchTables": 0,
+    "expectedIvaFunctions": 0
+  },
+  "appliedMigrations": [
+    { "version": "20261013144102", "name": "iva_taxation_configuration", "localFile": "supabase/migrations/321_iva_taxation_configuration.sql" },
+    { "version": "20261013144132", "name": "iva_reporting", "localFile": "supabase/migrations/322_iva_reporting.sql" },
+    { "version": "20261013144200", "name": "iva_legacy_sources", "localFile": "supabase/migrations/323_iva_legacy_sources.sql" },
+    { "version": "20261013144235", "name": "sales_series_tax_fact_issuance", "localFile": "supabase/migrations/335_sales_series_tax_fact_issuance.sql" },
+    { "version": "20261013144250", "name": "supplier_invoice_match_tax_fact", "localFile": "supabase/migrations/336_supplier_invoice_match_tax_fact.sql" },
+    { "version": "20261013144306", "name": "iva_atomic_fiscal_issuance", "localFile": "supabase/migrations/338_iva_atomic_fiscal_issuance.sql" },
+    { "version": "20261013144318", "name": "iva_correction_fact_integrity", "localFile": "supabase/migrations/362_iva_correction_fact_integrity.sql" },
+    { "version": "20261013145313", "name": "iva_sales_rpc_name_compatibility", "localFile": "supabase/migrations/368_iva_sales_rpc_name_compatibility.sql" }
+  ],
+  "afterMigrationChecks": {
+    "ivaTablesPresent": 11,
+    "ivaFunctionsPresent": 16,
+    "rlsEnabledOnNewTables": true,
+    "serviceRoleExecuteGrantedOnApplicationRpcs": true,
+    "serviceRoleDirectSelectRevokedOnReportingFactsCommandsAndSupplierMatches": true,
+    "salesIssuanceRpcNameCompatibilityVerified": true,
+    "salesIssuanceRpcServiceRoleExecute": true,
+    "salesIssuanceRpcAuthenticatedExecute": false
+  },
+  "localValidation": {
+    "salesTypeCheck": "passed",
+    "salesTests": "108/108 passed",
+    "taxationSqlPglite": "passed",
+    "reportingSqlPglite": "passed",
+    "supplierMatchSqlPglite": "passed",
+    "gitDiffCheck": "passed with unrelated line-ending warnings"
+  },
+  "limitations": [
+    "Schema and grants were checked through MCP; application RPC behavior, real concurrent retries, and transaction rollback were not exercised against live business records.",
+    "The original sales issuance function name exceeded PostgreSQL's 63-byte identifier limit and was truncated in PostgreSQL. Migration 368 adds a short RPC alias and the sales adapter now calls that alias."
+  ]
+}

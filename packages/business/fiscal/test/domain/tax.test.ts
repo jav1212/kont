@@ -25,3 +25,17 @@ test("an exempt determination cannot hide a tax amount", () => {
     jurisdiction: "VE", ruleVersion: "rule-1", source: { kind: "document" },
   }), (error: unknown) => error instanceof FiscalFailure && error.code === "FISCAL_TAX_INVALID");
 });
+
+test("zero-rated operations preserve their taxable base without tax", () => {
+  const determination = fiscalTaxDetermination({
+    taxCode: "IVA", category: "zero_rated", calculationMode: "tax_exclusive", rate: exactDecimal("0"),
+    taxableBase: moneyFromDecimal("250", VES), amount: moneyFromDecimal("0", VES),
+    jurisdiction: "VE", ruleVersion: "export-rule-v1", legalBasis: "Verified export rule",
+    source: { kind: "document" },
+  });
+  assert.equal(determination.category, "zero_rated");
+  assert.equal(determination.taxableBase.minorAmount, 25_000n);
+  assert.equal(determination.amount.minorAmount, 0n);
+  assert.throws(() => fiscalTaxDetermination({ ...determination, rate: exactDecimal("16") }),
+    (error: unknown) => error instanceof FiscalFailure && error.code === "FISCAL_TAX_INVALID");
+});

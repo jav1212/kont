@@ -7,7 +7,14 @@ import {
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 export * from "./sales-performance-report";
+export * from "./sales-branch-consolidation";
 export * from "./customer-receivables";
+export * from "./secured-sales";
+export * from "./sales-invoice-document-series-issuance";
+export * from "./sales-delivery-note-document-series-issuance";
+export * from "./confirmed-service-invoice-fiscal-readers";
+export * from "./fiscal-actions";
+export * from "./offline-sales-order-drafts";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const money = z.object({ amount: z.string(), currency: z.literal("VES") });

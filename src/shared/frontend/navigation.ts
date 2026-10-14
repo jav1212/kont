@@ -4,6 +4,8 @@ export const APP_MODULES = [
     { id: "purchases",   label: "Compras",       href: "/purchases",              paid: true              },
     { id: "sales",       label: "Ventas",        href: "/sales",                  paid: true              },
     { id: "inventory",   label: "Inventario",    href: "/inventory",              paid: true              },
+    { id: "treasury",    label: "Tesorería",     href: "/treasury",               paid: false             },
+    { id: "iva",         label: "IVA",           href: "/fiscal",                 paid: false             },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             paid: true              },
     { id: "tools",       label: "Herramientas",  href: "/tools",                  paid: false             },
     { id: "companies",   label: "Empresas",      href: "/companies",              paid: false             },
@@ -31,6 +33,8 @@ export type SubNavItem = {
     group?: string | null;
     beta?: boolean;
     icon?: string;
+    /** Optional portable icon override resolved by the active client. */
+    iconKey?: string;
     subtitle?: string;
 };
 
@@ -57,6 +61,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/purchases/suppliers",       label: "Proveedores",         group: "Catálogos"   },
         { href: "/purchases/import-book",     label: "Importar libro",       group: "Operaciones" },
         { href: "/purchases/archive",         label: "Archivo de facturas", group: "Operaciones" },
+        { href: "/purchases/iva-ledger",      label: "Libro IVA",           group: "Reportes"    },
     ],
     sales: [
         { href: "/sales",                  label: "Tablero",             group: null          },
@@ -66,6 +71,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/sales/archive",          label: "Archivo de facturas", group: "Operaciones" },
         { href: "/sales/fiscal",           label: "Documentos fiscales", group: "Operaciones" },
         { href: "/sales/igtf-fortnightly", label: "IGTF Quincenal",      group: "Reportes"    },
+        { href: "/sales/iva-ledger",       label: "Libro IVA",           group: "Reportes"    },
     ],
     inventory: [
         { href: "/inventory",                  label: "Tablero",              group: null          },
@@ -80,6 +86,18 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/inventory/report",           label: "Reporte Período",      group: "Reportes"    },
         { href: "/inventory/balance-report",   label: "Reporte SALDO",        group: "Reportes"    },
         { href: "/inventory/islr-report",      label: "Reporte ISLR 177",     group: "Reportes"    },
+    ],
+    treasury: [
+        { href: "/treasury", label: "Tablero", group: null },
+    ],
+    iva: [
+        { href: "/fiscal", label: "Tablero", group: null },
+        { href: "/settings/iva", label: "Reglas y perfiles", group: "Configuración" },
+        { href: "/purchases/iva-ledger", label: "Libro de compras", group: "Libros" },
+        { href: "/purchases/iva-matches", label: "Conciliar facturas", group: "Operaciones" },
+        { href: "/sales/iva-ledger", label: "Libro de ventas", group: "Libros" },
+        { href: "/purchases/iva-imports", label: "Importaciones", group: "Operaciones" },
+        { href: "/fiscal/iva-declarations", label: "Declaraciones", group: "Operaciones" },
     ],
     accounting: [
         { href: "/accounting",                       label: "Inicio",               group: null             },
@@ -99,6 +117,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     ],
     settings: [
         { href: "/settings/organization", label: "Configuración general", group: "Organización", icon: "building", subtitle: "Administra la identidad, empresas y personas de tu organización." },
+        { href: "/settings/iva", label: "Configuración IVA", group: "Empresa", icon: "file-text", subtitle: "Mantén las reglas IVA de la empresa con sus vigencias y fundamento legal." },
         { href: "/settings/members", label: "Miembros", group: "Organización", icon: "users", subtitle: "Personas e invitaciones del espacio de trabajo." },
         { href: "/settings/roles", label: "Roles", group: "Organización", icon: "shield", subtitle: "Ajusta los permisos de cada rol del sistema." },
         { href: "/settings/security-sales", label: "Control comercial", group: "Empresa", icon: "shield", subtitle: "Límites de crédito y reversión de cobros." },
@@ -116,3 +135,50 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/settings/devices", label: "Dispositivos", group: "Cuenta personal", icon: "monitor", subtitle: "Conecta lectores y equipos locales con Kontave." },
     ],
 };
+
+/**
+ * Maps an application route to its stable navigation-catalog identifier.
+ * @param moduleId - Canonical parent module ID.
+ * @param href - Internal sub-navigation route.
+ * @returns Stable destination ID when the route belongs to that module.
+ */
+export function navigationDestinationFor(moduleId: string, href: string): string | undefined {
+    const path = href.replace(/^\//, "").replaceAll("/", ".");
+    const aliases: Record<string, string> = {
+        "payroll.tablero": "payroll.dashboard", "payroll": "payroll.calculator",
+        "inventory.departments": "inventory.departments", "inventory.compras-pendientes": "inventory.pending-purchases",
+        "inventory.report": "inventory.period-report", "sales.pos": "sales.point-of-sale",
+        "inventory.sales": "inventory.outputs",
+        "treasury": "treasury.dashboard",
+        "fiscal": "iva.dashboard", "settings.iva": "iva.configuration",
+        "purchases.iva-ledger": "iva.purchase-ledger", "sales.iva-ledger": "iva.sales-ledger",
+        "purchases.iva-imports": "iva.imports", "purchases.iva-matches": "iva.purchase-matches", "fiscal.iva-declarations": "iva.declarations",
+        "sales.igtf-fortnightly": "sales.igtf", "accounting": "accounting.dashboard",
+        "tools": "tools.dashboard",
+        "settings.organization": "settings.organization", "settings.members": "settings.members",
+        "settings.roles": "settings.roles", "settings.security": "settings.security",
+        "settings.billing": "settings.billing", "settings.devices": "settings.devices",
+        "settings.apariencia": "settings.appearance", "profile": "settings.profile",
+    };
+    const mapped = aliases[path] ?? path;
+    const registeredDestinations = new Set([
+        "payroll", "payroll.dashboard", "payroll.employees", "payroll.settings", "payroll.calculator",
+        "payroll.vacations", "payroll.profit-sharing", "payroll.social-benefits", "payroll.liquidations", "payroll.ari", "payroll.history",
+        "purchases", "purchases.dashboard", "purchases.suppliers", "purchases.import-book", "purchases.archive",
+        "sales", "sales.dashboard", "sales.point-of-sale", "sales.customers", "sales.archive", "sales.igtf",
+        "inventory", "inventory.dashboard", "inventory.products", "inventory.departments", "inventory.outputs", "inventory.operations",
+        "inventory.pending-purchases", "inventory.purchase-ledger", "inventory.sales-ledger", "inventory.inventory-ledger",
+        "inventory.period-report", "inventory.balance-report", "inventory.islr-report",
+        "treasury", "treasury.dashboard",
+        "iva", "iva.dashboard", "iva.configuration", "iva.purchase-ledger", "iva.sales-ledger", "iva.imports", "iva.purchase-matches", "iva.declarations",
+        "accounting", "accounting.dashboard", "accounting.charts", "accounting.accounts", "accounting.periods",
+        "accounting.integrations", "accounting.journal", "accounting.trial-balance", "accounting.financial-statements",
+        "tools", "tools.dashboard", "tools.exchange-rates", "tools.seniat-calendar", "tools.portal-monitoring",
+        "documents", "documents.dashboard", "documents.files", "documents.contracts", "companies",
+        "settings", "settings.profile", "settings.appearance", "settings.security", "settings.organization",
+        "settings.members", "settings.roles", "settings.billing", "settings.devices",
+    ]);
+    return registeredDestinations.has(mapped) && (mapped === moduleId || mapped.startsWith(`${moduleId}.`))
+        ? mapped
+        : undefined;
+}

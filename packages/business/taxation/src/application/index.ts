@@ -11,6 +11,9 @@ import {
   type TaxTreatment,
 } from "../domain";
 export * from "./service-taxation";
+export * from "./taxation-configuration";
+export * from "./venezuela-vat";
+export * from "./service-venezuela-vat";
 
 /** Actor and tenant scope required by product-taxation operations. */
 export interface TaxationContext {
@@ -81,6 +84,8 @@ export class GetResolvedProductTaxation {
         treatment: assignment.treatment,
         jurisdiction: profile.jurisdiction,
         date,
+        category: assignment.category ?? null,
+        legacyRateSlot: assignment.legacyRateSlot ?? null,
       });
       return { profile, assignment, rule };
     });

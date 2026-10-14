@@ -3,6 +3,7 @@ import type { ServiceTaxProfileId, TaxCode } from "./identifiers";
 import { includesDate, rangesOverlap, taxationDate, type TaxationDate } from "./temporal";
 import type { TaxTreatment } from "./tax-rule";
 import { TaxationFailure } from "./taxation-failure";
+import type { LegacyRateSlot, TaxPriceMode, TaxRuleCategory } from "./tax-configuration";
 
 export interface ServiceTaxAssignment {
   readonly taxCode: TaxCode;
@@ -11,6 +12,9 @@ export interface ServiceTaxAssignment {
   readonly effectiveTo: TaxationDate | null;
   readonly legalBasis: string;
   readonly classificationVersion: string;
+  readonly legacyRateSlot?: LegacyRateSlot | null;
+  readonly category?: TaxRuleCategory | null;
+  readonly priceMode?: TaxPriceMode | null;
 }
 
 export interface ServiceTaxProfileState {

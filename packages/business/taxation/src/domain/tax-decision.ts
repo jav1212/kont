@@ -2,6 +2,7 @@ import { compareDecimal, exactDecimal, sameCurrency, type ExactDecimal, type Mon
 import type { TaxCode } from "./identifiers";
 import type { TaxCalculationMode, TaxTreatment } from "./tax-rule";
 import { TaxationFailure } from "./taxation-failure";
+import type { LegacyRateSlot, TaxRuleCategory, TaxRuleComponent } from "./tax-configuration";
 
 export type TaxDecisionSource =
   | { readonly kind: "line"; readonly reference: string }
@@ -19,6 +20,11 @@ export interface TaxDecision {
   readonly ruleVersion: string;
   readonly legalBasis: string;
   readonly source: TaxDecisionSource;
+  /** Exact configured rate category selected for the operation; null only for legacy snapshots. */
+  readonly category?: TaxRuleCategory | null;
+  readonly component?: TaxRuleComponent;
+  /** Optional Profit-compatible slot, preserved independently from the legal category. */
+  readonly legacyRateSlot?: LegacyRateSlot | null;
 }
 
 /**
@@ -45,5 +51,5 @@ export function taxDecision(input: TaxDecision): TaxDecision {
   const ruleVersion = input.ruleVersion.trim();
   const legalBasis = input.legalBasis.trim();
   if (!jurisdiction || !ruleVersion || !legalBasis) throw new TaxationFailure("TAXATION_DECISION_INVALID", "Tax decision audit data is required.");
-  return { ...input, rate, jurisdiction, ruleVersion, legalBasis };
+  return { ...input, rate, jurisdiction, ruleVersion, legalBasis, category: input.category ?? null, component: input.component ?? "base", legacyRateSlot: input.legacyRateSlot ?? null };
 }

@@ -52,6 +52,34 @@ test("reconstructs a revision candidate with the source version and without pers
   assert.equal(repository.persisted.length, 0);
 });
 
+test("prepares a classified draft candidate for atomic issuance without persisting it", async () => {
+  const invoice = confirmedInvoice({ status: "borrador", sourceUpdatedAt: "2026-09-28T10:00:00.000Z" });
+  const repository = memoryRepository();
+
+  const candidate = await createUseCase(invoice, repository).prepareDraftCandidate(command());
+
+  assert.equal(candidate.sourceUpdatedAt, invoice.sourceUpdatedAt);
+  assert.equal(candidate.document.status, "draft");
+  assert.equal(candidate.document.number, null);
+  assert.equal(candidate.document.issuedAt, null);
+  assert.equal(repository.persisted.length, 0);
+});
+
+test("rejects an unclassified draft before attempting atomic issuance", async () => {
+  const invoice = confirmedInvoice({
+    status: "borrador",
+    sourceUpdatedAt: "2026-09-28T10:00:00.000Z",
+    lines: [serviceLine({ serviceTaxCode: null })],
+  });
+  const repository = memoryRepository();
+
+  await assert.rejects(
+    () => createUseCase(invoice, repository).prepareDraftCandidate(command()),
+    (error: unknown) => error instanceof SalesFailure && error.code === "SALES_FISCAL_PREPARATION_INVALID",
+  );
+  assert.equal(repository.persisted.length, 0);
+});
+
 test("rejects a revision candidate when the source omits its concurrency version", async () => {
   const repository = memoryRepository();
 

@@ -7,12 +7,18 @@
     ".": "./src/index.ts",
     "./domain": "./src/domain/index.ts",
     "./application": "./src/application/index.ts",
+    "./offline": "./src/adapters/offline/index.ts",
     "./inventory": "./src/adapters/inventory/index.ts",
+    "./fiscal-taxation": "./src/adapters/taxation/index.ts",
     "./supabase": "./src/adapters/supabase/index.ts"
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "tsx --test test/**/*.test.ts"
+    "test": "tsx --test test/**/*.test.ts",
+    "test:credit-document-type:integration": "node --test test/integration/sales-credit-receivable-document-type.integration.mjs",
+    "test:delivery-note-credit:integration": "node --test test/integration/sales-delivery-note-credit-limit.integration.mjs",
+    "test:delivery-note-series:integration": "node --test test/integration/sales-delivery-note-document-series.integration.mjs",
+    "test:delivery-note-credit-series:integration": "node --test test/integration/sales-delivery-note-credit-series.integration.mjs"
   },
   "dependencies": {
     "@kontave/access-control": "workspace:*",
@@ -22,10 +28,13 @@
     "@kontave/monetary": "workspace:*",
     "@kontave/organizations": "workspace:*",
     "@kontave/products": "workspace:*",
+    "@kontave/tax-reporting": "workspace:*",
+    "@kontave/taxation": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "fake-indexeddb": "6.2.4",
     "tsx": "^4.23.12",
     "typescript": "^5.9.2"
   }

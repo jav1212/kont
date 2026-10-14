@@ -22,7 +22,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
 } from "lucide-react";
-import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE } from "@/src/shared/frontend/navigation";
+import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE, navigationDestinationFor } from "@/src/shared/frontend/navigation";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
@@ -39,7 +39,7 @@ import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-up
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/components/organization-switcher";
-import { getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule, resolveSalesLanding } from "@/src/modules/organizations/frontend/module-access-policy";
+import { canViewIvaModule, getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule, resolveSalesLanding } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { Tooltip } from "@heroui/react";
 
@@ -129,9 +129,31 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const isDesktop = useIsDesktop();
     const persistedSidebarPinned = useSyncExternalStore(subscribeToSidebarPreference, getSidebarPinnedSnapshot, getServerSidebarPinnedSnapshot);
     const [sidebarPinnedOverride, setSidebarPinnedOverride] = useState<boolean | null>(null);
+    const [navigationLabels, setNavigationLabels] = useState<Record<string, string>>({});
+    const [navigationIcons, setNavigationIcons] = useState<Record<string, string>>({});
     const sidebarPinned = sidebarPinnedOverride ?? persistedSidebarPinned;
 
     const { signOut } = useAuth();
+    useEffect(() => {
+        let active = true;
+        const loadLabels = () => void fetch("/api/preferences/navigation-labels", { cache: "no-store" })
+            .then(async (response) => response.ok ? response.json() : null)
+            .then((payload) => { if (active && payload?.data?.labels) setNavigationLabels(payload.data.labels); })
+            .catch(() => undefined);
+        loadLabels();
+        window.addEventListener("kontave:navigation-labels-updated", loadLabels);
+        return () => { active = false; window.removeEventListener("kontave:navigation-labels-updated", loadLabels); };
+    }, []);
+    useEffect(() => {
+        let active = true;
+        const loadIcons = () => void fetch("/api/preferences/navigation-icons", { cache: "no-store" })
+            .then(async (response) => response.ok ? response.json() : null)
+            .then((payload) => { if (active && payload?.data?.icons) setNavigationIcons(payload.data.icons); })
+            .catch(() => undefined);
+        loadIcons();
+        window.addEventListener("kontave:navigation-icons-updated", loadIcons);
+        return () => { active = false; window.removeEventListener("kontave:navigation-icons-updated", loadIcons); };
+    }, []);
     useTheme();
     const { companies, companyId, selectCompany, loading: companyLoading } = useCompany();
     const { controller: workspaceController, snapshot: workspaceApplication } = useWebApplication();
@@ -161,7 +183,9 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
     const activeModuleId = workspaceApplication.workspace.activeModule?.code ?? null;
     const isSettingsRoute = pathname === "/profile" || pathname === "/settings" || pathname.startsWith("/settings/");
-    const requestedModuleId = isSettingsRoute ? WEB_SETTINGS_MODULE.id : activeModuleId ?? derivedModuleId;
+    const isIvaRoute = pathname === "/fiscal" || pathname.startsWith("/fiscal/")
+        || pathname.startsWith("/purchases/iva-") || pathname === "/sales/iva-ledger" || pathname === "/settings/iva";
+    const requestedModuleId = isIvaRoute ? "iva" : isSettingsRoute ? WEB_SETTINGS_MODULE.id : activeModuleId ?? derivedModuleId;
     const availableModuleCodes = useMemo(
         () => new Set(workspaceApplication.workspace.modules.map((module) => module.code)),
         [workspaceApplication.workspace.modules],
@@ -179,6 +203,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         purchases: subscriptionAllows(subscriptionAccess.get("inventory")),
         sales:     subscriptionAllows(subscriptionAccess.get("inventory")),
         accounting: subscriptionAllows(subscriptionAccess.get("accounting")),
+        treasury: subscriptionAllows(subscriptionAccess.get("treasury")),
     }), [subscriptionAccess]);
 
     const selectableModules = useMemo((): SelectableModule[] => [
@@ -186,6 +211,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (!isKnownOrganizationModule(mod.id)) return false;
+                if (mod.id === "iva") return canViewIvaModule(organizationAccess.permissions ?? []);
                 if (workspaceApplication.status !== "ready" || !availableModuleCodes.has(mod.id as ModuleCode)) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
                 const permission = getModuleVisibilityPermission(mod.id);
@@ -194,14 +220,19 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             })
             .map((mod) => ({
                 id: mod.id,
-                label: mod.label,
+                label: navigationLabels[mod.id] ?? mod.label,
+                ...(navigationIcons[mod.id] || mod.id === "treasury" || mod.id === "iva" ? { iconKey: navigationIcons[mod.id] ?? (mod.id === "iva" ? "receipt" : "wallet") } : {}),
                 href: mod.id === "sales"
                     ? resolveSalesLanding(organizationAccess.permissions ?? []) ?? "/tools"
                     : mod.href,
             })),
-        WEB_SETTINGS_MODULE,
+        {
+            ...WEB_SETTINGS_MODULE,
+            label: navigationLabels[WEB_SETTINGS_MODULE.id] ?? WEB_SETTINGS_MODULE.label,
+            ...(navigationIcons[WEB_SETTINGS_MODULE.id] ? { iconKey: navigationIcons[WEB_SETTINGS_MODULE.id] } : {}),
+        },
     ],
-        [availableModuleCodes, organizationAccess, paidAccess, workspaceApplication.status]);
+        [availableModuleCodes, navigationIcons, navigationLabels, organizationAccess, paidAccess, workspaceApplication.status]);
 
     const kioskCompany = companies.find((company) => company.id === companyId)?.operatingProfile === "kiosk";
 
@@ -209,7 +240,14 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const subnav = useMemo(() => (resolvedModuleId ? (MODULE_SUBNAV[resolvedModuleId] ?? []).filter((entry) => {
         const requirement = getOrganizationRouteAccess(entry.href);
         return requirement.kind === "authenticated" || (requirement.kind === "protected" && requirement.permissions.every(organizationAccess.can));
-    }) : []), [organizationAccess.can, resolvedModuleId]);
+    }).map((entry) => {
+        const destination = navigationDestinationFor(resolvedModuleId, entry.href);
+        return {
+            ...entry,
+            ...(destination && navigationLabels[destination] ? { label: navigationLabels[destination] } : {}),
+            ...(destination && navigationIcons[destination] ? { iconKey: navigationIcons[destination] } : {}),
+        };
+    }) : []), [navigationIcons, navigationLabels, organizationAccess.can, resolvedModuleId]);
 
     const kioskModules = useMemo((): SelectableModule[] => {
         if (!kioskCompany) return selectableModules;
@@ -249,6 +287,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         }
         if (id === WEB_SETTINGS_MODULE.id) {
             router.push(settingsHref);
+            return;
+        }
+        if (id === "iva") {
+            router.push(buildContextHref(href));
             return;
         }
         const tenantId = workspaceController.getSnapshot().tenantId;

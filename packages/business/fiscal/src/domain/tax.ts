@@ -3,8 +3,10 @@ import type { FiscalDocumentLineId } from "./identifiers";
 import { FiscalFailure } from "./fiscal-failure";
 import { fiscalDate, type FiscalDate } from "./temporal";
 
-export type FiscalTaxCategory = "taxable" | "exempt" | "exonerated" | "not_subject" | "perceived" | "other";
+export type FiscalTaxCategory = "taxable" | "zero_rated" | "exempt" | "exonerated" | "not_subject" | "perceived" | "other";
 export type FiscalTaxCalculationMode = "tax_exclusive" | "tax_inclusive";
+export type FiscalTaxComponent = "base" | "luxury" | "payment";
+export type FiscalTaxCategoryCode = "general" | "reduced" | "zero_rated" | "luxury_surcharge" | "payment_surcharge" | "other";
 export type FiscalTaxSource =
   | { readonly kind: "line"; readonly lineId: FiscalDocumentLineId }
   | { readonly kind: "document" }
@@ -13,6 +15,17 @@ export type FiscalTaxSource =
 export interface FiscalTaxDetermination {
   readonly taxCode: string;
   readonly category: FiscalTaxCategory;
+  /**
+   * @deprecated Use `taxCategory` plus `legacyRateSlot` for new snapshots.
+   * Compatibility field for historical fiscal payloads that combined selectors.
+   */
+  readonly rateCategory?: string | null;
+  /** Legal tax-rule category selected for this determination. */
+  readonly taxCategory?: FiscalTaxCategoryCode | null;
+  /** Historical Profit Plus A1–A5 slot; it carries no legal rate semantics. */
+  readonly legacyRateSlot?: "a1" | "a2" | "a3" | "a4" | "a5" | null;
+  /** Legal tax component, including surcharges with a different legal basis. */
+  readonly component?: FiscalTaxComponent;
   readonly calculationMode: FiscalTaxCalculationMode;
   readonly rate: ExactDecimal;
   readonly taxableBase: Money;
@@ -33,6 +46,11 @@ export interface FiscalTaxDetermination {
 export interface FiscalTaxSummary {
   readonly taxCode: string;
   readonly category: FiscalTaxCategory;
+  /** @deprecated Compatibility field for historical fiscal payloads. */
+  readonly rateCategory?: string | null;
+  readonly taxCategory?: FiscalTaxCategoryCode | null;
+  readonly legacyRateSlot?: "a1" | "a2" | "a3" | "a4" | "a5" | null;
+  readonly component?: FiscalTaxComponent;
   readonly calculationMode: FiscalTaxCalculationMode;
   readonly rate: ExactDecimal;
   readonly taxableBase: Money;
@@ -57,8 +75,20 @@ export function fiscalTaxDetermination(input: FiscalTaxDetermination): FiscalTax
   if (!sameCurrency(input.taxableBase.currency, input.amount.currency)) {
     throw new FiscalFailure("FISCAL_CURRENCY_MISMATCH", "Tax base and amount must use the same currency.");
   }
-  if (["exempt", "exonerated", "not_subject"].includes(input.category) && (input.amount.minorAmount !== 0n || rate !== "0")) {
+  if (["zero_rated", "exempt", "exonerated", "not_subject"].includes(input.category) && (input.amount.minorAmount !== 0n || rate !== "0")) {
     throw new FiscalFailure("FISCAL_TAX_INVALID", "Untaxed fiscal determinations require a zero rate and amount.");
+  }
+  if (input.rateCategory !== undefined && input.rateCategory !== null && !/^(general|a[1-5])$/.test(input.rateCategory)) {
+    throw new FiscalFailure("FISCAL_TAX_INVALID", "Fiscal tax rate category is invalid.");
+  }
+  if (input.taxCategory !== undefined && input.taxCategory !== null && !["general", "reduced", "zero_rated", "luxury_surcharge", "payment_surcharge", "other"].includes(input.taxCategory)) {
+    throw new FiscalFailure("FISCAL_TAX_INVALID", "Fiscal tax category is invalid.");
+  }
+  if (input.legacyRateSlot !== undefined && input.legacyRateSlot !== null && !/^a[1-5]$/.test(input.legacyRateSlot)) {
+    throw new FiscalFailure("FISCAL_TAX_INVALID", "Fiscal legacy rate slot is invalid.");
+  }
+  if (input.component !== undefined && !["base", "luxury", "payment"].includes(input.component)) {
+    throw new FiscalFailure("FISCAL_TAX_INVALID", "Fiscal tax component is invalid.");
   }
   if (input.source.kind === "payment" && !input.source.paymentKey.trim()) {
     throw new FiscalFailure("FISCAL_TAX_INVALID", "Payment tax source requires a payment key.");

@@ -1,0 +1,38 @@
+{
+  "projectRef": "fvantswxhepvkloygcvc",
+  "observedAt": "2026-10-02",
+  "validation": "Supabase MCP read-only SQL; aggregate results only",
+  "schemaConfirmed": {
+    "purchaseInvoices": [
+      "tenant_id uuid", "company_id text", "supplier_id text", "invoice_date date", "period text", "status text",
+      "vat_amount numeric", "vat_retention_percentage numeric", "vat_retention_amount numeric", "vat_retention_receipt_number text",
+      "document_type text", "affected_invoice_id text", "affected_invoice_number text"
+    ],
+    "purchaseItems": ["tenant_id uuid", "invoice_id text", "vat_rate text", "vat_base numeric", "tax_amount numeric", "tax_type text", "tax_value numeric", "tax_concept text"],
+    "suppliers": ["tenant_id uuid", "id text", "company_id text", "rif text", "name text"]
+  },
+  "lineRateQuery": "select f.status,f.document_type,i.vat_rate,count(*) as line_count,coalesce(sum(i.vat_base),0) as stored_vat_base,coalesce(sum(i.tax_amount),0) as stored_tax_amount from public.shared_inventory_purchase_invoices f join public.shared_inventory_purchase_invoice_items i on i.tenant_id=f.tenant_id and i.invoice_id=f.id where f.status='confirmada' group by f.status,f.document_type,i.vat_rate order by f.document_type,i.vat_rate",
+  "lineRateResults": [
+    { "documentType": "factura", "rate": "exenta", "lines": 2714, "storedVatBase": "146917709.0676", "storedTaxAmount": "0.00" },
+    { "documentType": "factura", "rate": "general_16", "lines": 4753, "storedVatBase": "116697097.4966", "storedTaxAmount": "0.00" },
+    { "documentType": "factura", "rate": "reducida_8", "lines": 5, "storedVatBase": "64749.3960", "storedTaxAmount": "0.00" },
+    { "documentType": "nota_credito", "rate": "general_16", "lines": 4, "storedVatBase": "73798.7160", "storedTaxAmount": "0.00" }
+  ],
+  "headerLineComparisonQuery": "with line_totals as (select i.tenant_id,i.invoice_id,count(*) as line_count,coalesce(sum(i.tax_amount),0) as line_tax from public.shared_inventory_purchase_invoice_items i group by i.tenant_id,i.invoice_id) select f.status,f.document_type,count(*) as document_count,count(*) filter (where l.invoice_id is null) as missing_line_documents,count(*) filter (where l.invoice_id is not null and abs(coalesce(f.vat_amount,0)-l.line_tax)>0.01) as header_line_tax_mismatch_count,coalesce(sum(f.vat_amount),0) as header_tax_total,coalesce(sum(l.line_tax),0) as line_tax_total,count(*) filter (where coalesce(f.vat_retention_amount,0)>0) as positive_retention_documents from public.shared_inventory_purchase_invoices f left join line_totals l on l.tenant_id=f.tenant_id and l.invoice_id=f.id where f.status='confirmada' group by f.status,f.document_type order by f.document_type",
+  "headerLineComparisonResults": [
+    { "documentType": "factura", "documents": 1799, "missingLineDocuments": 1, "mismatchesOverCent": 1062, "headerVatTotal": "18648686.27", "lineTaxTotal": "0.00", "positiveRetentionDocuments": 0 },
+    { "documentType": "nota_credito", "documents": 4, "missingLineDocuments": 0, "mismatchesOverCent": 4, "headerVatTotal": "-11807.79", "lineTaxTotal": "0.00", "positiveRetentionDocuments": 0 }
+  ],
+  "interpretationLimits": [
+    "This connected project's source snapshot does not identify the environment as production or development.",
+    "Header/line mismatch is evidence requiring reconciliation, not proof that either stored value is legally correct.",
+    "No personal or counterparty identifiers were selected, and no database changes were made."
+  ],
+  "reportingEndpointReadinessCheck": {
+    "query": "select p.proname, pg_get_function_identity_arguments(p.oid) as arguments from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('shared_tax_reporting_fact_list','shared_tax_reporting_fact_append','read_iva_legacy_sources') order by p.proname, arguments",
+    "result": [],
+    "factsTable": null,
+    "interpretation": "The connected project has none of the named reporting/list/legacy-source RPCs or the shared_tax_reporting_facts table. The package-backed book and raw legacy-review endpoints cannot return source data from this project's reporting schema yet.",
+    "validation": "Supabase MCP read-only SQL; no data or schema changes"
+  }
+}

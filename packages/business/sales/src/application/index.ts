@@ -33,8 +33,12 @@ export * from "./customer-receivables";
 export * from "./record-receivable-payment";
 export * from "./sales-dashboard-access-policy";
 export * from "./sales-performance-report";
+export * from "./branch-consolidation";
 export * from "./prepare-service-sale-fiscal-document";
 export * from "./prepare-confirmed-service-invoice";
+export * from "./offline-sales-drafts";
+export * from "./issue-sales-invoice-with-document-series";
+export * from "./issue-sales-delivery-note-with-document-series";
 
 export interface CustomerRepository {
   /** @param id Customer identifier. @returns The customer, or `null` when absent. */
@@ -405,6 +409,5 @@ async function requireDispatch(repository: GoodsDispatchRepository, id: GoodsDis
   if (!dispatch) throw new SalesFailure("SALES_NOT_FOUND", "Goods dispatch does not exist.");
   return dispatch;
 }
-
 export * from "./customer-credit-authorization";
 export * from "./secured-sales";

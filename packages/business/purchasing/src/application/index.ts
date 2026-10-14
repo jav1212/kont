@@ -1,6 +1,11 @@
 import type { FiscalDocument, FiscalDocumentId } from "@kontave/fiscal/domain";
 export * from "./purchasing-dashboard";
-import { addDecimal, compareDecimal, type ExactDecimal } from "@kontave/monetary/domain";
+export * from "./branch-consolidation";
+export * from "./branch-invoice-confirmation";
+import { addDecimal, compareDecimal, exactDecimal, sameCurrency, type ExactDecimal } from "@kontave/monetary/domain";
+import type { TaxReportingFact, TaxReportingScope } from "@kontave/tax-reporting/domain";
+import { fiscalDocumentTaxFact, type FiscalDocumentFactMetadata } from "@kontave/tax-reporting/fiscal-document-mapper";
+import type { TaxCounterpartyFiscalProfile } from "@kontave/taxation/domain";
 import {
   PurchasingFailure,
   type GoodsReceipt,
@@ -22,6 +27,16 @@ export interface SupplierRepository {
   /** @param id Supplier identifier. @returns The supplier, or `null` when absent. */
   find(id: SupplierId): Promise<Supplier | null>;
 }
+/** Reads supplier identity through an authenticated tenant and company scope. */
+export interface SupplierIdentityReader {
+  /** @param scope Authorized owner scope. @param id Supplier identifier. @param actorId Authenticated actor checked by persistence. @returns Supplier identity or `null` when it is outside the scope. @throws {PurchasingFailure} When the actor has no purchasing access. */
+  findForInvoiceMatch(scope: TaxReportingScope, id: SupplierId, actorId: string): Promise<Supplier | null>;
+}
+/** Reads a supplier's company-owned fiscal classification effective on an invoice date. */
+export interface SupplierFiscalProfileReader {
+  /** @param scope - Authorized tenant, organization, and company. @param supplierId - Validated supplier identity. @param effectiveDate - Fiscal document issue date. @param actorId - Authenticated actor. @returns The historical profile or null when none is recorded. @throws {PurchasingFailure} When the fiscal profile store is unavailable or scope validation fails. */
+  getEffectiveProfile(scope: TaxReportingScope, supplierId: SupplierId, effectiveDate: string, actorId: string): Promise<TaxCounterpartyFiscalProfile | null>;
+}
 export interface PurchaseOrderRepository {
   /** @param id Purchase-order identifier. @returns The order, or `null` when absent. */
   find(id: PurchaseOrder["id"]): Promise<PurchaseOrder | null>;
@@ -35,12 +50,22 @@ export interface PurchaseReturnRepository {
   find(id: PurchaseReturnId): Promise<PurchaseReturn | null>;
 }
 export interface SupplierInvoiceMatchRepository {
-  /** @param id Invoice-match identifier. @returns The match, or `null` when absent. */
-  find(id: SupplierInvoiceMatchId): Promise<SupplierInvoiceMatch | null>;
+  /** @param scope Authorized owner scope. @param id Invoice-match identifier. @param actorId Authenticated actor checked by persistence. @returns The match, or `null` when absent. @throws {PurchasingFailure} When the actor has no purchasing scope. */
+  find(scope: TaxReportingScope, id: SupplierInvoiceMatchId, actorId: string): Promise<SupplierInvoiceMatch | null>;
+}
+/** Persistence port for the draft invoice-match lifecycle. */
+export interface SupplierInvoiceMatchWriter {
+  /** Persists a new draft match in its authorized company scope. @param scope Authorized owner scope. @param match New draft snapshot. @param actorId Authenticated actor. @returns Persisted draft match. @throws {PurchasingFailure} When scope or identity conflicts. */
+  saveDraft(scope: TaxReportingScope, match: SupplierInvoiceMatch, actorId: string): Promise<SupplierInvoiceMatch>;
+}
+/** Atomic persistence boundary for confirming an invoice match and recognizing its VAT fact. */
+export interface SupplierInvoiceMatchCommitPort {
+  /** Persists the confirmed match and VAT fact in a single transaction. @param match Confirmed match snapshot. @param fact Historical IVA fact. @param actorId Authenticated actor. @param idempotencyKey Stable command identity. @returns Completion only after both snapshots are durable. @throws {PurchasingFailure} When scope, concurrency, or idempotency constraints fail. */
+  commitInvoiceMatch(match: SupplierInvoiceMatch, fact: TaxReportingFact, actorId: string, idempotencyKey: string): Promise<void>;
 }
 export interface FiscalDocumentReader {
-  /** @param id Fiscal-document identifier. @returns The document, or `null` when absent. */
-  find(id: FiscalDocumentId): Promise<FiscalDocument | null>;
+  /** @param scope Authorized owner scope. @param id Fiscal-document identifier. @returns The document, or `null` when absent. @throws {PurchasingFailure} When scoped persistence is unavailable. */
+  find(scope: TaxReportingScope, id: FiscalDocumentId): Promise<FiscalDocument | null>;
 }
 
 export interface PurchaseFulfillmentReader {
@@ -67,8 +92,33 @@ export interface PurchasingCommitPort {
    * @returns Completion only after both records are durable, or rejection with neither persisted.
    */
   commitReturn(purchaseReturn: PurchaseReturn, event: PurchaseReturnConfirmed): Promise<void>;
-  /** @param match Confirmed invoice match. @returns Completion after atomic persistence. */
-  commitInvoiceMatch(match: SupplierInvoiceMatch): Promise<void>;
+}
+
+/** Creates a draft match that links received fiscal lines with purchasing evidence. */
+export class SaveSupplierInvoiceMatchDraft {
+  /** Creates the draft command. @param matches Draft writer. @param fiscal Scoped fiscal-document reader. @param suppliers Supplier reader. @returns The configured use case. */
+  constructor(
+    private readonly matches: SupplierInvoiceMatchWriter,
+    private readonly fiscal: FiscalDocumentReader,
+    private readonly suppliers: SupplierIdentityReader,
+  ) {}
+
+  /** Saves a draft after checking that its parties and source document share the authorized company. @param input Scope, draft aggregate, and actor. @returns Persisted draft. @throws {PurchasingFailure} When the source is not a received purchase invoice or scope differs. */
+  async execute(input: { readonly scope: TaxReportingScope; readonly match: SupplierInvoiceMatch; readonly actorId: string }): Promise<SupplierInvoiceMatch> {
+    const { scope, match } = input;
+    if (!input.actorId.trim() || match.status !== "draft" || match.companyId !== scope.companyId) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "A draft match requires an authenticated actor and the authorized company scope.");
+    }
+    const supplier = await this.suppliers.findForInvoiceMatch(scope, match.supplierId, input.actorId.trim());
+    const document = await this.fiscal.find(scope, match.fiscalDocumentId);
+    if (!document || document.status !== "received" || document.direction !== "received" || document.type !== "invoice" || document.companyId !== match.companyId
+      || !supplier || supplier.companyId !== match.companyId) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "A draft match requires a received fiscal invoice and supplier from the same company.");
+    }
+    supplier.assertActive();
+    assertAllocationsCoverFiscalDocument(match, document);
+    return this.matches.saveDraft(scope, match, input.actorId.trim());
+  }
 }
 
 export interface PurchasingInventoryPort {
@@ -226,27 +276,42 @@ export class ConfirmSupplierInvoiceMatch {
    * Creates the supplier-invoice matching service.
    * @param matches Invoice-match repository.
    * @param fiscal Fiscal-document reader.
-   * @param commit Atomic persistence boundary.
+   * @param suppliers Supplier reader used to validate the fiscal counterparty.
+   * @param fiscalProfiles Reader for the classification version effective on the supplier invoice date.
+   * @param commit Atomic match and VAT-fact persistence boundary.
+   * @returns The configured confirmation use case.
    */
   constructor(
     private readonly matches: SupplierInvoiceMatchRepository,
     private readonly fiscal: FiscalDocumentReader,
-    private readonly commit: PurchasingCommitPort,
+    private readonly suppliers: SupplierIdentityReader,
+    private readonly fiscalProfiles: SupplierFiscalProfileReader,
+    private readonly commit: SupplierInvoiceMatchCommitPort,
   ) {}
 
   /**
    * Confirms a match against a received invoice from the same company.
-   * @param id Invoice-match identifier.
-   * @param occurredAt ISO instant assigned to the confirmation.
+   * @param input Authorized company scope, match identity, reviewed fact metadata, actor, and confirmation time.
    * @returns The confirmed match.
    * @throws {PurchasingFailure} When the match or fiscal document is invalid.
    */
-  async execute(id: SupplierInvoiceMatchId, occurredAt: string): Promise<SupplierInvoiceMatch> {
-    const match = await this.matches.find(id);
+  async execute(input: {
+    readonly scope: TaxReportingScope;
+    readonly id: SupplierInvoiceMatchId;
+    readonly occurredAt: string;
+    readonly actorId: string;
+    readonly factMetadata: FiscalDocumentFactMetadata;
+  }): Promise<SupplierInvoiceMatch> {
+    const actorId = input.actorId.trim();
+    if (!actorId) throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice match confirmation requires an authenticated actor.");
+    const match = await this.matches.find(input.scope, input.id, actorId);
     if (!match) {
       throw new PurchasingFailure("PURCHASE_NOT_FOUND", "Supplier invoice match does not exist.");
     }
-    const document = await this.fiscal.find(match.fiscalDocumentId);
+    if (match.companyId !== input.scope.companyId) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice match is outside the authorized company scope.");
+    }
+    const document = await this.fiscal.find(input.scope, match.fiscalDocumentId);
     if (
       !document ||
       document.companyId !== match.companyId ||
@@ -259,8 +324,19 @@ export class ConfirmSupplierInvoiceMatch {
         "Supplier invoice match requires a received fiscal invoice from the same company.",
       );
     }
-    const confirmed = match.confirm(occurredAt);
-    await this.commit.commitInvoiceMatch(confirmed);
+    assertAllocationsCoverFiscalDocument(match, document);
+    const supplier = await this.suppliers.findForInvoiceMatch(input.scope, match.supplierId, actorId);
+    if (!supplier || supplier.companyId !== match.companyId || (supplier.taxIdentifier !== null && document.issuer.taxIdentifier !== null && supplier.taxIdentifier !== document.issuer.taxIdentifier.toUpperCase().replace(/\s+/g, ""))) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Received fiscal invoice does not match the selected supplier identity.");
+    }
+    supplier.assertActive();
+    const counterpartyFiscalProfile = await this.fiscalProfiles.getEffectiveProfile(input.scope, supplier.id, document.issueDate!, actorId);
+    const fact = fiscalDocumentTaxFact(document, input.scope, { ...input.factMetadata, counterpartyFiscalProfile });
+    if (fact.direction !== "purchase") throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Received supplier invoice produced a non-purchase VAT fact.");
+    const confirmed = match.confirm(input.occurredAt);
+    const idempotencyKey = `supplier-invoice-match:${confirmed.id}:v${confirmed.version}`;
+    if (idempotencyKey.length > 128) throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice match idempotency identity is too long.");
+    await this.commit.commitInvoiceMatch(confirmed, fact, actorId, idempotencyKey);
     return confirmed;
   }
 }
@@ -328,4 +404,33 @@ async function requireReceipt(repository: GoodsReceiptRepository, id: GoodsRecei
   const receipt = await repository.find(id);
   if (!receipt) throw new PurchasingFailure("PURCHASE_NOT_FOUND", "Goods receipt does not exist.");
   return receipt;
+}
+
+function assertAllocationsCoverFiscalDocument(match: SupplierInvoiceMatch, document: FiscalDocument): void {
+  if (!sameCurrency(match.documentCurrency, document.documentCurrency)
+    || !sameCurrency(match.allocatedNetAmount.currency, document.totals.netAmount.currency)
+    || match.allocatedNetAmount.minorAmount !== document.totals.netAmount.minorAmount) {
+    throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice allocations do not reconcile to the fiscal document currency and net amount.");
+  }
+  const totals = new Map<string, bigint>();
+  const quantities = new Map<string, ExactDecimal>();
+  const units = new Map<string, string>();
+  for (const allocation of match.allocations) {
+    const line = document.lines.find((candidate) => candidate.id === allocation.fiscalLineId);
+    if (!line || !sameCurrency(allocation.netAmount.currency, line.netAmount.currency)) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice allocation references an absent fiscal line or another currency.");
+    }
+    totals.set(line.id, (totals.get(line.id) ?? 0n) + allocation.netAmount.minorAmount);
+    const unit = units.get(line.id);
+    if (unit !== undefined && unit !== allocation.invoicedQuantity.unit) {
+      throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Allocations for one fiscal line must use a consistent unit.");
+    }
+    units.set(line.id, allocation.invoicedQuantity.unit);
+    quantities.set(line.id, addDecimal(quantities.get(line.id) ?? exactDecimal("0"), allocation.invoicedQuantity.amount));
+  }
+  if (document.lines.length !== totals.size || document.lines.some((line) =>
+    totals.get(line.id) !== line.netAmount.minorAmount || compareDecimal(quantities.get(line.id) ?? exactDecimal("0"), line.quantity) !== 0
+  )) {
+    throw new PurchasingFailure("PURCHASE_INVOICE_MATCH_INVALID", "Invoice allocations must reconcile each fiscal line quantity and net amount exactly.");
+  }
 }

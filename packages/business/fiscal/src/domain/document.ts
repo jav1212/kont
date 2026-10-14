@@ -274,13 +274,13 @@ function validateTotals(totals: FiscalDocumentTotals, document: Pick<FiscalDocum
 function summarizeTaxes(taxes: readonly FiscalTaxDetermination[]): readonly FiscalTaxSummary[] {
   const summaries = new Map<string, FiscalTaxSummary>();
   for (const tax of taxes) {
-    const key = `${tax.taxCode}|${tax.category}|${tax.calculationMode}|${tax.rate}`;
+    const key = `${tax.taxCode}|${tax.category}|${tax.taxCategory ?? "legacy"}|${tax.legacyRateSlot ?? "none"}|${tax.component ?? "base"}|${tax.rateCategory ?? "legacy"}|${tax.calculationMode}|${tax.rate}`;
     const current = summaries.get(key);
     summaries.set(key, current === undefined
-      ? { taxCode: tax.taxCode, category: tax.category, calculationMode: tax.calculationMode, rate: tax.rate, taxableBase: tax.taxableBase, amount: tax.amount }
+      ? { taxCode: tax.taxCode, category: tax.category, ...(tax.taxCategory === undefined ? {} : { taxCategory: tax.taxCategory }), ...(tax.legacyRateSlot === undefined ? {} : { legacyRateSlot: tax.legacyRateSlot }), ...(tax.rateCategory === undefined ? {} : { rateCategory: tax.rateCategory }), ...(tax.component === undefined ? {} : { component: tax.component }), calculationMode: tax.calculationMode, rate: tax.rate, taxableBase: tax.taxableBase, amount: tax.amount }
       : { ...current, taxableBase: addMoney(current.taxableBase, tax.taxableBase), amount: addMoney(current.amount, tax.amount) });
   }
-  return [...summaries.values()].sort((left, right) => `${left.taxCode}|${left.category}|${left.calculationMode}|${left.rate}`.localeCompare(`${right.taxCode}|${right.category}|${right.calculationMode}|${right.rate}`));
+  return [...summaries.values()].sort((left, right) => taxSummaryKey(left).localeCompare(taxSummaryKey(right)));
 }
 
 function sameTaxSummaries(actual: readonly FiscalTaxSummary[], expected: readonly FiscalTaxSummary[], currency: CurrencyDefinition): boolean {
@@ -289,13 +289,16 @@ function sameTaxSummaries(actual: readonly FiscalTaxSummary[], expected: readonl
     requireCurrency(summary.taxableBase, currency);
     requireCurrency(summary.amount, currency);
     return summary;
-  }).sort((left, right) => `${left.taxCode}|${left.category}|${left.calculationMode}|${left.rate}`.localeCompare(`${right.taxCode}|${right.category}|${right.calculationMode}|${right.rate}`));
+  }).sort((left, right) => taxSummaryKey(left).localeCompare(taxSummaryKey(right)));
   return normalized.every((summary, index) => {
     const wanted = expected[index];
-    return wanted !== undefined && summary.taxCode === wanted.taxCode && summary.category === wanted.category &&
-      summary.calculationMode === wanted.calculationMode && summary.rate === wanted.rate &&
+    return wanted !== undefined && taxSummaryKey(summary) === taxSummaryKey(wanted) &&
       summary.taxableBase.minorAmount === wanted.taxableBase.minorAmount && summary.amount.minorAmount === wanted.amount.minorAmount;
   });
+}
+
+function taxSummaryKey(value: FiscalTaxSummary): string {
+  return `${value.taxCode}|${value.category}|${value.taxCategory ?? "legacy"}|${value.legacyRateSlot ?? "none"}|${value.component ?? "base"}|${value.rateCategory ?? "legacy"}|${value.calculationMode}|${value.rate}`;
 }
 
 function validateReference(type: FiscalDocumentType, reference: AffectedFiscalDocument | null): AffectedFiscalDocument | null {
