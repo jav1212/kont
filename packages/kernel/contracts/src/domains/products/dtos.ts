@@ -99,7 +99,10 @@ export interface UpdateProductSalePricingDto {
 export interface ProductTaxationDto {
   readonly profileId: string;
   readonly taxCode: string;
-  readonly treatment: "taxed" | "exempt" | "exonerated" | "not_subject";
+  readonly treatment: "taxed" | "zero_rated" | "exempt" | "exonerated" | "not_subject";
+  readonly category: "general" | "reduced" | "zero_rated" | "luxury_surcharge" | "payment_surcharge" | "other" | null;
+  readonly legacyRateSlot: "a1" | "a2" | "a3" | "a4" | "a5" | null;
+  readonly priceMode: "tax_exclusive" | "tax_inclusive" | null;
   readonly effectiveFrom: string;
   readonly effectiveTo: string | null;
   readonly resolvedRate: string;
@@ -108,7 +111,7 @@ export interface ProductTaxationDto {
   readonly version: number;
 }
 export interface UpdateProductTaxationDto {
-  readonly treatment: "taxed" | "exempt" | "exonerated" | "not_subject";
+  readonly treatment: "taxed" | "zero_rated" | "exempt" | "exonerated" | "not_subject";
   readonly effectiveFrom: string;
   readonly legalBasis: string;
   readonly expectedVersion: number;
