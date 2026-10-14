@@ -42,7 +42,7 @@ export async function getCompanyDocumentSeriesWebContext(tenant: TenantContext, 
   return {
     company: data,
     actions: {
-      ...companyDocumentSeriesConfigurationActions(authorization, repository),
+      documentSeries: companyDocumentSeriesConfigurationActions(authorization, repository),
       scope: () => ({ actorUserId: actor.actorUserId, organizationId: actor.organizationId }),
     },
   };
