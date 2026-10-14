@@ -12,7 +12,7 @@ import {
   taxationDate,
   type TaxTreatment,
 } from "../../src/domain";
-import { VENEZUELAN_IVA, resolveVenezuelanVat } from "../../src/venezuela";
+import { VENEZUELAN_IVA, resolveVenezuelanVat, resolveVenezuelanVatComponents } from "../../src/venezuela";
 
 const VES = currency("VES", 2);
 
@@ -50,6 +50,52 @@ test("tax included in price separates base and VAT without changing the line tot
   const decision = resolveVenezuelanVat({ profile: profile("taxed"), rules: [rule("taxed", "16", "tax_inclusive")], operationDate: "2026-08-13", lineReference: "line-1", lineAmount: moneyFromDecimal("116", VES), roundingMode: "half_up" });
   assert.equal(decision.taxableBase.minorAmount, 10_000n);
   assert.equal(decision.amount.minorAmount, 1_600n);
+});
+
+test("operation presentation overrides the legal rule display mode without changing the rule", () => {
+  const decision = resolveVenezuelanVat({ profile: profile("taxed"), rules: [rule("taxed", "16")], operationDate: "2026-08-13", lineReference: "line-operation-mode", lineAmount: moneyFromDecimal("116", VES), roundingMode: "half_up", priceMode: "tax_inclusive" });
+  assert.equal(decision.calculationMode, "tax_inclusive");
+  assert.equal(decision.taxableBase.minorAmount, 10_000n);
+  assert.equal(decision.amount.minorAmount, 1_600n);
+});
+
+test("zero-rated product retains its taxable base while producing zero VAT", () => {
+  const decision = resolveVenezuelanVat({ profile: profile("zero_rated"), rules: [rule("zero_rated", "0")], operationDate: "2026-08-13", lineReference: "line-zero-rated", lineAmount: moneyFromDecimal("100", VES), roundingMode: "half_up" });
+  assert.equal(decision.treatment, "zero_rated");
+  assert.equal(decision.taxableBase.minorAmount, 10_000n);
+  assert.equal(decision.amount.minorAmount, 0n);
+});
+
+test("additional IVA components are composed with base IVA and cannot replace it", () => {
+  const paymentComponent = taxRule({
+    ...rule("taxed", "3"),
+    id: taxRuleId("iva-payment-component"),
+    category: "payment_surcharge",
+    component: "payment",
+  });
+  const luxuryComponent = taxRule({
+    ...rule("taxed", "15"),
+    id: taxRuleId("iva-luxury-component"),
+    category: "luxury_surcharge",
+    component: "luxury",
+  });
+  const input = { profile: profile("taxed"), rules: [rule("taxed", "16")], operationDate: "2026-08-13", lineReference: "line-payment-component", lineAmount: moneyFromDecimal("116", VES), roundingMode: "half_up" as const, priceMode: "tax_inclusive" as const };
+  assert.throws(() => resolveVenezuelanVat({ ...input, rules: [paymentComponent] }), TaxationFailure);
+  assert.throws(() => resolveVenezuelanVatComponents({ ...input, additionalComponents: [{ rule: paymentComponent, source: { kind: "payment", reference: "payment-1" } }] }), TaxationFailure);
+  const decisions = resolveVenezuelanVatComponents({ ...input, additionalComponents: [
+    { rule: luxuryComponent, source: { kind: "line", reference: "line-payment-component" } },
+    { rule: paymentComponent, source: { kind: "payment", reference: "payment-1" }, taxableBase: moneyFromDecimal("50", VES) },
+  ] });
+  assert.equal(decisions.length, 3);
+  assert.equal(decisions[0]?.amount.minorAmount, 1_600n);
+  assert.equal(decisions[0]?.taxableBase.minorAmount, 10_000n);
+  assert.equal(decisions[1]?.component, "luxury");
+  assert.equal(decisions[1]?.taxableBase.minorAmount, 10_000n);
+  assert.equal(decisions[1]?.amount.minorAmount, 1_500n);
+  assert.equal(decisions[2]?.component, "payment");
+  assert.equal(decisions[2]?.source.kind, "payment");
+  assert.equal(decisions[2]?.taxableBase.minorAmount, 5_000n);
+  assert.equal(decisions[2]?.amount.minorAmount, 150n);
 });
 
 test("a product classification outside its validity blocks VAT resolution", () => {

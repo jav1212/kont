@@ -7,10 +7,14 @@ import {
 } from "@kontave/fiscal/domain";
 import type { TaxDecision, TaxTreatment } from "../domain";
 
+/** Maps a shared tax decision into the immutable fiscal-document tax snapshot. @param decision - Previously resolved tax decision and provenance. @returns Validated fiscal determination. @throws {FiscalFailure} When the snapshot violates fiscal-document invariants. */
 export function toFiscalTaxDetermination(decision: TaxDecision): FiscalTaxDetermination {
   return fiscalTaxDetermination({
     taxCode: decision.taxCode,
     category: fiscalCategory(decision.treatment),
+    ...(decision.category === undefined || decision.category === null ? {} : { taxCategory: decision.category }),
+    ...(decision.legacyRateSlot === undefined || decision.legacyRateSlot === null ? {} : { legacyRateSlot: decision.legacyRateSlot }),
+    ...(decision.component === undefined ? {} : { component: decision.component }),
     calculationMode: decision.calculationMode,
     rate: decision.rate,
     taxableBase: decision.taxableBase,
@@ -22,6 +26,7 @@ export function toFiscalTaxDetermination(decision: TaxDecision): FiscalTaxDeterm
   });
 }
 
+/** Maps an ordered set of decisions while retaining one deterministic snapshot per source. @param decisions - Decisions resolved by the taxation package. @returns Immutable fiscal determinations in input order. @throws {FiscalFailure} When any determination fails fiscal validation. */
 export function toFiscalTaxDeterminations(decisions: readonly TaxDecision[]): readonly FiscalTaxDetermination[] {
   return Object.freeze(decisions.map(toFiscalTaxDetermination));
 }

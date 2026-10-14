@@ -37,6 +37,7 @@ import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
 import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 import { ServiceTaxClassificationEditor } from "./service-tax-classification-editor";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -55,6 +56,15 @@ const PAYMENT_TERMS: { value: PaymentTerms; label: string }[] = [
     { value: "credito_90",   label: "Crédito 90 días" },
     { value: "otro",         label: "Otro" },
 ];
+
+interface FiscalSeriesOption { readonly id: string; readonly code: string; readonly prefix: string | null; readonly nextNumber: number; readonly maximumNumber: number; readonly active: boolean; }
+interface FiscalCandidateReview {
+    readonly invoiceId: string;
+    readonly document: { readonly id: string; readonly lines: readonly { readonly id: string; readonly description: string; readonly quantity: string; readonly unitCode: string; readonly netAmount: { readonly minorAmount: string } }[]; readonly totals: { readonly netAmount: { readonly minorAmount: string }; readonly taxTotal: { readonly minorAmount: string }; readonly payableAmount: { readonly minorAmount: string } }; readonly taxDeterminations?: readonly { readonly taxCode: string; readonly rate: string; readonly legalBasis: string | null; readonly classificationLegalBasis: string | null }[] };
+    readonly sourceUpdatedAt: string;
+    readonly factId: string;
+}
+const fiscalInputClass = "h-10 rounded-lg border border-border-light bg-surface-1 px-3 text-sm";
 
 function emptyItem(): SalesInvoiceItem {
     return {
@@ -75,6 +85,11 @@ function todayStr(): string {
 
 function round2(n: number): number {
     return Math.round(n * 100) / 100;
+}
+
+function minorToVes(minorAmount: string): string {
+    const minor = Number(minorAmount);
+    return Number.isFinite(minor) ? `VES ${fmtN(minor / 100)}` : "Importe no disponible";
 }
 
 function emptyCustomer(companyId: string): Customer {
@@ -122,6 +137,15 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [unconfirming, setUnconfirming]   = useState(false);
     const [preparingFiscalDraft, setPreparingFiscalDraft] = useState(false);
     const [fiscalDraftId, setFiscalDraftId] = useState<string | null>(null);
+    const [fiscalCandidate, setFiscalCandidate] = useState<FiscalCandidateReview | null>(null);
+    const [fiscalSeries, setFiscalSeries] = useState<FiscalSeriesOption[]>([]);
+    const [selectedFiscalSeriesId, setSelectedFiscalSeriesId] = useState("");
+    const [fiscalIssueDate, setFiscalIssueDate] = useState("");
+    const [fiscalRecognitionDate, setFiscalRecognitionDate] = useState("");
+    const [counterpartyCountryCode, setCounterpartyCountryCode] = useState("");
+    const [fiscalReviewError, setFiscalReviewError] = useState<string | null>(null);
+    const fiscalIssueCommand = useRef<{ readonly issuedAt: string; readonly idempotencyKey: string } | null>(null);
+    const [fiscalIssueSubmitted, setFiscalIssueSubmitted] = useState(false);
     const [classificationLineIndex, setClassificationLineIndex] = useState<number | null>(null);
     const activeCompanyIdRef = useRef(companyId);
     const activeInvoiceIdRef = useRef(currentSalesInvoice?.id ?? invoiceId);
@@ -130,6 +154,12 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         activeCompanyIdRef.current = companyId;
         activeInvoiceIdRef.current = currentSalesInvoice?.id ?? invoiceId;
         setFiscalDraftId(null);
+        setFiscalCandidate(null);
+        setFiscalSeries([]);
+        setSelectedFiscalSeriesId("");
+        setFiscalReviewError(null);
+        fiscalIssueCommand.current = null;
+        setFiscalIssueSubmitted(false);
         setClassificationLineIndex(null);
     }, [companyId, currentSalesInvoice?.id, invoiceId]);
     const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -182,7 +212,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
 
     const isExistingInvoice = invoiceId != null && invoiceId !== "";
     const isConfirmed       = isExistingInvoice && currentSalesInvoice?.status === "confirmada";
-    const isReadOnly        = isConfirmed;
+    const isReadOnly        = isConfirmed || fiscalCandidate !== null;
     const isDeliveryNote    = documentType === "nota_entrega";
 
     function changeDocumentType(nextType: SalesDocumentType) {
@@ -473,9 +503,35 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     async function handleConfirm() {
         if (!validate()) return;
         setConfirming(true);
-        const saved = await saveSalesInvoice(buildInvoice(), itemsForSave());
-        if (!saved) { setConfirming(false); return; }
-        const confirmed = await confirmSalesInvoice(saved.id!, { allowNegativeStock: true });
+        const saved = fiscalCandidate ? { id: fiscalCandidate.invoiceId } : await saveSalesInvoice(buildInvoice(), itemsForSave());
+        if (!saved?.id) { setConfirming(false); return; }
+        let confirmed: SalesInvoice | null;
+        if (fiscalCandidate) {
+            if (!selectedFiscalSeriesId || !fiscalIssueDate || !fiscalRecognitionDate) { notify.error("Indica la serie, la fecha de emisión y la fecha de reconocimiento IVA."); setConfirming(false); return; }
+            if (!fiscalIssueCommand.current) {
+                fiscalIssueCommand.current = { issuedAt: new Date().toISOString(), idempotencyKey: crypto.randomUUID() };
+            }
+            setFiscalIssueSubmitted(true);
+            confirmed = await confirmSalesInvoice(saved.id!, {
+                allowNegativeStock: true,
+                fiscalIva: {
+                    sourceUpdatedAt: fiscalCandidate.sourceUpdatedAt,
+                    issuedAt: fiscalIssueCommand.current.issuedAt,
+                    issueDate: fiscalIssueDate,
+                    idempotencyKey: fiscalIssueCommand.current.idempotencyKey,
+                    seriesScope: "company",
+                    seriesSelection: { kind: "explicit", seriesId: selectedFiscalSeriesId },
+                    factMetadata: {
+                        factId: fiscalCandidate.factId,
+                        lineageKey: `sale:${saved.id}`,
+                        recognitionDate: fiscalRecognitionDate,
+                        counterpartyCountryCode: counterpartyCountryCode.trim().toUpperCase() || null,
+                    },
+                },
+            });
+        } else {
+            confirmed = await confirmSalesInvoice(saved.id!, { allowNegativeStock: true });
+        }
         if (confirmed && companyId) await loadProducts(companyId, true);
         setConfirming(false);
         if (confirmed && !isExistingInvoice) {
@@ -493,19 +549,54 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         setUnconfirming(false);
     }
 
+    async function handlePrepareFiscalIssuance() {
+        if (!companyId || !validate()) return;
+        const saved = await saveSalesInvoice(buildInvoice(), itemsForSave());
+        if (!saved?.id) return;
+        const requestedInvoiceId = saved.id;
+        setPreparingFiscalDraft(true);
+        setFiscalReviewError(null);
+        try {
+            const params = new URLSearchParams({ companyId, mode: "atomic-candidate" });
+            const [candidateResponse, seriesResponse] = await Promise.all([
+                apiFetch(`/api/fiscal/sales/${encodeURIComponent(requestedInvoiceId)}/prepare?${params}`, { method: "POST" }),
+                apiFetch(`/api/companies/document-series?companyId=${encodeURIComponent(companyId)}`, { cache: "no-store" }),
+            ]);
+            const candidatePayload = await candidateResponse.json().catch(() => null);
+            const seriesPayload = await seriesResponse.json().catch(() => null);
+            if (!candidateResponse.ok) throw new Error(candidatePayload?.error ?? "No fue posible preparar la revisión tributaria.");
+            if (!seriesResponse.ok) throw new Error(seriesPayload?.error ?? "No fue posible consultar las series de facturación.");
+            const data = candidatePayload?.data;
+            if (!data?.document?.id || typeof data.sourceUpdatedAt !== "string") throw new Error("La revisión tributaria no contiene una versión verificable de la factura.");
+            const choices = Array.isArray(seriesPayload?.data) ? (seriesPayload.data as FiscalSeriesOption[]).filter((item) => item.active && item.nextNumber <= item.maximumNumber) : [];
+            setFiscalSeries(choices);
+            setSelectedFiscalSeriesId("");
+            setFiscalCandidate({ invoiceId: requestedInvoiceId, document: data.document, sourceUpdatedAt: data.sourceUpdatedAt, factId: crypto.randomUUID() });
+            fiscalIssueCommand.current = null;
+            setFiscalIssueSubmitted(false);
+            setFiscalIssueDate("");
+            setFiscalRecognitionDate("");
+            setFiscalDraftId(null);
+            if (!choices.length) setFiscalReviewError("No hay series activas con numeración disponible. Configura una serie en Ajustes → IVA.");
+        } catch (cause) {
+            const text = cause instanceof Error ? cause.message : "No fue posible preparar la revisión tributaria.";
+            setFiscalReviewError(text); notify.error(text);
+        } finally { setPreparingFiscalDraft(false); }
+    }
+
     async function handlePrepareFiscalDraft() {
         if (!currentSalesInvoice?.id || !companyId) return;
-        const requestedCompanyId = companyId;
-        const requestedInvoiceId = currentSalesInvoice.id;
         setPreparingFiscalDraft(true);
-        const prepared = await prepareFiscalDraft(requestedInvoiceId, companyId);
-        if (prepared && activeCompanyIdRef.current === requestedCompanyId && activeInvoiceIdRef.current === requestedInvoiceId) setFiscalDraftId(prepared.documentId);
+        const prepared = await prepareFiscalDraft(currentSalesInvoice.id, companyId);
+        if (prepared && activeCompanyIdRef.current === companyId && activeInvoiceIdRef.current === currentSalesInvoice.id) setFiscalDraftId(prepared.documentId);
         setPreparingFiscalDraft(false);
     }
 
-    const fiscalPreparationEligible = isConfirmed
+    const fiscalIssuanceEligible = !isConfirmed && isExistingInvoice
         && !isDeliveryNote
         && items.length > 0
+        && items.every((item) => !item.productId && item.description.trim() && item.serviceTaxCode?.trim());
+    const fiscalPreparationEligible = isConfirmed && !isDeliveryNote && items.length > 0
         && items.every((item) => !item.productId && item.description.trim() && item.serviceTaxCode?.trim());
 
     async function handleDownloadPdf() {
@@ -840,7 +931,9 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                         </div>
                         <div className="mt-5 grid gap-2 border-t border-border-light pt-4">
                             {!isReadOnly && <>
-                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : isDeliveryNote ? "Confirmar nota de entrega" : "Confirmar factura"}</BaseButton.Root>
+                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming || Boolean(fiscalCandidate && (!selectedFiscalSeriesId || !fiscalIssueDate || !fiscalRecognitionDate))}>{confirming ? "Confirmando…" : fiscalCandidate ? "Confirmar y emitir con IVA" : isDeliveryNote ? "Confirmar nota de entrega" : "Confirmar factura"}</BaseButton.Root>
+                                {!isDeliveryNote && isExistingInvoice && !isConfirmed && <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handlePrepareFiscalIssuance} disabled={saving || confirming || preparingFiscalDraft || !fiscalIssuanceEligible}>{preparingFiscalDraft ? "Preparando revisión…" : "Revisar emisión IVA"}</BaseButton.Root>}
+                                {!isDeliveryNote && isExistingInvoice && !isConfirmed && !fiscalIssuanceEligible && <p className="text-[11px] leading-snug text-[var(--text-tertiary)]">La emisión fiscal atómica admite por ahora servicios en VES, con cada línea clasificada, sin ajustes de cabecera ni impuesto financiero.</p>}
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>{saving ? "Guardando…" : "Guardar borrador"}</BaseButton.Root>
                             </>}
                             {isConfirmed && <>
@@ -851,6 +944,19 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
                             </>}
                         </div>
+                        {fiscalCandidate && !isConfirmed && <div className="mt-4 space-y-3 rounded-xl border border-info/30 bg-info/5 p-4 text-sm">
+                            <div><h3 className="font-semibold">Revisión de emisión IVA</h3><p className="mt-1 text-xs text-[var(--text-secondary)]">Candidato reconstruido en servidor. Aún no es un documento emitido; la factura se confirmará solo al aceptar la serie.</p></div>
+                            <dl className="grid grid-cols-2 gap-2 text-xs"><dt>Base</dt><dd className="text-right">{minorToVes(fiscalCandidate.document.totals.netAmount.minorAmount)}</dd><dt>Impuestos</dt><dd className="text-right">{minorToVes(fiscalCandidate.document.totals.taxTotal.minorAmount)}</dd><dt>Total</dt><dd className="text-right font-semibold">{minorToVes(fiscalCandidate.document.totals.payableAmount.minorAmount)}</dd></dl>
+                            <ul className="space-y-2 text-xs">{(fiscalCandidate.document.taxDeterminations ?? []).map((tax, index) => <li key={`${tax.taxCode}-${index}`} className="border-l-2 border-info/40 pl-2"><p>{tax.taxCode} · {tax.rate}%</p><p>Fundamento: {tax.legalBasis ?? "No registrado"}</p><p>Clasificación: {tax.classificationLegalBasis ?? "No registrada"}</p></li>)}</ul>
+                            <div className="max-h-48 overflow-y-auto rounded border border-border-light p-2 text-xs"><p className="mb-1 font-semibold">Líneas incluidas</p>{fiscalCandidate.document.lines.map((line) => <div key={line.id} className="flex justify-between gap-3 border-t border-border-light py-1"><span>{line.description} · {line.quantity} {line.unitCode}</span><span className="shrink-0">{minorToVes(line.netAmount.minorAmount)}</span></div>)}</div>
+                            <label className="grid gap-1 text-xs">Serie de facturación<select disabled={fiscalIssueSubmitted} value={selectedFiscalSeriesId} onChange={(event) => setSelectedFiscalSeriesId(event.target.value)} className={fiscalInputClass}><option value="">Selecciona una serie</option>{fiscalSeries.map((series) => <option key={series.id} value={series.id}>{series.code}{series.prefix ? ` · ${series.prefix}` : ""} · próximo {series.nextNumber}</option>)}</select></label>
+                            <label className="grid gap-1 text-xs">Fecha de emisión<input disabled={fiscalIssueSubmitted} type="date" value={fiscalIssueDate} onChange={(event) => setFiscalIssueDate(event.target.value)} className={fiscalInputClass} /></label>
+                            <label className="grid gap-1 text-xs">Fecha de reconocimiento IVA<input disabled={fiscalIssueSubmitted} required type="date" value={fiscalRecognitionDate} onChange={(event) => setFiscalRecognitionDate(event.target.value)} className={fiscalInputClass} /></label>
+                            <label className="grid gap-1 text-xs">País de la contraparte (ISO-3166-1 alfa-2; opcional)<input disabled={fiscalIssueSubmitted} maxLength={2} value={counterpartyCountryCode} onChange={(event) => setCounterpartyCountryCode(event.target.value.toUpperCase())} className={fiscalInputClass} placeholder="VE" /></label>
+                            {fiscalReviewError && <p role="alert" className="text-xs text-danger">{fiscalReviewError}</p>}
+                            {!selectedFiscalSeriesId && <p className="text-xs text-[var(--text-tertiary)]">Selecciona explícitamente una serie antes de confirmar y emitir.</p>}
+                            <button type="button" disabled={fiscalIssueSubmitted} onClick={() => { setFiscalCandidate(null); setFiscalReviewError(null); setSelectedFiscalSeriesId(""); fiscalIssueCommand.current = null; }} className="text-left text-xs font-semibold text-[var(--text-secondary)] underline disabled:opacity-50">Cancelar revisión</button>
+                        </div>}
                     </InvoiceSummaryCard>
                 </aside>
             </div>

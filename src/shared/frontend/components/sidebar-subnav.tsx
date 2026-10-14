@@ -21,6 +21,7 @@ import {
     BadgePercent,
     BarChart3,
     BookOpen,
+    Briefcase,
     Building2,
     Boxes,
     Calculator,
@@ -28,6 +29,7 @@ import {
     CalendarRange,
     CircleDot,
     ClipboardList,
+    Coins,
     CreditCard,
     DollarSign,
     Download,
@@ -37,6 +39,7 @@ import {
     HandCoins,
     History,
     LayoutDashboard,
+    Landmark,
     ListTree,
     MonitorCog,
     Package,
@@ -47,6 +50,7 @@ import {
     Scale,
     ScrollText,
     ScanBarcode,
+    ShoppingCart,
     Settings,
     ShieldCheck,
     TreePalm,
@@ -55,6 +59,7 @@ import {
     UserRound,
     Users,
     WalletCards,
+    Wrench,
     type LucideIcon,
 } from "lucide-react";
 import type { SubNavItem } from "@/src/shared/frontend/navigation";
@@ -127,6 +132,7 @@ const NAV_ITEM_ICONS: Record<string, LucideIcon> = {
     "/inventory/report": BarChart3,
     "/inventory/balance-report": Scale,
     "/inventory/islr-report": FileText,
+    "/treasury": Landmark,
     "/accounting": LayoutDashboard,
     "/accounting/charts": ListTree,
     "/accounting/accounts": WalletCards,
@@ -155,6 +161,32 @@ const SETTINGS_ITEM_ICONS: Record<string, LucideIcon> = {
     user: UserRound,
 };
 
+const SEMANTIC_ICONS: Readonly<Record<string, LucideIcon>> = {
+    activity: Activity,
+    archive: Archive,
+    book: BookOpen,
+    briefcase: Briefcase,
+    building: Building2,
+    calendar: CalendarDays,
+    chart: BarChart3,
+    clipboard: ClipboardList,
+    coins: Coins,
+    "credit-card": CreditCard,
+    document: FileText,
+    folder: FolderOpen,
+    home: LayoutDashboard,
+    inventory: Package,
+    people: Users,
+    receipt: ReceiptText,
+    settings: Settings,
+    shield: ShieldCheck,
+    "shopping-cart": ShoppingCart,
+    tool: Wrench,
+    truck: Truck,
+    user: UserRound,
+    wallet: WalletCards,
+};
+
 interface SidebarSubnavProps {
     subnav: SubNavItem[];
     pathname: string;
@@ -177,10 +209,12 @@ export function SidebarSubnav({ subnav, pathname, compact = false }: SidebarSubn
 
     return (
         <div className="flex flex-col">
-            {subnav.map(({ href, label, group, beta, icon }, idx) => {
+            {subnav.map(({ href, label, group, beta, icon, iconKey }, idx) => {
                 const isActive  = pathname === href;
                 const isRoot    = !group;
-                const Icon      = (icon ? SETTINGS_ITEM_ICONS[icon] : NAV_ITEM_ICONS[href]) ?? CircleDot;
+                const Icon      = (iconKey ? SEMANTIC_ICONS[iconKey] : undefined)
+                    ?? (icon ? SETTINGS_ITEM_ICONS[icon] : NAV_ITEM_ICONS[href])
+                    ?? CircleDot;
                 const showGroup = group && !seenGroups.has(group) && (() => { seenGroups.add(group); return true; })();
                 const showGroupLabel = showGroup && href.startsWith("/settings/");
 

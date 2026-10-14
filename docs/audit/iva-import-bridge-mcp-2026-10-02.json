@@ -1,0 +1,81 @@
+{
+  "observedAt": "2026-10-02",
+  "projectRef": "fvantswxhepvkloygcvc",
+  "method": "Supabase MCP execute_sql; read-only SELECT against information_schema",
+  "query": "select table_name, column_name, data_type from information_schema.columns where table_schema='public' and table_name in ('shared_inventory_purchase_import_batches','shared_inventory_purchase_import_lines') order by table_name, ordinal_position",
+  "tables": {
+    "shared_inventory_purchase_import_batches": [
+      "tenant_id uuid",
+      "id text",
+      "company_id text",
+      "period text",
+      "source_file_name text",
+      "source_file_hash text",
+      "source_company_rif text",
+      "status text",
+      "created_by uuid",
+      "created_at timestamp with time zone",
+      "updated_at timestamp with time zone",
+      "source_metadata jsonb",
+      "configuration jsonb",
+      "revision integer"
+    ],
+    "shared_inventory_purchase_import_lines": [
+      "tenant_id uuid",
+      "id text",
+      "batch_id text",
+      "source_row integer",
+      "operation text",
+      "supplier_rif text",
+      "supplier_name text",
+      "invoice_date date",
+      "period text",
+      "document_type text",
+      "document_number text",
+      "control_number text",
+      "expected_total numeric",
+      "expected_exempt numeric",
+      "expected_taxable_base numeric",
+      "expected_vat_rate numeric",
+      "expected_vat_amount numeric",
+      "expected_retention numeric",
+      "invoice_id text",
+      "status text",
+      "warnings jsonb",
+      "actual_subtotal numeric",
+      "actual_vat_amount numeric",
+      "actual_total numeric",
+      "difference_subtotal numeric",
+      "difference_vat_amount numeric",
+      "difference_total numeric",
+      "created_at timestamp with time zone",
+      "updated_at timestamp with time zone",
+      "source_header jsonb",
+      "source_items jsonb",
+      "calculation jsonb",
+      "execution_mode text",
+      "processed_at timestamp with time zone"
+    ]
+  },
+  "reportingPersistenceCheck": {
+    "query": "select to_regclass('public.shared_tax_reporting_facts') as facts, to_regclass('public.shared_tax_reporting_fact_commands') as commands, exists(select 1 from pg_proc where proname='shared_tax_reporting_fact_append') as append_fact, exists(select 1 from pg_proc where proname='shared_tax_reporting_fact_list') as list_facts",
+    "result": {
+      "facts": null,
+      "commands": null,
+      "append_fact": false,
+      "list_facts": false
+    }
+  },
+  "recheckedOn2026-10-02": {
+    "projectUrl": "https://fvantswxhepvkloygcvc.supabase.co",
+    "query": "select to_regclass('public.shared_tax_reporting_facts') as facts, to_regclass('public.shared_tax_reporting_fact_commands') as commands, exists(select 1 from pg_proc where proname='shared_tax_reporting_fact_append') as append_fact, exists(select 1 from pg_proc where proname='shared_tax_reporting_fact_list') as list_facts",
+    "result": { "facts": null, "commands": null, "append_fact": false, "list_facts": false },
+    "method": "Supabase MCP execute_sql; read-only metadata query"
+  },
+  "conclusion": "These are file-import/reconciliation records. The inspected columns do not establish customs declaration identity, tariff classification, customs payment, or an exemption certificate, so they do not by themselves evidence IVA-021 customs import treatment.",
+  "limitations": [
+    "This query inspected column metadata only; it did not read tenant data or verify the source CSV contents.",
+    "The project environment is not identified by this query.",
+    "Absence of customs-named columns does not rule out a separately stored document or JSON payload; none was validated by this metadata query."
+  ]
+}

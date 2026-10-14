@@ -7,14 +7,23 @@
 // with the module's glyph inside. Click → floating listbox menu.
 
 import { useRef, useState } from "react";
-import { Settings } from "lucide-react";
+import { Activity, Archive, BookOpen, Briefcase, Building2, CalendarDays, BarChart3, ClipboardList, Coins, CreditCard, FileText, Folder, Home, Package, Users, Receipt, Settings, Shield, ShoppingCart, Wrench, Truck, UserRound, Wallet, type LucideIcon } from "lucide-react";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
 // ── Module icons ───────────────────────────────────────────────────────────────
 // Rendered at two sizes: 13px inside the dropdown rows, 16px inside the avatar tile.
 
-function renderModuleIcon(id: string, size: number) {
+const SEMANTIC_ICONS: Readonly<Record<string, LucideIcon>> = {
+    activity: Activity, archive: Archive, book: BookOpen, briefcase: Briefcase, building: Building2,
+    calendar: CalendarDays, chart: BarChart3, clipboard: ClipboardList, coins: Coins, "credit-card": CreditCard,
+    document: FileText, folder: Folder, home: Home, inventory: Package, people: Users, receipt: Receipt,
+    settings: Settings, shield: Shield, "shopping-cart": ShoppingCart, tool: Wrench, truck: Truck, user: UserRound, wallet: Wallet,
+};
+
+function renderModuleIcon(id: string, size: number, iconKey?: string) {
+    const SemanticIcon = iconKey ? SEMANTIC_ICONS[iconKey] : undefined;
+    if (SemanticIcon) return <SemanticIcon size={size} strokeWidth={1.6} aria-hidden="true" />;
     const s = size;
     const props = {
         width: s, height: s, viewBox: "0 0 16 16",
@@ -119,7 +128,7 @@ const CheckIcon = () => (
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type SelectableModule = { id: string; label: string; href: string };
+export type SelectableModule = { id: string; label: string; href: string; iconKey?: string };
 
 interface SidebarModuleSelectorProps {
     modules: SelectableModule[];
@@ -178,7 +187,7 @@ export function SidebarModuleSelector({
                     aria-hidden="true"
                     className="flex items-center justify-center w-9 h-9 rounded-md bg-primary-500/10 border border-primary-500/20 text-primary-500 shrink-0"
                 >
-                    {activeModuleId && renderModuleIcon(activeModuleId, 16)}
+                    {activeModuleId && renderModuleIcon(activeModuleId, 16, activeModule?.iconKey)}
                 </span>
 
                 {/* Name + subtitle */}
@@ -231,7 +240,7 @@ export function SidebarModuleSelector({
                                             "flex items-center justify-center w-5 h-5 shrink-0",
                                             isSelected ? "text-primary-500" : "text-sidebar-label",
                                         ].join(" ")}>
-                                            {renderModuleIcon(mod.id, 16)}
+                                            {renderModuleIcon(mod.id, 16, mod.iconKey)}
                                         </span>
                                         <span className="truncate flex-1">{mod.label}</span>
                                         {isSelected && <CheckIcon />}

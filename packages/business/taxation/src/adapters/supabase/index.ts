@@ -7,6 +7,7 @@ import type {
   SetProductTaxTreatmentInput,
   TaxationContext,
 } from "../../application";
+import { ResolveProductVenezuelanVat, ResolveServiceVenezuelanVat } from "../../application";
 import {
   ProductTaxProfile,
   TaxationFailure,
@@ -14,20 +15,28 @@ import {
   taxCode,
   taxRule,
   taxRuleId,
+  taxRuleCategory,
+  legacyRateSlot,
   taxationDate,
   type TaxCode,
   type TaxRule,
 } from "../../domain";
 import { z } from "zod";
+import { createSupabaseTaxationConfigurationRepository } from "./taxation-configuration";
+import { createSupabaseServiceTaxationRepository } from "./service-taxation";
 export { SupabaseServiceTaxationRepository, createSupabaseServiceTaxationRepository } from "./service-taxation";
+export { SupabaseTaxationConfigurationRepository, createSupabaseTaxationConfigurationRepository } from "./taxation-configuration";
 
 const assignmentSchema = z.object({
   taxCode: z.string(),
-  treatment: z.enum(["taxed", "exempt", "exonerated", "not_subject"]),
+  treatment: z.enum(["taxed", "zero_rated", "exempt", "exonerated", "not_subject"]),
   effectiveFrom: z.string(),
   effectiveTo: z.string().nullable(),
   legalBasis: z.string(),
   classificationVersion: z.string(),
+  legacyRateSlot: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  priceMode: z.enum(["tax_exclusive", "tax_inclusive"]).nullable().optional(),
 });
 const profileSchema = z.object({
   id: z.string(),
@@ -41,13 +50,16 @@ const ruleSchema = z.object({
   id: z.string(),
   taxCode: z.string(),
   jurisdiction: z.string(),
-  treatment: z.enum(["taxed", "exempt", "exonerated", "not_subject"]),
+  treatment: z.enum(["taxed", "zero_rated", "exempt", "exonerated", "not_subject"]),
   rate: z.string(),
   calculationMode: z.enum(["tax_exclusive", "tax_inclusive"]),
   effectiveFrom: z.string(),
   effectiveTo: z.string().nullable(),
   legalBasis: z.string(),
   version: z.string(),
+  category: z.string().nullable().optional(),
+  legacyRateSlot: z.string().nullable().optional(),
+  component: z.enum(["base", "luxury", "payment"]).optional(),
 });
 
 /** Supabase-backed product taxation repository. */
@@ -84,6 +96,9 @@ export class SupabaseProductTaxationRepository implements ProductTaxationReposit
       effectiveTo: value.effectiveTo ? taxationDate(value.effectiveTo) : null,
       legalBasis: value.legalBasis,
       version: value.version,
+      category: value.category === undefined || value.category === null ? null : taxRuleCategory(value.category),
+      legacyRateSlot: value.legacyRateSlot === undefined || value.legacyRateSlot === null ? null : legacyRateSlot(value.legacyRateSlot),
+      component: value.component ?? "base",
     }));
   }
 
@@ -136,6 +151,36 @@ export function createSupabaseProductTaxationRepository(
   ));
 }
 
+/**
+ * Creates the production application resolver with both company-scoped profile and rule-catalog adapters.
+ * @param configuration - Supabase endpoint and server-only service-role credential.
+ * @returns A product IVA use case backed by Supabase ports.
+ * @throws When a Supabase client cannot be constructed from the supplied credentials.
+ */
+export function createSupabaseProductVenezuelanVatResolver(
+  configuration: ProductTaxationSupabaseConfiguration,
+): ResolveProductVenezuelanVat {
+  return new ResolveProductVenezuelanVat(
+    createSupabaseProductTaxationRepository(configuration),
+    createSupabaseTaxationConfigurationRepository(configuration),
+  );
+}
+
+/**
+ * Creates the service-line IVA application resolver with scoped Supabase profile and catalog adapters.
+ * @param configuration - Supabase endpoint and server-only service-role credential.
+ * @returns A service IVA use case backed by Supabase ports.
+ * @throws When a Supabase client cannot be constructed from the supplied credentials.
+ */
+export function createSupabaseServiceVenezuelanVatResolver(
+  configuration: ProductTaxationSupabaseConfiguration,
+): ResolveServiceVenezuelanVat {
+  return new ResolveServiceVenezuelanVat(
+    createSupabaseServiceTaxationRepository(configuration),
+    createSupabaseTaxationConfigurationRepository(configuration),
+  );
+}
+
 function args(value: TaxationContext): Record<string, unknown> {
   return {
     p_actor_user_id: value.actorUserId,
@@ -164,6 +209,9 @@ function mapProfile(value: z.infer<typeof profileSchema>): ProductTaxProfile {
       effectiveTo: assignment.effectiveTo ? taxationDate(assignment.effectiveTo) : null,
       legalBasis: assignment.legalBasis,
       classificationVersion: assignment.classificationVersion,
+      legacyRateSlot: assignment.legacyRateSlot === undefined || assignment.legacyRateSlot === null ? null : legacyRateSlot(assignment.legacyRateSlot),
+      category: assignment.category === undefined || assignment.category === null ? null : taxRuleCategory(assignment.category),
+      priceMode: assignment.priceMode ?? null,
     })),
   });
 }

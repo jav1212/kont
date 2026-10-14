@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-01",
+  "projectRef": "fvantswxhepvkloygcvc",
+  "method": "Supabase MCP execute_sql, SELECT only",
+  "query": "select to_regclass('public.shared_supplier_invoice_matches') as match_table, to_regclass('public.shared_tax_reporting_facts') as reporting_facts, to_regprocedure('public.shared_supplier_invoice_match_confirm_with_tax_fact(uuid,uuid,text,jsonb,jsonb,uuid,text)') as exact_match_rpc, to_regprocedure('public.shared_inventory_purchase_invoice_confirm(uuid,text)') as legacy_confirm_rpc",
+  "result": {
+    "matchTable": null,
+    "reportingFacts": null,
+    "exactMatchRpc": null,
+    "legacyConfirmRpc": "shared_inventory_purchase_invoice_confirm(uuid,text)"
+  },
+  "interpretation": "The exact package RPC and its tables are absent from the connected project. The existing purchase-confirmation RPC is present but does not confirm an invoice match and VAT fact atomically. No remote writes were performed; the project's environment is not identified by this query."
+}

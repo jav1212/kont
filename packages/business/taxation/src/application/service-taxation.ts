@@ -106,7 +106,7 @@ export class GetResolvedServiceTaxation {
       if (!profile) throw new TaxationFailure("TAXATION_PROFILE_NOT_FOUND", "Service tax profile was not found.");
       const assignment = profile.assignmentAt(code, operationDate);
       const rules = await this.repository.listRules(code, profile.jurisdiction);
-      const rule = resolveTaxRule({ rules, taxCode: code, treatment: assignment.treatment, jurisdiction: profile.jurisdiction, date: operationDate });
+      const rule = resolveTaxRule({ rules, taxCode: code, treatment: assignment.treatment, jurisdiction: profile.jurisdiction, date: operationDate, category: assignment.category ?? null, legacyRateSlot: assignment.legacyRateSlot ?? null });
       return { profile, assignment, rule };
     } catch (cause: unknown) {
       if (cause instanceof TaxationFailure) throw cause;

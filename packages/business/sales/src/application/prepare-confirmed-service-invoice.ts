@@ -144,6 +144,39 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
     /** Builds a validated replacement candidate without reading or writing fiscal persistence. */
     readonly persist?: boolean;
   }): Promise<PersistFiscalDocumentResult & { readonly sourceUpdatedAt?: string }> {
+    return this.prepare(input, false);
+  }
+
+  /**
+   * Reconstructs a fiscal candidate from a draft service invoice for a later atomic confirmation.
+   * This method never persists the fiscal document; the issuance transaction owns persistence.
+   * @param input - Authorized draft identity, actor, and preparation timestamp.
+   * @returns Validated fiscal draft and the exact source update timestamp for compare-and-set issuance.
+   * @throws {SalesFailure} When the source is not an eligible classified service draft or totals do not reconcile.
+   */
+  async prepareDraftCandidate(input: {
+    readonly scope: FiscalPersistenceScope;
+    readonly invoiceId: string;
+    readonly actorId: string;
+    readonly occurredAt: string;
+  }): Promise<{ readonly document: FiscalDocument; readonly sourceUpdatedAt: string }> {
+    const result = await this.prepare({ ...input, persist: false }, true);
+    if (!result.sourceUpdatedAt) {
+      throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "La factura borrador no expuso su versión de concurrencia.");
+    }
+    return { document: result.document, sourceUpdatedAt: result.sourceUpdatedAt };
+  }
+
+  private async prepare(
+    input: {
+      readonly scope: FiscalPersistenceScope;
+      readonly invoiceId: string;
+      readonly actorId: string;
+      readonly occurredAt: string;
+      readonly persist?: boolean;
+    },
+    allowDraftSource: boolean,
+  ): Promise<PersistFiscalDocumentResult & { readonly sourceUpdatedAt?: string }> {
     const identity = `legacy-sales-invoice:${input.scope.companyId}:${input.invoiceId}`;
     if (identity.length > 128 || !input.actorId.trim()) {
       throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "Fiscal preparation identity is invalid.");
@@ -174,12 +207,12 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
     const id = fiscalDocumentId(identity);
     const prior = input.persist === false ? null : await this.documents.find(input.scope, id);
     if (prior !== null) {
-      if (!isEligibleCommercialSource(invoice) || !matchesPreparedCommercialSource(prior, invoice, operationDate) || !matchesPreparedIssuer(prior, issuer)) {
+      if (!isEligibleCommercialSource(invoice, false) || !matchesPreparedCommercialSource(prior, invoice, operationDate) || !matchesPreparedIssuer(prior, issuer)) {
         throw new FiscalFailure("FISCAL_DOCUMENT_SOURCE_CONFLICT", "La fuente comercial o la identidad fiscal cambió después de preparar el borrador fiscal.");
       }
       return { document: prior, replayed: true };
     }
-    if (!isEligibleCommercialSource(invoice)) {
+    if (!isEligibleCommercialSource(invoice, allowDraftSource)) {
       throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "El borrador fiscal requiere una factura de servicios confirmada y con cada línea clasificada.");
     }
     if (!issuer || issuer.companyId !== invoice.companyId || !issuer.taxIdentifier.trim() || !issuer.legalName.trim() || !issuer.fiscalAddress?.trim()) {
@@ -285,8 +318,8 @@ function sameAmount(left: Money, right: Money): boolean {
   return sameCurrency(left.currency, right.currency) && left.minorAmount === right.minorAmount;
 }
 
-function isEligibleCommercialSource(invoice: ConfirmedServiceInvoice): boolean {
-  return invoice.status === "confirmada"
+function isEligibleCommercialSource(invoice: ConfirmedServiceInvoice, allowDraft: boolean): boolean {
+  return (invoice.status === "confirmada" || (allowDraft && invoice.status === "borrador"))
     && invoice.documentType === "venta"
     && invoice.lines.length > 0
     && invoice.lines.every((line) => line.productId === null && !!line.serviceTaxCode?.trim());

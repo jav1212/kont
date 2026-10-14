@@ -25,21 +25,29 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/documents", ["documents.read"]], ["/documents/contracts", ["documents.read"]], ["/documents/files", ["documents.read"]],
   ["/inventory", ["inventory.read"]], ["/inventory/adjustments/generator", ["inventory.read", "inventory.create"]], ["/inventory/balance-report", ["inventory.read"]], ["/inventory/closings", ["inventory.read"]], ["/inventory/compras-pendientes", ["inventory.read"]], ["/inventory/compras-pendientes/[id]", ["inventory.read"]], ["/inventory/departments", ["inventory.read"]], ["/inventory/departments/[id]", ["inventory.read"]], ["/inventory/import", ["inventory.read", "inventory.create"]], ["/inventory/inventory-ledger", ["inventory.read"]], ["/inventory/islr-report", ["inventory.read"]], ["/inventory/movements", ["inventory.read"]], ["/inventory/operations", ["inventory.read"]], ["/inventory/operations/new", ["inventory.read", "inventory.create"]], ["/inventory/products", ["inventory.read"]], ["/inventory/products/[id]", ["inventory.read"]], ["/inventory/purchase-ledger", ["inventory.read"]], ["/inventory/report", ["inventory.read"]], ["/inventory/sales", ["inventory.read"]], ["/inventory/sales/generator", ["inventory.read", "inventory.create"]], ["/inventory/sales/new-manual", ["inventory.read", "inventory.create"]], ["/inventory/sales-ledger", ["inventory.read"]],
   ["/payroll", ["payroll.read"]], ["/payroll/ari", ["payroll.read"]], ["/payroll/employees", ["payroll.read", "employees.read"]], ["/payroll/history", ["payroll.read"]], ["/payroll/liquidations", ["payroll.read"]], ["/payroll/profit-sharing", ["payroll.read"]], ["/payroll/settings", ["payroll.read"]], ["/payroll/social-benefits", ["payroll.read"]], ["/payroll/tablero", ["payroll.read"]], ["/payroll/vacations", ["payroll.read"]],
-  ["/purchases", ["purchases.read"]], ["/purchases/[id]", ["purchases.read"]], ["/purchases/archive", ["purchases.read"]], ["/purchases/import", ["purchases.read", "purchases.create", "inventory.create"]], ["/purchases/import-book", ["purchases.read", "purchases.create"]], ["/purchases/new", ["purchases.read", "purchases.create"]], ["/purchases/new/quick", ["purchases.read", "purchases.create"]], ["/purchases/new-manual", ["purchases.read", "purchases.create"]], ["/purchases/suppliers", ["purchases.read"]], ["/purchases/suppliers/[id]", ["purchases.read"]],
-  ["/sales", salesDashboardAccessRequirement], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/fiscal", ["sales.read"]], ["/sales/fiscal/[id]", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/receivables", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
+  ["/purchases", ["purchases.read"]], ["/purchases/[id]", ["purchases.read"]], ["/purchases/archive", ["purchases.read"]], ["/purchases/import", ["purchases.read", "purchases.create", "inventory.create"]], ["/purchases/import-book", ["purchases.read", "purchases.create"]], ["/purchases/iva-imports", ["purchases.read", "purchases.confirm"]], ["/purchases/iva-ledger", ["purchases.read"]], ["/purchases/iva-matches", ["purchases.read", "purchases.confirm"]], ["/purchases/new", ["purchases.read", "purchases.create"]], ["/purchases/new/quick", ["purchases.read", "purchases.create"]], ["/purchases/new-manual", ["purchases.read", "purchases.create"]], ["/purchases/suppliers", ["purchases.read"]], ["/purchases/suppliers/[id]", ["purchases.read"]],
+  ["/sales", salesDashboardAccessRequirement], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/fiscal", ["sales.read"]], ["/sales/fiscal/[id]", ["sales.read"]], ["/sales/iva-ledger", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/receivables", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
+  ["/fiscal/iva-declarations", ["purchases.read", "sales.read", "purchases.confirm", "sales.update"]],
   ["/settings/organization", ["organizations.update"]],
   ["/settings/members", ["members.read"]],
   ["/settings/roles", ["roles.read"]],
+  ["/settings/security-sales", ["sales.read"]],
+  ["/settings/security", ["members.read"]],
+  ["/settings/audit", ["audit.read"]],
+  ["/settings/payment-orders", ["payment_orders.read"]],
   ["/settings/access", ["access.manage"]],
   ["/settings/company", ["companies.read"]],
+  ["/settings/iva", ["companies.read"]],
   ["/settings/inventory-config", ["inventory.read", "companies.read"]],
   ["/settings/billing", ["billing.read"]],
   ["/settings/referrals", ["referrals.read"]],
+  ["/treasury", ["treasury.read"]],
 ];
 
 /** Authenticated pages without organization-level permissions. */
 const AUTHENTICATED_ROUTES = [
   "/",
+  "/fiscal",
   "/help",
   "/profile",
   "/tools",
@@ -142,6 +150,8 @@ export function getModuleVisibilityPermission(moduleId: string): `${string}.${st
     case "accounting": return "accounting.read";
     case "companies": return "companies.read";
     case "documents": return "documents.read";
+    case "treasury": return "treasury.read";
+    case "iva": return null;
     default: return null;
   }
 }
@@ -153,5 +163,13 @@ export function getModuleVisibilityPermission(moduleId: string): `${string}.${st
  * @returns True only for explicitly public or permission-scoped modules.
  */
 export function isKnownOrganizationModule(moduleId: string): boolean {
-  return ["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents", "tools"].includes(moduleId);
+  return ["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents", "treasury", "iva", "tools"].includes(moduleId);
+}
+
+/** Determines whether an organization member may open the shared IVA workspace.
+ * @param permissions - Effective permissions from the selected organization.
+ * @returns True when the member can read at least one fiscal source module.
+ */
+export function canViewIvaModule(permissions: readonly string[]): boolean {
+  return hasOrganizationPermission(permissions, "sales.read") || hasOrganizationPermission(permissions, "purchases.read");
 }

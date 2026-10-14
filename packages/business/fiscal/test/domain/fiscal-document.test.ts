@@ -88,6 +88,21 @@ test("fiscal invoice preserves commercial, tax and payment snapshots before issu
   assert.equal(document.totals.outstandingAmount.minorAmount, 5_440n);
 });
 
+test("fiscal snapshots and summaries keep legal categories, legacy slots, and components distinct", () => {
+  const state = draftState();
+  const withSlot = state.taxDeterminations.map((tax) => tax.taxCode === "IVA" ? { ...tax, taxCategory: "general" as const, legacyRateSlot: "a3" as const, component: "base" as const } : tax);
+  const withSlotTotals = {
+    ...state.totals,
+    taxSummaries: state.totals.taxSummaries.map((summary) => summary.taxCode === "IVA"
+      ? { ...summary, taxCategory: "general" as const, legacyRateSlot: "a3" as const, component: "base" as const } : summary),
+  };
+  const document = new FiscalDocument(draftState({ taxDeterminations: withSlot, totals: withSlotTotals }));
+  assert.equal(document.taxDeterminations[0]?.taxCategory, "general");
+  assert.equal(document.taxDeterminations[0]?.legacyRateSlot, "a3");
+  assert.equal(document.totals.taxSummaries.find((summary) => summary.taxCode === "IVA")?.taxCategory, "general");
+  assert.equal(document.totals.taxSummaries.find((summary) => summary.taxCode === "IVA")?.legacyRateSlot, "a3");
+});
+
 test("issuing keeps the document identity and records provider-neutral evidence", () => {
   const draft = new FiscalDocument(draftState());
   const issued = draft.issue({

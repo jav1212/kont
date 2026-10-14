@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-01",
+  "projectRef": "fvantswxhepvkloygcvc",
+  "method": "Supabase MCP execute_sql, SELECT only",
+  "checks": [
+    {
+      "query": "select id,treatment,rate,effective_from,effective_to,legal_basis,version from public.shared_tax_rules order by id",
+      "result": [
+        { "id": "legacy-ve-iva-exempt-0", "treatment": "exempt", "rate": "0.000000", "effective_from": "2000-01-01", "effective_to": null, "legal_basis": "Migrated production classification; requires legal catalogue review.", "version": "legacy-production-1" },
+        { "id": "legacy-ve-iva-taxed-16", "treatment": "taxed", "rate": "16.000000", "effective_from": "2000-01-01", "effective_to": null, "legal_basis": "Migrated production rule; requires legal catalogue review.", "version": "legacy-production-1" }
+      ]
+    },
+    {
+      "query": "select table_name,column_name from information_schema.columns where table_schema='public' and table_name in ('shared_tax_rules','shared_product_tax_assignments','shared_service_tax_assignments') and column_name in ('tax_category','legal_component','legacy_rate_slot','price_mode') order by table_name,column_name",
+      "result": []
+    },
+    {
+      "query": "select table_name,string_agg(column_name,',' order by ordinal_position) as columns from information_schema.columns where table_schema='public' and table_name in ('shared_tax_rules','shared_company_tax_rules','shared_tax_reporting_facts','shared_tax_reporting_declarations','shared_supplier_invoice_matches','shared_fiscal_documents','shared_companies') group by table_name order by table_name",
+      "result": [
+        { "table_name": "shared_companies", "columns": "tenant_id,id,owner_id,name,created_at,updated_at,rif,config_fiscal,phone,address,logo_url,payroll_settings,show_logo_in_pdf,sector,inventory_config,taxpayer_type,contact_email,proximo_numero_factura_venta,proximo_numero_nota_entrega,organization_id,operating_profile,trade_name,country,status,version,person_nature" },
+        { "table_name": "shared_fiscal_documents", "columns": "tenant_id,id,organization_id,company_id,source_kind,source_id,idempotency_key,document_status,document_snapshot,created_by,created_at,updated_at,draft_revision" },
+        { "table_name": "shared_tax_rules", "columns": "id,tax_code,jurisdiction,treatment,rate,calculation_mode,effective_from,effective_to,legal_basis,version,created_at" }
+      ]
+    },
+    {
+      "query": "select table_name,string_agg(column_name,',' order by ordinal_position) as columns from information_schema.columns where table_schema='public' and table_name in ('shared_product_tax_assignments','shared_service_tax_assignments') group by table_name order by table_name",
+      "result": [
+        { "table_name": "shared_product_tax_assignments", "columns": "tenant_id,id,profile_id,tax_code,treatment,effective_from,effective_to,legal_basis,classification_version,created_at" },
+        { "table_name": "shared_service_tax_assignments", "columns": "tenant_id,id,profile_id,tax_code,treatment,effective_from,effective_to,legal_basis,classification_version,created_at" }
+      ]
+    },
+    {
+      "query": "select id,tax_code,jurisdiction,treatment,rate,calculation_mode,effective_from,effective_to,legal_basis,version from public.shared_tax_rules order by tax_code,effective_from,id",
+      "result": [
+        { "id": "legacy-ve-iva-exempt-0", "tax_code": "IVA", "jurisdiction": "VE", "treatment": "exempt", "rate": "0.000000", "calculation_mode": "tax_exclusive", "effective_from": "2000-01-01", "effective_to": null, "legal_basis": "Migrated production classification; requires legal catalogue review.", "version": "legacy-production-1" },
+        { "id": "legacy-ve-iva-taxed-16", "tax_code": "IVA", "jurisdiction": "VE", "treatment": "taxed", "rate": "16.000000", "calculation_mode": "tax_exclusive", "effective_from": "2000-01-01", "effective_to": null, "legal_basis": "Migrated production rule; requires legal catalogue review.", "version": "legacy-production-1" }
+      ]
+    },
+    {
+      "query": "select object_name,object_kind from (select table_name as object_name,'table' as object_kind from information_schema.tables where table_schema='public' and table_name in ('shared_company_tax_rule_catalogs','shared_company_tax_rules','shared_tax_counterparty_profiles','shared_taxation_configuration_idempotency','shared_product_tax_profiles','shared_product_tax_assignments') union all select routine_name as object_name,'function' as object_kind from information_schema.routines where routine_schema='public' and routine_name in ('get_native_company_tax_rule_catalog','save_native_company_tax_rule_catalog','list_native_tax_rules','get_native_product_tax_profile')) objects order by object_kind,object_name",
+      "result": [
+        { "object_name": "get_native_product_tax_profile", "object_kind": "function" },
+        { "object_name": "list_native_tax_rules", "object_kind": "function" },
+        { "object_name": "shared_product_tax_assignments", "object_kind": "table" },
+        { "object_name": "shared_product_tax_profiles", "object_kind": "table" }
+      ]
+    }
+  ],
+  "interpretation": "The connected project still exposes only the legacy exempt 0 and taxed 16 rules. The new category/component/slot/price-mode columns are absent. The fiscal document and company tables exist, but company tax-rule configuration, reporting facts/declarations, and supplier invoice matches were not found in the queried schema. The current database snapshot is not a legal source and does not establish whether a later government rate decree applies. No remote writes were performed."
+}

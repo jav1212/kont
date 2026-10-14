@@ -197,12 +197,23 @@ export function useSales() {
         }
     }, []);
 
-    const confirmSalesInvoice = useCallback(async (invoiceId: string, options?: { allowNegativeStock?: boolean }): Promise<SalesInvoice | null> => {
+    const confirmSalesInvoice = useCallback(async (invoiceId: string, options?: {
+        allowNegativeStock?: boolean;
+        fiscalIva?: {
+            sourceUpdatedAt: string;
+            issuedAt: string;
+            issueDate: string;
+            idempotencyKey: string;
+            seriesScope: "company";
+            seriesSelection: { kind: "policy" } | { kind: "explicit"; seriesId: string };
+            factMetadata: { factId: string; lineageKey: string; recognitionDate: string; counterpartyCountryCode: string | null };
+        };
+    }): Promise<SalesInvoice | null> => {
         try {
             const res = await apiFetch(`/api/sales/${invoiceId}/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ allowNegativeStock: options?.allowNegativeStock === true }),
+                body: JSON.stringify({ allowNegativeStock: options?.allowNegativeStock === true, ...(options?.fiscalIva ? { fiscalIva: options.fiscalIva } : {}) }),
             });
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al confirmar factura'); return null; }
@@ -210,6 +221,9 @@ export function useSales() {
             const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
             setSalesInvoices((prev) => prev.map((f) => f.id === full.id ? full : f));
             setCurrentSalesInvoice(full);
+            if (options?.fiscalIva && typeof json.issuance?.displayNumber === 'string') {
+                notify.success(`Factura emitida con número ${json.issuance.displayNumber}.`);
+            }
             return full;
         } catch (e) {
             reportError('Error de red', e);

@@ -1,0 +1,50 @@
+{
+  "projectRef": "fvantswxhepvkloygcvc",
+  "observedAt": "2026-10-02",
+  "validation": "Supabase MCP read-only SQL",
+  "schema": {
+    "table": "public.shared_inventory_purchase_invoices",
+    "columns": {
+      "vat_retention_percentage": "numeric",
+      "vat_retention_amount": "numeric",
+      "vat_retention_receipt_number": "text"
+    },
+    "legacyReadRpc": {
+      "name": "public.read_iva_legacy_sources(uuid,uuid,uuid,text,text,date,date,integer,date,text)",
+      "available": false,
+      "localMigration": "323_iva_legacy_sources.sql"
+    },
+    "reportingFactsTable": {
+      "name": "public.shared_tax_reporting_facts",
+      "available": false
+    },
+    "retentionExportRpc": {
+      "name": "public.shared_inventory_iva_retention_period(uuid,text,text)",
+      "available": true,
+      "mcpValidated": "Exact signature resolved and definition inspected read-only.",
+      "executePrivileges": {
+        "anon": false,
+        "authenticated": false,
+        "service_role": true
+      },
+      "observedBehavior": [
+        "Filters confirmed purchase records with a positive stored withholding amount.",
+        "Hardcodes document type 01 and affected document 0 for every exported row.",
+        "Emits only legacy rate codes reducida_8/general_16 (8/16 percent).",
+        "Does not filter document_type before aggregation, so a retained credit/debit note can be emitted as document type 01 with affected document 0.",
+        "Calculates IVA and withheld amounts from taxable base, rate, and retention percentage instead of returning the stored vat_retention_amount for each row."
+      ]
+    }
+  },
+  "aggregateQuery": "select status, document_type, count(*) as invoice_count, count(*) filter (where coalesce(vat_retention_amount,0) > 0) as positive_vat_retention_count, coalesce(sum(vat_retention_amount),0) as total_vat_retention, count(*) filter (where coalesce(vat_retention_amount,0) > 0 and nullif(btrim(vat_retention_receipt_number),'') is null) as positive_retention_without_receipt from public.shared_inventory_purchase_invoices group by status, document_type order by status, document_type",
+  "aggregateResult": [
+    { "status": "borrador", "documentType": "factura", "invoiceCount": 5, "positiveVatRetentionCount": 0, "totalVatRetention": "0.00", "positiveRetentionWithoutReceipt": 0 },
+    { "status": "confirmada", "documentType": "factura", "invoiceCount": 1799, "positiveVatRetentionCount": 0, "totalVatRetention": "0.00", "positiveRetentionWithoutReceipt": 0 },
+    { "status": "confirmada", "documentType": "nota_credito", "invoiceCount": 4, "positiveVatRetentionCount": 0, "totalVatRetention": "0.00", "positiveRetentionWithoutReceipt": 0 }
+  ],
+  "limits": [
+    "The aggregate reports only the stored purchase-invoice retention columns in this connected project.",
+    "It does not prove the absence of separate retention documents or data in another environment.",
+    "No data or schema was changed by these queries."
+  ]
+}

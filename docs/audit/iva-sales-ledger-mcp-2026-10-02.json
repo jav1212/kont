@@ -1,0 +1,16 @@
+{
+  "projectRef": "fvantswxhepvkloygcvc",
+  "observedAt": "2026-10-02",
+  "validation": "Supabase MCP read-only SQL; schema columns only",
+  "query": "select table_name, column_name, data_type from information_schema.columns where table_schema='public' and ((table_name='shared_inventory_sales_invoices' and column_name in ('tenant_id','company_id','invoice_date','status','document_type','vat_amount','taxes')) or (table_name='shared_inventory_sales_invoice_items' and column_name in ('tenant_id','invoice_id','vat_rate','vat_base','tax_amount','vat_included'))) order by table_name, ordinal_position",
+  "results": {
+    "invoiceHeader": ["tenant_id uuid", "company_id text", "invoice_date date", "status text", "vat_amount numeric", "document_type text", "taxes jsonb"],
+    "invoiceLines": ["tenant_id uuid", "invoice_id text", "vat_rate text", "vat_base numeric", "vat_included boolean"],
+    "lineTaxAmountColumnPresent": false
+  },
+  "interpretationLimits": [
+    "Header and JSON tax snapshots exist, but a dedicated saved line tax amount is absent; no line IVA should be inferred by multiplying legacy bases by current rates.",
+    "This schema check does not establish that every stored snapshot is complete or reconciled.",
+    "No personal or counterparty identifiers were queried and no database changes were made."
+  ]
+}

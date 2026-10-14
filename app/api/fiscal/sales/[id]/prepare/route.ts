@@ -4,7 +4,7 @@ import { SalesFailure } from "@kontave/sales/domain";
 import { TaxationFailure } from "@kontave/taxation/domain";
 import { resolveCanonicalTenantAuthorization, withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
-import { createSalesFiscalActions } from "@/src/modules/sales/backend/infra/fiscal/sales-fiscal-factory";
+import { createSupabaseConfirmedServiceFiscalActions } from "@kontave/sales/supabase";
 
 /**
  * Prepares a persisted fiscal draft from a confirmed service-only sales invoice.
@@ -12,11 +12,15 @@ import { createSalesFiscalActions } from "@/src/modules/sales/backend/infra/fisc
  * @returns The immutable fiscal draft and idempotent replay indicator.
  * @throws Expected source, identity, or taxation failures are returned as client errors.
  */
-export const POST = withTenantPermission("sales.create", async (request, tenant) => {
+export const POST = withTenantPermission("sales.confirm", async (request, tenant) => {
   const rawId = new URL(request.url).pathname.split("/").filter(Boolean).at(-2) ?? "";
   let id = "";
   try { id = decodeURIComponent(rawId); } catch { return Response.json({ error: "Identidad de factura inválida." }, { status: 400 }); }
   const requestedCompanyId = new URL(request.url).searchParams.get("companyId")?.trim() ?? "";
+  const mode = new URL(request.url).searchParams.get("mode") ?? "persist-confirmed";
+  if (mode !== "persist-confirmed" && mode !== "atomic-candidate") {
+    return Response.json({ error: "Modo de preparación fiscal inválido." }, { status: 400 });
+  }
   if (!id || id.length > 256 || !requestedCompanyId || requestedCompanyId.length > 256) {
     return Response.json({ error: "Identidad de factura o empresa inválida." }, { status: 400 });
   }
@@ -31,12 +35,33 @@ export const POST = withTenantPermission("sales.create", async (request, tenant)
   if (!company) return Response.json({ error: "Empresa no encontrada." }, { status: 404 });
 
   try {
-    const actions = createSalesFiscalActions({
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceRoleKey) return Response.json({ error: "La preparación fiscal no está configurada." }, { status: 503 });
+    const actions = createSupabaseConfirmedServiceFiscalActions({
+      url,
+      serviceRoleKey,
       tenantId: tenant.tenantId,
       actorId: tenant.userId,
       organizationId: authorization.organizationId,
       companyId: requestedCompanyId,
     });
+    if (mode === "atomic-candidate") {
+      const candidate = await actions.prepareConfirmedServiceInvoice.prepareDraftCandidate({
+        scope: actions.scope,
+        invoiceId: id,
+        actorId: tenant.userId,
+        occurredAt: new Date().toISOString(),
+      });
+      return Response.json({
+        data: {
+          document: JSON.parse(encodeFiscalDocument(candidate.document)),
+          sourceUpdatedAt: candidate.sourceUpdatedAt,
+          replayed: false,
+          requiresAtomicIssuance: true,
+        },
+      });
+    }
     const result = await actions.prepareConfirmedServiceInvoice.execute({
       scope: actions.scope,
       invoiceId: id,

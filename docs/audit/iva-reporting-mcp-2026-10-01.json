@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-01",
+  "projectRef": "fvantswxhepvkloygcvc",
+  "method": "Supabase MCP execute_sql, SELECT only",
+  "scope": "Read-only check of the target project's current IVA reporting schema; this does not identify whether the project is safe for migration or connected to production Web.",
+  "query": "select current_database() as database_name, current_user as database_role, (select count(*) from information_schema.tables where table_schema='public' and table_name like 'shared_tax_reporting_%') as iva_reporting_tables, to_regclass('public.shared_tax_rules') as shared_tax_rules, to_regclass('public.shared_tax_reporting_facts') as shared_tax_reporting_facts, to_regprocedure('public.shared_tax_reporting_fact_append(uuid,uuid,text,text,jsonb,uuid,text)') as fact_append_rpc, to_regprocedure('public.shared_tax_reporting_declaration_save(uuid,uuid,text,text,jsonb,uuid,text,integer)') as declaration_save_rpc",
+  "result": {
+    "database": "postgres",
+    "role": "postgres",
+    "ivaReportingTables": 0,
+    "sharedTaxRules": "shared_tax_rules",
+    "sharedTaxReportingFacts": null,
+    "factAppendRpc": null,
+    "declarationSaveRpc": null
+  },
+  "migrationListCheck": {
+    "method": "Supabase MCP list_migrations",
+    "localPrefixCollision": {
+      "localProductCatalogMigration": "327_product_catalog_import_conflict_dedup.sql",
+      "localIvaMigrationBeforeRename": "327_iva_atomic_fiscal_issuance.sql",
+      "remoteProductCatalogVersion": "20261001160649",
+      "remoteProductCatalogName": "product_catalog_import_conflict_dedup_adm_005"
+    },
+    "remoteIvaFunction": null,
+    "resolution": "Renamed the local IVA migration to 338_iva_atomic_fiscal_issuance.sql; no remote DDL was applied."
+  },
+  "interpretation": "The connected project has the legacy shared_tax_rules table but none of the queried new reporting artifacts. Do not apply DDL until its environment is identified and authorized. No remote writes were performed."
+}

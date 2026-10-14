@@ -5,6 +5,7 @@ import { ServerSupabaseSource }       from '@/src/shared/backend/source/infra/se
 import { SharedCustomerRepository }   from './repository/shared-customer.repository';
 import { SharedSalesInvoiceRepository } from './repository/shared-sales-invoice.repository';
 import { SharedIgtfFortnightlyRepository } from './repository/shared-igtf-fortnightly.repository';
+import { createSupabaseSecuredSales } from '@kontave/sales/supabase';
 
 import { ListCustomersUseCase }       from '../app/list-customers.use-case';
 import { SaveCustomerUseCase }        from '../app/save-customer.use-case';
@@ -34,5 +35,6 @@ export function getSalesActions(userId: string) {
         unconfirmSalesInvoice:   new UnconfirmSalesInvoiceUseCase(invoiceRepo),
         deleteSalesInvoice:      new DeleteSalesInvoiceUseCase(invoiceRepo),
         getIgtfFortnightlyReport:   new GetIgtfFortnightlyReportUseCase(igtfFortnightlyRepo),
+        securedSales:               createSupabaseSecuredSales(source.instance),
     };
 }
