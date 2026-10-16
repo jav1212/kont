@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, FileText, Mail, MapPin, Pencil, Phone, Truck, UserRound, X } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -10,6 +10,8 @@ import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchas
 import type { Supplier } from "@/src/modules/purchases/backend/domain/supplier";
 import { SupplierEditor } from "@/src/modules/purchases/frontend/components/supplier-editor";
 import { notify } from "@/src/shared/frontend/notify";
+import { SystemLabelSettings } from "@/src/shared/frontend/components/system-label-settings";
+import { SUPPLIER_SYSTEM_LABELS } from "@/src/modules/purchases/domain/supplier-system-labels";
 
 function DetailCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; label: string; value?: string | null }) {
     return (
@@ -41,6 +43,13 @@ export default function SupplierDetailPage() {
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [systemLabels, setSystemLabels] = useState<Record<string, string>>(() =>
+        Object.fromEntries(SUPPLIER_SYSTEM_LABELS.map(({ id, defaultLabel }) => [id, defaultLabel])),
+    );
+    const handleSystemLabelsChange = useCallback((labels: Readonly<Record<string, string>>) => {
+        setSystemLabels({ ...labels });
+    }, []);
+    const labelFor = (key: string, fallback: string) => systemLabels[`system.purchases.suppliers.${key}`] ?? fallback;
 
     const supplierId = useMemo(() => decodeURIComponent(params.id), [params.id]);
     const supplier = suppliers.find((item) => item.id === supplierId) ?? null;
@@ -77,7 +86,15 @@ export default function SupplierDetailPage() {
 
     return (
         <div className="min-h-full bg-background">
-            <PageHeader title={supplier?.name ?? "Proveedor"} />
+            <PageHeader title={supplier?.name ?? "Proveedor"}>
+                <SystemLabelSettings
+                    catalog={SUPPLIER_SYSTEM_LABELS}
+                    endpoint="/api/preferences/purchase-supplier-system-labels"
+                    title="Etiquetas del catálogo de proveedores"
+                    description="Personaliza cómo se muestran los campos. El RIF se mantiene con su etiqueta fiscal estándar."
+                    onLabelsChange={handleSystemLabelsChange}
+                />
+            </PageHeader>
             <main className="mx-auto w-full max-w-6xl space-y-7 px-4 py-6 sm:px-8 sm:py-8">
                 <BaseButton.Root variant="secondary" size="sm" onClick={() => router.push("/purchases/suppliers")} leftIcon={<ArrowLeft size={14} />}>Proveedores</BaseButton.Root>
 
@@ -93,6 +110,7 @@ export default function SupplierDetailPage() {
                         <SupplierEditor
                             key={supplier.id}
                             supplier={supplier}
+                            systemLabels={systemLabels}
                             saving={saving}
                             onSave={handleSave}
                             onCancel={() => setEditing(false)}
@@ -117,15 +135,15 @@ export default function SupplierDetailPage() {
                         <section className="space-y-4">
                             <div><h2 className="font-sans text-[18px] font-semibold tracking-tight text-foreground">Información del proveedor</h2><p className="mt-1 font-sans text-[13px] text-[var(--text-secondary)]">Datos de contacto y referencia para tus operaciones de compra.</p></div>
                             <div className="grid gap-3 sm:grid-cols-2">
-                                <DetailCard icon={UserRound} label="Persona de contacto" value={supplier.contact} />
-                                <DetailCard icon={Phone} label="Teléfono" value={supplier.phone} />
-                                <DetailCard icon={Mail} label="Correo electrónico" value={supplier.email} />
-                                <DetailCard icon={MapPin} label="Dirección" value={supplier.address} />
+                                <DetailCard icon={UserRound} label={labelFor("contact", "Contacto")} value={supplier.contact} />
+                                <DetailCard icon={Phone} label={labelFor("phone", "Teléfono")} value={supplier.phone} />
+                                <DetailCard icon={Mail} label={labelFor("email", "Correo electrónico")} value={supplier.email} />
+                                <DetailCard icon={MapPin} label={labelFor("address", "Dirección")} value={supplier.address} />
                             </div>
                         </section>
 
                         <section className="rounded-xl border border-border-light bg-surface-1 p-5 sm:p-6">
-                            <div className="flex items-center gap-2 text-[var(--text-secondary)]"><FileText size={16} strokeWidth={1.8} /><h2 className="font-sans text-[15px] font-medium text-foreground">Notas internas</h2></div>
+                            <div className="flex items-center gap-2 text-[var(--text-secondary)]"><FileText size={16} strokeWidth={1.8} /><h2 className="font-sans text-[15px] font-medium text-foreground">{labelFor("notes", "Notas")}</h2></div>
                             <p className="mt-3 whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-[var(--text-secondary)]">{supplier.notes?.trim() || "Sin notas registradas."}</p>
                         </section>
 

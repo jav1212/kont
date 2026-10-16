@@ -142,7 +142,9 @@ export type NavigationFailureCode =
   | "DESTINATION_PARAMETERS_INVALID"
   | "CATALOG_DUPLICATE_DESTINATION"
   | "CATALOG_PARENT_NOT_FOUND"
-  | "CATALOG_CYCLE";
+  | "CATALOG_CYCLE"
+  | "NAVIGATION_LABELS_INVALID"
+  | "NAVIGATION_ICONS_INVALID";
 
 /** Expected failure produced by navigation validation or resolution. */
 export class NavigationFailure extends Error {
@@ -160,6 +162,63 @@ export class NavigationFailure extends Error {
 
 /** Optional user-visible label overrides keyed by destination. */
 export type NavigationLabels = Readonly<Partial<Record<NavigationDestinationId, string>>>;
+
+/** Portable icon meanings that clients map to their native icon libraries. */
+export const NAVIGATION_ICON_KEYS = [
+  "activity", "archive", "arrow-down", "arrow-up", "book", "briefcase", "building", "calendar",
+  "chart", "check", "clipboard", "clock", "coins", "credit-card", "document", "dollar", "download",
+  "file", "folder", "grid", "help", "home", "inventory", "key", "list", "lock", "mail", "package",
+  "people", "percent", "printer", "receipt", "search", "settings", "shield", "shopping-cart", "tag",
+  "tool", "truck", "user", "wallet",
+] as const;
+
+/** Stable semantic icon identifier supported by the portable navigation contract. */
+export type NavigationIconKey = typeof NAVIGATION_ICON_KEYS[number];
+
+/** Sparse icon overrides keyed by stable navigation destination identifiers. */
+export type NavigationIcons = Readonly<Partial<Record<NavigationDestinationId, NavigationIconKey>>>;
+
+/**
+ * Validates custom labels against the canonical destination catalog.
+ * @param input - Untrusted label map loaded from a client or persistent store.
+ * @returns Immutable sparse overrides with trimmed values.
+ * @throws {NavigationFailure} When a destination is unknown or a label is invalid.
+ */
+export function createNavigationLabels(input: Readonly<Record<string, unknown>>): NavigationLabels {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw invalidLabels();
+  const catalogIds = new Set<string>(NAVIGATION_DESTINATIONS.map((destination) => destination.id));
+  const entries = Object.entries(input);
+  if (entries.length > 100) throw invalidLabels();
+  const labels: Partial<Record<NavigationDestinationId, string>> = {};
+  for (const [id, value] of entries) {
+    if (!catalogIds.has(id) || typeof value !== "string") throw invalidLabels();
+    if (/[\u0000-\u001f\u007f]/.test(value)) throw invalidLabels();
+    const normalized = value.trim();
+    if (!normalized || normalized.length > 60) throw invalidLabels();
+    labels[id as NavigationDestinationId] = normalized;
+  }
+  return Object.freeze(labels);
+}
+
+/**
+ * Validates portable icon overrides without accepting platform-specific library names.
+ * @param input - Untrusted destination-to-icon mapping.
+ * @returns Frozen sparse icon overrides with stable destination and semantic icon keys.
+ * @throws {NavigationFailure} When a destination or icon key is outside its canonical catalog.
+ */
+export function createNavigationIcons(input: Readonly<Record<string, unknown>>): NavigationIcons {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw invalidIcons();
+  const destinations = new Set<string>(NAVIGATION_DESTINATIONS.map((destination) => destination.id));
+  const iconKeys = new Set<string>(NAVIGATION_ICON_KEYS);
+  const entries = Object.entries(input);
+  if (entries.length > 100) throw invalidIcons();
+  const icons: Partial<Record<NavigationDestinationId, NavigationIconKey>> = {};
+  for (const [destinationId, iconKey] of entries) {
+    if (!destinations.has(destinationId) || typeof iconKey !== "string" || !iconKeys.has(iconKey)) throw invalidIcons();
+    icons[destinationId as NavigationDestinationId] = iconKey as NavigationIconKey;
+  }
+  return Object.freeze(icons);
+}
 
 const REQUIRED_PARAMETERS: Readonly<Partial<Record<NavigationDestinationId, readonly string[]>>> = Object.freeze({
   "purchases.detail": ["purchaseId"],
@@ -273,9 +332,10 @@ export function dynamicNavigationTarget<TId extends DynamicNavigationDestination
  * @param target - Validated destination target to represent.
  * @param labels - Optional destination label overrides.
  * @returns Immutable breadcrumb entries ordered from root to target.
- * @throws {NavigationFailure} When the target is unknown or a resolved label is empty.
+ * @throws {NavigationFailure} When the target is unknown or any supplied label override is invalid.
  */
 export function resolveBreadcrumbs(target: NavigationTarget, labels: NavigationLabels = {}): readonly BreadcrumbEntry[] {
+  const safeLabels = createNavigationLabels(labels);
   const hierarchy = applicationNavigation.ancestors(target.id);
   return Object.freeze(hierarchy.map((node, index) => {
     const current = index === hierarchy.length - 1;
@@ -283,7 +343,7 @@ export function resolveBreadcrumbs(target: NavigationTarget, labels: NavigationL
       ? target
       : staticNavigationTarget(node.id as StaticNavigationDestinationId);
     return Object.freeze({
-      label: normalizeLabel(labels[node.id] ?? node.label),
+      label: safeLabels[node.id] ?? node.label,
       destination,
       current,
     });
@@ -302,10 +362,12 @@ function validateParameters<TId extends DynamicNavigationDestinationId>(
   }
 }
 
-function normalizeLabel(value: string): string {
-  const label = value.trim();
-  if (!label) throw new NavigationFailure("DESTINATION_PARAMETERS_INVALID", "Breadcrumb labels cannot be empty.");
-  return label;
+function invalidLabels(): NavigationFailure {
+  return new NavigationFailure("NAVIGATION_LABELS_INVALID", "Navigation label overrides are invalid.");
+}
+
+function invalidIcons(): NavigationFailure {
+  return new NavigationFailure("NAVIGATION_ICONS_INVALID", "Navigation icon overrides are invalid.");
 }
 
 function invalidParameters(id: NavigationDestinationId): NavigationFailure {

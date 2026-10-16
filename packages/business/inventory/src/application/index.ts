@@ -4,6 +4,13 @@ import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations/d
 import type { ProductId, UnitOfMeasure } from "@kontave/products/domain";
 
 export * from "./inventory-operations";
+export * from "./cross-company-transfer";
+export * from "./cross-company-compensation";
+export * from "./branch-movement-consolidation";
+export * from "./branch-stock-readiness";
+export * from "./branch-opening-plan";
+export * from "./branch-adjustment";
+export * from "./historical-movement-attribution";
 
 /** Time bucket supported by the portable inventory dashboard. */
 export type InventoryDashboardGranularity = "day";

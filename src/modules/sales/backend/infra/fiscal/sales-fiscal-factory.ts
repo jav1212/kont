@@ -1,20 +1,20 @@
 import { companyId } from "@kontave/companies/domain";
 import { SupabaseFiscalDocumentRepository } from "@kontave/fiscal/supabase";
 import { ReviseFiscalDocument, type FiscalDraftCandidateBuilder } from "@kontave/fiscal/application";
-import { fiscalDate, fiscalTaxDetermination } from "@kontave/fiscal/domain";
-import { toFiscalTaxDeterminations } from "@kontave/taxation/fiscal";
-import { GetResolvedServiceTaxation } from "@kontave/taxation/application";
-import { SupabaseServiceTaxationRepository } from "@kontave/taxation/supabase";
-import { resolveVenezuelanVat } from "@kontave/taxation/venezuela";
+import { ResolveProductVenezuelanVat, ResolveServiceVenezuelanVat } from "@kontave/taxation/application";
+import {
+  SupabaseProductTaxationRepository,
+  SupabaseServiceTaxationRepository,
+  SupabaseTaxationConfigurationRepository,
+} from "@kontave/taxation/supabase";
 import { GetServiceTaxProfile, SetServiceTaxTreatment } from "@kontave/taxation/application";
 import { organizationId, userId } from "@kontave/organizations/domain";
-import { taxCode } from "@kontave/taxation/domain";
 import type { FiscalPersistenceScope } from "@kontave/fiscal/domain";
 import { createSupabaseSalesFiscalReaders } from "./confirmed-service-invoice-reader";
 import {
   PrepareConfirmedServiceInvoiceFiscalDocument,
-  type ConfirmedServiceInvoiceTaxResolver,
 } from "@kontave/sales/application";
+import { SalesInvoiceLineVatAdapter } from "@kontave/sales/fiscal-taxation";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
 
 /**
@@ -37,9 +37,9 @@ export function createServiceTaxationActions(): {
 }
 
 /**
- * Builds server-owned fiscal preparation dependencies for legacy service invoices.
+ * Builds server-owned fiscal preparation dependencies for classified product and service invoices.
  * @param input - Authorized tenant, actor, organization, and company identifiers.
- * @returns Company scope and the confirmed-service fiscal preparation use case.
+ * @returns Company scope and the fiscal preparation use case.
  * @throws Error when server Supabase infrastructure is not configured.
  */
 export function createSalesFiscalActions(input: {
@@ -61,38 +61,20 @@ export function createSalesFiscalActions(input: {
     companyId: companyId(input.companyId),
   };
   const readers = createSupabaseSalesFiscalReaders({ url, serviceRoleKey, tenantId: input.tenantId });
-  const taxation = new SupabaseServiceTaxationRepository(readers.client);
-  const resolver = new GetResolvedServiceTaxation(taxation);
-  const taxes: ConfirmedServiceInvoiceTaxResolver = {
-    async resolveLine(invoice, lineIndex) {
-      const line = invoice.lines[lineIndex];
-      if (!line?.serviceTaxCode) throw new Error("Confirmed service line has no tax classification code.");
-      const resolved = await resolver.execute({
-        actorUserId: userId(input.actorId),
-        organizationId: organizationId(input.organizationId),
-        companyId: scope.companyId,
-      }, line.serviceTaxCode, taxCode("IVA"), invoice.invoiceDate);
-      const decision = resolveVenezuelanVat({
-        profile: resolved.profile,
-        rules: [resolved.rule],
-        operationDate: invoice.invoiceDate,
-        lineReference: line.id,
-        lineAmount: line.netAmount,
-        roundingMode: "half_up",
-      });
-      const assignment = resolved.profile.assignmentAt(taxCode("IVA"), invoice.invoiceDate);
-      return {
-        unitCode: resolved.profile.unitCode,
-        determinations: toFiscalTaxDeterminations([decision]).map((determination) => fiscalTaxDetermination({
-          ...determination,
-          operationDate: fiscalDate(invoice.invoiceDate),
-          legalBasis: resolved.rule.legalBasis,
-          classificationVersion: assignment.classificationVersion,
-          classificationLegalBasis: assignment.legalBasis,
-        })),
-      };
-    },
-  };
+  const configuration = new SupabaseTaxationConfigurationRepository(readers.client);
+  const productTaxation = new ResolveProductVenezuelanVat(
+    new SupabaseProductTaxationRepository(readers.client),
+    configuration,
+  );
+  const serviceTaxation = new ResolveServiceVenezuelanVat(
+    new SupabaseServiceTaxationRepository(readers.client),
+    configuration,
+  );
+  const taxes = new SalesInvoiceLineVatAdapter(productTaxation, serviceTaxation, {
+    actorUserId: userId(input.actorId),
+    organizationId: organizationId(input.organizationId),
+    companyId: scope.companyId,
+  });
   const documents = new SupabaseFiscalDocumentRepository(readers.client);
   const prepareConfirmedServiceInvoice = new PrepareConfirmedServiceInvoiceFiscalDocument(
       readers.invoices,

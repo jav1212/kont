@@ -5,13 +5,13 @@ import { useBcvRates } from '@/src/modules/tools/frontend/hooks/use-bcv-rates';
 import { normalizeCurrencyCode } from '../../shared/currency';
 import type { ProductHistoryPoint } from '../../backend/domain/product-history';
 import { CurrencyModuleSelector } from './currency-module-selector';
-
-const dateLabel = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
+import { useCompanyDateFormat } from '@/src/modules/companies/frontend/components/company-date-format-provider';
 
 export function ProductHistoryChart({ points }: { points: ProductHistoryPoint[] }) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const chartRef = useRef<Chart | null>(null);
     const [currency, setCurrency] = useState('VES');
+    const { formatDate } = useCompanyDateFormat();
     const { rates, loading: ratesLoading } = useBcvRates();
     const options = useMemo(() => [...new Set(['VES', ...rates.map((rate) => normalizeCurrencyCode(rate.code))])], [rates]);
     const currencyOptions = useMemo(() => options.map((code) => {
@@ -32,7 +32,7 @@ export function ProductHistoryChart({ points }: { points: ProductHistoryPoint[] 
         chartRef.current = new Chart(canvasRef.current, {
             type: 'line',
             data: {
-                labels: dated.map((point) => dateLabel(point.date)),
+                labels: dated.map((point) => formatDate(point.date)),
                 datasets: [
                     { label: 'Costo de compra', data: purchasePoints.map((point) => point ? convert(point) : null), borderColor: '#e74613', backgroundColor: '#e74613', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.2, spanGaps: false },
                     { label: 'Precio facturado', data: salePoints.map((point) => point ? convert(point) : null), borderColor: '#16a34a', backgroundColor: '#16a34a', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, tension: 0.2, spanGaps: false },
@@ -61,7 +61,7 @@ export function ProductHistoryChart({ points }: { points: ProductHistoryPoint[] 
             },
         });
         return () => { chartRef.current?.destroy(); chartRef.current = null; };
-    }, [currency, dated, rate]);
+    }, [currency, dated, rate, formatDate]);
 
     if (dated.length === 0) return <div className="flex min-h-52 items-center justify-center rounded-lg border border-dashed border-border-light bg-surface-2 px-6 text-center font-sans text-[13px] text-[var(--text-secondary)]">No hay compras o ventas confirmadas para graficar.</div>;
 

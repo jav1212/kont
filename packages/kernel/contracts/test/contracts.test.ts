@@ -8,6 +8,7 @@ import {
   decodeUpdateProductInventoryProfile,
   decodeUpdateProductSalePricing,
   decodeUpdateProduct,
+  decodeUpdateProductTaxation,
   definePresentationRegistry,
   type ClientFeature,
   type PresentationRegistry,
@@ -41,6 +42,20 @@ test("serializable input decoders reject unexpected fields and preserve exact am
     () => decodeUpdateProduct({ expectedVersion: 1, name: "A", injected: "x" }),
     ClientInputValidationError,
   );
+});
+
+test("product-taxation command accepts a distinct zero-rated treatment", () => {
+  assert.deepEqual(decodeUpdateProductTaxation({
+    treatment: "zero_rated",
+    effectiveFrom: "2026-08-17",
+    legalBasis: "Applicable zero-rate classification",
+    expectedVersion: 1,
+  }), {
+    treatment: "zero_rated",
+    effectiveFrom: "2026-08-17",
+    legalBasis: "Applicable zero-rate classification",
+    expectedVersion: 1,
+  });
 });
 
 test("dashboard decoders validate civil periods and bounded limits", () => {

@@ -12,6 +12,7 @@ import { SettingsSection } from "@/src/shared/frontend/components/settings-secti
 import { Trash2, Plus } from "lucide-react";
 import { notify } from "@/src/shared/frontend/notify";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { TypedProductCustomFieldsSettings } from "@/src/modules/inventory/frontend/components/typed-product-custom-fields";
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
@@ -41,6 +42,7 @@ export default function InventoryConfigPage() {
     const { company, companyId, getInventoryConfig, saveInventoryConfig } = useCompany();
     const { can } = useOrganizationModuleAccess("/settings/inventory-config");
     const canManage = can("companies.update");
+    const canManageTypedCatalog = can("inventory.update");
 
     const [config,  setConfig]  = useState<InventoryConfig | null>(null);
     const [loading, setLoading] = useState(true);
@@ -158,6 +160,19 @@ export default function InventoryConfigPage() {
                     <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
                         No hay campos personalizados. Asigna un sector a la empresa o agrega campos manualmente.
                     </p>
+                )}
+            </SettingsSection>
+
+            <SettingsSection
+                title="Catálogo tipado de campos"
+                subtitle="Configuración nueva y versionada. Los campos heredados de arriba siguen activos; esta sección no los copia ni los reemplaza."
+            >
+                {companyId && (
+                    <TypedProductCustomFieldsSettings
+                        companyId={companyId}
+                        legacyIds={config?.customFields.map((field) => field.key) ?? []}
+                        canManage={canManageTypedCatalog}
+                    />
                 )}
             </SettingsSection>
 

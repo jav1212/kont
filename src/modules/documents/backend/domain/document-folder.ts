@@ -6,4 +6,5 @@ export interface DocumentFolder {
     createdBy: string;
     createdAt: string;
     updatedAt: string;
+    version: number;
 }

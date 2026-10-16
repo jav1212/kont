@@ -1,4 +1,5 @@
 import type { OrganizationDirectory } from "../application";
+export * from "./user-administration";
 import type {
   CompanyId,
   OrganizationAccess,

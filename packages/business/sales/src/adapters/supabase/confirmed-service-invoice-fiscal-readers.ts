@@ -43,6 +43,7 @@ interface InvoiceLineRow {
   readonly surcharge_amount: number | string | null;
   readonly surcharge_currency: string | null;
 }
+interface ProductUnitRow { readonly id: string; readonly measure_unit: string | null; }
 
 interface CustomerRow {
   readonly name: string;
@@ -92,13 +93,23 @@ export class SupabaseConfirmedServiceInvoiceReader implements ConfirmedServiceIn
     if (linesResult.error) throw linesResult.error;
     if (customerResult.error) throw customerResult.error;
     const customer = customerResult.data as CustomerRow | null;
-    const lines = ((linesResult.data ?? []) as InvoiceLineRow[]).map((line) => {
+    const sourceLines = (linesResult.data ?? []) as InvoiceLineRow[];
+    const productIds = [...new Set(sourceLines.flatMap((line) => line.product_id ? [line.product_id] : []))];
+    const productUnitsResult = productIds.length === 0
+      ? { data: [], error: null }
+      : await this.client.from("shared_inventory_products").select("id,measure_unit")
+        .eq("tenant_id", this.tenantId).eq("company_id", invoice.company_id).in("id", productIds);
+    if (productUnitsResult.error) throw productUnitsResult.error;
+    const productUnits = new Map(((productUnitsResult.data ?? []) as ProductUnitRow[])
+      .map((row) => [row.id, fiscalUnitCode(row.measure_unit)]));
+    const lines = sourceLines.map((line) => {
       const grossAmount = fromVes(line.line_total);
       const discountAmount = optionalVes(line.discount_amount, line.discount_currency);
       const surchargeAmount = optionalVes(line.surcharge_amount, line.surcharge_currency);
       return {
         id: line.id,
         productId: line.product_id,
+        productUnitCode: line.product_id === null ? null : productUnits.get(line.product_id) ?? null,
         serviceTaxCode: line.service_tax_code,
         description: line.description,
         quantity: exactDecimal(String(line.quantity)),
@@ -198,6 +209,15 @@ function optionalVes(value: number | string | null, currencyCode: string | null)
     throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "Commercial adjustments must be stored in VES for this fiscal draft circuit.");
   }
   return fromVes(value);
+}
+
+function fiscalUnitCode(value: string | null): string | null {
+  if (!value) return null;
+  const units: Readonly<Record<string, string>> = {
+    unidad: "each", kg: "kilogram", g: "gram", m: "meter", m2: "square_meter",
+    m3: "cubic_meter", litro: "liter", galon: "gallon", caja: "box", rollo: "roll", paquete: "package",
+  };
+  return units[value.trim().toLowerCase()] ?? null;
 }
 
 function normalizeCurrency(value: string | null): string {

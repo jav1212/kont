@@ -27,10 +27,9 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import type { InvoiceStatus } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { notify } from "@/src/shared/frontend/notify";
+import { buildVatRetentionTxt as buildIvaRetentionTxt, defaultVatRetentionTxtFilename as defaultIvaRetentionTxtFilename } from "@kontave/tax-reporting/vat-retention-txt";
 import {
-    buildIvaRetentionTxt,
     downloadIvaRetentionTxt,
-    defaultIvaRetentionTxtFilename,
 } from "@/src/modules/purchases/frontend/utils/txt-retenciones-iva";
 import {
     buildPurchaseIslrXml,

@@ -89,9 +89,20 @@ export default function SalesDashboardPage() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [reportDimension, setReportDimension] = useState<SalesPerformanceDimensionDto>("user");
-    const [performanceReport, setPerformanceReport] = useState<SalesPerformanceReportDto | null>(null);
-    const [loadingPerformanceReport, setLoadingPerformanceReport] = useState(false);
-    const [performanceReportError, setPerformanceReportError] = useState<string | null>(null);
+    const reportKey = companyId && organization
+        ? `${organization.id}:${companyId}:${period}:${reportDimension}`
+        : null;
+    const [performanceReportState, setPerformanceReportState] = useState<{
+        readonly key: string;
+        readonly report?: SalesPerformanceReportDto | null;
+        readonly error?: string;
+    } | null>(null);
+    const currentReportState = reportKey && performanceReportState?.key === reportKey
+        ? performanceReportState
+        : null;
+    const performanceReport = currentReportState?.report ?? null;
+    const loadingPerformanceReport = reportKey !== null && currentReportState === null;
+    const performanceReportError = currentReportState?.error ?? null;
 
     useEffect(() => {
         if (companyId) loadSalesInvoices(companyId);
@@ -104,8 +115,7 @@ export default function SalesDashboardPage() {
         const from = `${period}-01`;
         const to = new Date(year, month, 0).toISOString().slice(0, 10);
         const params = new URLSearchParams({ from, to, dimension: reportDimension, currency: "VES" });
-        setLoadingPerformanceReport(true);
-        setPerformanceReportError(null);
+        const requestKey = `${organization.id}:${companyId}:${period}:${reportDimension}`;
         void (async () => {
             const { data: { session }, error: sessionError } = await getSupabaseBrowser().auth.getSession();
             if (sessionError || !session?.access_token) {
@@ -122,15 +132,16 @@ export default function SalesDashboardPage() {
             .then(async (response) => {
                 const payload = await response.json() as { data?: SalesPerformanceReportDto; error?: { message?: string } };
                 if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo cargar el reporte.");
-                if (!cancelled) setPerformanceReport(payload.data ?? null);
+                if (!cancelled) setPerformanceReportState({ key: requestKey, report: payload.data ?? null });
             })
             .catch((error: unknown) => {
                 if (!cancelled) {
-                    setPerformanceReport(null);
-                    setPerformanceReportError(error instanceof Error ? error.message : "No se pudo cargar el reporte.");
+                    setPerformanceReportState({
+                        key: requestKey,
+                        error: error instanceof Error ? error.message : "No se pudo cargar el reporte.",
+                    });
                 }
-            })
-            .finally(() => { if (!cancelled) setLoadingPerformanceReport(false); });
+            });
         return () => { cancelled = true; };
     }, [companyId, organization, period, reportDimension]);
 

@@ -23,6 +23,17 @@ test("keeps the debt currency and opening rate as immutable snapshots", () => {
   assert.equal(receivable.debtVesRate.vesPerUnit, "100");
 });
 
+test("reversal restores debt without deleting or recalculating the original receipt", () => {
+  const paid = fixture().recordPayment(payment()).receivable;
+  const original = paid.payments[0];
+  assert.ok(original);
+  const reversed = new CustomerReceivable({ ...paid, payments: [{ ...original, reversal: { id: "reversal-1", reason: "Duplicate receipt", actorId: "user-1", occurredAt: salesInstant("2026-10-02T10:00:00.000Z") } }], version: 2 });
+  assert.equal(paid.balance.minorAmount, 9000n);
+  assert.equal(reversed.balance.minorAmount, 10000n);
+  assert.equal(reversed.payments[0]?.appliedDebtAmount.minorAmount, original.appliedDebtAmount.minorAmount);
+  assert.equal(reversed.recordPayment(payment()).replayed, true, "replaying a reversed receipt never reapplies it");
+});
+
 test("applies a partial cross-currency payment using its captured VES rate", () => {
   const result = fixture().recordPayment(payment({ receivedAmount: moneyFromDecimal("10", EUR), receivedVesRate: rate(EUR, "150") }));
   assert.equal(result.payment.appliedDebtAmount.minorAmount, 1_500n);

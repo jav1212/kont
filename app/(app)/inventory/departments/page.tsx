@@ -36,6 +36,7 @@ import {
     Package,
     FolderOpen,
     Folders,
+    Columns3,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -201,6 +202,9 @@ export default function DepartamentosPage() {
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [bulkDeleting, setBulkDeleting] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [hiddenColumnIds, setHiddenColumnIds] = useState<readonly string[]>([]);
+    const [viewPreferencesVersion, setViewPreferencesVersion] = useState<number | null>(null);
+    const [savingVisibility, setSavingVisibility] = useState(false);
 
     useEffect(() => {
         if (companyId) {
@@ -208,6 +212,33 @@ export default function DepartamentosPage() {
             loadProducts(companyId);
         }
     }, [companyId, loadDepartments, loadProducts]);
+
+    useEffect(() => {
+        let current = true;
+        void fetch("/api/preferences/view-visibility?viewId=inventory.departments", { cache: "no-store" }).then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las preferencias de columnas.");
+            if (current) {
+                setHiddenColumnIds(payload.data.hiddenColumnIds ?? []);
+                setViewPreferencesVersion(payload.data.version);
+            }
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de columnas."); });
+        return () => { current = false; };
+    }, []);
+
+    async function toggleColumn(columnId: string) {
+        if (viewPreferencesVersion === null || savingVisibility) return;
+        const next = hiddenColumnIds.includes(columnId) ? hiddenColumnIds.filter((id) => id !== columnId) : [...hiddenColumnIds, columnId];
+        setSavingVisibility(true);
+        try {
+            const response = await fetch("/api/preferences/view-visibility", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewId: "inventory.departments", expectedVersion: viewPreferencesVersion, hiddenColumnIds: next }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las columnas visibles.");
+            setHiddenColumnIds(payload.data.hiddenColumnIds ?? []);
+            setViewPreferencesVersion(payload.data.version);
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las columnas visibles."); }
+        finally { setSavingVisibility(false); }
+    }
 
     function openNew() {
         if (!companyId) return;
@@ -379,6 +410,19 @@ export default function DepartamentosPage() {
                                 className="h-9 w-full rounded-lg border border-border-light bg-surface-1 pl-9 pr-3 font-mono text-[13px] text-foreground outline-none placeholder:text-[var(--text-tertiary)] transition-colors hover:border-border-medium focus:border-primary-500/60"
                             />
                         </div>
+
+                        <details className="relative order-4">
+                            <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-surface-1 px-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] hover:bg-surface-2"><Columns3 size={14} /> Columnas</summary>
+                            <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-border-light bg-surface-1 p-3 shadow-xl">
+                                <p className="mb-2 font-sans text-[11px] text-[var(--text-tertiary)]">Nombre y acciones siempre visibles; los cambios también aplican a las tarjetas móviles.</p>
+                                {[{ id: "description", label: "Descripción" }, { id: "products", label: "Productos" }, { id: "status", label: "Estado" }].map((column) => (
+                                    <label key={column.id} className="mb-2 flex cursor-pointer items-center gap-2 font-sans text-[12px] text-foreground">
+                                        <input type="checkbox" checked={!hiddenColumnIds.includes(column.id)} disabled={viewPreferencesVersion === null || savingVisibility} onChange={() => void toggleColumn(column.id)} />
+                                        {column.label}
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
 
                         <div className="order-1 flex items-center gap-2">
                             <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">Estado</span>
@@ -650,8 +694,8 @@ export default function DepartamentosPage() {
                                         key={d.id}
                                         onClick={() => d.id ? router.push(`/inventory/departments/${d.id}`) : openEdit(d)}
                                         title={d.name}
-                                        subtitle={d.description || undefined}
-                                        rows={[
+                                        subtitle={!hiddenColumnIds.includes("description") ? d.description || undefined : undefined}
+                                        rows={hiddenColumnIds.includes("products") ? [] : [
                                             {
                                                 label: "Productos",
                                                 value: productCount > 0 ? String(productCount) : "—",
@@ -659,7 +703,7 @@ export default function DepartamentosPage() {
                                                 numeric: true,
                                             },
                                         ]}
-                                        status={
+                                        status={hiddenColumnIds.includes("status") ? undefined : (
                                             d.active ? (
                                                 <span className="inline-flex items-center gap-1.5 text-text-success font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
@@ -671,7 +715,7 @@ export default function DepartamentosPage() {
                                                     Inactivo
                                                 </span>
                                             )
-                                        }
+                                        )}
                                     />
                                 );
                             })}
@@ -700,9 +744,10 @@ export default function DepartamentosPage() {
                                             { label: "Productos",   align: "text-right" },
                                             { label: "Estado",      align: "text-left"  },
                                             { label: "",            align: "text-right" },
-                                        ].map((h) => (
+                                        ].map((h, idx) => (
                                             <th
                                                 key={h.label}
+                                                hidden={idx > 0 && idx < 4 && hiddenColumnIds.includes(["description", "products", "status"][idx - 1])}
                                                 className={`whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] ${h.align}`}
                                             >
                                                 {h.label}
@@ -738,10 +783,10 @@ export default function DepartamentosPage() {
                                                         {d.name}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-[var(--text-secondary)] font-sans">
+                                                <td hidden={hiddenColumnIds.includes("description")} className="px-4 py-3 text-[var(--text-secondary)] font-sans">
                                                     {d.description || <span className="text-[var(--text-tertiary)] font-mono">—</span>}
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-mono tabular-nums">
+                                                <td hidden={hiddenColumnIds.includes("products")} className="px-4 py-3 text-right font-mono tabular-nums">
                                                     {productCount > 0 ? (
                                                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-border-light bg-surface-2 text-foreground text-[12px] font-medium">
                                                             <Package size={11} className="text-[var(--text-tertiary)]" />
@@ -751,7 +796,7 @@ export default function DepartamentosPage() {
                                                         <span className="text-[var(--text-tertiary)] text-[12px]">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td hidden={hiddenColumnIds.includes("status")} className="px-4 py-3">
                                                     {d.active ? (
                                                         <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-text-success">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-text-success" />

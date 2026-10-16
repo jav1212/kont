@@ -17,4 +17,5 @@ export const desktopPresentationRegistry =
     profile: { status: "ready" },
     purchasing: { status: "ready" },
     sales: { status: "ready" },
+    treasury: { status: "planned", reason: "Treasury presentation has not been activated." },
   }) satisfies PresentationRegistry<KontaveClientFeatures>;

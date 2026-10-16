@@ -251,7 +251,16 @@ try {
     await db.exec(await readFile(new URL('../supabase/migrations/281_service_tax_classifications.sql', import.meta.url), 'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/282_service_tax_classification_stable_line_ids.sql', import.meta.url), 'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/283_fiscal_draft_revisions.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/369_sales_fiscal_source_lock.sql', import.meta.url), 'utf8'));
 
+    await assert.rejects(
+        db.query(`UPDATE public.shared_inventory_sales_invoices SET updated_at=now() WHERE tenant_id=$1 AND id='sales-1'`, [tenantA]),
+        /SALES_FISCAL_SOURCE_IMMUTABLE/,
+    );
+    await assert.rejects(
+        db.query(`DELETE FROM public.shared_inventory_sales_invoices WHERE tenant_id=$1 AND id='sales-1'`, [tenantA]),
+        /SALES_FISCAL_SOURCE_IMMUTABLE/,
+    );
     const revisedSnapshot = { ...draftSnapshot('document-2'), marker: 'revised' };
     const revised = (await db.query(
         `SELECT public.shared_fiscal_document_revise_draft($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11) AS result`,
@@ -313,7 +322,7 @@ try {
         ),
         /TAXATION_PROFILE_INVALID/,
     );
-    console.log('PASS: fiscal migration installs, scopes service-only RPCs, persists atomically, replays concurrent retries, isolates tenant/company data, validates actors, lists evidence, records issuance, enforces immutable audit evidence, and preserves classified service lines without caller-provided IDs.');
+    console.log('PASS: fiscal persistence scopes service-only RPCs, preserves revisions and immutable evidence, locks issued or attempted source invoices, and keeps classified service lines durable.');
 } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

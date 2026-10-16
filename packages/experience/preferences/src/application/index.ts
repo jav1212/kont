@@ -1,6 +1,15 @@
 import { PreferencesFailure, createUserPreferences, defaultUserPreferences, type AppearancePreferences, type RegionalPreferences, type UserPreferences } from "../domain";
 import type { UserId } from "@kontave/organizations/domain";
 
+export * from "./user-view-preferences";
+export * from "./user-process-defaults";
+export * from "./process-parameters";
+export * from "./navigation-labels";
+export * from "./navigation-icons";
+export * from "./field-labels";
+export * from "./help-texts";
+export * from "./system-labels";
+
 export interface UserPreferencesRepository {
   /**
    * Loads preferences for a user.

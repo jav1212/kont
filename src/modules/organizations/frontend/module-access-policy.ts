@@ -42,6 +42,8 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/settings/billing", ["billing.read"]],
   ["/settings/referrals", ["referrals.read"]],
   ["/treasury", ["treasury.read"]],
+  ["/treasury/reconciliation", ["treasury.read"]],
+  ["/treasury/tax-policy", ["treasury.read"]],
 ];
 
 /** Authenticated pages without organization-level permissions. */

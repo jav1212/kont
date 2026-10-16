@@ -1,7 +1,4 @@
-import {
-  RemoteConnectivityProbe,
-  type KontaveRequest,
-} from "@kontave/client-remote";
+import type { KontaveRequest } from "@kontave/client-remote";
 import type { ModuleCode } from "@kontave/modules/domain";
 import {
   WebApplicationController,
@@ -36,21 +33,45 @@ export interface BrowserConnectivityEnvironment {
 export function createBrowserConnectivityProbe(
   environment: BrowserConnectivityEnvironment,
   timeoutMs?: number,
-): { readonly check: () => ReturnType<RemoteConnectivityProbe["check"]> } {
+): {
+  readonly check: () => Promise<
+    | { readonly reachable: true }
+    | {
+        readonly reachable: false;
+        readonly reason:
+          | "probe_timeout"
+          | "network_unreachable"
+          | "service_unreachable";
+      }
+  >;
+} {
   return {
-    check: () => {
+    check: async () => {
       if (!environment.navigator.onLine)
-        return Promise.resolve({
+        return {
           reachable: false as const,
           reason: "network_unreachable" as const,
-        });
-      // Browsers may require Window as fetch's receiver. RemoteConnectivityProbe
-      // stores the request function, so pass a bound function rather than window.fetch.
-      return new RemoteConnectivityProbe(
-        environment.location.origin,
-        environment.fetch.bind(environment),
-        timeoutMs,
-      ).check();
+        };
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs ?? 5_000);
+      try {
+        // Connectivity must not be inferred from an authenticated resource: an
+        // expired session is distinct from an unavailable service.
+        const response = await environment.fetch.call(
+          environment,
+          new URL("/api/client/v1/health", environment.location.origin),
+          { method: "GET", cache: "no-store", signal: controller.signal },
+        );
+        return response.ok
+          ? { reachable: true as const }
+          : { reachable: false as const, reason: "service_unreachable" as const };
+      } catch (cause: unknown) {
+        return cause instanceof Error && cause.name === "AbortError"
+          ? { reachable: false as const, reason: "probe_timeout" as const }
+          : { reachable: false as const, reason: "network_unreachable" as const };
+      } finally {
+        clearTimeout(timeout);
+      }
     },
   };
 }

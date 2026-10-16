@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { exactDecimal } from "@kontave/monetary/domain";
 import { ConfirmGoodsReceipt, PostPurchasingEventToInventory, type PurchasingCommitPort } from "../../src/application";
-import { PurchasingFailure, type GoodsReceipt, type PurchaseReceiptConfirmed, type PurchaseReceiptReversed, type PurchaseReturn, type PurchaseReturnConfirmed, type SupplierInvoiceMatch } from "../../src/domain";
+import { PurchasingFailure, type GoodsReceipt, type PurchaseReceiptConfirmed, type PurchaseReceiptReversed, type PurchaseReturn, type PurchaseReturnConfirmed } from "../../src/domain";
 import { PURCHASING_ORDER_LINE_ID, approvedPurchaseOrderFixture, goodsReceiptFixture, supplierFixture } from "../../src/testing";
 
 test("confirm receipt atomically commits the aggregate and outbox event without calling inventory directly", async () => {
@@ -70,6 +70,5 @@ function commitPort(onReceipt: (receipt: GoodsReceipt, event: PurchaseReceiptCon
   return {
     commitReceipt: async (receipt, event) => onReceipt(receipt, event),
     commitReturn: async (_purchaseReturn: PurchaseReturn, _event: PurchaseReturnConfirmed) => undefined,
-    commitInvoiceMatch: async (_match: SupplierInvoiceMatch) => undefined,
   };
 }

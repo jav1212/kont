@@ -27,6 +27,13 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".incident-worktree/**",
+    ".worktrees/**",
+    ".pnpm-store/**",
+    ".vercel/**",
+    "**/dist/**",
+    "backups/**",
+    "tmp/**",
     "out/**",
     "build/**",
     "apps/*/out/**",

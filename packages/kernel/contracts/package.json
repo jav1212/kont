@@ -10,6 +10,9 @@
     "check": "tsc --noEmit",
     "test": "tsx --test test/**/*.test.ts"
   },
+  "dependencies": {
+    "@kontave/treasury": "workspace:*"
+  },
   "devDependencies": {
     "tsx": "^4.23.12",
     "typescript": "^5.9.2"

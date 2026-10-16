@@ -65,10 +65,47 @@ export type OrganizationFailureCode =
   | "COMPANY_ACCESS_DENIED"
   | "ORGANIZATION_REPOSITORY_UNAVAILABLE";
 
+export type UserAdministrationFailureCode =
+  | "ORGANIZATIONAL_USER_NOT_FOUND"
+  | "ORGANIZATIONAL_USER_ALREADY_EXISTS"
+  | "ORGANIZATIONAL_USER_VERSION_CONFLICT"
+  | "ORGANIZATIONAL_USER_DATA_INVALID"
+  | "ORGANIZATIONAL_USER_COMPANY_INVALID"
+  | "ORGANIZATIONAL_USER_PRIORITY_INVALID"
+  | "ORGANIZATIONAL_USER_PRIORITY_ESCALATION"
+  | "ORGANIZATIONAL_USER_ACCESS_DENIED";
+
 export class OrganizationFailure extends Error {
   constructor(readonly code: OrganizationFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "OrganizationFailure";
+  }
+}
+
+/** Represents an identity assigned to one organization, without owning the global identity. */
+export interface OrganizationalUser {
+  readonly organizationId: OrganizationId;
+  readonly userId: UserId;
+  readonly email: string;
+  readonly displayName: string | null;
+  /** Administrative routing order. It conveys no permission or access grant. */
+  readonly administrativePriority: number;
+  readonly allowedCompanyIds: readonly CompanyId[];
+  readonly status: MembershipStatus;
+  readonly version: number;
+}
+
+/** A typed expected failure from the portable organizational-user capability. */
+export class UserAdministrationFailure extends Error {
+  /**
+   * Creates an expected organizational-user failure.
+   * @param code Stable code for a caller-facing handling path.
+   * @param message Human-readable explanation suitable for a Spanish UI.
+   * @param options Optional causal error information.
+   */
+  constructor(readonly code: UserAdministrationFailureCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "UserAdministrationFailure";
   }
 }
 

@@ -12,10 +12,12 @@ import {
   ConfigureCompanyDateFormat,
   companyDocumentSeriesConfigurationActions,
   CompanyDocumentNumberingOperation,
+  GetCompanyMonetaryPolicy,
+  ConfigureCompanyMonetaryPolicy,
 } from "@kontave/companies/application";
 import type { CompanyAdministrationAuthorization, CompanyAdministrationScope, CompanyDocumentNumberingAuthorization, CompanyDocumentNumberingScope } from "@kontave/companies/application";
 import { CompanyFailure } from "@kontave/companies/domain";
-import { createCompanyAdministrationRepository, createCompanyDateFormatRepository, createCompanyDocumentSeriesConfigurationRepository, createCompanyLogoStorage, createCompanyRepository, createCompanySecondaryTaxIdentifierRepository } from "@kontave/companies/supabase";
+import { createCompanyAdministrationRepository, createCompanyDateFormatRepository, createCompanyDocumentSeriesConfigurationRepository, createCompanyLogoStorage, createCompanyRepository, createCompanySecondaryTaxIdentifierRepository, createCompanyMonetaryPolicyRepository } from "@kontave/companies/supabase";
 import { AuthorizationSource, permissionCode, PERMISSIONS } from "@kontave/access-control/domain";
 import type { RequireAuthorization } from "@kontave/access-control/application";
 import { organizationId, userId } from "@kontave/organizations/domain";
@@ -44,6 +46,7 @@ export function createCompanyAdministrationWebActions(input: {
   const dateFormatRepository = createCompanyDateFormatRepository(config);
   const logoStorage = createCompanyLogoStorage(config);
   const documentSeriesRepository = createCompanyDocumentSeriesConfigurationRepository(config);
+  const monetaryPolicyRepository = createCompanyMonetaryPolicyRepository(config);
 
   return {
     getSecondaryTaxIdentifiers: new GetCompanySecondaryTaxIdentifiers(access, secondaryIdentifiersRepository),
@@ -56,6 +59,8 @@ export function createCompanyAdministrationWebActions(input: {
     documentSeries: companyDocumentSeriesConfigurationActions(access, documentSeriesRepository),
     getDateFormat: new GetCompanyDateFormat(access, dateFormatRepository),
     configureDateFormat: new ConfigureCompanyDateFormat(access, dateFormatRepository),
+    getMonetaryPolicy: new GetCompanyMonetaryPolicy(access, monetaryPolicyRepository),
+    configureMonetaryPolicy: new ConfigureCompanyMonetaryPolicy(access, monetaryPolicyRepository),
     /**
      * Creates the immutable authenticated actor and organization scope used by package commands.
      * @returns Canonical user and organization identifiers.
@@ -138,4 +143,25 @@ export async function getCompanyAdministrationWebContext(tenant: TenantContext, 
       authorization: canonical.actions.require,
     }),
   };
+}
+
+/** Resolves the authenticated user's persisted branch selection for one company.
+ * @param tenant - Authenticated Web tenant context.
+ * @param canonicalOrganizationId - Organization resolved by the shared authorization boundary.
+ * @param rawCompanyId - Company whose selection is requested.
+ * @returns The branch selection or null when the request cannot be scoped to a canonical organization.
+ * @throws {CompanyFailure} When the package rejects access or the selected-branch query fails.
+ */
+export async function getCompanyBranchSelectionForWeb(tenant: TenantContext, canonicalOrganizationId: string, rawCompanyId: string): Promise<{ readonly branchId: string | null }> {
+  const { data, error } = await new ServerSupabaseSource().instance.rpc("get_native_sales_confirmation_branch", {
+    p_actor_user_id: tenant.userId,
+    p_organization_id: canonicalOrganizationId,
+    p_company_id: rawCompanyId,
+  });
+  if (error) throw new Error("No fue posible resolver la sucursal asignada para confirmar la venta.", { cause: error });
+  if (!data || typeof data !== "object" || Array.isArray(data) || !("branch_id" in data)
+    || (data.branch_id !== null && typeof data.branch_id !== "string")) {
+    throw new Error("La selección de sucursal devuelta por el servidor no es válida.");
+  }
+  return { branchId: data.branch_id };
 }

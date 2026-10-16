@@ -26,6 +26,8 @@ import { SalesFailure } from "../domain";
 export interface ConfirmedServiceInvoiceLine {
   readonly id: string;
   readonly productId: string | null;
+  /** Fiscal unit resolved from the company product catalog for merchandise lines. */
+  readonly productUnitCode?: string | null;
   readonly serviceTaxCode: string | null;
   readonly description: string;
   readonly quantity: ExactDecimal;
@@ -71,7 +73,7 @@ export interface SalesFiscalIssuerIdentity {
   readonly fiscalAddress: string | null;
 }
 
-/** Read-only commercial source for a confirmed service invoice. */
+/** Read-only commercial source for a confirmed sales invoice with product or service lines. */
 export interface ConfirmedServiceInvoiceReader {
   /**
    * Finds a sales invoice and its persisted line/customer snapshots.
@@ -106,7 +108,7 @@ export interface ConfirmedServiceInvoiceTaxResolver {
   }>;
 }
 
-/** Prepares an immutable fiscal draft from a confirmed, service-only legacy invoice. */
+/** Prepares an immutable fiscal draft from a classified legacy sales invoice. */
 export class PrepareConfirmedServiceInvoiceFiscalDocument {
   /**
    * Creates a service invoice preparation use case.
@@ -127,7 +129,7 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
   /**
    * Creates a draft fiscal snapshot without issuing an external fiscal document.
    *
-   * The command accepts only confirmed service invoices. Persisted tax classification,
+   * The command accepts only confirmed invoices whose lines are classified products or services. Persisted tax classification,
    * legal issuer data, and fiscal rules are resolved on the server and snapshotted.
    * Totals must reconcile with the commercial invoice before persistence.
    *
@@ -148,11 +150,11 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
   }
 
   /**
-   * Reconstructs a fiscal candidate from a draft service invoice for a later atomic confirmation.
+   * Reconstructs a fiscal candidate from a classified product/service invoice draft for later atomic confirmation.
    * This method never persists the fiscal document; the issuance transaction owns persistence.
    * @param input - Authorized draft identity, actor, and preparation timestamp.
    * @returns Validated fiscal draft and the exact source update timestamp for compare-and-set issuance.
-   * @throws {SalesFailure} When the source is not an eligible classified service draft or totals do not reconcile.
+   * @throws {SalesFailure} When the source is not an eligible classified draft or totals do not reconcile.
    */
   async prepareDraftCandidate(input: {
     readonly scope: FiscalPersistenceScope;
@@ -213,7 +215,7 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
       return { document: prior, replayed: true };
     }
     if (!isEligibleCommercialSource(invoice, allowDraftSource)) {
-      throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "El borrador fiscal requiere una factura de servicios confirmada y con cada línea clasificada.");
+      throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "El borrador fiscal requiere una factura de venta clasificada y cada línea debe ser un producto o servicio con perfil fiscal.");
     }
     if (!issuer || issuer.companyId !== invoice.companyId || !issuer.taxIdentifier.trim() || !issuer.legalName.trim() || !issuer.fiscalAddress?.trim()) {
       throw new SalesFailure("SALES_FISCAL_PREPARATION_INVALID", "La identidad fiscal de la empresa debe incluir RIF, razón social y domicilio fiscal.");
@@ -230,14 +232,14 @@ export class PrepareConfirmedServiceInvoiceFiscalDocument {
         || resolved.determinations.some((item) => item.source.kind !== "line" || item.source.lineId !== lineId
           || item.jurisdiction.toUpperCase() !== issuer.jurisdiction.toUpperCase()
           || (item.operationDate !== undefined && item.operationDate !== operationDate))) {
-        throw new SalesFailure("SALES_FISCAL_TAX_UNRESOLVED", "Una línea de servicio no tiene una determinación fiscal completa y vinculada a su línea.");
+        throw new SalesFailure("SALES_FISCAL_TAX_UNRESOLVED", "Una línea de producto o servicio no tiene una determinación fiscal completa y vinculada a su línea.");
       }
       determinations.push(...resolved.determinations.map((item) => fiscalTaxDetermination({ ...item, operationDate })));
       const adjustments = [];
       if (sourceLine.discountAmount.minorAmount > 0n) adjustments.push({ kind: "discount" as const, scope: "line" as const, calculation: { kind: "fixed_amount" as const }, reason: null, amount: sourceLine.discountAmount });
       if (sourceLine.surchargeAmount.minorAmount > 0n) adjustments.push({ kind: "surcharge" as const, scope: "line" as const, calculation: { kind: "fixed_amount" as const }, reason: null, amount: sourceLine.surchargeAmount });
       lines.push({
-        id: lineId, commercialReference: sourceLine.serviceTaxCode,
+        id: lineId, commercialReference: sourceLine.productId ?? sourceLine.serviceTaxCode,
         description: sourceLine.description, quantity: sourceLine.quantity,
         unitCode: resolved.unitCode, unitPrice: sourceLine.unitPrice,
         grossAmount: sourceLine.grossAmount, adjustments, netAmount: sourceLine.netAmount,
@@ -322,7 +324,8 @@ function isEligibleCommercialSource(invoice: ConfirmedServiceInvoice, allowDraft
   return (invoice.status === "confirmada" || (allowDraft && invoice.status === "borrador"))
     && invoice.documentType === "venta"
     && invoice.lines.length > 0
-    && invoice.lines.every((line) => line.productId === null && !!line.serviceTaxCode?.trim());
+    && invoice.lines.every((line) => (line.productId !== null && !line.serviceTaxCode?.trim() && !!line.productUnitCode?.trim())
+      || (line.productId === null && !!line.serviceTaxCode?.trim()));
 }
 
 function assertInvoiceMoneyCurrency(invoice: ConfirmedServiceInvoice): void {
@@ -370,7 +373,7 @@ function matchesPreparedCommercialSource(
     const discount = sourceLine.discountAmount;
     const surcharge = sourceLine.surchargeAmount;
     return snapshot.id === fiscalDocumentLineId(sourceLine.id)
-      && snapshot.commercialReference === sourceLine.serviceTaxCode?.trim()
+      && snapshot.commercialReference === (sourceLine.productId ?? sourceLine.serviceTaxCode?.trim())
       && snapshot.description === sourceLine.description.trim()
       && snapshot.quantity === sourceLine.quantity
       && sameAmount(snapshot.unitPrice, sourceLine.unitPrice)

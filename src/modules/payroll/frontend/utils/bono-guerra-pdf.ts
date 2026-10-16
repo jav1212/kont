@@ -125,7 +125,7 @@ function drawParamsCard(
     renderLabel(doc, "Equiv. por empleado", cx3, y + 5, "right", COLORS.muted, 7);
     renderMono(doc, formatPayrollAmount(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
 
-    let nextY = y + H + 5;
+    const nextY = y + H + 5;
     return nextY;
 }
 

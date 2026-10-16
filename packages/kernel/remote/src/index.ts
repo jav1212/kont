@@ -11,4 +11,5 @@ export * from "./domains/profile";
 export * from "./domains/products";
 export * from "./domains/purchasing";
 export * from "./domains/sales";
+export * from "./domains/treasury";
 export * from "./transport";

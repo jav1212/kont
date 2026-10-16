@@ -9,6 +9,9 @@ import {
   type SessionClientKind,
 } from "../domain";
 
+export * from "./account-security";
+export * from "./secure-sign-in";
+
 export const authenticationCodeLength = 8;
 
 export interface SignInCommand {
@@ -319,3 +322,4 @@ function requireVerificationCode(value: string): string {
   }
   return code;
 }
+export * from "./provision-user";

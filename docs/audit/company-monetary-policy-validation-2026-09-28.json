@@ -1,0 +1,344 @@
+{
+  "date": "2026-09-28",
+  "project": "fvantswxhepvkloygcvc",
+  "environment": "Connected project explicitly authorized by user as development",
+  "status": "foundation_validated_web_integration_pending",
+  "preflight": {
+    "checked_at": "2026-09-28T18:06:50.543728+00:00",
+    "company_rls": true,
+    "permissions": [
+      "companies.read",
+      "companies.update"
+    ],
+    "company_health": {
+      "companies": 74,
+      "tenant_mismatch": 0,
+      "missing_organization": 0,
+      "non_active_companies": 0
+    },
+    "required_functions": [
+      {
+        "installed": true,
+        "signature": "public.assert_company_administration_access(uuid,uuid,text)"
+      },
+      {
+        "installed": true,
+        "signature": "public.get_native_company_document_numbering(uuid,uuid,text,integer)"
+      }
+    ],
+    "policy_tables_already_installed": null
+  },
+  "migrations": [
+    {
+      "name": "company_monetary_policy",
+      "version": "20260928180913"
+    },
+    {
+      "name": "company_monetary_policy_revision_index",
+      "version": "20260928182149"
+    }
+  ],
+  "local": {
+    "companies_tests": 39,
+    "monetary_tests": 23,
+    "companies_typecheck": "passed",
+    "dependent_project_typechecks": 16,
+    "root_typecheck": "passed",
+    "eslint": "passed"
+  },
+  "smoke": {
+    "count": 19,
+    "passed": [
+      "fixture_company_created",
+      "unconfigured_explicit_null",
+      "malformed_policies_rejected_without_receipts",
+      "configured_version_one",
+      "idempotent_replay_no_duplicate_evidence",
+      "idempotency_version_and_contract_rejections",
+      "reference_currency_subset_and_second_revision",
+      "service_role_direct_table_denied",
+      "evidence_immutable_and_company_delete_restricted",
+      "current_and_immutable_revision_readable",
+      "numbering_and_policy_versions_independent",
+      "suspended_mutations_denied_historical_read_allowed",
+      "organization_isolation",
+      "revoked_read_permission_denied",
+      "revoked_update_permission_denied_even_for_replay",
+      "anon_rpc_and_table_denied",
+      "authenticated_rpc_and_table_denied",
+      "audit_actor_reason_and_versions",
+      "fixtures_rolled_back"
+    ]
+  },
+  "concurrency": {
+    "edit": {
+      "writer": {
+        "pid": 3272423,
+        "started": "2026-09-28T18:16:28.397184Z",
+        "finished": "2026-09-28T18:17:23.421253Z"
+      },
+      "contender": {
+        "pid": 3272425,
+        "started": "2026-09-28T18:16:53.513355Z",
+        "finished": "2026-09-28T18:17:23.426089Z",
+        "error": "COMPANY_MONETARY_POLICY_VERSION_CONFLICT"
+      }
+    },
+    "initial_creation": {
+      "writer": {
+        "pid": 3272452,
+        "started": "2026-09-28T18:18:34.880487Z",
+        "finished": "2026-09-28T18:19:29.941690Z"
+      },
+      "contender": {
+        "pid": 3272454,
+        "started": "2026-09-28T18:19:01.092103Z",
+        "finished": "2026-09-28T18:19:29.946440Z",
+        "error": "COMPANY_MONETARY_POLICY_VERSION_CONFLICT"
+      },
+      "policies": 1,
+      "revisions": 1,
+      "events": 1
+    },
+    "non_overlapping_attempts_excluded": true,
+    "cleanup": "Two committed fixture companies and dependent evidence deleted by exact identifiers; reversible smoke rolled back separately."
+  },
+  "access_control": {
+    "tables": [
+      {
+        "acl": [
+          {
+            "role": "anon",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "authenticated",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "service_role",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          }
+        ],
+        "rls": true,
+        "table": "shared_company_monetary_policies"
+      },
+      {
+        "acl": [
+          {
+            "role": "anon",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "authenticated",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "service_role",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          }
+        ],
+        "rls": true,
+        "table": "shared_company_monetary_policy_events"
+      },
+      {
+        "acl": [
+          {
+            "role": "anon",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "authenticated",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "service_role",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          }
+        ],
+        "rls": true,
+        "table": "shared_company_monetary_policy_requests"
+      },
+      {
+        "acl": [
+          {
+            "role": "anon",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "authenticated",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          },
+          {
+            "role": "service_role",
+            "delete": false,
+            "insert": false,
+            "select": false,
+            "update": false,
+            "truncate": false
+          }
+        ],
+        "rls": true,
+        "table": "shared_company_monetary_policy_revisions"
+      }
+    ],
+    "functions": [
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "assert_company_for_monetary_policy",
+        "service_role": false,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "company_monetary_policy_revision_snapshot",
+        "service_role": false,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "company_monetary_policy_snapshot",
+        "service_role": false,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "company_monetary_reference_currencies_valid",
+        "service_role": false,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "configure_native_company_monetary_policy",
+        "service_role": true,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "get_native_company_monetary_policy",
+        "service_role": true,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "lock_active_company_for_monetary_policy",
+        "service_role": false,
+        "authenticated": false
+      },
+      {
+        "anon": false,
+        "config": [
+          "search_path=public"
+        ],
+        "function": "prevent_company_monetary_policy_evidence_mutation",
+        "service_role": false,
+        "authenticated": false
+      }
+    ]
+  },
+  "final_verification": {
+    "events": 0,
+    "invoices": 28,
+    "policies": 0,
+    "requests": 0,
+    "companies": 74,
+    "revisions": 0,
+    "migrations": [
+      {
+        "name": "company_monetary_policy",
+        "version": "20260928180913"
+      },
+      {
+        "name": "company_monetary_policy_revision_index",
+        "version": "20260928182149"
+      }
+    ],
+    "invoices_hash": "76257bbc7c220c0ef45c891488e20fde",
+    "companies_hash": "149a9961fe886213850da6a400f8fd02",
+    "creation_requests": 0,
+    "administration_events": 0
+  },
+  "fingerprint_method": "md5(string_agg(to_jsonb(row)::text, '|' order by tenant_id, id)); full rows, identical before and after this increment.",
+  "advisors": {
+    "new_security_infos": "4 private RLS tables without policies: deliberate client deny",
+    "new_security_warnings": 0,
+    "existing_security_warnings": {
+      "function_search_path_mutable": 43,
+      "anon_security_definer_function_executable": 17,
+      "authenticated_security_definer_function_executable": 17,
+      "auth_leaked_password_protection": 1
+    },
+    "revision_foreign_key_index": "Added in migration 290; performance recheck returned no monetary findings"
+  },
+  "limits": [
+    "No Web integration or deployment",
+    "No automatic policy backfill; all new policy tables empty after fixture cleanup",
+    "Exact-date fresh BCV rates only; no previous-day or manual fallback",
+    "Legacy direct writers and global product authorization remain outside this cut"
+  ]
+}

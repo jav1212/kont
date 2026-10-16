@@ -170,6 +170,11 @@ function recordForPath(path, records) {
   );
 }
 
+/** @param {string} workspaceRoot @param {string} path @returns {string} */
+function relativeSourcePath(workspaceRoot, path) {
+  return relative(workspaceRoot, path).split(sep).join("/");
+}
+
 /** @param {string} specifier @param {object} manifest @returns {boolean} */
 function isPublicSpecifier(specifier, manifest) {
   const packageName = packageNameFor(specifier);
@@ -371,13 +376,13 @@ async function auditUiBoundaries(record, workspaceRoot) {
         )
       )
         violations.push(
-          `${relative(workspaceRoot, record.path)} UI '${condition}' export must resolve exclusively to ${scope}/src`,
+          `${relativeSourcePath(workspaceRoot, record.path)} UI '${condition}' export must resolve exclusively to ${scope}/src`,
         );
     }
     const keys = Object.keys(rootExport);
     if (keys.indexOf("default") !== keys.length - 1)
       violations.push(
-        `${relative(workspaceRoot, record.path)} UI default condition must follow native conditions`,
+        `${relativeSourcePath(workspaceRoot, record.path)} UI default condition must follow native conditions`,
       );
   }
   for (const scope of scopes) {
@@ -389,7 +394,7 @@ async function auditUiBoundaries(record, workspaceRoot) {
         path,
         await readFile(path, "utf8"),
       )) {
-        const prefix = `${relative(workspaceRoot, path)} UI ${scope}`;
+        const prefix = `${relativeSourcePath(workspaceRoot, path)} UI ${scope}`;
         const target = specifier.startsWith(".")
           ? resolveLocal(path, specifier)
           : undefined;
@@ -449,7 +454,7 @@ export async function auditWorkspace(workspaceRoot) {
     const previous = byName.get(record.manifest.name);
     if (previous)
       violations.push(
-        `Duplicate package name '${record.manifest.name}': ${relative(workspaceRoot, previous.path)} and ${relative(workspaceRoot, record.path)}`,
+        `Duplicate package name '${record.manifest.name}': ${relativeSourcePath(workspaceRoot, previous.path)} and ${relativeSourcePath(workspaceRoot, record.path)}`,
       );
     else byName.set(record.manifest.name, record);
   }
@@ -474,7 +479,7 @@ export async function auditWorkspace(workspaceRoot) {
     for (const dependency of declaredDependencies(record.manifest)) {
       if (appNames.has(dependency) && record.manifest.name !== dependency)
         violations.push(
-          `${relative(workspaceRoot, record.path)} depends on application package '${dependency}'`,
+          `${relativeSourcePath(workspaceRoot, record.path)} depends on application package '${dependency}'`,
         );
     }
     const files = await walk(record.root, (path) =>
@@ -488,7 +493,7 @@ export async function auditWorkspace(workspaceRoot) {
         const importedName = packageNameFor(specifier);
         if (appNames.has(importedName) && record.manifest.name !== importedName)
           violations.push(
-            `${relative(workspaceRoot, path)} imports application package '${importedName}'`,
+            `${relativeSourcePath(workspaceRoot, path)} imports application package '${importedName}'`,
           );
         const importedRecord = specifier.startsWith("#")
           ? record
@@ -501,7 +506,7 @@ export async function auditWorkspace(workspaceRoot) {
             edges.get(record.manifest.name).add(importedRecord.manifest.name);
           if (!isPublicSpecifier(specifier, importedRecord.manifest))
             violations.push(
-              `${relative(workspaceRoot, path)} imports private workspace path '${specifier}'; import a declared export instead`,
+              `${relativeSourcePath(workspaceRoot, path)} imports private workspace path '${specifier}'; import a declared export instead`,
             );
         }
         if (
@@ -510,7 +515,7 @@ export async function auditWorkspace(workspaceRoot) {
           FRAMEWORK_OR_PLATFORM_PACKAGES.test(specifier)
         )
           violations.push(
-            `${relative(workspaceRoot, path)} ${layer} layer imports framework or platform dependency '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} ${layer} layer imports framework or platform dependency '${specifier}'`,
           );
         if (
           layer &&
@@ -532,7 +537,7 @@ export async function auditWorkspace(workspaceRoot) {
             leaksOuterLayer
           )
             violations.push(
-              `${relative(workspaceRoot, path)} ${layer} layer imports ${importedLayer ?? "adapter or infrastructure"} workspace export '${specifier}'`,
+              `${relativeSourcePath(workspaceRoot, path)} ${layer} layer imports ${importedLayer ?? "adapter or infrastructure"} workspace export '${specifier}'`,
             );
           if (
             layer === "domain" &&
@@ -540,7 +545,7 @@ export async function auditWorkspace(workspaceRoot) {
             (await reachesNonDomainLayer(exported, importedRecord, byName))
           )
             violations.push(
-              `${relative(workspaceRoot, path)} domain layer reaches a non-domain layer through '${specifier}'`,
+              `${relativeSourcePath(workspaceRoot, path)} domain layer reaches a non-domain layer through '${specifier}'`,
             );
         }
         if (!specifier.startsWith(".")) continue;
@@ -549,7 +554,7 @@ export async function auditWorkspace(workspaceRoot) {
         const targetRecord = recordForPath(target, records);
         if (targetRecord && targetRecord.manifest.name !== record.manifest.name)
           violations.push(
-            `${relative(workspaceRoot, path)} crosses into workspace '${targetRecord.manifest.name}' through relative import '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} crosses into workspace '${targetRecord.manifest.name}' through relative import '${specifier}'`,
           );
         if (
           record.root.startsWith(`${workspaceRoot}${sep}packages${sep}`) &&
@@ -558,12 +563,12 @@ export async function auditWorkspace(workspaceRoot) {
             target.startsWith(`${workspaceRoot}${sep}src${sep}`))
         )
           violations.push(
-            `${relative(workspaceRoot, path)} imports protected production Web code through '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} imports protected production Web code through '${specifier}'`,
           );
         const targetLayer = layerFor(target, record.root);
         if (layer === "domain" && targetLayer && targetLayer !== "domain")
           violations.push(
-            `${relative(workspaceRoot, path)} domain layer imports ${targetLayer} layer through '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} domain layer imports ${targetLayer} layer through '${specifier}'`,
           );
         if (
           layer === "domain" &&
@@ -571,14 +576,14 @@ export async function auditWorkspace(workspaceRoot) {
           (await reachesNonDomainLayer(target, record, byName))
         )
           violations.push(
-            `${relative(workspaceRoot, path)} domain layer reaches a non-domain layer through '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} domain layer reaches a non-domain layer through '${specifier}'`,
           );
         if (
           layer === "application" &&
           ["adapters", "infrastructure"].includes(targetLayer)
         )
           violations.push(
-            `${relative(workspaceRoot, path)} application layer imports ${targetLayer} layer through '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} application layer imports ${targetLayer} layer through '${specifier}'`,
           );
         if (
           layer === "application" &&
@@ -586,7 +591,7 @@ export async function auditWorkspace(workspaceRoot) {
           (await reexportsInfrastructure(target, record, byName))
         )
           violations.push(
-            `${relative(workspaceRoot, path)} application layer reaches infrastructure through '${specifier}'`,
+            `${relativeSourcePath(workspaceRoot, path)} application layer reaches infrastructure through '${specifier}'`,
           );
       }
     }
@@ -625,7 +630,7 @@ export async function auditWorkspace(workspaceRoot) {
           (await reexportsInfrastructure(entry, record, byName))
         )
           violations.push(
-            `${relative(workspaceRoot, record.path)} portable export '${key}' transitively exposes adapter, infrastructure, framework, or platform code`,
+            `${relativeSourcePath(workspaceRoot, record.path)} portable export '${key}' transitively exposes adapter, infrastructure, framework, or platform code`,
           );
       }
     }

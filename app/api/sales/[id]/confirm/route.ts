@@ -12,6 +12,7 @@ import type { FiscalDocumentFactMetadata } from "@kontave/tax-reporting/fiscal-d
 import { TaxationFailure } from "@kontave/taxation/domain";
 import { encodeFiscalDocument } from "@kontave/fiscal/supabase";
 import { encode as encodeTaxFact } from "@kontave/tax-reporting/supabase";
+import { getCompanyBranchSelectionForWeb } from "@/src/modules/companies/backend/administration-web";
 
 const factMetadataSchema = z.object({
   factId: z.string().min(1).max(128),
@@ -49,6 +50,8 @@ export const POST = withTenantPermission("sales.confirm", async (request, tenant
     const { data: invoice, error } = await source.instance.from("shared_inventory_sales_invoices").select("company_id").eq("tenant_id", tenant.tenantId).eq("id", invoiceId).maybeSingle();
     if (error) throw error;
     if (!invoice?.company_id) return Response.json({ error: "La factura no existe." }, { status: 404 });
+    const branchSelection = await getCompanyBranchSelectionForWeb(tenant, authorization.organizationId, invoice.company_id);
+    const selectedBranchId = branchSelection.branchId;
     const allowNegativeStock = body.allowNegativeStock === true && authorization.snapshot.role.hasPermission(permissionCode("inventory.negative_stock.use"));
     if (body.fiscalIva) {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -97,10 +100,10 @@ export const POST = withTenantPermission("sales.confirm", async (request, tenant
         issuedAt,
         factMetadata: metadata,
         priceListId: body.priceListId,
-        branchId: null,
+        branchId: selectedBranchId,
         deviceId: tenant.barcodeTerminalId ?? null,
-        companyBranchId: null,
-        salesRegisterId: tenant.barcodeTerminalId ?? null,
+        companyBranchId: selectedBranchId,
+        salesRegisterId: selectedBranchId ? null : tenant.barcodeTerminalId ?? null,
       });
       return Response.json({
         data: { id: invoiceId, companyId: invoice.company_id, status: "confirmada", invoiceNumber: issuance.displayNumber },
@@ -111,7 +114,8 @@ export const POST = withTenantPermission("sales.confirm", async (request, tenant
     }
     await getSalesActions(tenant.tenantId).securedSales.confirm({
       actorUserId: tenant.userId, organizationId: authorization.organizationId, companyId: invoice.company_id, invoiceId,
-      allowNegativeStock, priceListId: body.priceListId, salesRegisterId: tenant.barcodeTerminalId ?? null, deviceId: tenant.barcodeTerminalId ?? null,
+      allowNegativeStock, priceListId: body.priceListId, branchId: selectedBranchId, companyBranchId: selectedBranchId,
+      salesRegisterId: tenant.barcodeTerminalId ?? null, deviceId: tenant.barcodeTerminalId ?? null,
     });
     return handleResult(await getSalesActions(tenant.tenantId).getSalesInvoice.execute({ invoiceId }));
   } catch (error) {

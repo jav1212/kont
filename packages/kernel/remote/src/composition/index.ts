@@ -9,6 +9,7 @@ import type {
   ProfilePort,
   PurchasingPort,
   SalesPort,
+  TreasuryPort,
 } from "@kontave/client-contracts";
 import { RemoteAuthenticationPort } from "../domains/authentication";
 import { RemoteBillingPort } from "../domains/billing";
@@ -20,6 +21,7 @@ import { RemoteProductsPort } from "../domains/products";
 import { RemoteProfilePort } from "../domains/profile";
 import { RemotePurchasingPort } from "../domains/purchasing";
 import { RemoteSalesPort } from "../domains/sales";
+import { RemoteTreasuryPort } from "../domains/treasury";
 import {
   KontaveRemoteClient,
   type KontaveRemoteClientConfiguration,
@@ -38,6 +40,7 @@ export interface RemoteKontavePorts {
   readonly profile: ProfilePort;
   readonly purchasing: PurchasingPort;
   readonly sales: SalesPort;
+  readonly treasury: TreasuryPort;
 }
 
 /**
@@ -72,5 +75,6 @@ export function createRemoteKontavePortsFromTransport(
     profile: new RemoteProfilePort(transport),
     purchasing: new RemotePurchasingPort(transport),
     sales: new RemoteSalesPort(transport),
+    treasury: new RemoteTreasuryPort(transport),
   });
 }

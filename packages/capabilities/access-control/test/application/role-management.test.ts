@@ -32,9 +32,10 @@ const actor: AuthorizationSnapshot = {
  * Builds the two administrative operations consumed by the update use case.
  * Any unexpected operation fails instead of simulating a successful write.
  * @param target - Persisted role returned to the use case.
+ * @param associatedMemberships - Total assignments including suspended members.
  * @returns Use case and a record of attempted versioned writes.
  */
-function fixture(target: Role) {
+function fixture(target: Role, associatedMemberships = 0) {
   const writes: Parameters<AccessControlAdministration["updateRole"]>[0][] = [];
   const archives: number[] = [];
   const unexpected = async (): Promise<never> => { throw new Error("Unexpected administrative operation"); };
@@ -42,6 +43,7 @@ function fixture(target: Role) {
     listPermissions: unexpected,
     listRoles: unexpected,
     countActiveMemberships: async () => 0,
+    countAssociatedMemberships: async () => associatedMemberships,
     assignRole: unexpected,
     replacePermissions: unexpected,
     archiveRole: unexpected,
@@ -113,6 +115,14 @@ test("system roles remain non-archivable", async () => {
   const { archive, archives } = fixture(target);
   await assert.rejects(() => archive.execute({ organizationId: "organization-a", roleId: target.id, expectedVersion: target.version }),
     (cause: unknown) => cause instanceof AccessControlFailure && cause.code === "SYSTEM_ROLE_IMMUTABLE");
+  assert.deepEqual(archives, []);
+});
+
+test("suspended assignments prevent archiving even with no active members", async () => {
+  const target = role("organization-a");
+  const { archive, archives } = fixture(target, 1);
+  await assert.rejects(() => archive.execute({ organizationId: "organization-a", roleId: target.id, expectedVersion: target.version }),
+    (cause: unknown) => cause instanceof AccessControlFailure && cause.code === "ROLE_IN_USE");
   assert.deepEqual(archives, []);
 });
 

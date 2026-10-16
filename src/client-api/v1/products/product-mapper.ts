@@ -79,6 +79,9 @@ export function toProductDetailDto(
           profileId: taxation.profile.id,
           taxCode: taxation.assignment.taxCode,
           treatment: taxation.assignment.treatment,
+          category: taxation.assignment.category ?? null,
+          legacyRateSlot: taxation.assignment.legacyRateSlot ?? null,
+          priceMode: taxation.assignment.priceMode ?? null,
           resolvedRate: taxation.rule.rate,
           effectiveFrom: taxation.assignment.effectiveFrom,
           effectiveTo: taxation.assignment.effectiveTo,
@@ -89,13 +92,12 @@ export function toProductDetailDto(
       : null,
     productType: "merchandise",
     valuationMethod: "weighted_average",
-    vat:
-      taxation && (treatment === "taxed" || treatment === "exempt")
-        ? {
-            code: treatment === "exempt" ? "exempt" : "general",
-            rate: taxation.rule.rate,
-          }
-        : null,
+    vat: taxation && treatment
+      ? {
+          code: treatment === "taxed" ? taxation.assignment.category ?? "general" : treatment,
+          rate: taxation.rule.rate,
+        }
+      : null,
     capabilities: {
       ...value.capabilities,
       salePricing: commercial !== undefined,

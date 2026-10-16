@@ -30,6 +30,8 @@ export interface ResolveProductVenezuelanVatInput extends TaxationContext {
   readonly lineAmount: Money;
   readonly roundingMode: RoundingMode;
   readonly priceMode?: TaxPriceMode;
+  /** Require company-owned, versioned rules instead of the legacy shared catalog. */
+  readonly requireCompanyCatalog?: boolean;
   /** Additional components already determined to apply by the authorized operation workflow. */
   readonly additionalComponents?: readonly VenezuelanVatComponentSelection[];
 }
@@ -55,6 +57,19 @@ export class ResolveProductVenezuelanVat {
    * @throws {TaxationFailure} When profile, effective rules, component selection or persistence is invalid.
    */
   async execute(input: ResolveProductVenezuelanVatInput): Promise<readonly TaxDecision[]> {
+    return (await this.executeWithClassification(input)).determinations;
+  }
+
+  /** Resolves a product line and returns the classification provenance needed by fiscal snapshots.
+   * @param input - Authorized scope, product line values, date and applicable components.
+   * @returns Decisions plus the effective classification version and legal basis.
+   * @throws {TaxationFailure} When profile, company catalog, component selection or persistence is invalid.
+   */
+  async executeWithClassification(input: ResolveProductVenezuelanVatInput): Promise<{
+    readonly classificationVersion: string;
+    readonly classificationLegalBasis: string;
+    readonly determinations: readonly TaxDecision[];
+  }> {
     try {
       const profile = await this.products.getProfile(input, input.productId);
       if (!profile) throw new TaxationFailure("TAXATION_PROFILE_NOT_FOUND", "Product tax profile was not found.");
@@ -64,6 +79,9 @@ export class ResolveProductVenezuelanVat {
       const catalog = await this.configuration.getCompanyTaxRuleCatalog(input);
       if (catalog.companyId !== input.companyId) {
         throw new TaxationFailure("TAXATION_ACCESS_DENIED", "Tax rule catalog is outside the requested company scope.");
+      }
+      if (input.requireCompanyCatalog && catalog.version < 1) {
+        throw new TaxationFailure("TAXATION_RULE_MISSING", "A company-owned IVA catalog must be configured before fiscal issuance.");
       }
       const rules = catalog.version > 0
         ? catalog.rules.filter((rule) => rule.taxCode === VENEZUELAN_IVA && rule.jurisdiction === profile.jurisdiction)
@@ -75,7 +93,8 @@ export class ResolveProductVenezuelanVat {
         if (!rule) throw new TaxationFailure("TAXATION_RULE_MISSING", "Selected IVA component rule was not found.");
         return { rule, source: selection.source, ...(selection.taxableBase === undefined ? {} : { taxableBase: selection.taxableBase }) };
       });
-      return resolveVenezuelanVatComponents({
+      const assignment = profile.assignmentAt(VENEZUELAN_IVA, input.operationDate);
+      const determinations = resolveVenezuelanVatComponents({
         profile,
         rules,
         operationDate: input.operationDate,
@@ -84,6 +103,11 @@ export class ResolveProductVenezuelanVat {
         roundingMode: input.roundingMode,
         ...(input.priceMode === undefined ? {} : { priceMode: input.priceMode }),
         additionalComponents: selectedComponents,
+      });
+      return Object.freeze({
+        classificationVersion: assignment.classificationVersion,
+        classificationLegalBasis: assignment.legalBasis,
+        determinations,
       });
     } catch (cause: unknown) {
       if (cause instanceof TaxationFailure) throw cause;

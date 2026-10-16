@@ -41,6 +41,30 @@ test("persists a reconciled fiscal draft from a confirmed classified service inv
   assert.equal(repository.persisted[0]?.idempotencyKey, `prepare_legacy_sales_invoice:${invoice.id}`);
 });
 
+test("prepares a mixed product and service invoice and snapshots each commercial reference", async () => {
+  const product = serviceLine({
+    id: "sales-product-line-1",
+    productId: "product-1",
+    productUnitCode: "each",
+    serviceTaxCode: null,
+  });
+  const service = serviceLine({
+    id: "sales-service-line-2",
+    grossAmount: amount("50"), unitPrice: amount("50"), netAmount: amount("50"),
+  });
+  const invoice = confirmedInvoice({
+    subtotal: amount("150"), vatAmount: amount("24"), total: amount("174"),
+    lines: [product, service],
+  });
+  const repository = memoryRepository();
+
+  const result = await createUseCase(invoice, repository).execute(command());
+
+  assert.deepEqual(result.document.lines.map((line) => line.commercialReference), ["product-1", "SERV-CONSULTING"]);
+  assert.equal(result.document.taxDeterminations.length, 2);
+  assert.equal(result.document.totals.taxTotal.minorAmount, 2_400n);
+});
+
 test("reconstructs a revision candidate with the source version and without persisting", async () => {
   const invoice = confirmedInvoice({ sourceUpdatedAt: "2026-09-28T10:00:00.000Z" });
   const repository = memoryRepository();

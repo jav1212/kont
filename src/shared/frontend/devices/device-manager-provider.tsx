@@ -139,6 +139,8 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
         let burstTarget: EventTarget | null = null;
         const reset = () => { scanner.reset(); editableSnapshot = null; burstTarget = null; };
         const onKeyDown = (event: KeyboardEvent) => {
+            // Browser extensions can dispatch generic keydown events without KeyboardEvent fields.
+            if (typeof event.key !== "string" || typeof event.getModifierState !== "function") { reset(); return; }
             if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey) { reset(); return; }
             if (document.visibilityState !== "visible" || !document.hasFocus() || listeners.current.size === 0) { reset(); return; }
             const occurredAt = event.timeStamp;

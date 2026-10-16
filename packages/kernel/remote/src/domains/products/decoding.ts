@@ -131,7 +131,10 @@ const salePricingGuard = fields<ProductSalePricingDto>({
 const taxationGuard = fields<ProductTaxationDto>({
   profileId: text,
   taxCode: text,
-  treatment: literals("taxed", "exempt", "exonerated", "not_subject"),
+  treatment: literals("taxed", "zero_rated", "exempt", "exonerated", "not_subject"),
+  category: nullable(literals("general", "reduced", "zero_rated", "luxury_surcharge", "payment_surcharge", "other")),
+  legacyRateSlot: nullable(literals("a1", "a2", "a3", "a4", "a5")),
+  priceMode: nullable(literals("tax_exclusive", "tax_inclusive")),
   effectiveFrom: text,
   effectiveTo: nullable(text),
   resolvedRate: text,

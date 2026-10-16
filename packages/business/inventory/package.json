@@ -12,7 +12,8 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "tsx --test test/**/*.test.ts",
-    "test:integration": "node --test test/integration/inventory-operations.integration.mjs"
+    "test:integration": "node --test test/integration/inventory-operations.integration.mjs",
+    "test:historical-branch:integration": "node --test test/integration/inventory-historical-branch-attribution.integration.mjs"
   },
   "dependencies": {
     "@kontave/companies": "workspace:*",

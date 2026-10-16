@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { companyId } from "@kontave/companies/domain";
-import { DocumentsFailure, documentId, type StoredDocument } from "../../src/domain";
+import { DocumentsFailure, documentFolderId, documentId, type StoredDocument } from "../../src/domain";
 import { organizationId, userId } from "@kontave/organizations/domain";
-import { DeleteDocument, ListDocuments, type DocumentsRepository, type DocumentStorage } from "../../src/application";
+import {
+  DeleteDocument,
+  ListDocuments,
+  RenameDocumentFolder,
+  type DocumentsRepository,
+  type DocumentStorage,
+} from "../../src/application";
 
 const organization = organizationId("organization-1");
 const document: StoredDocument = {
@@ -37,6 +43,50 @@ test("maps unexpected repository errors to the portable failure", async () => {
     () => new ListDocuments(source).execute({ organizationId: organization }),
     (error: unknown) => error instanceof DocumentsFailure && error.code === "DOCUMENT_REPOSITORY_UNAVAILABLE",
   );
+});
+
+test("renames a folder with a normalized name and the caller's expected version", async () => {
+  let received: Parameters<DocumentsRepository["renameFolder"]>[0] | undefined;
+  const source = repository(() => undefined);
+  source.renameFolder = async (input) => {
+    received = input;
+    return {
+      id: documentFolderId("folder-1"), organizationId: input.organizationId, companyId: null,
+      parentId: null, name: input.name, createdBy: userId("user-1"), version: input.expectedVersion + 1,
+      createdAt: "2026-08-15T00:00:00.000Z", updatedAt: "2026-08-16T00:00:00.000Z",
+    };
+  };
+
+  const renamed = await new RenameDocumentFolder(source).execute({
+    organizationId: organization,
+    folderId: documentFolderId("folder-1"),
+    name: "  Contratos  ",
+    expectedVersion: 4,
+  });
+
+  assert.equal(received?.name, "Contratos");
+  assert.equal(received?.expectedVersion, 4);
+  assert.equal(renamed.version, 5);
+});
+
+test("rejects an empty folder name before reaching persistence", async () => {
+  let called = false;
+  const source = repository(() => undefined);
+  source.renameFolder = async () => {
+    called = true;
+    throw new Error("must not reach persistence");
+  };
+
+  assert.throws(
+    () => new RenameDocumentFolder(source).execute({
+      organizationId: organization,
+      folderId: documentFolderId("folder-1"),
+      name: "   ",
+      expectedVersion: 1,
+    }),
+    (error: unknown) => error instanceof DocumentsFailure && error.code === "DOCUMENT_INVALID",
+  );
+  assert.equal(called, false);
 });
 
 test("maps unexpected storage errors to the portable failure", async () => {

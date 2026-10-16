@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ChevronLeft } from "lucide-react";
@@ -156,13 +156,13 @@ export default function ImportBookPage() {
                     <>
                         <div className="rounded-xl border border-border-light bg-surface-1 p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-[12px]">
                             <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Archivo</p><p className="mt-1 truncate">{parsed.fileName}</p></div>
-                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">RIF detectado</p><p className="mt-1">{parsed.companyRif || "Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½"}</p></div>
-                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Periodo</p><p className="mt-1">{parsed.period || "-"}</p></div>
-                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Periodo</p><p className="mt-1">{parsed.period || "-"}</p></div>
+                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">RIF detectado</p><p className="mt-1">{parsed.companyRif || "Sin dato"}</p></div>
+                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Período</p><p className="mt-1">{parsed.period || "-"}</p></div>
+                            <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Período</p><p className="mt-1">{parsed.period || "-"}</p></div>
                             <div><p className="text-[10px] uppercase text-[var(--text-tertiary)]">Listas para precargar</p><p className="mt-1 font-bold text-emerald-600">{readyRows.length}</p></div>
                         </div>
 
-                        {(parsed.errors.length > 0 || (parsed.companyRif && normalizeRif(parsed.companyRif) !== normalizeRif(companyId ?? ""))) && <div className="rounded-xl border border-red-300/50 bg-red-50 dark:bg-red-950/20 p-4 text-[12px] text-red-700">{[...parsed.errors, ...(parsed.companyRif && normalizeRif(parsed.companyRif) !== normalizeRif(companyId ?? "") ? ["El RIF del archivo no corresponde a la empresa seleccionada"] : [])].join(" Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½Ã¯Â¿Â½ ")}</div>}
+                        {(parsed.errors.length > 0 || (parsed.companyRif && normalizeRif(parsed.companyRif) !== normalizeRif(companyId ?? ""))) && <div className="rounded-xl border border-red-300/50 bg-red-50 dark:bg-red-950/20 p-4 text-[12px] text-red-700">{[...parsed.errors, ...(parsed.companyRif && normalizeRif(parsed.companyRif) !== normalizeRif(companyId ?? "") ? ["El RIF del archivo no corresponde a la empresa seleccionada"] : [])].join(" | ")}</div>}
 
                         <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                             <div className="overflow-x-auto">
@@ -174,7 +174,7 @@ export default function ImportBookPage() {
                                         const duplicate = purchaseInvoices.some((invoice) => invoice.period === row.period && invoice.date === row.date && ((row.controlNumber && invoice.controlNumber === row.controlNumber) || (row.documentNumber && invoice.invoiceNumber === row.documentNumber)));
                                         const reasons = [...row.warnings, duplicate ? "Factura duplicada en el mismo periodo" : ""].filter(Boolean);
                                         return <tr key={`${row.sourceRow}-${row.operation}`} className="border-t border-border-light/70">
-                                            <td className="p-3 tabular-nums">{row.operation}</td><td className="p-3 tabular-nums">{row.date || "Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½Ã¯Â¿Â½"}</td><td className="p-3 min-w-[220px]">{row.supplierName}<span className="block text-[10px] text-[var(--text-tertiary)]">{row.supplierRif}</span></td><td className="p-3 tabular-nums">{row.documentNumber}<span className="block text-[10px] text-[var(--text-tertiary)]">{row.controlNumber}</span></td><td className="p-3 text-right tabular-nums">Bs. {money(row.total)}</td><td className="p-3">{reasons.length === 0 ? <span className="text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 size={13} /> Lista</span> : <span className="text-amber-600 inline-flex items-center gap-1" title={reasons.join(" Ã¯Â¿Â½Ã¯Â¿Â½aÃ¯Â¿Â½Ã¯Â¿Â½ ")}><AlertTriangle size={13} /> Revisar</span>}</td>
+                                            <td className="p-3 tabular-nums">{row.operation}</td><td className="p-3 tabular-nums">{row.date || "-"}</td><td className="p-3 min-w-[220px]">{row.supplierName}<span className="block text-[10px] text-[var(--text-tertiary)]">{row.supplierRif}</span></td><td className="p-3 tabular-nums">{row.documentNumber}<span className="block text-[10px] text-[var(--text-tertiary)]">{row.controlNumber}</span></td><td className="p-3 text-right tabular-nums">Bs. {money(row.total)}</td><td className="p-3">{reasons.length === 0 ? <span className="text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 size={13} /> Lista</span> : <span className="text-amber-600 inline-flex items-center gap-1" title={reasons.join(" | ")}><AlertTriangle size={13} /> Revisar</span>}</td>
                                         </tr>;
                                     })}</tbody>
                                 </table>

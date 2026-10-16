@@ -49,6 +49,8 @@ export type AuthenticationFailureCode =
   | "PASSWORD_POLICY_VIOLATION"
   | "PROVIDER_UNAVAILABLE"
   | "RATE_LIMITED"
+  | "ACCOUNT_SECURITY_DENIED"
+  | "ACCOUNT_SECURITY_CONFLICT"
   | "RECOVERY_NOT_VERIFIED"
   | "SESSION_EXPIRED"
   | "SESSION_NOT_FOUND"
@@ -95,3 +97,5 @@ export function assertPasswordAccepted(password: string): void {
     );
   }
 }
+
+export * from "./security-policy";

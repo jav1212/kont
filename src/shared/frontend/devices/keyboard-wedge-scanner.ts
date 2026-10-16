@@ -57,6 +57,10 @@ export class KeyboardWedgeScanner {
      * @returns The completed read, or null until the reader sends Enter.
      */
     push(input: KeyboardWedgeKey, occurredAt: number): KeyboardWedgeScan | null {
+        if (typeof input?.key !== "string" || typeof input.code !== "string") {
+            this.reset();
+            return null;
+        }
         if (input.key === "Enter") {
             if (this.discardUntilDelimiter) {
                 this.reset();

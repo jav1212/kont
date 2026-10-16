@@ -14,6 +14,8 @@ import { notify } from "@/src/shared/frontend/notify";
 import { ProductSalePricingFields, formatProductSalePricing } from "@/src/modules/inventory/frontend/components/product-sale-pricing-fields";
 import { ProductHistoryChart } from "@/src/modules/inventory/frontend/components/product-history-chart";
 import { ProductCompositionEditor } from "@/src/modules/inventory/frontend/components/product-composition-editor";
+import { TypedProductCustomFieldValues } from "@/src/modules/inventory/frontend/components/typed-product-custom-fields";
+import type { ProductCustomFieldDefinition } from "@kontave/products/domain";
 
 const fieldCls = "h-10 w-full rounded-lg border border-border-default bg-surface-1 px-3 font-mono text-[14px] text-foreground outline-none transition-colors hover:border-border-medium focus:border-primary-500";
 const labelCls = "mb-1.5 block font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]";
@@ -42,6 +44,11 @@ export default function ProductDetailPage() {
     const { products, departments, loadingProducts, loadingDepartments, loadProducts, loadDepartments, saveProduct, loadProductHistory, productHistory, loadingProductHistory } = useInventory();
     const [form, setForm] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
+    const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
+    const [hiddenFieldIds, setHiddenFieldIds] = useState<string[]>([]);
+    const [viewPreferencesVersion, setViewPreferencesVersion] = useState<number | null>(null);
+    const [typedFieldDefinitions, setTypedFieldDefinitions] = useState<readonly ProductCustomFieldDefinition[]>([]);
+    const [savingVisibility, setSavingVisibility] = useState(false);
     const [savedCompositionKind, setSavedCompositionKind] = useState<"simple" | "composite" | null>(null);
     const customFields: CustomFieldDefinition[] = company?.inventoryConfig?.customFields ?? [];
     const source = useMemo(() => products.find((p) => p.id === id), [products, id]);
@@ -59,6 +66,48 @@ export default function ProductDetailPage() {
     useEffect(() => {
         if (companyId && source?.id) void loadProductHistory(companyId, source.id);
     }, [companyId, source?.id, loadProductHistory]);
+
+    useEffect(() => {
+        let current = true;
+        void fetch("/api/preferences/inventory-product-field-labels", { cache: "no-store" }).then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar los nombres de campos.");
+            if (current) setFieldLabels(payload.data.labels);
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los nombres de campos."); });
+        return () => { current = false; };
+    }, []);
+
+    useEffect(() => {
+        if (!companyId) return;
+        let current = true;
+        void Promise.all([
+            fetch("/api/preferences/inventory-products-columns", { cache: "no-store" }),
+            fetch(`/api/inventory/product-custom-fields?companyId=${encodeURIComponent(companyId)}`, { cache: "no-store" }),
+        ]).then(async ([preferencesResponse, catalogResponse]) => {
+            const [preferencesPayload, catalogPayload] = await Promise.all([preferencesResponse.json(), catalogResponse.json()]);
+            if (!preferencesResponse.ok || !catalogResponse.ok) throw new Error(preferencesPayload.error ?? catalogPayload.error ?? "No fue posible cargar las preferencias de campos.");
+            if (current) {
+                setHiddenFieldIds(preferencesPayload.data.hiddenFieldIds ?? []);
+                setViewPreferencesVersion(preferencesPayload.data.version);
+                setTypedFieldDefinitions(catalogPayload.data.definitions ?? []);
+            }
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de campos."); });
+        return () => { current = false; };
+    }, [companyId]);
+
+    async function toggleFieldVisibility(fieldId: string) {
+        if (viewPreferencesVersion === null || savingVisibility) return;
+        const next = hiddenFieldIds.includes(fieldId) ? hiddenFieldIds.filter((currentId) => currentId !== fieldId) : [...hiddenFieldIds, fieldId];
+        setSavingVisibility(true);
+        try {
+            const response = await fetch("/api/preferences/inventory-products-columns", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: viewPreferencesVersion, hiddenFieldIds: next }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar la visibilidad de campos.");
+            setHiddenFieldIds(payload.data.hiddenFieldIds ?? []);
+            setViewPreferencesVersion(payload.data.version);
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar la visibilidad de campos."); }
+        finally { setSavingVisibility(false); }
+    }
 
     function set<K extends keyof Product>(key: K, value: Product[K]) { setForm((current) => current ? { ...current, [key]: value } : current); }
 
@@ -96,7 +145,9 @@ export default function ProductDetailPage() {
                         {canEditComposition && form && <Section icon={Boxes} title="Composición" description="Los componentes se descontarán al confirmar la venta.">{form.compositionKind === "simple" && <p className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-700">Para convertir este producto en simple, primero elimina todos los componentes y guarda la composición. Después guarda el cambio de presentación.</p>}<ProductCompositionEditor companyId={companyId ?? ""} product={form} products={products} onSaved={async () => { if (!companyId) return; const refreshed = await loadProducts(companyId, true); const updated = refreshed?.find((product) => product.id === form.id); if (updated) setForm((current) => current ? { ...current, components: updated.components, compositionStatus: updated.compositionStatus } : updated); }} /></Section>}
                         <Section icon={Receipt} title="Departamento e IVA" description="Clasificación fiscal y operativa."><div className="grid gap-4 md:grid-cols-2"><div><label className={labelCls}>Departamento</label><select className={fieldCls} value={form?.departmentId ?? ""} onChange={(e) => set("departmentId", e.target.value || undefined)}><option value="">Sin departamento</option>{departments.filter((d) => d.active).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div><label className={labelCls}>IVA</label><select className={fieldCls} value={form?.vatType ?? "general"} onChange={(e) => set("vatType", e.target.value as VatType)}><option value="general">General · 16%</option><option value="exento">Exento</option></select></div></div></Section>
                         {form && <Section icon={BadgeDollarSign} title="Precio de venta" description="Monto fijo o recargo dinámico sobre el costo promedio."><ProductSalePricingFields product={form} onChange={(salePricing) => set("salePricing", salePricing)} /></Section>}
-                        {customFields.length > 0 && <Section icon={SlidersHorizontal} title="Campos adicionales" description="Datos específicos de tu sector o configuración."><div className="grid gap-4 md:grid-cols-3">{customFields.map((cf) => <BaseInput.Field key={cf.key} label={cf.label} value={String(form?.customFields?.[cf.key] ?? "")} onValueChange={(v) => setForm((current) => current ? { ...current, customFields: { ...(current.customFields ?? {}), [cf.key]: v || null } } : current)} />)}</div></Section>}
+                        {(customFields.length > 0 || typedFieldDefinitions.length > 0) && <Section icon={SlidersHorizontal} title="Visibilidad de campos" description="Preferencia personal. Ocultar un campo no elimina ni modifica su valor."><div className="grid gap-2 sm:grid-cols-2">{[...customFields.map((field) => { const id = `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`; return { id, label: fieldLabels[id] ?? field.label }; }), ...typedFieldDefinitions.map((field) => ({ id: `typed-custom-${field.id}`, label: fieldLabels[`typed-custom-${field.id}`] ?? field.label }))].map((field) => <label key={field.id} className="flex items-center gap-2 rounded-lg border border-border-light px-3 py-2 font-sans text-[12px] text-foreground"><input type="checkbox" checked={!hiddenFieldIds.includes(field.id)} disabled={viewPreferencesVersion === null || savingVisibility} onChange={() => void toggleFieldVisibility(field.id)} />{field.label}</label>)}</div></Section>}
+                        {customFields.length > 0 && <Section icon={SlidersHorizontal} title="Campos adicionales" description="Datos específicos de tu sector o configuración."><div className="grid gap-4 md:grid-cols-3">{customFields.filter((cf) => !hiddenFieldIds.includes(`legacy-custom-${cf.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`)).map((cf) => { const fieldId = `legacy-custom-${cf.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`; return <BaseInput.Field key={cf.key} label={fieldLabels[fieldId] ?? cf.label} value={String(form?.customFields?.[cf.key] ?? "")} onValueChange={(v) => setForm((current) => current ? { ...current, customFields: { ...(current.customFields ?? {}), [cf.key]: v || null } } : current)} />; })}</div></Section>}
+                        {companyId && source?.id && <Section icon={SlidersHorizontal} title="Campos tipados" description="Datos nuevos validados por el catálogo tipado. Los campos heredados se conservan arriba."><TypedProductCustomFieldValues companyId={companyId} productId={source.id} fieldLabels={fieldLabels} hiddenFieldIds={hiddenFieldIds} /></Section>}
                         <Section icon={CheckCircle2} title="Estado" description="Los productos inactivos no aparecen en compras ni ventas."><label className="inline-flex cursor-pointer items-center gap-3"><input type="checkbox" checked={form?.active ?? false} onChange={(e) => set("active", e.target.checked)} className="size-4 accent-[var(--primary-500)]" /><span className="font-sans text-[13px] text-foreground">Producto activo</span></label></Section>
                         <Section icon={TrendingUp} title="Historial de compras y precios" description="Compara el costo de compra y el precio unitario efectivamente facturado, expresados en VES." className="!order-1">
                             {loadingProductHistory ? <div className="flex min-h-52 items-center justify-center rounded-lg border border-dashed border-border-light bg-surface-2 font-sans text-[13px] text-[var(--text-secondary)]">Cargando historial…</div> : <>

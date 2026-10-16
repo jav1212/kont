@@ -9,6 +9,8 @@ import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { SystemLabelSettings } from "@/src/shared/frontend/components/system-label-settings";
+import { EMPLOYEE_SYSTEM_LABELS } from "@/src/modules/payroll/domain/employee-system-labels";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { notify } from "@/src/shared/frontend/notify";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
@@ -840,6 +842,15 @@ export default function EmployeesPage() {
     const { companyId, company } = useCompany();
     const { employees, loading, upsert, remove, renameCedula, getSalaryHistory } = useEmployee(companyId);
     const { capacity } = useCapacity();
+    const [systemLabels, setSystemLabels] = useState<Record<string, string>>(() =>
+        Object.fromEntries(EMPLOYEE_SYSTEM_LABELS.map(({ id, defaultLabel }) => [id, defaultLabel])),
+    );
+    const handleSystemLabelsChange = useCallback((labels: Readonly<Record<string, string>>) => {
+        setSystemLabels({ ...labels });
+    }, []);
+    const labelFor = (key: string) => systemLabels[`system.payroll.employees.${key}`]
+        ?? EMPLOYEE_SYSTEM_LABELS.find((item) => item.id === `system.payroll.employees.${key}`)?.defaultLabel
+        ?? key;
 
     const empMax       = capacity?.employeesPerCompany.max ?? null;
     const empUsed      = companyId ? (capacity?.employeesPerCompany.byCompany[companyId] ?? employees.length) : employees.length;
@@ -885,6 +896,40 @@ export default function EmployeesPage() {
     // Filters
     const [search, setSearch]             = useState("");
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
+    const [processDefaultsVersion, setProcessDefaultsVersion] = useState<number | null>(null);
+    const [savedDefaultStatus, setSavedDefaultStatus] = useState<EstadoFilter | null>(null);
+    const [savingProcessDefault, setSavingProcessDefault] = useState(false);
+
+    useEffect(() => {
+        let current = true;
+        void fetch("/api/preferences/process-defaults", { cache: "no-store" }).then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar tu filtro predeterminado.");
+            if (!current) return;
+            const value = payload.data.values?.employeeStatusFilter;
+            const filter: EstadoFilter = value === "activo" || value === "vacacion" || value === "inactivo" ? value : "todos";
+            setProcessDefaultsVersion(payload.data.version);
+            setSavedDefaultStatus(value === "activo" || value === "vacacion" || value === "inactivo" ? value : value === "todos" ? "todos" : null);
+            setEstadoFilter(filter);
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar tu filtro predeterminado."); });
+        return () => { current = false; };
+    }, []);
+
+    async function saveDefaultStatus(status: EstadoFilter | null) {
+        if (processDefaultsVersion === null || savingProcessDefault) return;
+        setSavingProcessDefault(true);
+        try {
+            const values = status === null ? {} : { employeeStatusFilter: status };
+            const response = await fetch("/api/preferences/process-defaults", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: processDefaultsVersion, values }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar el filtro predeterminado.");
+            setProcessDefaultsVersion(payload.data.version);
+            setSavedDefaultStatus(status);
+            if (status === null) setEstadoFilter("todos");
+            notify.success(status === null ? "Filtro predeterminado restaurado." : "Filtro predeterminado guardado.");
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el filtro predeterminado."); }
+        finally { setSavingProcessDefault(false); }
+    }
 
     // ── Undoable delete (REQ-001) ────────────────────────────────────────────
 
@@ -964,7 +1009,7 @@ export default function EmployeesPage() {
             porcentajeIslr: islr,
             modalidadPago: draft.modalidadPago,
             tarifaHora: parseFloat(draft.tarifaHora.replace(",", ".")) || 0,
-            tarifaHoraMoneda: draft.tarifaHoraMoneda as any,
+            tarifaHoraMoneda: draft.tarifaHoraMoneda as Employee["tarifaHoraMoneda"],
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
@@ -1068,7 +1113,7 @@ export default function EmployeesPage() {
             porcentajeIslr: islr,
             modalidadPago: draft.modalidadPago,
             tarifaHora: parseFloat(draft.tarifaHora.replace(",", ".")) || 0,
-            tarifaHoraMoneda: draft.tarifaHoraMoneda as any,
+            tarifaHoraMoneda: draft.tarifaHoraMoneda as Employee["tarifaHoraMoneda"],
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
         if (ok) cancelNewRow(id);
@@ -1282,12 +1327,24 @@ export default function EmployeesPage() {
 
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mr-1 hidden md:inline">
-                                Estado
+                                {labelFor("status")}
                             </span>
                             <FilterChip active={estadoFilter === "todos"}    onClick={() => setEstadoFilter("todos")}    count={counts.total}>Todos</FilterChip>
                             <FilterChip active={estadoFilter === "activo"}   onClick={() => setEstadoFilter("activo")}   count={counts.activo}>Activos</FilterChip>
                             <FilterChip active={estadoFilter === "vacacion"} onClick={() => setEstadoFilter("vacacion")} count={counts.vacacion}>Vacación</FilterChip>
                             <FilterChip active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")} count={counts.inactivo}>Inactivos</FilterChip>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => void saveDefaultStatus(estadoFilter)} isDisabled={processDefaultsVersion === null || savingProcessDefault || savedDefaultStatus === estadoFilter} loading={savingProcessDefault}>Guardar filtro predeterminado</BaseButton.Root>
+                            {savedDefaultStatus !== null && <BaseButton.Root variant="secondary" size="sm" onClick={() => void saveDefaultStatus(null)} isDisabled={processDefaultsVersion === null || savingProcessDefault}>Restaurar</BaseButton.Root>}
+                            <SystemLabelSettings
+                                catalog={EMPLOYEE_SYSTEM_LABELS}
+                                endpoint="/api/preferences/payroll-employee-system-labels"
+                                title="Etiquetas del directorio"
+                                description="Solo cambia cómo ves los campos; no modifica la información de empleados."
+                                onLabelsChange={handleSystemLabelsChange}
+                            />
                         </div>
 
                         <div className="ml-auto flex items-center gap-3">
@@ -1458,12 +1515,12 @@ export default function EmployeesPage() {
                                                 />
                                             </th>
                                             {[
-                                                { label: "Cédula",              align: "text-left"  },
-                                                { label: "Nombre / Cargo",      align: "text-left"  },
-                                                { label: "Salario mensual",     align: "text-right" },
+                                                { label: labelFor("cedula"), align: "text-left" },
+                                                { label: `${labelFor("name")} / ${labelFor("position")}`, align: "text-left" },
+                                                { label: labelFor("salary"), align: "text-right" },
                                                 { label: "% ISLR (AR-I)",       align: "text-right" },
                                                 { label: "Ingreso / Antigüedad",align: "text-left"  },
-                                                { label: "Estado",              align: "text-left"  },
+                                                { label: labelFor("status"), align: "text-left" },
                                                 { label: "",                    align: "text-right" },
                                             ].map((h, idx) => (
                                                 <th
