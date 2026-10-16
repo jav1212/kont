@@ -1,0 +1,27 @@
+{
+  "name": "@kontave/treasury",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./domain": "./src/domain/index.ts",
+    "./application": "./src/application/index.ts",
+    "./postgres": "./src/adapters/postgres/index.ts",
+    "./supabase": "./src/adapters/supabase/index.ts",
+    "./pdf": "./src/adapters/pdf/index.ts",
+    "./contracts": "./src/contracts/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@kontave/monetary": "workspace:*",
+    "jspdf": "^4.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}

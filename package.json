@@ -83,7 +83,8 @@
     "zod": "^4.3.6",
     "jsbarcode": "^3.12.3",
     "@kontave/audit-trail": "workspace:*",
-    "@kontave/payment-orders": "workspace:*"
+    "@kontave/payment-orders": "workspace:*",
+    "@kontave/treasury": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

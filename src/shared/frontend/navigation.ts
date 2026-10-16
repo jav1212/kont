@@ -89,6 +89,8 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     ],
     treasury: [
         { href: "/treasury", label: "Tablero", group: null },
+        { href: "/treasury/reconciliation", label: "Conciliación bancaria", group: "Operaciones" },
+        { href: "/treasury/tax-policy", label: "Política tributaria", group: "Configuración" },
     ],
     iva: [
         { href: "/fiscal", label: "Tablero", group: null },

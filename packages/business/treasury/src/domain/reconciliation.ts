@@ -1,0 +1,17 @@
+import { compareDecimal, exactDecimal, negateDecimal, subtractDecimal, type ExactDecimal } from "@kontave/monetary/domain";
+import { TreasuryFailure } from "./failure";
+
+/** Normalized candidate considered for a statement line. */
+export interface ReconciliationCandidate { readonly ledgerEntryId: string; readonly direction: "credit" | "debit"; readonly amount: ExactDecimal; readonly currency: string; readonly valueDate: string; readonly reference: string; }
+/** Deterministic matching configuration. */
+export interface ReconciliationRule { readonly dateWindowDays: number; readonly amountTolerance: ExactDecimal; readonly referenceWeight: number; readonly dateWeight: number; }
+/** Deterministic reconciliation outcome; equal best candidates must remain pending. */
+export type ReconciliationDecision = { readonly kind: "matched"; readonly ledgerEntryId: string; readonly score: number } | { readonly kind: "pending"; readonly reason: "no_candidate" | "ambiguous" };
+/** Resolves one statement line without guessing between equal candidates. @param statement - Statement identity/value. @param candidates - Eligible unreconciled ledger facts. @param rule - Versioned matching rule. @returns A match or explicit pending decision. @throws {TreasuryFailure} When candidate data or rule is invalid. */
+export function reconcileDeterministically(statement: ReconciliationCandidate, candidates: readonly ReconciliationCandidate[], rule: ReconciliationRule): ReconciliationDecision {
+  validateCandidate(statement); validateRule(rule); const scored = candidates.map(candidate => ({ candidate, score: score(statement, candidate, rule) })).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+  const best = scored[0]; if (!best) return { kind: "pending", reason: "no_candidate" }; const next = scored[1]; if (next?.score === best.score) return { kind: "pending", reason: "ambiguous" }; return { kind: "matched", ledgerEntryId: best.candidate.ledgerEntryId, score: best.score };
+}
+function score(left: ReconciliationCandidate, right: ReconciliationCandidate, rule: ReconciliationRule): number { validateCandidate(right); const difference = subtractDecimal(left.amount, right.amount); const absoluteDifference = compareDecimal(difference, exactDecimal("0")) < 0 ? negateDecimal(difference) : difference; if (left.currency !== right.currency || left.direction !== right.direction || compareDecimal(absoluteDifference, rule.amountTolerance) > 0) return 0; const days = Math.abs(Date.parse(`${left.valueDate}T00:00:00Z`) - Date.parse(`${right.valueDate}T00:00:00Z`)) / 86_400_000; if (days > rule.dateWindowDays) return 0; return (left.reference === right.reference ? rule.referenceWeight : 0) + (rule.dateWindowDays - days + 1) * rule.dateWeight; }
+function validateCandidate(value: ReconciliationCandidate): void { if (!value.ledgerEntryId.trim() || !/^[A-Z]{3}$/.test(value.currency) || !value.reference.trim() || !Number.isFinite(Date.parse(`${value.valueDate}T00:00:00Z`)) || compareDecimal(value.amount, exactDecimal("0")) <= 0) throw new TreasuryFailure("INVALID", "Reconciliation candidate is invalid."); }
+function validateRule(rule: ReconciliationRule): void { if (!Number.isInteger(rule.dateWindowDays) || rule.dateWindowDays < 0 || compareDecimal(rule.amountTolerance, exactDecimal("0")) < 0 || rule.referenceWeight < 0 || rule.dateWeight < 0) throw new TreasuryFailure("INVALID", "Reconciliation rule is invalid."); }
