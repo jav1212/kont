@@ -3,6 +3,8 @@
 **Fecha de revisión:** 19 de septiembre de 2026.  
 **Base del documento:** funcionalidades identificadas en el código y la documentación del repositorio. La disponibilidad para cada cliente depende de los módulos habilitados, sus permisos, el plan y el despliegue correspondiente. Esta revisión no certifica el funcionamiento de un entorno de producción.
 
+**Estado de publicación verificado al 2026-10-16:** Tesorería está desplegada en `kontave.com`; sus rutas principales respondieron HTTP 200. El acceso continúa dependiendo de la habilitación y los permisos de cada organización. Ver [estado y alcance de producción de Tesorería](PLAN_TESORERIA_WEB_PRODUCCION.md).
+
 ## Visión ejecutiva
 
 Kontave es una plataforma modular de gestión empresarial orientada al mercado venezolano. Reúne nómina, compras, ventas, inventario, contabilidad y gestión documental en un espacio de trabajo que permite administrar varias empresas y colaborar con usuarios autorizados.
@@ -23,6 +25,7 @@ La solución está dirigida a empresas, equipos administrativos, comercios y pro
 | Documentos y convenios | Archivos, carpetas y generación de convenios | Organiza soportes por empresa y facilita su recuperación. |
 | Empresas y organizaciones | Identidad, datos fiscales y espacios de trabajo | Permite gestionar varias empresas con un contexto de operación definido. |
 | Herramientas | Divisas, calendario tributario y estado de portales | Facilita consultas recurrentes del trabajo administrativo. |
+| Caja, bancos y tesorería | Cajas, cuentas, movimientos, cheques, depósitos y conciliación | Da seguimiento a saldos y operaciones financieras de cada empresa. |
 
 Estos módulos se apoyan en capacidades de usuarios y permisos, configuración, suscripciones, referidos, dispositivos y administración interna de la plataforma. La separación funcional no implica que todas las áreas se vendan como suscripciones independientes.
 
@@ -149,6 +152,13 @@ Ofrece utilidades de consulta para la operación cotidiana.
 - Suscripción a recordatorios tributarios por correo, sujeta a la configuración del servicio de envío.
 - Consulta del estado y detalle de los portales monitoreados.
 - Acceso público a determinadas herramientas y acceso integrado desde la aplicación.
+
+### 9. Caja, bancos y tesorería
+
+El módulo Web de Tesorería está publicado en producción en `/treasury`. Incluye consulta de caja y cuentas bancarias, movimientos, cheques, conciliación bancaria y configuración de política tributaria bancaria. Sus rutas principales respondieron HTTP 200 en `kontave.com` el 2026-10-16. La disponibilidad para una empresa depende de que su organización tenga el módulo y los permisos habilitados; la publicación no equivale a aceptación integral de los 38 casos previstos.
+
+- [Plan de casos de Caja, Bancos y Tesorería](PLAN_CAJA_BANCOS_TESORERIA.md).
+- [Estado de implementación y publicación Web](PLAN_TESORERIA_WEB_PRODUCCION.md).
 
 ## Capacidades de soporte
 

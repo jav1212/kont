@@ -1,10 +1,12 @@
 # Plan de caja, bancos y tesorería: packages primero, Web después
 
-Fecha de análisis: 2026-09-30. Seguimiento actualizado: 2026-10-02. Estado: **implementación parcial; los 38 casos y la Web de producción siguen pendientes de aceptación**.
+Fecha de análisis: 2026-09-30. Seguimiento actualizado: 2026-10-16. Estado: **módulo Web publicado en producción; aceptación detallada de los 38 casos y algunos pendientes funcionales continúan abiertos**.
 
 ## Objetivo y fuente
 
-Implementar los 38 casos TES-001 a TES-038 en paquetes portables de Kontave, con persistencia compartida y pruebas de comportamiento, y posteriormente integrarlos en la Web de producción mediante cortes explícitos. Este archivo sirve como plan y seguimiento; la entrega completa, la integración Web y el despliegue aún no están terminados.
+Implementar los 38 casos TES-001 a TES-038 en paquetes portables de Kontave, con persistencia compartida y pruebas de comportamiento, e integrarlos en la Web de producción mediante cortes explícitos. Este archivo sirve como plan y seguimiento; la Web ya está desplegada, mientras la aceptación caso por caso y los pendientes funcionales siguen abiertos.
+
+**Estado de producción (2026-10-16):** Vercel publicó el commit `63b739543c40d570a088ec6174a389eeb3b317a7` en `kontave.com` y `www.kontave.com` (deployment `dpl_B2KUje4AYXzqYPmt5bbDe696xszj`, estado **READY**). Las rutas `/treasury`, `/treasury/reconciliation` y `/treasury/tax-policy` respondieron HTTP 200. El despliegue confirma la presencia de la Web, no la aceptación de cada caso ni la habilitación automática para todas las organizaciones. Para el detalle de liberación y las limitaciones vigentes, consulta el [plan de Web a producción](PLAN_TESORERIA_WEB_PRODUCCION.md).
 
 **Orden obligatorio confirmado por el usuario:** la implementación reutilizable se desarrolla primero en `C:\Users\hmolina\Desktop\kont\packages`. Allí viven las reglas, casos de uso, puertos y adaptadores reutilizables. Una vez aceptada esa base, se implementa su consumo en la Web de producción mediante composición, rutas y presentación. Las factories Web ensamblan los casos de uso del paquete; no contienen una segunda implementación del negocio. Las migraciones SQL permanecen en `supabase/migrations`, conforme a la organización del repositorio.
 

@@ -32,6 +32,7 @@ La solución está dirigida a empresas, equipos administrativos, comercios y pro
 | Documentos y convenios | Archivos, carpetas y generación de convenios | Organiza soportes por empresa y facilita su recuperación. |
 | Empresas y organizaciones | Identidad, datos fiscales y espacios de trabajo | Permite gestionar varias empresas con un contexto de operación definido. |
 | Herramientas | Divisas, calendario tributario y estado de portales | Facilita consultas recurrentes del trabajo administrativo. |
+| Caja, bancos y tesorería | Cajas, cuentas, movimientos, cheques, depósitos y conciliación | Da seguimiento a saldos y operaciones financieras de cada empresa. |
 
 Estos módulos se apoyan en capacidades de usuarios y permisos, configuración, suscripciones, referidos, dispositivos y administración interna de la plataforma. La separación funcional no implica que todas las áreas se vendan como suscripciones independientes.
 
@@ -256,6 +257,7 @@ La integración de catálogo con D3xD está documentada como propuesta de arquit
 | [Documentos y convenios](#documentos) | Archivos, carpetas, convenios y evolución del control documental. |
 | [Empresas y organizaciones](#empresas-organizaciones) | Identidad, espacios de trabajo y gestión de varias empresas. |
 | [Herramientas administrativas](#herramientas) | Divisas, calendario tributario, recordatorios y estado de portales. |
+| [Caja, bancos y tesorería](PLAN_CAJA_BANCOS_TESORERIA.md) | Módulo Web de Tesorería desplegado en producción; permisos y habilitación se asignan por organización. |
 
 ### Modos sectoriales
 
@@ -361,6 +363,10 @@ La evolución debe conservar aislamiento por organización y empresa, permisos, 
 - [src/modules/payroll](../../src/modules/payroll)
 - [app/api/payroll](../../app/api/payroll)
 - [Resumen ejecutivo del sistema](#resumen-ejecutivo).
+
+## Estado de producción verificado — 2026-10-16
+
+El módulo Web de Caja, Bancos y Tesorería está desplegado en `kontave.com` y `www.kontave.com`. Vercel marcó **READY** el deployment `dpl_B2KUje4AYXzqYPmt5bbDe696xszj`, correspondiente al commit `63b739543c40d570a088ec6174a389eeb3b317a7`. Las rutas `/treasury`, `/treasury/reconciliation` y `/treasury/tax-policy` respondieron HTTP 200. La disponibilidad para cada cliente depende de los módulos y permisos habilitados en su organización. La publicación no certifica la aceptación integral de los 38 casos TES; véanse el [plan de Tesorería](PLAN_CAJA_BANCOS_TESORERIA.md) y el [seguimiento de producción](PLAN_TESORERIA_WEB_PRODUCCION.md).
 
 ---
 

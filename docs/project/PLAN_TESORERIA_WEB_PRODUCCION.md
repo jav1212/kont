@@ -214,4 +214,10 @@ La Web incluye dashboard e informes, conciliación bancaria y la pantalla `/trea
 
 Validación local del 2026-10-16: check TypeScript del paquete Treasury y TypeScript global pasaron; 43 pruebas del paquete pasaron; `pnpm build` completó compilación, TypeScript y generación de 287 páginas, incluidas `/treasury`, `/treasury/reconciliation` y `/treasury/tax-policy`. PGlite sigue sin ejecutarse porque falta el paquete en la ruta temporal configurada.
 
-El código aún no está publicado en Vercel. MCP identifica como producción actual el commit `5aa730a`; la rama local `master` tiene 2 commits propios y está 16 commits detrás de `origin/master`. El workspace contiene muchos otros cambios sin integrar. Publicar desde este estado podría excluir cambios necesarios o mezclar trabajo ajeno; preparar una rama de liberación basada en el remoto y validar su artefacto antes de promoverla es el paso pendiente.
+## Publicación verificada en producción — 2026-10-16
+
+El módulo se publicó en Vercel desde `master`. Los commits de liberación son `43917d4` (módulo e integración Web), `d70daca` (códigos de error tipados) y `63b7395` (permisos de organización para Treasury). Vercel marcó **READY** el deployment `dpl_B2KUje4AYXzqYPmt5bbDe696xszj`, construido desde `63b739543c40d570a088ec6174a389eeb3b317a7`, y lo asignó a `kontave.com` y `www.kontave.com`.
+
+La compilación de Vercel completó TypeScript y generó 270 páginas. La verificación HTTP en el dominio de producción devolvió 200 para `/treasury`, `/treasury/reconciliation` y `/treasury/tax-policy`. Las migraciones remotas y las 22 tablas Treasury con RLS están documentadas arriba; el módulo figura activo en el catálogo Web.
+
+Este estado confirma la entrega del código a producción, no la aceptación funcional de cada caso TES-001..038 con usuarios finales. El acceso se asigna por organización y no se habilitó masivamente; TES-033 sigue pendiente de una fuente de tasa verificable y una política contable aprobada. Las rutas autenticadas deben validarse con una sesión y una organización habilitada.
