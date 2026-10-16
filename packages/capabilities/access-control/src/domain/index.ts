@@ -99,6 +99,20 @@ export const PERMISSIONS = {
   PAYMENT_ORDERS_VOID: "payment_orders.void",
   /** Grants access to payment orders. */
   PAYMENT_ORDERS_READ: "payment_orders.read",
+  /** Grants read access to company cash and bank activity. */
+  TREASURY_READ: "treasury.read",
+  /** Grants maintenance of Treasury accounts, beneficiaries, and reconciliation rules. */
+  TREASURY_MANAGE: "treasury.manage",
+  /** Grants posting of Treasury movements and payments. */
+  TREASURY_POST: "treasury.post",
+  /** Grants reversal of Treasury postings and reconciliation actions. */
+  TREASURY_REVERSE: "treasury.reverse",
+  /** Grants check issuance and delivery operations. */
+  TREASURY_CHECKS: "treasury.checks",
+  /** Grants bank reconciliation operations. */
+  TREASURY_RECONCILE: "treasury.reconcile",
+  /** Grants configuration of bank-debit tax policy. */
+  TREASURY_TAX_CONFIGURE: "treasury.tax.configure",
   /** Grants company-branch creation. */
   BRANCHES_CREATE: "branches.create",
   /** Grants company-branch visibility. */
