@@ -1,3 +1,4 @@
+import "server-only";
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 import { IPeriodCloseRepository } from '../domain/repository/period-close.repository';
 import { SharedPeriodCloseRepository } from './repository/shared-period-close.repository';

@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 import { AuthorizationDenied, permissionCode, PERMISSIONS } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId as organizationCompanyId } from "@kontave/companies/domain";

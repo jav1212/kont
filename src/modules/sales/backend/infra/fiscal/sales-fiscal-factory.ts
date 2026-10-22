@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 import { companyId } from "@kontave/companies/domain";
 import { SupabaseFiscalDocumentRepository } from "@kontave/fiscal/supabase";
 import { ReviseFiscalDocument, type FiscalDraftCandidateBuilder } from "@kontave/fiscal/application";

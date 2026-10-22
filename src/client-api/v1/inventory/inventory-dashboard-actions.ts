@@ -1,3 +1,4 @@
+import "server-only";
 import { GetInventoryDashboard } from "@kontave/inventory/application";
 import { createSupabaseInventoryDashboardReader } from "@kontave/inventory/supabase";
 export function createInventoryDashboardActions() {

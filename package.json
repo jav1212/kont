@@ -18,7 +18,7 @@
     "audit:shared": "node scripts/audit-shared-schema.mjs",
     "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-supabase.ps1",
     "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts",
-    "test:barcode": "node --import tsx --test test/barcode-*.test.ts test/code128-badge.test.ts src/modules/auth/backend/barcode/*.test.ts src/modules/auth/backend/barcode/application/*.test.ts src/shared/backend/barcode/*.test.ts apps/device-bridge/test/access-capture.test.ts apps/device-bridge/test/protocol.test.ts",
+    "test:barcode": "node --conditions=react-server --import tsx --test test/barcode-*.test.ts test/code128-badge.test.ts src/modules/auth/backend/barcode/*.test.ts src/modules/auth/backend/barcode/application/*.test.ts src/shared/backend/barcode/*.test.ts apps/device-bridge/test/access-capture.test.ts apps/device-bridge/test/protocol.test.ts",
     "test:barcode:workspace": "node --experimental-test-module-mocks --import tsx --test test/auth-barcode-route.test.ts src/modules/auth/backend/barcode/application/barcode-workspace-policy.test.ts",
     "test:barcode:sql": "node scripts/test-barcode-access-sql.mjs",
     "test:barcode:web": "node scripts/test-barcode-web.mjs"
@@ -77,6 +77,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.9.4",
+    "server-only": "0.0.1",
     "serwist": "^9.5.7",
     "sonner": "^1.7.4",
     "xlsx": "^0.18.5",

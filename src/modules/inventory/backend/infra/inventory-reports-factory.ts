@@ -1,3 +1,4 @@
+import "server-only";
 // inventory-reports-factory — wires reports/ledgers use cases for inventory.
 // Role: sub-factory for the Reports domain slice of inventory (movements,
 // product/supplier ledgers, period reports).

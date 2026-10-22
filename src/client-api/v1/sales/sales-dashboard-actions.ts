@@ -1,3 +1,4 @@
+import "server-only";
 import { GetSalesDashboard } from "@kontave/sales/application";
 import { createSupabaseSalesDashboardReader } from "@kontave/sales/supabase";
 export function createSalesDashboardActions() {

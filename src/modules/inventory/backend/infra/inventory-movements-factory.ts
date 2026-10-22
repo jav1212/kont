@@ -1,3 +1,4 @@
+import "server-only";
 // inventory-movimientos-factory — wires movement use cases.
 // Role: sub-factory for the Movements domain slice of inventory.
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.

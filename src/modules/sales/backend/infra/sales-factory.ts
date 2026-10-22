@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 // sales-factory — wires all use cases of the Sales module.
 // Owns: customers + sales invoices + IGTF percepción quincenal aggregate.
 // Consumed directly by API routes under app/api/sales/*.

@@ -1,3 +1,4 @@
+import "server-only";
 import { GetPurchasingDashboard } from "@kontave/purchasing/application/dashboard";
 import { createSupabasePurchasingDashboardReader } from "@kontave/purchasing/supabase";
 export function createPurchasingDashboardActions() {
