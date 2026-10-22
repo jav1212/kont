@@ -556,7 +556,7 @@ export async function auditWorkspace(workspaceRoot) {
             !typeOnlySpecifiers.get(specifier))
         )
           violations.push(
-            `${relativeSourcePath(workspaceRoot, path)} client-contracts may import workspace packages only through type-only '/contracts' exports; found '${specifier}'`,
+            `${relative(workspaceRoot, path)} client-contracts may import workspace packages only through type-only '/contracts' exports; found '${specifier}'`,
           );
         if (appNames.has(importedName) && record.manifest.name !== importedName)
           violations.push(
