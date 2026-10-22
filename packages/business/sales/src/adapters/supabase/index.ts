@@ -12,6 +12,7 @@ export * from "./secured-sales";
 export * from "./sales-invoice-document-series-issuance";
 export * from "./sales-delivery-note-document-series-issuance";
 export * from "./offline-sales-order-drafts";
+export * from "./offline-sales-order-drafts";
 export * from "./confirmed-service-invoice-fiscal-readers";
 export * from "./fiscal-actions";
 

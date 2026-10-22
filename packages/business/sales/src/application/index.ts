@@ -38,6 +38,7 @@ export * from "./prepare-confirmed-service-invoice";
 export * from "./issue-sales-invoice-with-document-series";
 export * from "./issue-sales-delivery-note-with-document-series";
 export * from "./offline-sales-drafts";
+export * from "./offline-sales-drafts";
 
 export interface CustomerRepository {
   /** @param id Customer identifier. @returns The customer, or `null` when absent. */
