@@ -6,6 +6,7 @@ declare const stockEffectIdBrand: unique symbol;
 declare const stockLotIdBrand: unique symbol;
 declare const stockCountIdBrand: unique symbol;
 declare const stockCountLineIdBrand: unique symbol;
+declare const crossCompanyInventoryTransferIdBrand: unique symbol;
 
 /** Stable identifier for an inventory location. */
 export type InventoryLocationId = string & { readonly [inventoryLocationIdBrand]: true };
@@ -19,6 +20,17 @@ export type StockLotId = string & { readonly [stockLotIdBrand]: true };
 export type StockCountId = string & { readonly [stockCountIdBrand]: true };
 /** Stable identifier for a physical stock-count line. */
 export type StockCountLineId = string & { readonly [stockCountLineIdBrand]: true };
+/** Stable identifier for one paired transfer between two company inventories. */
+export type CrossCompanyInventoryTransferId = string & { readonly [crossCompanyInventoryTransferIdBrand]: true };
+
+/**
+ * @param value - Untrusted cross-company transfer identifier.
+ * @returns The normalized branded identifier.
+ * @throws {InventoryFailure} When invalid.
+ */
+export function crossCompanyInventoryTransferId(value: string): CrossCompanyInventoryTransferId {
+  return identifier(value, "cross-company inventory transfer") as CrossCompanyInventoryTransferId;
+}
 
 /**
  * @param value - Untrusted inventory-location identifier.

@@ -3,6 +3,7 @@
 import { Sun, Moon, Check } from "lucide-react";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
+import { NavigationIconSettings, NavigationLabelSettings } from "@/src/shared/frontend/components/navigation-label-settings";
 
 type Mode = "light" | "dark";
 
@@ -11,6 +12,8 @@ export default function AparienciaPage() {
 
     return (
         <div className="space-y-6">
+            <NavigationLabelSettings />
+            <NavigationIconSettings />
             <SettingsSection
                 title="Tema de la aplicación"
                 subtitle="Estos ajustes se guardan localmente en tu navegador y no afectan a otros miembros del tenant."

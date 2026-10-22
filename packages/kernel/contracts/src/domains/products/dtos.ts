@@ -160,7 +160,7 @@ export interface ProductDetailDto extends ProductDto {
   readonly productType: "merchandise";
   readonly valuationMethod: "weighted_average";
   readonly vat: {
-    readonly code: "general" | "exempt";
+    readonly code: "general" | "reduced" | "zero_rated" | "exempt" | "exonerated" | "not_subject" | "luxury_surcharge" | "payment_surcharge" | "other";
     readonly rate: string;
   } | null;
   readonly capabilities: {

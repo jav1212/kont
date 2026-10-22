@@ -1295,7 +1295,7 @@ export const PayrollEmployeeTable = ({
             setDraftSavedAt(new Date());
             toast.success("Recibo exportado y nómina guardada como borrador");
         }
-    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed]);
+    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed, exchangeCurrencyCode]);
 
     const handleExportSummaryPdf = useCallback(async () => {
         const active = results.filter((r) => r.estado === "activo");
@@ -1323,7 +1323,7 @@ export const PayrollEmployeeTable = ({
                 referenceCurrencyCode: exchangeCurrencyCode,
             },
         );
-    }, [results, companyName, companyId, periodLabel, periodStart, payrollDate, bcvRate]);
+    }, [results, companyName, companyId, periodLabel, periodStart, payrollDate, bcvRate, exchangeCurrencyCode]);
 
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
@@ -1716,4 +1716,3 @@ export const PayrollEmployeeTable = ({
         </div>
     );
 };
-

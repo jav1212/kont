@@ -11,8 +11,20 @@ import { InventoryFailure, ReplenishmentPolicy } from "../../domain";
 import { productId, UnitOfMeasure } from "@kontave/products/domain";
 import { z } from "zod";
 import { SupabaseInventoryOperationsRepository } from "./inventory-operations";
+import { SupabaseCrossCompanyInventoryCompensationRepository, SupabaseCrossCompanyInventoryTransferRepository } from "./cross-company-transfer";
+import { SupabaseInventoryBranchMovementConsolidationReader } from "./branch-movement-consolidation";
+import { SupabaseInventoryBranchStockReadinessReader } from "./branch-stock-readiness";
+import { SupabaseInventoryBranchOpeningPlanRepository } from "./branch-opening-plan";
+import { SupabaseInventoryBranchAdjustmentWriter } from "./branch-adjustment";
+import { SupabaseHistoricalInventoryMovementAttributionRepository } from "./historical-movement-attribution";
 
 export * from "./inventory-operations";
+export * from "./cross-company-transfer";
+export * from "./branch-movement-consolidation";
+export * from "./branch-stock-readiness";
+export * from "./branch-opening-plan";
+export * from "./branch-adjustment";
+export * from "./historical-movement-attribution";
 
 const amountSchema = z.object({ amount: z.string(), currency: z.literal("VES") });
 const quantitySchema = z.object({ unit: z.string(), inbound: z.string(), outbound: z.string() });
@@ -187,6 +199,83 @@ export function createSupabaseInventoryOperationsRepository(
   configuration: InventorySupabaseConfiguration,
 ): SupabaseInventoryOperationsRepository {
   return new SupabaseInventoryOperationsRepository(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a stateless reader for branch-attributed inventory movement consolidations.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A reader that authorizes every request in the database RPC.
+ */
+export function createSupabaseInventoryBranchMovementConsolidationReader(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseInventoryBranchMovementConsolidationReader {
+  return new SupabaseInventoryBranchMovementConsolidationReader(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side reader for the branch-stock migration readiness diagnostic.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A reader that re-authorizes each diagnostic request in its database RPC.
+ */
+export function createSupabaseInventoryBranchStockReadinessReader(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseInventoryBranchStockReadinessReader {
+  return new SupabaseInventoryBranchStockReadinessReader(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side repository for a non-posting branch-stock opening allocation draft.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A repository that re-authorizes reads and writes in its database RPCs.
+ */
+export function createSupabaseInventoryBranchOpeningPlanRepository(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseInventoryBranchOpeningPlanRepository {
+  return new SupabaseInventoryBranchOpeningPlanRepository(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side writer for atomic manual branch inventory adjustments.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A writer that re-authorizes each adjustment inside its database RPC.
+ */
+export function createSupabaseInventoryBranchAdjustmentWriter(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseInventoryBranchAdjustmentWriter {
+  return new SupabaseInventoryBranchAdjustmentWriter(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side repository for reviewed historical movement attribution.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A repository that re-authorizes both preview and attribution inside database RPCs.
+ */
+export function createSupabaseHistoricalInventoryMovementAttributionRepository(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseHistoricalInventoryMovementAttributionRepository {
+  return new SupabaseHistoricalInventoryMovementAttributionRepository(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side RPC adapter for atomic company-to-company inventory transfers.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A transfer repository that re-authorizes through its database RPCs.
+ */
+export function createSupabaseCrossCompanyInventoryTransferRepository(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseCrossCompanyInventoryTransferRepository {
+  return new SupabaseCrossCompanyInventoryTransferRepository(createInventoryClient(configuration));
+}
+
+/**
+ * Creates a server-side RPC adapter for paired physical transfer compensation.
+ * @param configuration - Supabase endpoint and service-role credential kept on the server.
+ * @returns A compensation repository that preserves original transfer history.
+ */
+export function createSupabaseCrossCompanyInventoryCompensationRepository(
+  configuration: InventorySupabaseConfiguration,
+): SupabaseCrossCompanyInventoryCompensationRepository {
+  return new SupabaseCrossCompanyInventoryCompensationRepository(createInventoryClient(configuration));
 }
 
 function createInventoryClient(configuration: InventorySupabaseConfiguration): SupabaseClient {

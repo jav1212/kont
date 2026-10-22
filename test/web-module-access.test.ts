@@ -3,6 +3,7 @@ import test from "node:test";
 import { salesDashboardAccessRequirement } from "@kontave/sales/application";
 import {
   getModuleVisibilityPermission,
+  canViewIvaModule,
   getOrganizationRouteAccess,
   hasOrganizationPermission,
   resolveSalesLanding,
@@ -30,6 +31,15 @@ test("carga, error o falta de organización no conceden acceso protegido", () =>
   assert.equal(resolveOrganizationRouteAccess(protectedRoute, { ...authenticated, permissions: null }), "denied");
   assert.equal(hasOrganizationPermission([], "inventory.read"), false);
   assert.equal(getModuleVisibilityPermission("tools"), null);
+});
+
+test("IVA aparece cuando la persona puede leer compras o ventas", () => {
+  assert.equal(canViewIvaModule(["purchases.read"]), true);
+  assert.equal(canViewIvaModule(["sales.read"]), true);
+  assert.equal(canViewIvaModule(["sales.create"]), false);
+  assert.equal(canViewIvaModule([]), false);
+  assert.equal(getOrganizationRouteAccess("/fiscal").kind, "authenticated");
+  assert.deepEqual(getOrganizationRouteAccess("/purchases/iva-matches"), { kind: "protected", permissions: ["purchases.read", "purchases.confirm"] });
 });
 
 test("un módulo recordado no autorizado no tiene permiso de visibilidad", () => {

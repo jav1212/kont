@@ -6,6 +6,9 @@ import {
   type PaymentOrder,
 } from "../domain";
 
+export * from "./payment-order-settlement";
+export * from "./payroll-payment-order-drafts";
+
 /** Optional branch and device information captured alongside the operational audit fact. */
 export interface PaymentOrderAuditContext {
   readonly branchId?: string | null;

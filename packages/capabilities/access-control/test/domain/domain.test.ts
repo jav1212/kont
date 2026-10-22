@@ -6,6 +6,8 @@ test("permission catalog rejects unknown and misspelled permissions", () => {
   assert.equal(permissionCode(PERMISSIONS.BILLING_READ), "billing.read");
   assert.equal(permissionCode(PERMISSIONS.ACCESS_MANAGE), "access.manage");
   assert.equal(permissionCode(PERMISSIONS.SALES_READ_DASHBOARD), "sales.read.dashboard");
+  assert.equal(permissionCode(PERMISSIONS.TREASURY_READ), "treasury.read");
+  assert.equal(permissionCode(PERMISSIONS.TREASURY_TAX_CONFIGURE), "treasury.tax.configure");
   assert.throws(() => permissionCode("billing.delet"), /Unknown permission/);
   assert.throws(() => permissionCode("access.read"), /Unknown permission/);
 });

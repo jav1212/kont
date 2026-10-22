@@ -13,6 +13,7 @@ import {
     type BonoGuerraReceipt,
 } from "../hooks/use-bono-guerra-history";
 import { generateBonoGuerraPdf } from "../utils/bono-guerra-pdf";
+import { useCompanyDateFormat } from "@/src/modules/companies/frontend/components/company-date-format-provider";
 
 // ============================================================================
 // HELPERS
@@ -20,12 +21,6 @@ import { generateBonoGuerraPdf } from "../utils/bono-guerra-pdf";
 
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function formatDateShort(iso: string) {
-    return new Date(iso + "T00:00:00").toLocaleDateString("es-VE", {
-        day: "2-digit", month: "short", year: "numeric",
-    });
-}
 
 function formatDateTime(iso: string) {
     return new Date(iso).toLocaleDateString("es-VE", {
@@ -55,6 +50,7 @@ function BgRunRow({
     isSelected: boolean;
     onSelect: (id: string) => void;
 }) {
+    const { formatDate } = useCompanyDateFormat();
     return (
         <button
             onClick={() => onSelect(run.id)}
@@ -67,7 +63,7 @@ function BgRunRow({
         >
             <div className="flex flex-col gap-1">
                 <span className="font-sans text-[14px] font-semibold text-foreground">
-                    {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
+                    {formatDate(run.periodStart)} — {formatDate(run.periodEnd)}
                 </span>
                 <span className="font-sans text-[12px] text-[var(--text-tertiary)]">
                     {run.status === "draft" ? "Guardado" : "Confirmado"}: {formatDateTime(run.confirmedAt)}
@@ -199,6 +195,7 @@ export function BonoGuerraHistoryView({
     companyId: string | null;
     company:   BonoGuerraHistoryCompany | null;
 }) {
+    const { formatDate } = useCompanyDateFormat();
     const { runs, loading, getReceipts, unconfirm } = useBonoGuerraHistory(companyId);
 
     const [selectedRunId,      setSelectedRunId]      = useState<string | null>(null);
@@ -222,7 +219,7 @@ export function BonoGuerraHistoryView({
 
     const handleDownloadPdf = useCallback((pdfMode: ReportMode) => {
         if (!selectedRun || !receipts.length) return;
-        const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
+        const periodLabel = `${formatDate(selectedRun.periodStart)} — ${formatDate(selectedRun.periodEnd)}`;
         generateBonoGuerraPdf(
             receipts.map((r) => ({
                 cedula:   r.employeeCedula,
@@ -244,7 +241,7 @@ export function BonoGuerraHistoryView({
                 pdfMode,
             },
         );
-    }, [selectedRun, receipts, company]);
+    }, [selectedRun, receipts, company, formatDate]);
 
     if (loading) {
         return (
@@ -389,7 +386,7 @@ export function BonoGuerraHistoryView({
                     <>
                         <SummaryRow
                             label="Período"
-                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                            value={`${formatDate(selectedRun.periodStart)} — ${formatDate(selectedRun.periodEnd)}`}
                         />
                         <SummaryRow label="Empleados" value={selectedReceiptsCount} />
                         <SummaryRow label="Total USD" value={`$${fmt(selectedTotalUsd)}`} emphasis />

@@ -46,10 +46,13 @@ export interface SupplierEditorProps {
     onCancel: () => void;
     onDelete?: () => void;
     submitLabel?: string;
+    /** User-scoped presentation labels; keys never affect the supplier payload. */
+    systemLabels?: Readonly<Record<string, string>>;
 }
 
-export function SupplierEditor({ supplier, saving = false, onSave, onCancel, onDelete, submitLabel }: SupplierEditorProps) {
+export function SupplierEditor({ supplier, saving = false, onSave, onCancel, onDelete, submitLabel, systemLabels = {} }: SupplierEditorProps) {
     const [draft, setDraft] = useState<Supplier>(supplier);
+    const label = (key: string, fallback: string) => systemLabels[`system.purchases.suppliers.${key}`] ?? fallback;
 
     const set = (key: keyof Supplier, value: string | boolean) => {
         setDraft((current) => ({ ...current, [key]: value }));
@@ -71,26 +74,26 @@ export function SupplierEditor({ supplier, saving = false, onSave, onCancel, onD
                 <FormSection icon={IdCard} title="Identidad" description="RIF y razón social del proveedor.">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <BaseInput.Field label="RIF" type="text" value={draft.rif} onValueChange={(value) => set("rif", value)} placeholder="J-12345678-9" />
-                        <BaseInput.Field label="Nombre" isRequired type="text" value={draft.name} onValueChange={(value) => set("name", value)} className="md:col-span-2" placeholder="Razón social del proveedor" />
+                        <BaseInput.Field label={label("name", "Nombre")} isRequired type="text" value={draft.name} onValueChange={(value) => set("name", value)} className="md:col-span-2" placeholder="Razón social del proveedor" />
                     </div>
                 </FormSection>
 
                 <FormSection icon={PhoneCall} title="Contacto" description="Persona y canales de comunicación.">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <BaseInput.Field label="Persona de contacto" type="text" value={draft.contact} onValueChange={(value) => set("contact", value)} placeholder="Nombre y apellido" />
-                        <BaseInput.Field label="Teléfono" type="text" value={draft.phone} onValueChange={(value) => set("phone", value)} placeholder="0414-1234567" />
-                        <BaseInput.Field label="Email" type="email" value={draft.email} onValueChange={(value) => set("email", value)} placeholder="contacto@empresa.com" />
+                        <BaseInput.Field label={label("contact", "Contacto")} type="text" value={draft.contact} onValueChange={(value) => set("contact", value)} placeholder="Nombre y apellido" />
+                        <BaseInput.Field label={label("phone", "Teléfono")} type="text" value={draft.phone} onValueChange={(value) => set("phone", value)} placeholder="0414-1234567" />
+                        <BaseInput.Field label={label("email", "Email")} type="email" value={draft.email} onValueChange={(value) => set("email", value)} placeholder="contacto@empresa.com" />
                     </div>
                     <div className="mt-4">
-                        <BaseInput.Field label="Dirección" type="text" value={draft.address} onValueChange={(value) => set("address", value)} placeholder="Av. Principal, Edif., Piso, Ciudad, Estado" />
+                        <BaseInput.Field label={label("address", "Dirección")} type="text" value={draft.address} onValueChange={(value) => set("address", value)} placeholder="Av. Principal, Edif., Piso, Ciudad, Estado" />
                     </div>
                 </FormSection>
 
-                <FormSection icon={StickyNote} title="Notas" description="Información operativa interna sobre este proveedor.">
+                <FormSection icon={StickyNote} title={label("notes", "Notas")} description="Información operativa interna sobre este proveedor.">
                     <textarea className={`${fieldCls} h-auto py-2 leading-relaxed`} rows={3} value={draft.notes} onChange={(event) => set("notes", event.target.value)} placeholder="Condiciones de pago, catálogo, retenciones aplicables, etc." />
                 </FormSection>
 
-                <FormSection icon={CheckCircle2} title="Estado" description="Los proveedores inactivos no aparecen en facturas nuevas.">
+                <FormSection icon={CheckCircle2} title={label("status", "Estado")} description="Los proveedores inactivos no aparecen en facturas nuevas.">
                     <label className="inline-flex cursor-pointer select-none items-center gap-3">
                         <span className="relative inline-flex">
                             <input type="checkbox" checked={draft.active} onChange={(event) => set("active", event.target.checked)} className="peer sr-only" />

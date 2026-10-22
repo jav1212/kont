@@ -23,6 +23,7 @@ export enum ModuleCode {
   Tools = "tools",
   Companies = "companies",
   Documents = "documents",
+  Treasury = "treasury",
 }
 
 export enum ModuleLifecycleStatus {
@@ -69,6 +70,7 @@ export enum ModuleCapability {
   AccountingPeriods = "accounting.periods",
   DocumentsFiles = "documents.files",
   PurchasingDashboard = "purchases.dashboard",
+  TreasuryManagement = "treasury.management",
 }
 
 export interface ModuleDefinition {

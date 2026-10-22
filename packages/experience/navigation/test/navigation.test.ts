@@ -4,9 +4,26 @@ import {
   NavigationCatalog,
   NavigationFailure,
   dynamicNavigationTarget,
+  createNavigationLabels,
+  createNavigationIcons,
   resolveBreadcrumbs,
   staticNavigationTarget,
 } from "../src/index";
+
+test("validates semantic icon overrides against navigation and icon catalogs", () => {
+  assert.deepEqual(createNavigationIcons({ sales: "shopping-cart", "inventory.products": "package" }), {
+    sales: "shopping-cart",
+    "inventory.products": "package",
+  });
+  assert.throws(
+    () => createNavigationIcons({ sales: "cart-outline" }),
+    (error: unknown) => error instanceof NavigationFailure && error.code === "NAVIGATION_ICONS_INVALID",
+  );
+  assert.throws(
+    () => createNavigationIcons({ "unknown.destination": "shopping-cart" }),
+    (error: unknown) => error instanceof NavigationFailure && error.code === "NAVIGATION_ICONS_INVALID",
+  );
+});
 
 test("resolves a portable breadcrumb without platform routes", () => {
   const breadcrumb = resolveBreadcrumbs(staticNavigationTarget("payroll.employees"));
@@ -57,4 +74,19 @@ test("rejects duplicate destinations", () => {
     ]),
     { code: "CATALOG_DUPLICATE_DESTINATION" },
   );
+});
+
+test("navigation labels trim and freeze known destination overrides", () => {
+  const labels = createNavigationLabels({ sales: "  Comercial  ", "sales.point-of-sale": "Caja" });
+  assert.deepEqual(labels, { sales: "Comercial", "sales.point-of-sale": "Caja" });
+  assert.equal(Object.isFrozen(labels), true);
+  assert.deepEqual(resolveBreadcrumbs(staticNavigationTarget("sales.point-of-sale"), labels).map((entry) => entry.label), ["Inicio", "Comercial", "Caja"]);
+});
+
+test("navigation labels reject unknown destinations and unsafe label values", () => {
+  assert.throws(() => createNavigationLabels({ "unknown.page": "Other" }), { code: "NAVIGATION_LABELS_INVALID" });
+  assert.throws(() => createNavigationLabels({ sales: "  " }), { code: "NAVIGATION_LABELS_INVALID" });
+  assert.throws(() => createNavigationLabels({ sales: "x".repeat(61) }), { code: "NAVIGATION_LABELS_INVALID" });
+  assert.throws(() => createNavigationLabels({ sales: "bad\nlabel" }), { code: "NAVIGATION_LABELS_INVALID" });
+  assert.throws(() => createNavigationLabels({ sales: "bad\n" }), { code: "NAVIGATION_LABELS_INVALID" });
 });

@@ -16,15 +16,20 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
   marca y adaptadores internos por renderer. Consulte su
   [README](ui/README.md) y el [estándar del sistema de diseño](../docs/standards/design-system.md).
 - `history/`: historial Memento portable para borradores y adaptadores de presentación por plataforma.
+- `platform/devices/`: contratos y adaptadores de dispositivos locales; incluye configuración portable, autorizable y versionada de vínculos de impresora por instalación/estación de trabajo. `@kontave/devices/node` persiste solo identidad segura en un archivo JSON local de esquema estricto, con escritura atómica, lock exclusivo, compare-and-swap y tombstones. Faltan descubrimiento/adaptador de impresora real, impresión física, cola y consumidores de aplicación; la recuperación de un lock dejado por un cierre inesperado es responsabilidad explícita del host.
 - `capabilities/organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
+- `capabilities/audit-trail/`: contratos, adaptador de consulta Supabase y migración de pistas inmutables para tablas operativas; no instrumenta automáticamente nuevos comandos o consumidores. Consulte la [matriz de cobertura de seguridad y auditoría](../docs/audit/profitplus-seguridad-auditoria-packages-2026-09-28.md).
 - `capabilities/delegated-access/`: grants de acceso entre organizaciones, scopes, vigencia, asignaciones y resolución de caminos delegados.
-- `business/products/`: identidad de productos, SKU, códigos de barras, categorías, unidades base, ciclo de vida y utilidades de prueba.
+- `business/companies/`: identidad y administración versionada de empresas, sucursales, moneda, fechas, correlativos, logotipos y configuración tributaria. Consulte el [README del paquete](business/companies/README.md) y la [matriz ADM](../docs/audit/profitplus-administracion-packages-2026-09-28.md) para cortes disponibles y pendientes.
+- `business/products/`: identidad de productos, SKU, códigos de barras, categorías, unidades base, ciclo de vida y datos adicionales tipados por compañía con persistencia lateral mediante RPC Supabase; el consumidor Web está pendiente. Consulte el [README del paquete](business/products/README.md).
 - `business/unit-economics/`: read model histórico de costos adquiridos, ventas realizadas y agregados económicos por producto.
 - `business/inventory/`: operaciones y efectos físicos, ubicaciones, lotes, conteos, posiciones y valuación de existencias.
 - `business/fiscal/`: facturas y notas fiscales, partes, líneas, ajustes, determinaciones tributarias, pagos aplicados, totales y evidencia de emisión.
 - `business/taxation/`: perfiles tributarios de productos, reglas temporales, políticas venezolanas de IVA e IGTF e integración con documentos fiscales.
 - `business/purchasing/`: proveedores, órdenes, recepciones, conciliación de facturas, devoluciones y publicación idempotente hacia inventario.
 - `business/sales/`: clientes, acuerdos comerciales, despachos, conciliación fiscal, devoluciones y publicación idempotente hacia inventario.
+- `business/payment-orders/`: órdenes de pago administrativas, versionadas y auditables; representan intención y no ejecutan transferencias bancarias.
+- `business/accounting-integration/`: planificación portable y tipada de asientos VES para eventos confirmados de nómina y compras; incluye lectura y reemplazo versionado de reglas, lectores Supabase de servicio y publicación/reversa persistente, atómica e idempotente para ambos orígenes. La integración sigue sin reglas activas, consumidores Web/nativos ni publicación real en operación; consulte la [matriz ADM](../docs/audit/profitplus-administracion-packages-2026-09-28.md).
 - `monetary/`: dinero exacto, monedas, tasas de cambio, resolución y caché de tasas, conversión, redondeo, distribución de residuos y adaptadores de proveedores cambiarios.
 - `business/payroll/`: definiciones, relaciones, periodos, elementos, entradas, cálculo trazable, balances, corridas, políticas legales venezolanas y utilidades de prueba de nómina.
 

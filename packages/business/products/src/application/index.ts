@@ -13,6 +13,10 @@ import {
   type UnitOfMeasure,
 } from "../domain";
 
+export * from "./custom-fields";
+export * from "./product-category-aliases";
+export * from "./product-catalog-import";
+
 export type ProductStockFilter = "all" | "available" | "low" | "out";
 export type ProductListSort = "name" | "sku" | "stock" | "value" | "updatedAt";
 export type SortDirection = "asc" | "desc";

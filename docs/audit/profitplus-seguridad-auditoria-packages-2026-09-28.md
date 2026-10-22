@@ -126,3 +126,7 @@ La validación remota del 2026-09-29 verificó RLS en las diez tablas nuevas y a
 Se validaron TypeScript y pruebas de los seis paquetes integrados en un checkout separado de los cambios concurrentes. Las 16 pruebas focalizadas finales (15 Web y una integración SQL de órdenes de pago) pasaron sin omisiones, además de `test-web-security-sql.mjs`. El lockfile conserva las versiones de producción y sólo agrega los importadores de auditoría y órdenes de pago. La publicación se realiza después del build final y se verifica en Vercel.
 
 Build final Web: `pnpm build` completado correctamente el 2026-09-29 (TypeScript y 249 páginas estáticas). ESLint focal y `git diff --check` también pasaron.
+
+### Verificación posterior a la publicación
+
+Commit `4b5fe4c231ad438079b1a6e6229ab083af720530`, despliegue `dpl_AJg7bo1swL9JNJo61YxBHuJfaUQe`: `READY`, con alias `kontave.com` y `www.kontave.com`. Salud HTTP 204; APIs nuevas sin sesión HTTP 401; las cuatro pantallas redirigen al login sin sesión (307). También pasaron las tres integraciones SQL adicionales de autenticación, organizaciones y auditoría. No se ejecutó una prueba interactiva con sesión real: no había navegador conectado. Esta nota local se registró después del commit publicado.

@@ -12,6 +12,7 @@ import {
     type BonificacionesReceipt,
 } from "../hooks/use-bonificaciones-history";
 import { generateBonificacionesPdf } from "../utils/bonificaciones-pdf";
+import { useCompanyDateFormat } from "@/src/modules/companies/frontend/components/company-date-format-provider";
 import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 
 // ============================================================================
@@ -20,12 +21,6 @@ import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome"
 
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function formatDateShort(iso: string) {
-    return new Date(iso + "T00:00:00").toLocaleDateString("es-VE", {
-        day: "2-digit", month: "short", year: "numeric",
-    });
-}
 
 function formatDateTime(iso: string) {
     return new Date(iso).toLocaleDateString("es-VE", {
@@ -52,6 +47,7 @@ function BfRunRow({
     isSelected: boolean;
     onSelect: (id: string) => void;
 }) {
+    const { formatDate } = useCompanyDateFormat();
     return (
         <button
             onClick={() => onSelect(run.id)}
@@ -64,7 +60,7 @@ function BfRunRow({
         >
             <div className="flex flex-col gap-1">
                 <span className="font-sans text-[14px] font-semibold text-foreground">
-                    {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
+                    {formatDate(run.periodStart)} — {formatDate(run.periodEnd)}
                 </span>
                 <span className="font-sans text-[12px] text-[var(--text-tertiary)]">
                     {run.status === "draft" ? "Guardado" : "Confirmado"}: {formatDateTime(run.confirmedAt)}
@@ -208,6 +204,7 @@ export function BonificacionesHistoryView({
     companyId: string | null;
     company:   BonificacionesHistoryCompany | null;
 }) {
+    const { formatDate } = useCompanyDateFormat();
     const { runs, loading, getReceipts, unconfirm } = useBonificacionesHistory(companyId);
 
     const [selectedRunId,   setSelectedRunId]   = useState<string | null>(null);
@@ -231,7 +228,7 @@ export function BonificacionesHistoryView({
 
     const handleDownloadPdf = useCallback((pdfMode: ReportMode) => {
         if (!selectedRun || !receipts.length) return;
-        const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
+        const periodLabel = `${formatDate(selectedRun.periodStart)} — ${formatDate(selectedRun.periodEnd)}`;
 
         // Reconstruir bonusLines globales: tomamos las del primer recibo (todos
         // los empleados de un mismo run tienen exactamente los mismos conceptos
@@ -262,7 +259,7 @@ export function BonificacionesHistoryView({
                 pdfMode,
             },
         );
-    }, [selectedRun, receipts, company]);
+    }, [selectedRun, receipts, company, formatDate]);
 
     if (loading) {
         return (
@@ -395,7 +392,7 @@ export function BonificacionesHistoryView({
                     <>
                         <SummaryRow
                             label="Período"
-                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                            value={`${formatDate(selectedRun.periodStart)} — ${formatDate(selectedRun.periodEnd)}`}
                         />
                         <SummaryRow label="Empleados" value={receipts.length} />
                         <SummaryRow label="Total VES" value={fmt(selectedRun.totalVes)} emphasis />

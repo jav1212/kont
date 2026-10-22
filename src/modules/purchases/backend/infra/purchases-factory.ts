@@ -1,12 +1,11 @@
 import "server-only";
 // Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 // purchases-factory — wires all use cases of the Compras module.
-// Owns: suppliers + purchase invoices + tax retention exports (IVA/ISLR).
+// Owns: suppliers + purchase invoices + ISLR retention export.
 // Consumed directly by API routes under app/api/compras/*.
 import { ServerSupabaseSource }              from '@/src/shared/backend/source/infra/server-supabase';
 import { SharedSupplierRepository }          from './repository/shared-supplier.repository';
 import { SharedPurchaseInvoiceRepository }   from './repository/shared-purchase-invoice.repository';
-import { SharedIvaRetentionExportRepository } from './repository/shared-iva-retention-export.repository';
 import { SharedIslrRetentionsExportRepository } from './repository/shared-islr-retentions-export.repository';
 import { SharedPurchaseCsvImportRepository } from './repository/shared-purchase-csv-import.repository';
 
@@ -21,7 +20,6 @@ import { UnconfirmPurchaseInvoiceUseCase } from '../app/unconfirm-purchase-invoi
 import { ImputePurchaseInvoiceItemsUseCase } from '../app/impute-purchase-invoice-items.use-case';
 import { DeletePurchaseInvoiceUseCase }    from '../app/delete-purchase-invoice.use-case';
 import { MigratePurchaseInvoicesUseCase }  from '../app/migrate-purchase-invoices.use-case';
-import { GetIvaRetentionExportUseCase }    from '../app/get-iva-retention-export.use-case';
 import { GetIslrRetentionsExportUseCase }  from '../app/get-islr-retentions-export.use-case';
 import { ListPurchaseCsvImportsUseCase } from '../app/list-purchase-csv-imports.use-case';
 import { GetPurchaseCsvImportUseCase } from '../app/get-purchase-csv-import.use-case';
@@ -38,7 +36,6 @@ export function getPurchasesActions(userId: string) {
     const source                  = new ServerSupabaseSource();
     const supplierRepo = new SharedSupplierRepository(source, userId);
     const invoiceRepo = new SharedPurchaseInvoiceRepository(source, userId);
-    const ivaRetentionExportRepo = new SharedIvaRetentionExportRepository(source, userId);
     const islrRetentionsExportRepo = new SharedIslrRetentionsExportRepository(source, userId);
     const purchaseCsvImportRepo = new SharedPurchaseCsvImportRepository(source, userId);
 
@@ -57,7 +54,6 @@ export function getPurchasesActions(userId: string) {
         deletePurchaseInvoice:   new DeletePurchaseInvoiceUseCase(invoiceRepo),
         migratePurchaseInvoices: new MigratePurchaseInvoicesUseCase(invoiceRepo),
         // SENIAT exports
-        getIvaRetentionExport:   new GetIvaRetentionExportUseCase(ivaRetentionExportRepo),
         getIslrRetentionsExport: new GetIslrRetentionsExportUseCase(islrRetentionsExportRepo),
         // Guided purchase CSV imports
         listPurchaseCsvImports: new ListPurchaseCsvImportsUseCase(purchaseCsvImportRepo),

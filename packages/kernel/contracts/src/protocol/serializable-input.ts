@@ -189,7 +189,7 @@ export function decodeUpdateProductSalePricing(value: unknown): UpdateProductSal
 /** Decodes a strict product taxation command. @param value - Untrusted serialized command. @returns Validated command. @throws {ClientInputValidationError} When the command violates its boundary contract. */
 export function decodeUpdateProductTaxation(value: unknown): UpdateProductTaxationDto {
   const input = object(value, ["treatment", "effectiveFrom", "legalBasis", "expectedVersion"]);
-  return Object.freeze({ treatment: enumeration(input.treatment, ["taxed", "exempt", "exonerated", "not_subject"]), effectiveFrom: date(input.effectiveFrom), legalBasis: text(input.legalBasis, "La base legal no es válida.", 1_000), expectedVersion: positiveVersion(input.expectedVersion) });
+  return Object.freeze({ treatment: enumeration(input.treatment, ["taxed", "zero_rated", "exempt", "exonerated", "not_subject"]), effectiveFrom: date(input.effectiveFrom), legalBasis: text(input.legalBasis, "La base legal no es válida.", 1_000), expectedVersion: positiveVersion(input.expectedVersion) });
 }
 
 /** Decodes a strict product-category creation command. @param value - Untrusted serialized command. @returns Validated command. @throws {ClientInputValidationError} When the command violates its boundary contract. */

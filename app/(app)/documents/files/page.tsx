@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompany } from '@/src/modules/companies/frontend/hooks/use-companies';
+import { useOrganization } from '@/src/modules/organizations/frontend/context/organization-context';
 import { useDocuments } from '@/src/modules/documents/frontend/hooks/use-documents';
 import { FolderTree } from '@/src/modules/documents/frontend/components/folder-tree';
 import { DocumentList } from '@/src/modules/documents/frontend/components/document-list';
@@ -27,6 +28,7 @@ import { toast } from 'sonner';
  
 export default function DocumentsPage() {
     const { companyId } = useCompany();
+    const { organization } = useOrganization();
     const {
         folders,
         documents,
@@ -41,7 +43,7 @@ export default function DocumentsPage() {
         moveDocument,
         getDownloadUrl,
         replicateFolders,
-    } = useDocuments(companyId ?? undefined);
+    } = useDocuments(companyId ?? undefined, organization?.id);
  
     type ClientTenant  = { tenantId: string; tenantEmail: string };
     type SourceFolder  = { id: string; name: string };

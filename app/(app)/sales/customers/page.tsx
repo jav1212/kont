@@ -3,12 +3,13 @@
 // Page: Clientes — CRUD del master de clientes (módulo Sales).
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Search, X, AlertTriangle, Users } from "lucide-react";
+import { Plus, Trash2, Pencil, Search, X, AlertTriangle, Users, Columns3 } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useSales, type Customer } from "@/src/modules/sales/frontend/hooks/use-sales";
+import { notify } from "@/src/shared/frontend/notify";
 
 function emptyCustomer(companyId: string): Customer {
     return {
@@ -29,10 +30,37 @@ export default function CustomersPage() {
     const [confirmDelete, setConfirmDelete] = useState<Customer | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [viewPreferences, setViewPreferences] = useState<{ hiddenColumnIds: readonly string[]; version: number } | null>(null);
+    const [savingVisibility, setSavingVisibility] = useState(false);
 
     useEffect(() => {
         if (companyId) loadCustomers(companyId);
     }, [companyId, loadCustomers]);
+
+    useEffect(() => {
+        let current = true;
+        void fetch("/api/preferences/view-visibility?viewId=sales.customers", { cache: "no-store" }).then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las preferencias de columnas.");
+            if (current) setViewPreferences({ hiddenColumnIds: payload.data.hiddenColumnIds ?? [], version: payload.data.version });
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de columnas."); });
+        return () => { current = false; };
+    }, []);
+
+    async function toggleColumn(columnId: string) {
+        if (!viewPreferences || savingVisibility) return;
+        const hiddenColumnIds = viewPreferences.hiddenColumnIds.includes(columnId)
+            ? viewPreferences.hiddenColumnIds.filter((id) => id !== columnId)
+            : [...viewPreferences.hiddenColumnIds, columnId];
+        setSavingVisibility(true);
+        try {
+            const response = await fetch("/api/preferences/view-visibility", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewId: "sales.customers", expectedVersion: viewPreferences.version, hiddenColumnIds }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las columnas visibles.");
+            setViewPreferences({ hiddenColumnIds: payload.data.hiddenColumnIds ?? [], version: payload.data.version });
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las columnas visibles."); }
+        finally { setSavingVisibility(false); }
+    }
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -130,10 +158,24 @@ export default function CustomersPage() {
             )}
 
             <div className="px-8 py-6 space-y-4">
-                <div className="relative max-w-md">
+                <div className="flex flex-wrap items-center gap-3">
+                <div className="relative max-w-md flex-1">
                     <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                     <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o RIF…"
                         className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground focus:border-primary-500/60 transition-colors" />
+                </div>
+                <details className="relative">
+                    <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-surface-1 px-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] hover:bg-surface-2"><Columns3 size={14} /> Columnas</summary>
+                    <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-border-light bg-surface-1 p-3 shadow-xl">
+                        <p className="mb-2 font-sans text-[11px] text-[var(--text-tertiary)]">RIF, razón social y acciones permanecen visibles.</p>
+                        {[{ id: "contact", label: "Contacto" }, { id: "phone", label: "Teléfono" }, { id: "email", label: "Email" }, { id: "status", label: "Estado" }].map((column) => (
+                            <label key={column.id} className="mb-2 flex cursor-pointer items-center gap-2 font-sans text-[12px] text-foreground">
+                                <input type="checkbox" checked={!viewPreferences?.hiddenColumnIds.includes(column.id)} disabled={!viewPreferences || savingVisibility} onChange={() => void toggleColumn(column.id)} />
+                                {column.label}
+                            </label>
+                        ))}
+                    </div>
+                </details>
                 </div>
 
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
@@ -157,7 +199,7 @@ export default function CustomersPage() {
                             <thead>
                                 <tr className="border-b border-border-light bg-surface-2/50">
                                     {["RIF", "Razón Social", "Contacto", "Teléfono", "Email", "Estado", "", ""].map((h, i) => (
-                                        <th key={i} className="px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal text-left whitespace-nowrap">{h}</th>
+                                        <th key={i} hidden={i >= 2 && i <= 5 && viewPreferences?.hiddenColumnIds.includes(["contact", "phone", "email", "status"][i - 2])} className="px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal text-left whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -166,10 +208,10 @@ export default function CustomersPage() {
                                     <tr key={c.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors group">
                                         <td className="px-4 py-2.5 tabular-nums text-foreground whitespace-nowrap">{c.rif}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{c.name}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{c.contact || "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{c.phone || "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{c.email || "—"}</td>
-                                        <td className="px-4 py-2.5">
+                                        <td hidden={viewPreferences?.hiddenColumnIds.includes("contact")} className="px-4 py-2.5 text-[var(--text-secondary)]">{c.contact || "—"}</td>
+                                        <td hidden={viewPreferences?.hiddenColumnIds.includes("phone")} className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{c.phone || "—"}</td>
+                                        <td hidden={viewPreferences?.hiddenColumnIds.includes("email")} className="px-4 py-2.5 text-[var(--text-secondary)]">{c.email || "—"}</td>
+                                        <td hidden={viewPreferences?.hiddenColumnIds.includes("status")} className="px-4 py-2.5">
                                             <span className={`inline-flex px-1.5 py-0.5 rounded border text-[11px] uppercase tracking-[0.08em] font-medium ${c.active ? 'badge-success' : 'badge-warning'}`}>
                                                 {c.active ? "Activo" : "Inactivo"}
                                             </span>

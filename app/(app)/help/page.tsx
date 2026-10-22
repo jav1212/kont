@@ -5,13 +5,13 @@
 // Tres bandas verticales, sin hero ni grid de tiles:
 //   1. PageHeader con un solo CTA secundario ("Estado de portales").
 //   2. Banda 60/40: filtro de búsqueda + panel de soporte directo.
-//   3. Lista editorial de seis temas; cada tema es un acordeón de FAQs.
+//   3. Lista editorial de ocho temas; cada tema es un acordeón de FAQs.
 //
 // El filtro recorta las preguntas en vivo (sin debounce, dataset chico).
 // Si una sección queda sin matches se atenúa pero no desaparece —
 // preservar la estructura es más útil que esconder bloques.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -28,12 +28,15 @@ import {
     Receipt,
     BookOpen,
     Settings2,
+    FolderOpen,
+    Wrench,
 } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import {
     BaseAccordion,
     accordionItemProps,
 } from "@/src/shared/frontend/components/base-accordion";
+import { WEB_HELP_TOPIC_CATALOG } from "@/src/modules/help/application/help-topic-catalog";
 
 // ── Datos estáticos ──────────────────────────────────────────────────────────
 //
@@ -193,6 +196,42 @@ const TOPICS: Topic[] = [
         ],
     },
     {
+        id: "documents",
+        label: "Documentos",
+        icon: <FolderOpen size={18} strokeWidth={2} />,
+        intro: "Archivos por empresa y carpeta, documentos cargados y generacion de contratos desde las plantillas disponibles.",
+        faqs: [
+            {
+                id: "d1",
+                q: "Dónde reviso archivos y carpetas",
+                a: "Abre /documents/files para navegar las carpetas de la empresa seleccionada y consultar o cargar documentos.",
+            },
+            {
+                id: "d2",
+                q: "Dónde genero un contrato",
+                a: "Abre /documents/contracts, selecciona el empleado y el tipo de convenio para generar el documento disponible.",
+            },
+        ],
+    },
+    {
+        id: "tools",
+        label: "Herramientas",
+        icon: <Wrench size={18} strokeWidth={2} />,
+        intro: "Consulta tasas oficiales del BCV, fechas del calendario tributario SENIAT y disponibilidad de portales oficiales.",
+        faqs: [
+            {
+                id: "t1",
+                q: "Dónde consulto la tasa y convierto divisas",
+                a: "Abre /tools/divisas para consultar las tasas oficiales disponibles y usar la calculadora de conversión.",
+            },
+            {
+                id: "t2",
+                q: "Dónde reviso las fechas del calendario tributario",
+                a: "Abre /tools/calendario-seniat con la empresa seleccionada para consultar las fechas de IVA, ISLR y retenciones asociadas al último dígito del RIF.",
+            },
+        ],
+    },
+    {
         id: "config",
         label: "Configuración",
         icon: <Settings2 size={18} strokeWidth={2} />,
@@ -224,6 +263,8 @@ const TOPICS: Topic[] = [
 ];
 
 const TOTAL_FAQS = TOPICS.reduce((s, t) => s + t.faqs.length, 0);
+const CANONICAL_HELP_TEXTS = Object.fromEntries(WEB_HELP_TOPIC_CATALOG.map((topic) => [topic.id, topic.defaultText]));
+const helpTopicId = (topicId: string) => `help.topic.${topicId}.intro`;
 
 const SUPPORT_WHATSAPP_DISPLAY = "+58 412 000 0000";
 const SUPPORT_WHATSAPP_HREF = "https://wa.me/584120000000";
@@ -233,11 +274,41 @@ const SUPPORT_EMAIL = "soporte@kontave.com";
 
 export default function HelpPage() {
     const [query, setQuery] = useState("");
+    const [helpTextVersion, setHelpTextVersion] = useState<number | null>(null);
+    const [helpTexts, setHelpTexts] = useState<Record<string, string>>(CANONICAL_HELP_TEXTS);
+    const [helpTextDraft, setHelpTextDraft] = useState<Record<string, string>>(CANONICAL_HELP_TEXTS);
+    const [helpTextStatus, setHelpTextStatus] = useState("");
+    const [savingHelpTexts, setSavingHelpTexts] = useState(false);
     const lc = query.trim().toLowerCase();
 
+    useEffect(() => {
+        let active = true;
+        void fetch("/api/preferences/help-texts", { cache: "no-store" }).then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar la ayuda personalizada.");
+            if (active) { setHelpTextVersion(payload.data.version); setHelpTexts(payload.data.texts); setHelpTextDraft(payload.data.texts); }
+        }).catch((error: unknown) => { if (active) setHelpTextStatus(error instanceof Error ? error.message : "No fue posible cargar la ayuda."); });
+        return () => { active = false; };
+    }, []);
+
+    async function saveHelpTexts() {
+        if (helpTextVersion === null || savingHelpTexts) return;
+        setSavingHelpTexts(true);
+        const texts = Object.fromEntries(Object.entries(helpTextDraft).filter(([id, text]) => text.trim() && text.trim() !== CANONICAL_HELP_TEXTS[id]));
+        try {
+            const response = await fetch("/api/preferences/help-texts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: helpTextVersion, texts }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(response.status === 409 ? "La ayuda cambió en otra sesión. Recarga para continuar." : payload?.error ?? "No fue posible guardar los textos.");
+            setHelpTextVersion(payload.data.version); setHelpTexts(payload.data.texts); setHelpTextDraft(payload.data.texts); setHelpTextStatus("Descripciones guardadas para tu cuenta.");
+        } catch (error) { setHelpTextStatus(error instanceof Error ? error.message : "No fue posible guardar los textos."); }
+        finally { setSavingHelpTexts(false); }
+    }
+
+    const effectiveTopics = useMemo(() => TOPICS.map((topic) => ({ ...topic, intro: helpTexts[helpTopicId(topic.id)] ?? CANONICAL_HELP_TEXTS[helpTopicId(topic.id)] ?? topic.intro })), [helpTexts]);
+
     const filtered = useMemo(() => {
-        if (lc === "") return TOPICS;
-        return TOPICS.map((t) => {
+        if (lc === "") return effectiveTopics;
+        return effectiveTopics.map((t) => {
             const labelHit = t.label.toLowerCase().includes(lc);
             return {
                 ...t,
@@ -250,7 +321,7 @@ export default function HelpPage() {
                 }),
             };
         });
-    }, [lc]);
+    }, [effectiveTopics, lc]);
 
     const totalMatches = filtered.reduce((s, t) => s + t.faqs.length, 0);
     const isFiltering = lc !== "";
@@ -287,6 +358,24 @@ export default function HelpPage() {
                         />
                         <SupportPanel />
                     </div>
+
+                    <details className="rounded-xl border border-border-light bg-surface-1 p-5 shadow-sm">
+                        <summary className="cursor-pointer font-mono text-[12px] font-bold uppercase tracking-[0.12em] text-foreground">Personalizar descripciones de ayuda</summary>
+                        <p className="mt-2 text-sm text-[var(--text-tertiary)]">Estas descripciones son personales. Las respuestas operativas y las instrucciones del sistema permanecen sin cambios.</p>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            {TOPICS.map((topic) => {
+                                const id = helpTopicId(topic.id);
+                                return <label key={id} className="grid gap-1 text-sm font-semibold text-foreground">{topic.label}
+                                    <textarea maxLength={2000} rows={3} value={helpTextDraft[id] ?? CANONICAL_HELP_TEXTS[id] ?? topic.intro} disabled={helpTextVersion === null || savingHelpTexts} onChange={(event) => setHelpTextDraft((current) => ({ ...current, [id]: event.target.value }))} className="rounded-lg border border-border-light bg-surface-1 p-3 font-normal outline-none focus:border-primary-500 disabled:opacity-60" />
+                                </label>;
+                            })}
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <button type="button" disabled={helpTextVersion === null || savingHelpTexts} onClick={() => void saveHelpTexts()} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingHelpTexts ? "Guardando…" : "Guardar descripciones"}</button>
+                            <button type="button" disabled={helpTextVersion === null || savingHelpTexts} onClick={() => setHelpTextDraft(CANONICAL_HELP_TEXTS)} className="rounded-lg border border-border-light px-4 py-2 text-sm font-semibold text-foreground disabled:opacity-50">Restaurar originales</button>
+                            <span role="status" className="text-sm text-[var(--text-tertiary)]">{helpTextStatus}</span>
+                        </div>
+                    </details>
 
                     {/* ── Lista editorial de temas ──────────────────────── */}
                     <div className="flex flex-col gap-8">

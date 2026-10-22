@@ -50,6 +50,9 @@ const taxation = {
   profileId: "tax",
   taxCode: "IVA",
   treatment: "taxed",
+  category: "general",
+  legacyRateSlot: null,
+  priceMode: "tax_exclusive",
   effectiveFrom: "2026-01-01",
   effectiveTo: null,
   resolvedRate: "16",
@@ -257,6 +260,11 @@ test("product details reject malformed nested contracts and discriminants", () =
   ];
   for (const mutation of mutations)
     assert.equal(decode.productDetail({ ...detail, ...mutation }), null);
+});
+
+test("product taxation decoder preserves the distinct zero-rated treatment", () => {
+  const zeroRated = { ...taxation, treatment: "zero_rated", category: "zero_rated", resolvedRate: "0" } as const;
+  assert.equal(decode.taxation(zeroRated), zeroRated);
 });
 
 test("explicit null remains valid only in nullable product fields", () => {

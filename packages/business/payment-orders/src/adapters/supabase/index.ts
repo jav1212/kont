@@ -12,6 +12,8 @@ import type {
   VersionedPaymentOrder,
 } from "../../application";
 
+export * from "./payroll-payment-order-drafts";
+
 /** Minimal service-side RPC transport. The caller supplies the authenticated actor identity separately. */
 export interface PaymentOrderSource {
   /**

@@ -8,4 +8,5 @@ export interface CompanyDto {
   readonly country: string;
   readonly status: string;
   readonly operatingProfile: "standard" | "kiosk";
+  readonly version: number;
 }

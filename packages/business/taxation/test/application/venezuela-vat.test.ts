@@ -163,6 +163,21 @@ test("keeps legacy profile and shared-rule resolution when no company catalog ex
   assert.equal(decisions[0]?.amount.minorAmount, 1_600n);
 });
 
+test("requires a company-owned rule catalog for new product tax decisions when requested", async () => {
+  const useCase = new ResolveProductVenezuelanVat(repository(), configuration([], 0));
+  await assert.rejects(useCase.execute({
+    actorUserId: userId("user-1"),
+    organizationId: organizationId("organization-1"),
+    companyId: companyId("company-1"),
+    productId: product,
+    operationDate: "2026-08-13",
+    lineReference: "line-strict-catalog",
+    lineAmount: moneyFromDecimal("100", VES),
+    roundingMode: "half_up",
+    requireCompanyCatalog: true,
+  }), (error: unknown) => error instanceof TaxationFailure && error.code === "TAXATION_RULE_MISSING");
+});
+
 test("resolves service IVA through the versioned company catalog and preserves service source", async () => {
   const useCase = new ResolveServiceVenezuelanVat(
     serviceRepository(),
@@ -184,4 +199,19 @@ test("resolves service IVA through the versioned company catalog and preserves s
   assert.equal(decisions.classificationLegalBasis, "Service tax classification");
   assert.deepEqual(decisions.determinations.map((decision) => decision.amount.minorAmount), [1_600n, 1_500n]);
   assert.deepEqual(decisions.determinations.map((decision) => decision.source.kind), ["line", "line"]);
+});
+
+test("requires a company-owned rule catalog for new service tax decisions when requested", async () => {
+  const useCase = new ResolveServiceVenezuelanVat(serviceRepository(), configuration([], 0));
+  await assert.rejects(useCase.execute({
+    actorUserId: userId("user-1"),
+    organizationId: organizationId("organization-1"),
+    companyId: companyId("company-1"),
+    serviceCode: "CONSULTING",
+    operationDate: "2026-08-13",
+    lineReference: "service-line-strict-catalog",
+    lineAmount: moneyFromDecimal("100", VES),
+    roundingMode: "half_up",
+    requireCompanyCatalog: true,
+  }), (error: unknown) => error instanceof TaxationFailure && error.code === "TAXATION_RULE_MISSING");
 });

@@ -43,7 +43,7 @@ test("dispose is idempotent and clears a pending timeout", async () => {
 });
 
 test("rejects invalid timeout values", () => {
-  for (const timeout of [0, -1, Number.NaN, Number.POSITIVE_INFINITY)
+  for (const timeout of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
     assert.throws(
       () => createRequestCancellation(new AbortController().signal, timeout),
       RangeError,

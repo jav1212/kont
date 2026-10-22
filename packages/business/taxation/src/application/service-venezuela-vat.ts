@@ -14,6 +14,8 @@ export interface ResolveServiceVenezuelanVatInput extends TaxationContext {
   readonly lineAmount: Money;
   readonly roundingMode: RoundingMode;
   readonly priceMode?: TaxPriceMode;
+  /** Require company-owned, versioned rules instead of the legacy shared catalog. */
+  readonly requireCompanyCatalog?: boolean;
   /** Components explicitly selected by the authorized invoice or payment workflow. */
   readonly additionalComponents?: readonly VenezuelanVatComponentSelection[];
 }
@@ -56,6 +58,9 @@ export class ResolveServiceVenezuelanVat {
       const catalog = await this.configuration.getCompanyTaxRuleCatalog(input);
       if (catalog.companyId !== input.companyId) {
         throw new TaxationFailure("TAXATION_ACCESS_DENIED", "Tax rule catalog is outside the requested company scope.");
+      }
+      if (input.requireCompanyCatalog && catalog.version < 1) {
+        throw new TaxationFailure("TAXATION_RULE_MISSING", "A company-owned IVA catalog must be configured before fiscal issuance.");
       }
       const rules = catalog.version > 0
         ? catalog.rules.filter((rule) => rule.taxCode === VENEZUELAN_IVA && rule.jurisdiction === profile.jurisdiction)

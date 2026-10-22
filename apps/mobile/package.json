@@ -23,6 +23,7 @@
     "@kontave/client-feedback": "workspace:*",
     "@kontave/client-interaction": "workspace:*",
     "@kontave/client-remote": "workspace:*",
+    "@kontave/client-runtime": "workspace:*",
     "@kontave/client-updates": "workspace:*",
     "@kontave/ui": "workspace:*",
     "@kontave/modules": "workspace:*",

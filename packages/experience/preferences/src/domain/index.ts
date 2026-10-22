@@ -1,4 +1,9 @@
 import type { UserId } from "@kontave/organizations/domain";
+import { PreferencesFailure } from "./preferences-failure";
+
+export * from "./user-view-preferences";
+export * from "./user-process-defaults";
+export * from "./preferences-failure";
 
 export const ColorScheme = { Light: "light", Dark: "dark", System: "system" } as const;
 export type ColorScheme = typeof ColorScheme[keyof typeof ColorScheme];
@@ -21,25 +26,6 @@ export interface UserPreferences {
   readonly regional: RegionalPreferences;
   readonly version: number;
   readonly updatedAt: string;
-}
-
-export type PreferencesFailureCode =
-  | "PREFERENCES_INVALID"
-  | "PREFERENCES_VERSION_CONFLICT"
-  | "PREFERENCES_REPOSITORY_UNAVAILABLE";
-
-export class PreferencesFailure extends Error {
-  /**
-   * Creates an expected preferences failure.
-   *
-   * @param code - Stable failure classification.
-   * @param message - Safe diagnostic message.
-   * @param options - Optional original cause.
-   */
-  constructor(readonly code: PreferencesFailureCode, message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "PreferencesFailure";
-  }
 }
 
 /**

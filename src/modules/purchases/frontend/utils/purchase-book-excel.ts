@@ -64,8 +64,8 @@ function parsePeriod(value: string): string {
 
 function documentType(value: string): PurchaseBookRow["documentType"] {
     const normalized = value.toLowerCase();
-    if (normalized.includes("crï¿½dito") || normalized.includes("credito")) return "nota_credito";
-    if (normalized.includes("dï¿½bito") || normalized.includes("debito")) return "nota_debito";
+    if (normalized.includes("crédito") || normalized.includes("credito")) return "nota_credito";
+    if (normalized.includes("débito") || normalized.includes("debito")) return "nota_debito";
     return "factura";
 }
 

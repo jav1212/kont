@@ -16,6 +16,10 @@
       "types": "./src/core/index.ts",
       "default": "./dist/core/index.js"
     },
+    "./printer-configuration": {
+      "types": "./src/printer-configuration/index.ts",
+      "default": "./dist/printer-configuration/index.js"
+    },
     "./node": {
       "types": "./src/adapters/node/index.ts",
       "default": "./dist/adapters/node/index.js"
@@ -37,6 +41,10 @@
     "#devices/node/serial-port-provider": {
       "types": "./src/adapters/node/serial-port-provider.ts",
       "default": "./dist/adapters/node/serial-port-provider.js"
+    },
+    "#devices/node/printer-binding-file-repository": {
+      "types": "./src/adapters/node/printer-binding-file-repository.ts",
+      "default": "./dist/adapters/node/printer-binding-file-repository.js"
     }
   },
   "scripts": {

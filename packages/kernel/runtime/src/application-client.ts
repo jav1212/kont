@@ -11,6 +11,7 @@ import type {
   ProfilePort,
   PurchasingPort,
   SalesPort,
+  TreasuryPort,
 } from "@kontave/client-contracts";
 import { createKontaveClient, type ClientRuntimeModule } from "./lifecycle";
 import { createPortFeature } from "./features/port-feature";
@@ -27,6 +28,7 @@ export interface KontaveClientPorts {
   readonly profile: ProfilePort;
   readonly purchasing: PurchasingPort;
   readonly sales: SalesPort;
+  readonly treasury: TreasuryPort;
 }
 
 /** Exhaustive portable feature catalog shared by every Kontave renderer. */
@@ -41,6 +43,7 @@ export type KontaveClientFeatures = {
   readonly profile: ClientPortFeature<ProfilePort>;
   readonly purchasing: ClientPortFeature<PurchasingPort>;
   readonly sales: ClientPortFeature<SalesPort>;
+  readonly treasury: ClientPortFeature<TreasuryPort>;
 };
 
 /** Options used to compose one portable application client. */
@@ -252,6 +255,10 @@ export function createKontaveApplicationClient(
     performanceReport: (organizationId, companyId, query) =>
       options.ports.sales.performanceReport(organizationId, companyId, query),
   });
+  const treasury = createPortFeature<TreasuryPort>({
+    command: (organizationId, companyId, request) => options.ports.treasury.command(organizationId, companyId, request),
+    query: (organizationId, companyId, request) => options.ports.treasury.query(organizationId, companyId, request),
+  });
 
   const runtimes = [
     authentication,
@@ -264,6 +271,7 @@ export function createKontaveApplicationClient(
     profile,
     purchasing,
     sales,
+    treasury,
   ] as const;
 
   return createKontaveClient({
@@ -278,6 +286,7 @@ export function createKontaveApplicationClient(
       profile: profile.feature,
       purchasing: purchasing.feature,
       sales: sales.feature,
+      treasury: treasury.feature,
     }),
     modules: [
       ...runtimes.map((runtime) => runtime.module),

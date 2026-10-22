@@ -3,10 +3,12 @@
 // Suppliers catalog page — CRUD, CSV import/export, bulk delete.
 // Uses English domain types (Supplier) and the Purchases module hook.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
+import { SystemLabelSettings } from "@/src/shared/frontend/components/system-label-settings";
+import { SUPPLIER_SYSTEM_LABELS } from "@/src/modules/purchases/domain/supplier-system-labels";
 import { notify } from "@/src/shared/frontend/notify";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -199,6 +201,14 @@ export default function ProveedoresPage() {
         suppliers, loadingSuppliers,
         loadSuppliers, saveSupplier, deleteSupplier,
     } = usePurchases();
+    const [systemLabels, setSystemLabels] = useState<Record<string, string>>(() =>
+        Object.fromEntries(SUPPLIER_SYSTEM_LABELS.map(({ id, defaultLabel }) => [id, defaultLabel])),
+    );
+    const handleSystemLabelsChange = useCallback((labels: Readonly<Record<string, string>>) => {
+        setSystemLabels({ ...labels });
+    }, []);
+    const labelFor = (key: string, fallback: string) =>
+        systemLabels[`system.purchases.suppliers.${key}`] ?? fallback;
 
     const [form, setForm] = useState<Supplier | null>(null);
     const [saving, setSaving] = useState(false);
@@ -356,6 +366,13 @@ export default function ProveedoresPage() {
     return (
         <div className="min-h-full bg-background">
             <PageHeader title="Proveedores" subtitle="Directorio · contactos · RIF">
+                <SystemLabelSettings
+                    catalog={SUPPLIER_SYSTEM_LABELS}
+                    endpoint="/api/preferences/purchase-supplier-system-labels"
+                    title="Etiquetas del catálogo de proveedores"
+                    description="Personaliza cómo se muestran los campos. El RIF se mantiene con su etiqueta fiscal estándar."
+                    onLabelsChange={handleSystemLabelsChange}
+                />
                 <BaseButton.Root
                     variant="secondary" size="sm"
                     onClick={handleExport}
@@ -728,11 +745,11 @@ export default function ProveedoresPage() {
                                         </th>
                                         {[
                                             { label: "RIF",      align: "text-left"   },
-                                            { label: "Nombre",   align: "text-left"   },
-                                            { label: "Contacto", align: "text-left"   },
-                                            { label: "Teléfono", align: "text-left"   },
-                                            { label: "Email",    align: "text-left"   },
-                                            { label: "Estado",   align: "text-left"   },
+                                            { label: labelFor("name", "Nombre"), align: "text-left" },
+                                            { label: labelFor("contact", "Contacto"), align: "text-left" },
+                                            { label: labelFor("phone", "Teléfono"), align: "text-left" },
+                                            { label: labelFor("email", "Email"), align: "text-left" },
+                                            { label: labelFor("status", "Estado"), align: "text-left" },
                                             { label: "",         align: "text-right"  },
                                         ].map((h) => (
                                             <th

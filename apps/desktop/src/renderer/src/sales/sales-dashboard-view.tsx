@@ -54,9 +54,19 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
   const [month, setMonth] = useState("");
   const [displayCurrency, setDisplayCurrency] = useState("VES");
   const [reportDimension, setReportDimension] = useState<"user" | "role" | "device">("user");
-  const [performanceReport, setPerformanceReport] = useState<SalesPerformanceReportDto>();
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState<string>();
+  const period = snapshot?.dashboard.period;
+  const reportKey = period
+    ? `${organizationId}:${companyId}:${period.from}:${period.to}:${reportDimension}`
+    : null;
+  const [reportState, setReportState] = useState<{
+    readonly key: string;
+    readonly report?: SalesPerformanceReportDto;
+    readonly error?: string;
+  }>();
+  const currentReportState = reportKey && reportState?.key === reportKey ? reportState : undefined;
+  const performanceReport = currentReportState?.report;
+  const reportLoading = reportKey !== null && currentReportState === undefined;
+  const reportError = currentReportState?.error;
 
   const accept = (value: DesktopSalesDashboardSnapshot): void => {
     setSnapshot(value);
@@ -114,12 +124,9 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
   }, [organizationId, companyId]);
 
   useEffect(() => {
-    const period = snapshot?.dashboard.period;
     if (!period) return;
     let active = true;
-    setPerformanceReport(undefined);
-    setReportLoading(true);
-    setReportError(undefined);
+    const requestKey = `${organizationId}:${companyId}:${period.from}:${period.to}:${reportDimension}`;
     const query: DesktopSalesPerformanceReportQuery = {
       from: period.from,
       to: period.to,
@@ -129,11 +136,17 @@ export function SalesDashboardView({ organizationId, companyId }: Props) {
       .getPerformanceReport(organizationId, companyId, query)
       .then((result) => {
         if (!active) return;
-        if (result.ok) setPerformanceReport(result.value);
-        else setReportError(result.error.message);
+        setReportState(result.ok
+          ? { key: requestKey, report: result.value }
+          : { key: requestKey, error: result.error.message });
       })
-      .finally(() => {
-        if (active) setReportLoading(false);
+      .catch((error: unknown) => {
+        if (active) {
+          setReportState({
+            key: requestKey,
+            error: error instanceof Error ? error.message : "No fue posible consultar el reporte.",
+          });
+        }
       });
     return () => { active = false; };
   }, [organizationId, companyId, snapshot?.dashboard.period.from, snapshot?.dashboard.period.to, reportDimension]);

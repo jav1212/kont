@@ -10,9 +10,10 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
-import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
+import { BaseListCard, type ListCardRow } from "@/src/shared/frontend/components/base-list-card";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
 import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
@@ -21,6 +22,9 @@ import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import { ProductSalePricingFields, formatProductSalePricing } from "@/src/modules/inventory/frontend/components/product-sale-pricing-fields";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { ProductCustomFieldDefinition, ProductCustomFieldValues } from "@kontave/products/domain";
+import type { UserViewPreferences } from "@kontave/preferences/domain";
+import { PRODUCT_SYSTEM_LABELS } from "@/src/modules/inventory/domain/product-system-labels";
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
 import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 import {
@@ -93,6 +97,11 @@ const IVA_TIPOS: { value: VatType; label: string }[] = [
 ];
 
 type EstadoFilter = "todos" | "activo" | "inactivo";
+
+function productSystemLabel(labels: Readonly<Record<string, string>>, key: string): string {
+    const id = `system.inventory.products.${key}`;
+    return labels[id] ?? PRODUCT_SYSTEM_LABELS.find((item) => item.id === id)?.defaultLabel ?? key;
+}
 
 function empty(companyId: string): Product {
     return {
@@ -172,7 +181,10 @@ export default function ProductosPage() {
     } = useInventory();
 
     // Custom fields from company inventory config (sector template + user-defined)
-    const customFields: CustomFieldDefinition[] = company?.inventoryConfig?.customFields ?? [];
+    const customFields = useMemo<CustomFieldDefinition[]>(
+        () => company?.inventoryConfig?.customFields ?? [],
+        [company?.inventoryConfig?.customFields],
+    );
 
     const [form, setForm] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
@@ -188,6 +200,16 @@ export default function ProductosPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
+    const [typedCustomFields, setTypedCustomFields] = useState<readonly ProductCustomFieldDefinition[]>([]);
+    const [typedValues, setTypedValues] = useState<Readonly<Record<string, { values: ProductCustomFieldValues; version: number }>>>({});
+    const [viewPreferences, setViewPreferences] = useState<UserViewPreferences | null>(null);
+    const [savingViewPreferences, setSavingViewPreferences] = useState(false);
+    const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
+    const [fieldLabelsVersion, setFieldLabelsVersion] = useState<number | null>(null);
+    const [savingFieldLabels, setSavingFieldLabels] = useState(false);
+    const [systemLabels, setSystemLabels] = useState<Record<string, string>>({});
+    const [systemLabelsVersion, setSystemLabelsVersion] = useState<number | null>(null);
+    const [savingSystemLabels, setSavingSystemLabels] = useState(false);
 
     // ── Undoable delete (REQ-001) ────────────────────────────────────────
     const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete<string>({
@@ -345,6 +367,141 @@ export default function ProductosPage() {
     const pageSize = 50;
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const pageProducts = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const pageProductIds = pageProducts.flatMap((product) => product.id ? [product.id] : []);
+    const pageProductKey = pageProductIds.join(",");
+    useEffect(() => {
+        if (!companyId) { setTypedCustomFields([]); setTypedValues({}); return; }
+        let current = true;
+        const loadTypedFields = async () => {
+            try {
+                const [catalogResponse, valuesResponse] = await Promise.all([
+                    apiFetch(`/api/inventory/product-custom-fields?companyId=${encodeURIComponent(companyId)}`),
+                    pageProductIds.length === 0 ? Promise.resolve(null) : apiFetch("/api/inventory/products/custom-fields/batch", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ companyId, productIds: pageProductIds }),
+                    }),
+                ]);
+                const catalogPayload = await catalogResponse.json().catch(() => null);
+                if (!catalogResponse.ok) throw new Error(catalogPayload?.error ?? "No fue posible cargar el catálogo tipado.");
+                const valuesPayload = valuesResponse ? await valuesResponse.json().catch(() => null) : { data: {} };
+                if (valuesResponse && !valuesResponse.ok) throw new Error(valuesPayload?.error ?? "No fue posible cargar valores tipados.");
+                if (current) {
+                    setTypedCustomFields(catalogPayload.data.definitions as readonly ProductCustomFieldDefinition[]);
+                    setTypedValues(valuesPayload.data as Readonly<Record<string, { values: ProductCustomFieldValues; version: number }>>);
+                }
+            } catch (error) {
+                if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los campos tipados.");
+            }
+        };
+        void loadTypedFields();
+        return () => { current = false; };
+    // Key is the stable, bounded set of product IDs visible in the current page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId, pageProductKey]);
+    useEffect(() => {
+        let current = true;
+        void apiFetch("/api/preferences/inventory-products-columns").then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las columnas visibles.");
+            if (current) setViewPreferences(payload.data as UserViewPreferences);
+        }).catch((error: unknown) => {
+            if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las columnas visibles.");
+        });
+        return () => { current = false; };
+    }, []);
+
+    useEffect(() => {
+        let current = true;
+        void apiFetch("/api/preferences/inventory-product-field-labels").then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar los nombres de campos.");
+            if (current) { setFieldLabels(payload.data.labels); setFieldLabelsVersion(payload.data.version); }
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los nombres de campos."); });
+        return () => { current = false; };
+    }, []);
+
+    useEffect(() => {
+        let current = true;
+        void apiFetch("/api/preferences/inventory-product-system-labels").then(async (response) => {
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las etiquetas del producto.");
+            if (current) { setSystemLabels(payload.data.labels); setSystemLabelsVersion(payload.data.version); }
+        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las etiquetas del producto."); });
+        return () => { current = false; };
+    }, []);
+
+    async function saveFieldLabels() {
+        if (fieldLabelsVersion === null || savingFieldLabels) return;
+        setSavingFieldLabels(true);
+        const knownIds = new Set([
+            ...customFields.map((field) => `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`),
+            ...typedCustomFields.map((field) => `typed-custom-${field.id}`),
+        ]);
+        const labels = Object.fromEntries(Object.entries(fieldLabels).filter(([id, label]) => knownIds.has(id) && label.trim()));
+        try {
+            const response = await apiFetch("/api/preferences/inventory-product-field-labels", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: fieldLabelsVersion, labels }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(response.status === 409 ? "Los nombres cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar los nombres.");
+            setFieldLabels(payload.data.labels); setFieldLabelsVersion(payload.data.version);
+            notify.success("Nombres de campos guardados para tu usuario.");
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar los nombres."); }
+        finally { setSavingFieldLabels(false); }
+    }
+
+    async function saveSystemLabels() {
+        if (systemLabelsVersion === null || savingSystemLabels) return;
+        setSavingSystemLabels(true);
+        const labels = Object.fromEntries(PRODUCT_SYSTEM_LABELS.flatMap((item) => {
+            const value = systemLabels[item.id]?.trim();
+            return value && value !== item.defaultLabel ? [[item.id, value]] : [];
+        }));
+        try {
+            const response = await apiFetch("/api/preferences/inventory-product-system-labels", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: systemLabelsVersion, labels }) });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(response.status === 409 ? "Las etiquetas cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar las etiquetas.");
+            setSystemLabels(payload.data.labels); setSystemLabelsVersion(payload.data.version);
+            notify.success("Etiquetas guardadas para tu usuario.");
+        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las etiquetas."); }
+        finally { setSavingSystemLabels(false); }
+    }
+
+    const hiddenColumnIds = useMemo(() => new Set(viewPreferences?.hiddenColumnIds ?? []), [viewPreferences]);
+    const visibleColumnOptions = useMemo(() => [
+        { id: "product-code", label: productSystemLabel(systemLabels, "code") },
+        { id: "barcode", label: productSystemLabel(systemLabels, "barcode") },
+        { id: "department", label: productSystemLabel(systemLabels, "department") },
+        { id: "stock", label: productSystemLabel(systemLabels, "stock") },
+        { id: "sale-price", label: productSystemLabel(systemLabels, "sale-price") },
+        { id: "status", label: productSystemLabel(systemLabels, "status") },
+        { id: "vat-type", label: productSystemLabel(systemLabels, "vat-type") },
+        ...customFields.map((field) => ({ id: `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`, label: fieldLabels[`legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`] ?? field.label })),
+        ...typedCustomFields.map((field) => ({ id: `typed-custom-${field.id}`, label: fieldLabels[`typed-custom-${field.id}`] ?? field.label })),
+    ], [customFields, fieldLabels, systemLabels, typedCustomFields]);
+
+    const hiddenFieldIds = useMemo(() => new Set(viewPreferences?.hiddenFieldIds ?? []), [viewPreferences]);
+
+    async function toggleViewVisibility(kind: "field" | "column", id: string) {
+        if (!viewPreferences || savingViewPreferences) return;
+        const currentIds = kind === "field" ? viewPreferences.hiddenFieldIds : viewPreferences.hiddenColumnIds;
+        const hiddenIdsNext = currentIds.includes(id)
+            ? currentIds.filter((hiddenId) => hiddenId !== id)
+            : [...currentIds, id];
+        setSavingViewPreferences(true);
+        try {
+            const response = await apiFetch("/api/preferences/inventory-products-columns", {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ expectedVersion: viewPreferences.version, [kind === "field" ? "hiddenFieldIds" : "hiddenColumnIds"]: hiddenIdsNext }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las preferencias.");
+            setViewPreferences(payload.data as UserViewPreferences);
+        } catch (error) {
+            notify.error(error instanceof Error ? error.message : "No fue posible guardar las preferencias.");
+            const response = await apiFetch("/api/preferences/inventory-products-columns");
+            const payload = await response.json().catch(() => null);
+            if (response.ok) setViewPreferences(payload.data as UserViewPreferences);
+        } finally { setSavingViewPreferences(false); }
+    }
     useEffect(() => {
         setCurrentPage((page) => Math.min(page, totalPages));
     }, [totalPages]);
@@ -455,6 +612,70 @@ export default function ProductosPage() {
                                 inputClassName="font-mono"
                             />
                         </div>
+
+                        <details className="relative order-4">
+                            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-surface-1 px-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] hover:bg-surface-2">
+                                <SlidersHorizontal size={14} /> Columnas
+                            </summary>
+                            <div className="absolute right-0 z-30 mt-2 max-h-80 w-64 overflow-y-auto rounded-xl border border-border-light bg-surface-1 p-3 shadow-xl">
+                                <p className="mb-2 font-sans text-[11px] text-[var(--text-tertiary)]">Visible solo para tu usuario.</p>
+                                {visibleColumnOptions.map((column) => (
+                                    <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 font-sans text-[12px] text-foreground hover:bg-surface-2">
+                                        <input type="checkbox" checked={!hiddenColumnIds.has(column.id)} disabled={!viewPreferences || savingViewPreferences} onChange={() => void toggleViewVisibility("column", column.id)} />
+                                        <span>{column.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+                        <details className="relative order-4">
+                            <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-surface-1 px-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] hover:bg-surface-2">
+                                <Tag size={14} /> Etiquetas
+                            </summary>
+                            <div className="absolute right-0 z-30 mt-2 max-h-96 w-72 overflow-y-auto rounded-xl border border-border-light bg-surface-1 p-3 shadow-xl">
+                                <p className="mb-2 font-sans text-[11px] text-[var(--text-tertiary)]">Nombres personales de la interfaz; no cambian campos guardados ni reglas.</p>
+                                {PRODUCT_SYSTEM_LABELS.map((item) => (
+                                    <label key={item.id} className="mb-2 grid gap-1 font-sans text-[11px] text-[var(--text-secondary)]">
+                                        {item.defaultLabel}
+                                        <input maxLength={60} value={systemLabels[item.id] ?? item.defaultLabel} disabled={systemLabelsVersion === null || savingSystemLabels} onChange={(event) => setSystemLabels((current) => ({ ...current, [item.id]: event.target.value }))} className="h-8 rounded border border-border-light bg-surface-1 px-2 text-[12px] text-foreground" />
+                                    </label>
+                                ))}
+                                <button type="button" disabled={systemLabelsVersion === null || savingSystemLabels} onClick={() => void saveSystemLabels()} className="mt-1 w-full rounded-lg bg-primary-600 px-3 py-2 font-sans text-[12px] font-semibold text-white disabled:opacity-50">{savingSystemLabels ? "Guardando…" : "Guardar etiquetas"}</button>
+                            </div>
+                        </details>
+                        {(customFields.length > 0 || typedCustomFields.length > 0) && (
+                            <details className="relative order-4">
+                                <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-light bg-surface-1 px-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] hover:bg-surface-2">
+                                    <SlidersHorizontal size={14} /> Campos
+                                </summary>
+                                <div className="absolute right-0 z-30 mt-2 max-h-80 w-64 overflow-y-auto rounded-xl border border-border-light bg-surface-1 p-3 shadow-xl">
+                                    <p className="mb-2 font-sans text-[11px] text-[var(--text-tertiary)]">Los campos heredados se ocultan en el formulario rápido y en la ficha; los tipados, solo en la ficha individual. Ocultarlos no elimina sus valores.</p>
+                                    {customFields.map((field) => {
+                                        const id = `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`;
+                                        return (
+                                            <div key={id} className="space-y-1 rounded px-2 py-2 hover:bg-surface-2">
+                                                <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-foreground">
+                                                    <input type="checkbox" checked={!hiddenFieldIds.has(id)} disabled={!viewPreferences || savingViewPreferences} onChange={() => void toggleViewVisibility("field", id)} />
+                                                    <span>{fieldLabels[id] ?? field.label}</span>
+                                                </label>
+                                            <input aria-label={`Nombre personalizado para ${field.label}`} maxLength={60} value={fieldLabels[id] ?? ""} placeholder={field.label} disabled={fieldLabelsVersion === null || savingFieldLabels} onChange={(event) => setFieldLabels((current) => ({ ...current, [id]: event.target.value }))} className="h-8 w-full rounded border border-border-light bg-surface-1 px-2 font-sans text-[12px] text-foreground" />
+                                            </div>
+                                        );
+                                    })}
+                                    {typedCustomFields.map((field) => {
+                                        const id = `typed-custom-${field.id}`;
+                                        return <div key={id} className="mb-2 grid gap-1 rounded px-2 py-2 hover:bg-surface-2">
+                                            <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-foreground">
+                                                <input type="checkbox" checked={!hiddenFieldIds.has(id)} disabled={!viewPreferences || savingViewPreferences} onChange={() => void toggleViewVisibility("field", id)} />
+                                                <span>{field.label}</span>
+                                            </label>
+                                            <span className="pl-6 font-sans text-[10px] text-[var(--text-tertiary)]">Ficha individual</span>
+                                            <input aria-label={`Nombre personalizado para ${field.label}`} maxLength={60} value={fieldLabels[id] ?? ""} placeholder={field.label} disabled={fieldLabelsVersion === null || savingFieldLabels} onChange={(event) => setFieldLabels((current) => ({ ...current, [id]: event.target.value }))} className="h-8 w-full rounded border border-border-light bg-surface-1 px-2 text-[12px]" />
+                                        </div>;
+                                    })}
+                                    <button type="button" disabled={fieldLabelsVersion === null || savingFieldLabels} onClick={() => void saveFieldLabels()} className="mt-2 w-full rounded-lg bg-primary-600 px-3 py-2 font-sans text-[12px] font-semibold text-white disabled:opacity-50">{savingFieldLabels ? "Guardando…" : "Guardar nombres"}</button>
+                                </div>
+                            </details>
+                        )}
 
                         <div className="order-1 flex items-center gap-2">
                             <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">Estado</span>
@@ -646,14 +867,14 @@ export default function ProductosPage() {
                             <FormSection icon={Tag} title="Identidad" description="Código interno y nombre comercial.">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <BaseInput.Field
-                                        label="Código"
+                                        label={productSystemLabel(systemLabels, "code")}
                                         type="text"
                                         value={form.code}
                                         onValueChange={(v) => set("code", v)}
                                         placeholder="P001"
                                     />
                                     <BaseInput.Field
-                                        label="Código de barras"
+                                        label={productSystemLabel(systemLabels, "barcode")}
                                         type="text"
                                         value={form.barcode ?? ""}
                                         onValueChange={(v) => set("barcode", v)}
@@ -661,7 +882,7 @@ export default function ProductosPage() {
                                         description="Opcional · escríbelo o escanéalo"
                                     />
                                     <BaseInput.Field
-                                        label="Nombre"
+                                        label={productSystemLabel(systemLabels, "name")}
                                         isRequired
                                         type="text"
                                         value={form.name}
@@ -707,7 +928,7 @@ export default function ProductosPage() {
                             <FormSection icon={Receipt} title="Departamento e IVA" description="Categoría y régimen fiscal del producto.">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className={labelCls}>Departamento</label>
+                                        <label className={labelCls}>{productSystemLabel(systemLabels, "department")}</label>
                                         <select
                                             className={fieldCls}
                                             value={form.departmentId ?? ""}
@@ -721,7 +942,7 @@ export default function ProductosPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>IVA</label>
+                                        <label className={labelCls}>{productSystemLabel(systemLabels, "vat-type")}</label>
                                         <select className={fieldCls} value={form.vatType ?? "general"} onChange={(e) => set("vatType", e.target.value as VatType)}>
                                             {IVA_TIPOS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
                                         </select>
@@ -736,11 +957,11 @@ export default function ProductosPage() {
                             {customFields.length > 0 && (
                                 <FormSection icon={SlidersHorizontal} title="Campos adicionales" description="Definidos por la plantilla del sector o por tu organización.">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {customFields.map((cf) => {
+                                        {customFields.filter((field) => !hiddenFieldIds.has(`legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`)).map((cf) => {
                                             const cfVal = (form.customFields ?? {})[cf.key] ?? "";
                                             return (
                                                 <div key={cf.key}>
-                                                    <label className={labelCls}>{cf.label}</label>
+                                                    <label className={labelCls}>{fieldLabels[`legacy-custom-${cf.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`] ?? cf.label}</label>
                                                     {cf.type === "select" ? (
                                                         <select
                                                             className={fieldCls}
@@ -846,17 +1067,19 @@ export default function ProductosPage() {
                                 <BaseListCard
                                     key={p.id}
                                     onClick={() => p.id ? router.push(`/inventory/products/${p.id}`) : openEdit(p)}
-                                    title={p.code || p.name}
-                                    subtitle={p.code ? p.name : undefined}
+                                    title={hiddenColumnIds.has("product-code") ? p.name : p.code || p.name}
+                                    subtitle={!hiddenColumnIds.has("product-code") && p.code ? p.name : undefined}
                                     badge={<TipoBadge tipo={p.type} />}
-                                    rows={[
+                                    rows={([
                                         {
                                             label: "Código de barras",
+                                            id: "barcode",
                                             value: p.barcode || "—",
                                             align: "right",
                                         },
                                         {
-                                            label: "Existencia",
+                                            id: "stock",
+                                            label: productSystemLabel(systemLabels, "stock"),
                                             value: (
                                                 <>
                                                     {fmtN(p.currentStock)}{" "}
@@ -867,22 +1090,37 @@ export default function ProductosPage() {
                                             numeric: true,
                                         },
                                         {
-                                            label: "Precio de venta",
+                                            id: "sale-price",
+                                            label: productSystemLabel(systemLabels, "sale-price"),
                                             value: formatProductSalePricing(p),
                                             align: "right",
                                         },
                                         {
-                                            label: "Departamento",
+                                            id: "department",
+                                            label: productSystemLabel(systemLabels, "department"),
                                             value: p.departmentName || "—",
                                             align: "right",
                                         },
                                         {
-                                            label: "IVA",
+                                            id: "vat-type",
+                                            label: productSystemLabel(systemLabels, "vat-type"),
                                             value: p.vatType === "exento" ? "Exento" : "General 16%",
                                             align: "right",
                                         },
-                                    ]}
-                                    status={
+                                        ...customFields.map((field) => ({
+                                            id: `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`,
+                                            label: fieldLabels[`legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`] ?? field.label,
+                                            value: p.customFields?.[field.key] == null ? "—" : String(p.customFields[field.key]),
+                                            align: "right" as const,
+                                        })),
+                                        ...typedCustomFields.map((field) => ({
+                                            id: `typed-custom-${field.id}`,
+                                            label: fieldLabels[`typed-custom-${field.id}`] ?? field.label,
+                                            value: typedValues[p.id ?? ""]?.values[field.id] == null ? "—" : String(typedValues[p.id ?? ""]?.values[field.id]),
+                                            align: "right" as const,
+                                        })),
+                                    ] satisfies (ListCardRow & { id: string })[]).filter((row) => !hiddenColumnIds.has(row.id))}
+                                    status={hiddenColumnIds.has("status") ? undefined : (
                                         p.active ? (
                                             <span className="inline-flex items-center gap-1.5 text-text-success font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
@@ -894,7 +1132,7 @@ export default function ProductosPage() {
                                                 Inactivo
                                             </span>
                                         )
-                                    }
+                                    )}
                                 />
                             ))}
                         </div>
@@ -924,10 +1162,21 @@ export default function ProductosPage() {
                                             { label: "Existencia",   align: "text-right" },
                                             { label: "Precio venta", align: "text-right" },
                                             { label: "Estado",       align: "text-left"  },
-                                            ...customFields.map((cf) => ({ label: cf.label, align: "text-left" })),
-                                        ].map((h, idx) => (
+                                            { label: "IVA",          align: "text-left"  },
+                                            ...customFields.map((cf) => ({ label: fieldLabels[`legacy-custom-${cf.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`] ?? cf.label, align: "text-left" })),
+                                            ...typedCustomFields.map((field) => ({ label: fieldLabels[`typed-custom-${field.id}`] ?? field.label, align: "text-left" })),
+                                        ].map((h, idx) => {
+                                            const id = [
+                                                "product-code", "barcode", "product-name", "department", "stock", "sale-price", "status", "vat-type",
+                                                ...customFields.map((field) => `legacy-custom-${field.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`),
+                                                ...typedCustomFields.map((field) => `typed-custom-${field.id}`),
+                                            ][idx] ?? `column-${idx}`;
+                                            const systemKey = ["code", "barcode", "name", "department", "stock", "sale-price", "status", "vat-type"][idx];
+                                            return { ...h, id, label: systemKey ? productSystemLabel(systemLabels, systemKey) : h.label };
+                                        }).filter((header) => header.id === "product-name" || !hiddenColumnIds.has(header.id)).map((h) => (
                                             <th
-                                                key={idx}
+                                                key={h.id}
+                                                hidden={hiddenColumnIds.has(h.id)}
                                                 className={`whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] ${h.align}`}
                                             >
                                                 {h.label}
@@ -962,8 +1211,8 @@ export default function ProductosPage() {
                                                     aria-label={`Seleccionar ${p.name}`}
                                                 />
                                             </td>
-                                            <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.code || "—"}</td>
-                                            <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.barcode || "—"}</td>
+                                            <td hidden={hiddenColumnIds.has("product-code")} className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.code || "—"}</td>
+                                            <td hidden={hiddenColumnIds.has("barcode")} className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.barcode || "—"}</td>
                                             <td className="px-4 py-3 font-sans font-semibold text-foreground">
                                                 <div className="flex flex-col">
                                                     <span>{p.name}</span>
@@ -974,14 +1223,14 @@ export default function ProductosPage() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)]">{p.departmentName || "—"}</td>
-                                            <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-foreground">
+                                            <td hidden={hiddenColumnIds.has("department")} className="px-4 py-3 text-[var(--text-secondary)]">{p.departmentName || "—"}</td>
+                                            <td hidden={hiddenColumnIds.has("stock")} className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-foreground">
                                                 {fmtN(p.currentStock)}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-[12px] text-[var(--text-secondary)]">
+                                            <td hidden={hiddenColumnIds.has("sale-price")} className="px-4 py-3 text-right font-mono text-[12px] text-[var(--text-secondary)]">
                                                 {formatProductSalePricing(p)}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td hidden={hiddenColumnIds.has("status")} className="px-4 py-3">
                                                 {p.active ? (
                                                     <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-text-success">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
@@ -994,9 +1243,15 @@ export default function ProductosPage() {
                                                     </span>
                                                 )}
                                             </td>
+                                            <td hidden={hiddenColumnIds.has("vat-type")} className="px-4 py-3 text-[var(--text-secondary)]">{p.vatType === "exento" ? "Exento" : "General 16%"}</td>
                                             {customFields.map((cf) => (
-                                                <td key={cf.key} className="px-4 py-3 text-[var(--text-secondary)]">
+                                                <td hidden={hiddenColumnIds.has(`legacy-custom-${cf.key.toLowerCase().replace(/[^a-z0-9._-]/g, "-")}`)} key={cf.key} className="px-4 py-3 text-[var(--text-secondary)]">
                                                     {p.customFields?.[cf.key] != null ? String(p.customFields[cf.key]) : "—"}
+                                                </td>
+                                            ))}
+                                            {typedCustomFields.map((field) => (
+                                                <td hidden={hiddenColumnIds.has(`typed-custom-${field.id}`)} key={`typed-${field.id}`} className="px-4 py-3 text-[var(--text-secondary)]">
+                                                    {typedValues[p.id ?? ""]?.values[field.id] == null ? "—" : String(typedValues[p.id ?? ""]?.values[field.id])}
                                                 </td>
                                             ))}
                                             <td className={[

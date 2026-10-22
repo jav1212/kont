@@ -5,8 +5,9 @@ import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 import type { DocumentFolder } from '../../backend/domain/document-folder';
 import type { Document } from '../../backend/domain/document';
+import { getSupabaseBrowser } from '@/src/shared/frontend/utils/supabase-browser';
 
-export function useDocuments(companyId?: string | null) {
+export function useDocuments(companyId?: string | null, organizationId?: string | null) {
     const [folders,          setFolders]          = useState<DocumentFolder[]>([]);
     const [documents,        setDocuments]         = useState<Document[]>([]);
     const [selectedFolderId, setSelectedFolderId]  = useState<string | null>(null);
@@ -70,16 +71,21 @@ export function useDocuments(companyId?: string | null) {
     }, [companyId, loadFolders]);
 
     const renameFolder = useCallback(async (id: string, name: string) => {
-        const res  = await apiFetch(`/api/documents/folders/${id}`, {
+        if (!organizationId) throw new Error('Selecciona una organización para renombrar la carpeta.');
+        const { data: { session } } = await getSupabaseBrowser().auth.getSession();
+        if (!session?.access_token) throw new Error('La sesión expiró. Inicia sesión nuevamente.');
+        const folder = folders.find((item) => item.id === id);
+        if (!folder) throw new Error('No se encontró la carpeta seleccionada.');
+        const res  = await fetch(`/api/client/v1/organizations/${organizationId}/documents/folders/${encodeURIComponent(id)}`, {
             method:  'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ name }),
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, 'x-kontave-client': 'web' },
+            body:    JSON.stringify({ name, expectedVersion: folder.version }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'Error al renombrar carpeta');
-        setFolders((prev) => prev.map((f) => f.id === id ? { ...f, name: json.data.name } : f));
+        if (!res.ok) throw new Error(json.error?.message ?? json.error ?? 'Error al renombrar carpeta');
+        setFolders((prev) => prev.map((f) => f.id === id ? { ...f, name: json.data.name, version: json.data.version, updatedAt: json.data.updatedAt } : f));
         return json.data as DocumentFolder;
-    }, []);
+    }, [folders, organizationId]);
 
     const deleteFolder = useCallback(async (id: string) => {
         const res = await apiFetch(`/api/documents/folders/${id}`, { method: 'DELETE' });

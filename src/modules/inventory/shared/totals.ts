@@ -330,8 +330,8 @@ export function computeInvoiceTotals(
     const r = (n: number) => roundN(n, calculationDecimals);
 
     // Convertimos una sola vez el agregado USD, y distribuimos su equivalente
-    // en Bs entre las l�neas USD. As� subtotal/total y persistencia no dependen
-    // del redondeo de cada conversi�n individual.
+    // en Bs entre las líneas USD. Así subtotal/total y persistencia no dependen
+    // del redondeo de cada conversión individual.
     const usdLines = lines.map((line, index) => ({ line, index }))
         .filter(({ line }) => !isLocalCurrency(line.currency));
     const normalizedLines = lines.map((line) => {
@@ -366,7 +366,7 @@ export function computeInvoiceTotals(
     const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => !isLocalCurrency(line.currency)) && dollarRate > 0;
     const ivaFromBase = (baseBs: number, pct: number) => {
         if (allUsd) {
-            // For USD invoices, apply IVA to the fiscal USD base first, then convert it to bol�vares.
+            // For USD invoices, apply IVA to the fiscal USD base first, then convert it to bolívares.
             const fiscalUsdBase = roundN(baseBs / dollarRate, 2);
             return r((fiscalUsdBase * pct / 100) * dollarRate);
         }

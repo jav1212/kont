@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ClientCapabilityStatus } from "@kontave/client-contracts";
+import type { TreasuryPort } from "@kontave/client-contracts";
 import { createPortFeature } from "../src/features/port-feature";
 import {
   ClientOperationFailure,
@@ -83,4 +84,19 @@ test("port features normalize failures and publish their failed state", async ()
   assert.deepEqual(runtime.feature.getSnapshot(), {
     status: ClientCapabilityStatus.Ready,
   });
+});
+
+test("treasury feature remains unavailable until the shared runtime starts", async () => {
+  const treasury: TreasuryPort = {
+    command: async () => ({ commandId: "command-1", replayed: false, affectedIds: [], versions: {} }),
+    query: async () => ({ items: [], page: 1, pageSize: 25, total: 0, asOf: "2026-09-30T00:00:00.000Z" }),
+  };
+  const runtime = createPortFeature<TreasuryPort>({
+    command: (organizationId, companyId, request) => treasury.command(organizationId, companyId, request),
+    query: (organizationId, companyId, request) => treasury.query(organizationId, companyId, request),
+  });
+  const request: Parameters<TreasuryPort["query"]>[2] = { kind: "list_cash_boxes", page: 1, pageSize: 25 };
+  assert.equal((await runtime.feature.query("organization", "company", request)).ok, false);
+  await runtime.module.start();
+  assert.deepEqual(await runtime.feature.query("organization", "company", request), { ok: true, value: { items: [], page: 1, pageSize: 25, total: 0, asOf: "2026-09-30T00:00:00.000Z" } });
 });

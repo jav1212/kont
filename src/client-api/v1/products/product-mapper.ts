@@ -92,13 +92,12 @@ export function toProductDetailDto(
       : null,
     productType: "merchandise",
     valuationMethod: "weighted_average",
-    vat:
-      taxation && (treatment === "taxed" || treatment === "exempt")
-        ? {
-            code: treatment === "exempt" ? "exempt" : "general",
-            rate: taxation.rule.rate,
-          }
-        : null,
+    vat: taxation && treatment
+      ? {
+          code: treatment === "taxed" ? taxation.assignment.category ?? "general" : treatment,
+          rate: taxation.rule.rate,
+        }
+      : null,
     capabilities: {
       ...value.capabilities,
       salePricing: commercial !== undefined,

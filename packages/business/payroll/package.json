@@ -6,6 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./domain": "./src/domain/index.ts",
+    "./application": "./src/application/index.ts",
+    "./supabase": "./src/adapters/supabase/index.ts",
     "./venezuela": "./src/venezuela/index.ts",
     "./testing": "./src/testing/index.ts"
   },
@@ -16,7 +18,10 @@
   "dependencies": {
     "@kontave/companies": "workspace:*",
     "@kontave/employees": "workspace:*",
-    "@kontave/monetary": "workspace:*"
+    "@kontave/monetary": "workspace:*",
+    "@kontave/organizations": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "tsx": "^4.23.12",

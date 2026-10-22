@@ -56,7 +56,10 @@ export function paymentOrderDate(value: unknown): string | null {
       "INVALID",
       "Due date must be an ISO calendar date or null.",
     );
-  const [year, month, day] = value.split("-").map(Number);
+  const [yearPart, monthPart, dayPart] = value.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  const day = Number(dayPart);
   const date = new Date(Date.UTC(year, month - 1, day));
   if (
     date.getUTCFullYear() !== year ||

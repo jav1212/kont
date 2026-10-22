@@ -4,7 +4,11 @@ import type { UserPreferencesRepository } from "../../application";
 import {
   PreferencesFailure,
   createUserPreferences,
+  createUserViewPreferences,
+  createUserProcessDefaults,
   type UserPreferences,
+  type UserViewPreferences,
+  type UserProcessDefaults,
 } from "../../domain";
 import { z } from "zod";
 
@@ -145,4 +149,225 @@ function unavailable(cause: unknown): PreferencesFailure {
 
 function repositoryFailure(cause: unknown): PreferencesFailure {
   return cause instanceof PreferencesFailure ? cause : unavailable(cause);
+}
+
+const viewPreferencesRowSchema = z.object({
+  user_id: z.string(),
+  view_id: z.string(),
+  hidden_field_ids: z.array(z.string()),
+  hidden_column_ids: z.array(z.string()),
+  version: z.number().int().positive(),
+  updated_at: z.string(),
+});
+
+/** Raw row operations for isolated, user-owned view preferences. */
+export interface UserViewPreferencesRowSource {
+  /**
+   * Loads one row by its composite owner/view key.
+   * @param userId - Expected row owner.
+   * @param viewId - Stable view key.
+   * @returns Raw row or null and any source error.
+   */
+  find(userId: string, viewId: string): Promise<{ readonly data: unknown; readonly error: { readonly message: string } | null }>;
+  /**
+   * Writes the complete choice snapshot through the authenticated revision RPC.
+   * @param preferences - Validated row snapshot.
+   * @param expectedVersion - Revision observed before the edit.
+   * @returns Authoritative raw row and any source error.
+   */
+  save(preferences: UserViewPreferences, expectedVersion: number): Promise<{ readonly data: unknown; readonly error: { readonly message: string; readonly code?: string } | null }>;
+}
+
+/** Supabase repository for per-user field and column visibility. */
+export class SupabaseUserViewPreferencesRepository {
+  /**
+   * @param source - Authenticated persistence boundary for view-preference rows.
+   */
+  constructor(private readonly source: UserViewPreferencesRowSource) {}
+
+  /**
+   * Loads and validates choices for the exact owner/view key.
+   * @param userId - Expected authenticated preference owner.
+   * @param viewId - Stable view identifier.
+   * @returns Validated row, or null when defaults still apply.
+   * @throws {PreferencesFailure} When storage returns invalid or inaccessible data.
+   */
+  async find(userId: UserId, viewId: string): Promise<UserViewPreferences | null> {
+    try {
+      const result = await this.source.find(userId, viewId);
+      if (result.error) throw unavailable(result.error);
+      if (result.data === null) return null;
+      return decodeViewPreferences(result.data, userId, viewId);
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
+  }
+
+  /**
+   * Saves view preferences with the expected revision and validates the authoritative response.
+   * @param preferences - Candidate full snapshot.
+   * @param expectedVersion - Version the row must currently have; zero creates it.
+   * @returns Authoritative persisted choices.
+   * @throws {PreferencesFailure} When the edit is stale, unauthorized, invalid, or unavailable.
+   */
+  async save(preferences: UserViewPreferences, expectedVersion: number): Promise<UserViewPreferences> {
+    try {
+      const result = await this.source.save(preferences, expectedVersion);
+      if (result.error) {
+        if (result.error.code === "P0001" && result.error.message.includes("PREFERENCES_VERSION_CONFLICT")) {
+          throw new PreferencesFailure("PREFERENCES_VERSION_CONFLICT", "View preferences changed in another client.");
+        }
+        if (result.error.code === "P0001" && result.error.message.includes("PREFERENCES_INVALID")) {
+          throw new PreferencesFailure("PREFERENCES_INVALID", "User view preferences are invalid.");
+        }
+        throw unavailable(result.error);
+      }
+      return decodeViewPreferences(result.data, preferences.userId, preferences.viewId);
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
+  }
+}
+
+class SupabaseUserViewPreferencesRowSource implements UserViewPreferencesRowSource {
+  constructor(private readonly client: SupabaseClient) {}
+  async find(userId: string, viewId: string) {
+    return this.client.from("user_view_preferences")
+      .select("user_id, view_id, hidden_field_ids, hidden_column_ids, version, updated_at")
+      .eq("user_id", userId).eq("view_id", viewId).maybeSingle();
+  }
+  async save(preferences: UserViewPreferences, expectedVersion: number) {
+    return this.client.rpc("update_user_view_preferences", {
+      p_view_id: preferences.viewId,
+      p_hidden_field_ids: preferences.hiddenFieldIds,
+      p_hidden_column_ids: preferences.hiddenColumnIds,
+      p_expected_version: expectedVersion,
+    }).single();
+  }
+}
+
+/**
+ * Creates an authenticated user-view-preferences adapter without local session state.
+ * @param configuration - Supabase endpoint, publishable key and caller access token.
+ * @returns Repository guarded by authenticated RLS and the owner-derived update RPC.
+ */
+export function createSupabaseUserViewPreferencesRepository(configuration: SupabaseUserPreferencesConfiguration): SupabaseUserViewPreferencesRepository {
+  const client = createClient(configuration.url, configuration.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${configuration.accessToken}` } },
+  });
+  return new SupabaseUserViewPreferencesRepository(new SupabaseUserViewPreferencesRowSource(client));
+}
+
+function decodeViewPreferences(value: unknown, expectedUserId: UserId, expectedViewId: string): UserViewPreferences {
+  const parsed = viewPreferencesRowSchema.safeParse(value);
+  if (!parsed.success || parsed.data.user_id !== expectedUserId || parsed.data.view_id !== expectedViewId) {
+    throw new PreferencesFailure("PREFERENCES_INVALID", "Stored user view preferences are invalid.", { cause: parsed.success ? undefined : parsed.error });
+  }
+  return createUserViewPreferences({
+    userId: expectedUserId,
+    viewId: expectedViewId,
+    hiddenFieldIds: parsed.data.hidden_field_ids,
+    hiddenColumnIds: parsed.data.hidden_column_ids,
+    version: parsed.data.version,
+    updatedAt: parsed.data.updated_at,
+  });
+}
+
+const processDefaultsRowSchema = z.object({
+  user_id: z.string(), process_id: z.string(), values: z.record(z.string(), z.union([z.string(), z.number().finite(), z.boolean(), z.null()])),
+  version: z.number().int().positive(), updated_at: z.string(),
+});
+
+/** Raw persistence operations for private per-user process defaults. */
+export interface UserProcessDefaultsRowSource {
+  /**
+   * Loads defaults by their exact user/process key.
+   * @param userId - Expected owner.
+   * @param processId - Stable process key.
+   * @returns Raw row or null and any database error.
+   */
+  find(userId: string, processId: string): Promise<{ readonly data: unknown; readonly error: { readonly message: string } | null }>;
+  /**
+   * Writes through the authenticated owner-derived RPC.
+   * @param defaults - Validated full defaults snapshot.
+   * @param expectedVersion - Revision observed by the caller.
+   * @returns Authoritative raw row and any database error.
+   */
+  save(defaults: UserProcessDefaults, expectedVersion: number): Promise<{ readonly data: unknown; readonly error: { readonly message: string; readonly code?: string } | null }>;
+}
+
+/** Supabase adapter for user-owned process defaults. */
+export class SupabaseUserProcessDefaultsRepository {
+  /**
+   * @param source - Authenticated persistence boundary.
+   */
+  constructor(private readonly source: UserProcessDefaultsRowSource) {}
+
+  /**
+   * Loads and validates defaults for the exact owner/process scope.
+   * @param userId - Expected authenticated owner.
+   * @param processId - Stable process key.
+   * @returns Validated defaults or null when no customized defaults exist.
+   * @throws {PreferencesFailure} When persistence returns invalid or inaccessible data.
+   */
+  async find(userId: UserId, processId: string): Promise<UserProcessDefaults | null> {
+    try {
+      const result = await this.source.find(userId, processId);
+      if (result.error) throw unavailable(result.error);
+      if (result.data === null) return null;
+      return decodeProcessDefaults(result.data, userId, processId);
+    } catch (cause: unknown) { throw repositoryFailure(cause); }
+  }
+
+  /**
+   * Saves process defaults with optimistic concurrency and validates the returned row.
+   * @param defaults - Candidate complete snapshot.
+   * @param expectedVersion - Observed revision, or zero for creation.
+   * @returns Authoritative stored defaults.
+   * @throws {PreferencesFailure} When the edit is stale, invalid, unauthorized, or unavailable.
+   */
+  async save(defaults: UserProcessDefaults, expectedVersion: number): Promise<UserProcessDefaults> {
+    try {
+      const result = await this.source.save(defaults, expectedVersion);
+      if (result.error) {
+        if (result.error.code === "P0001" && result.error.message.includes("PREFERENCES_VERSION_CONFLICT")) throw new PreferencesFailure("PREFERENCES_VERSION_CONFLICT", "Process defaults changed in another client.");
+        if (result.error.code === "P0001" && result.error.message.includes("PREFERENCES_INVALID")) throw new PreferencesFailure("PREFERENCES_INVALID", "User process defaults are invalid.");
+        throw unavailable(result.error);
+      }
+      return decodeProcessDefaults(result.data, defaults.userId, defaults.processId);
+    } catch (cause: unknown) { throw repositoryFailure(cause); }
+  }
+}
+
+class SupabaseUserProcessDefaultsRowSource implements UserProcessDefaultsRowSource {
+  constructor(private readonly client: SupabaseClient) {}
+  async find(userId: string, processId: string) {
+    return this.client.from("user_process_defaults").select("user_id, process_id, values, version, updated_at")
+      .eq("user_id", userId).eq("process_id", processId).maybeSingle();
+  }
+  async save(defaults: UserProcessDefaults, expectedVersion: number) {
+    return this.client.rpc("update_user_process_defaults", { p_process_id: defaults.processId, p_values: defaults.values, p_expected_version: expectedVersion }).single();
+  }
+}
+
+/**
+ * Creates an authenticated Supabase adapter for user process defaults.
+ * @param configuration - Endpoint, publishable key and caller access token.
+ * @returns Repository scoped by RLS and owner-derived writes.
+ */
+export function createSupabaseUserProcessDefaultsRepository(configuration: SupabaseUserPreferencesConfiguration): SupabaseUserProcessDefaultsRepository {
+  const client = createClient(configuration.url, configuration.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { headers: { Authorization: `Bearer ${configuration.accessToken}` } },
+  });
+  return new SupabaseUserProcessDefaultsRepository(new SupabaseUserProcessDefaultsRowSource(client));
+}
+
+function decodeProcessDefaults(value: unknown, expectedUserId: UserId, expectedProcessId: string): UserProcessDefaults {
+  const parsed = processDefaultsRowSchema.safeParse(value);
+  if (!parsed.success || parsed.data.user_id !== expectedUserId || parsed.data.process_id !== expectedProcessId) {
+    throw new PreferencesFailure("PREFERENCES_INVALID", "Stored user process defaults are invalid.", { cause: parsed.success ? undefined : parsed.error });
+  }
+  return createUserProcessDefaults({ userId: expectedUserId, processId: expectedProcessId, values: parsed.data.values, version: parsed.data.version, updatedAt: parsed.data.updated_at });
 }

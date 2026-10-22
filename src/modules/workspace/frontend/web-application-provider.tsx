@@ -19,6 +19,7 @@ import { WorkspaceBarcodeSessionSwitcher } from "../../auth/frontend/components/
 import { ActiveTenantContext } from "../../memberships/frontend/context/active-tenant-context";
 import { OrganizationContext } from "../../organizations/frontend/context/organization-context";
 import { CompanyContext } from "../../companies/frontend/hooks/use-companies";
+import { CompanyDateFormatProvider } from "../../companies/frontend/components/company-date-format-provider";
 import { GlobalInteractionBoundary } from "@/src/shared/frontend/components/global-interaction-boundary";
 import { createBrowserApplication } from "./web-browser-adapters";
 import { WebApplicationStartupBoundary } from "./web-application-startup-boundary";
@@ -335,6 +336,7 @@ function AuthenticatedApplication({
       <ActiveTenantContext.Provider value={tenantValue}>
         <OrganizationContext.Provider value={organizationValue}>
           <CompanyContext.Provider value={companyValue}>
+            <CompanyDateFormatProvider>
             <GlobalInteractionBoundary
               gate={controller.interaction}
               onAction={(token, action) =>
@@ -355,6 +357,7 @@ function AuthenticatedApplication({
                 </div>
               ) : null}
             </GlobalInteractionBoundary>
+            </CompanyDateFormatProvider>
           </CompanyContext.Provider>
         </OrganizationContext.Provider>
       </ActiveTenantContext.Provider>

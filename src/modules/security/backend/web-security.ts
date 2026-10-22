@@ -31,6 +31,8 @@ import {
   UpdatePaymentOrderCommand,
 } from "@kontave/payment-orders/application";
 import { SupabasePaymentOrderRepository } from "@kontave/payment-orders/supabase";
+import { GetPaymentOrderSettlement } from "@kontave/payment-orders/application";
+import { PostgresPaymentOrderExecutionReader } from "@kontave/treasury/postgres";
 import { createSupabaseScopedAccessGrants } from "@kontave/access-control/supabase";
 import { ManageScopedAccessGrant } from "@kontave/access-control/application";
 import {
@@ -220,7 +222,11 @@ export function auditTrail(scope: SecurityWebScope) {
   );
 }
 
-/** Executes payment-order application commands with authenticated scope. */
+/** Composes payment-order use cases with authenticated administrative and Treasury persistence.
+ * @param scope - Server-derived actor, tenant, and organization identity.
+ * @returns Authorized payment-order commands, queries, and settlement evidence readers.
+ * @throws {SecurityWebHttpError} When server persistence configuration is unavailable.
+ */
 export function paymentOrders(scope: SecurityWebScope) {
   const config = securitySupabaseConfiguration();
   const client = createClient(config.url, config.serviceRoleKey, {
@@ -284,6 +290,20 @@ export function paymentOrders(scope: SecurityWebScope) {
         actorId: scope.actorId,
         organizationId: scope.organizationId,
       }),
+    settlement: async (input: { readonly companyId: string; readonly id: string }) => {
+      const executionReader = new PostgresPaymentOrderExecutionReader({
+        call: async (functionName, argumentsValue) => {
+          const { data, error } = await client.rpc(functionName, argumentsValue);
+          if (error) throw error;
+          return data;
+        },
+      }, scope.tenantId);
+      return new GetPaymentOrderSettlement(repository, executionReader).execute({
+        ...input,
+        actorId: scope.actorId,
+        organizationId: scope.organizationId,
+      });
+    },
     cancel: (
       input: Omit<
         import("@kontave/payment-orders/application").VersionedPaymentOrder,
