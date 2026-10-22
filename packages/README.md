@@ -40,3 +40,8 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 8. La unidad predeterminada de workspace es el bounded context o capacidad; `domain`, `application`, `adapters` y `testing` son módulos internos.
 9. Un workspace adicional requiere una frontera demostrable de runtime, distribución, dependencias, propiedad, seguridad o ciclo de entrega.
 10. Las superficies especializadas se publican mediante subpath exports; no se crea un manifest únicamente para representar una capa hexagonal.
+11. La subruta pública `/testing` es exclusiva de pruebas; el código de producción no debe importarla.
+
+Los manifiestos declaran dependencias por paquete, no por capa. La portabilidad
+de `domain` y `application` se comprueba sobre los imports reales mediante
+`tooling/architecture`, no mediante la lista de dependencias del `package.json`.

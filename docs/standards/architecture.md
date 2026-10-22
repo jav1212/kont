@@ -46,6 +46,12 @@ Estas comprobaciones hacen cumplir las direcciones decididas en
 [ADR 0035](../adr/0035-bounded-context-package-granularity.md). No sustituyen
 la revisión de la semántica del dominio o de las transacciones de persistencia.
 
+## Consumo de paquetes desde la Web
+
+La Web consume los paquetes por sus exports públicos. Las reglas para separar
+imports cliente y servidor, composition roots y subrutas de prueba están en
+[ADR 0044](../adr/0044-web-client-server-package-boundary.md).
+
 ## Autoridad de inventario
 
 El dominio portable mantiene las invariantes que puede evaluar sin persistencia:

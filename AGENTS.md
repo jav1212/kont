@@ -52,7 +52,7 @@ New code under `apps/` and `packages/` must follow these rules:
 Until the native foundation is validated:
 
 - Do not move the root `app`, `src`, or `public` directories.
-- Do not make the production Web depend on new workspace packages without an explicit migration task.
+- The Web consumes workspace packages by their public `@kontave/*` names. Import `/supabase`, `/postgres`, and `/adapters/*` only from `app/api/**`, `src/client-api/**`, or `src/**/backend/**`. Mark Web composition roots that instantiate adapters or read server credentials with `server-only`; do not add that marker inside `packages/**` because Desktop and Mobile consume those adapters.
 - Keep API and database changes backward compatible and additive.
 - Allow critical fixes, but avoid broad refactors of production Web as part of Desktop/core work.
 
