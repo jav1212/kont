@@ -1,7 +1,9 @@
 # ADR 0005: Congelamiento arquitectónico de Web
 
-- Estado: aceptado
+- Estado: reemplazado parcialmente por ADR 0039
 - Fecha: 2026-08-11
+
+La migración Web por contexto prevista aquí ya terminó; ADR 0039 registra esa convergencia. El freeze de directorios y los límites de compatibilidad siguen vigentes.
 
 ## Decisión
 
