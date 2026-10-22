@@ -61,6 +61,82 @@ test("accepts unique packages with inward application dependencies", async () =>
   assert.deepEqual(await auditWorkspace(root), []);
 });
 
+test("client contracts may depend only on type-only contracts exports", async () => {
+  const root = await fixture();
+  const contractsSource = {
+    "index.ts":
+      'import type { TreasuryContract } from "@kontave/treasury/contracts"; export type { TreasuryContract };',
+  };
+  await packageFixture(
+    root,
+    "packages/kernel/contracts",
+    "@kontave/client-contracts",
+    contractsSource,
+  );
+  await packageFixture(
+    root,
+    "packages/business/treasury",
+    "@kontave/treasury",
+    {
+      "contracts/index.ts": "export interface TreasuryContract {}",
+      "domain/index.ts": "export interface TreasuryDomain {}",
+    },
+    {
+      ".": "./src/index.ts",
+      "./contracts": "./src/contracts/index.ts",
+      "./domain": "./src/domain/index.ts",
+    },
+  );
+  await packageFixture(
+    root,
+    "packages/kernel/workspace",
+    "@kontave/workspace-context-application",
+    {
+      "application/index.ts":
+        'import { OrganizationId } from "@kontave/organizations/application"; export { OrganizationId };',
+    },
+  );
+  await packageFixture(
+    root,
+    "packages/capabilities/organizations",
+    "@kontave/organizations",
+    { "application/index.ts": "export const OrganizationId = 'organization';" },
+    {
+      ".": "./src/index.ts",
+      "./application": "./src/application/index.ts",
+    },
+  );
+
+  assert.deepEqual(await auditWorkspace(root), []);
+
+  const contractsIndex = join(root, "packages/kernel/contracts/src/index.ts");
+  await writeFile(
+    contractsIndex,
+    'import { TreasuryContract } from "@kontave/treasury/contracts"; export { TreasuryContract };',
+  );
+  assert.ok(
+    (await auditWorkspace(root)).some((message) =>
+      message.includes("client-contracts may import workspace packages only through type-only '/contracts' exports"),
+    ),
+  );
+
+  await writeFile(
+    contractsIndex,
+    'import type { TreasuryDomain } from "@kontave/treasury/domain"; export type { TreasuryDomain };',
+  );
+  assert.ok(
+    (await auditWorkspace(root)).some((message) =>
+      message.includes("client-contracts may import workspace packages only through type-only '/contracts' exports"),
+    ),
+  );
+
+  await writeFile(
+    contractsIndex,
+    'export type { TreasuryContract } from "@kontave/treasury/contracts";',
+  );
+  assert.deepEqual(await auditWorkspace(root), []);
+});
+
 test("rejects duplicate names and dependencies on applications", async () => {
   const root = await fixture();
   await writeFile(

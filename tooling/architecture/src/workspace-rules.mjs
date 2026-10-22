@@ -129,6 +129,65 @@ function moduleSpecifiers(file, source) {
   return values;
 }
 
+/**
+ * Records whether each workspace import is expressed by a type-only declaration.
+ * @param {string} file - Source path used to select the TypeScript syntax kind.
+ * @param {string} source - Source text to inspect.
+ * @returns {Map<string, boolean>} Specifiers whose declarations are all `import type` or `export type`.
+ */
+function typeOnlyWorkspaceSpecifiers(file, source) {
+  const script = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const specifiers = new Map();
+  const add = (specifier, typeOnly) => {
+    if (!specifier) return;
+    const previous = specifiers.get(specifier.text);
+    specifiers.set(
+      specifier.text,
+      previous === undefined ? typeOnly : previous && typeOnly,
+    );
+  };
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      if (node.moduleSpecifier && isLiteralModuleSpecifier(node.moduleSpecifier))
+        add(
+          node.moduleSpecifier,
+          ts.isImportDeclaration(node)
+            ? Boolean(node.importClause?.isTypeOnly)
+            : node.isTypeOnly,
+        );
+    } else if (
+      (ts.isImportEqualsDeclaration(node) &&
+        ts.isExternalModuleReference(node.moduleReference) &&
+        isLiteralModuleSpecifier(node.moduleReference.expression)) ||
+      (ts.isCallExpression(node) &&
+        node.arguments.length === 1 &&
+        isLiteralModuleSpecifier(node.arguments[0]) &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          (ts.isIdentifier(node.expression) &&
+            node.expression.text === "require"))) ||
+      (ts.isImportTypeNode(node) &&
+        ts.isLiteralTypeNode(node.argument) &&
+        isLiteralModuleSpecifier(node.argument.literal))
+    ) {
+      const specifier = ts.isImportEqualsDeclaration(node)
+        ? node.moduleReference.expression
+        : ts.isImportTypeNode(node)
+          ? node.argument.literal
+          : node.arguments[0];
+      add(specifier, false);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(script);
+  return specifiers;
+}
+
 /** @param {ts.Node} node @returns {node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral} */
 function isLiteralModuleSpecifier(node) {
   return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
@@ -488,9 +547,22 @@ export async function auditWorkspace(workspaceRoot) {
     for (const path of files) {
       if (recordForPath(path, records) !== record) continue;
       const source = await readFile(path, "utf8");
+      const typeOnlySpecifiers =
+        record.manifest.name === "@kontave/client-contracts"
+          ? typeOnlyWorkspaceSpecifiers(path, source)
+          : new Map();
       const layer = layerFor(path, record.root);
       for (const specifier of moduleSpecifiers(path, source)) {
         const importedName = packageNameFor(specifier);
+        if (
+          record.manifest.name === "@kontave/client-contracts" &&
+          specifier.startsWith("@kontave/") &&
+          (specifier.slice(importedName.length) !== "/contracts" ||
+            !typeOnlySpecifiers.get(specifier))
+        )
+          violations.push(
+            `${relativeSourcePath(workspaceRoot, path)} client-contracts may import workspace packages only through type-only '/contracts' exports; found '${specifier}'`,
+          );
         if (appNames.has(importedName) && record.manifest.name !== importedName)
           violations.push(
             `${relativeSourcePath(workspaceRoot, path)} imports application package '${importedName}'`,
