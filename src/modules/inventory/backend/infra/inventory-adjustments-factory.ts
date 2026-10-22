@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 // inventory-adjustments-factory — wires the stock adjustment use cases.
 // Role: sub-factory for the Stock Adjustment slice of inventory.
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.

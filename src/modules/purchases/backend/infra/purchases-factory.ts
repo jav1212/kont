@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 // purchases-factory — wires all use cases of the Compras module.
 // Owns: suppliers + purchase invoices + ISLR retention export.
 // Consumed directly by API routes under app/api/compras/*.

@@ -1,3 +1,4 @@
+import "server-only";
 import { GetEffectiveUserProcessDefaults, UpdateUserProcessDefaults } from "@kontave/preferences/application";
 import { createSupabaseUserProcessDefaultsRepository } from "@kontave/preferences/supabase";
 

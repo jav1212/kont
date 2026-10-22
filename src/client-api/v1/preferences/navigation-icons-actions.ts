@@ -1,3 +1,4 @@
+import "server-only";
 import { GetEffectiveUserNavigationIcons, UpdateUserNavigationIcons } from "@kontave/preferences/application";
 import { createSupabaseUserProcessDefaultsRepository } from "@kontave/preferences/supabase";
 

@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 import { GetEffectiveUserFieldLabels, UpdateUserFieldLabels } from "@kontave/preferences/application";
 import { createSupabaseUserProcessDefaultsRepository } from "@kontave/preferences/supabase";
 

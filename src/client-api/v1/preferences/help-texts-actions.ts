@@ -1,3 +1,4 @@
+import "server-only";
 import { GetEffectiveUserHelpTexts, UpdateUserHelpTexts } from "@kontave/preferences/application";
 import { createSupabaseUserProcessDefaultsRepository } from "@kontave/preferences/supabase";
 import { WEB_HELP_TOPIC_CATALOG } from "@/src/modules/help/application/help-topic-catalog";

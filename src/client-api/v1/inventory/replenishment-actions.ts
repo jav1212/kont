@@ -1,3 +1,4 @@
+import "server-only";
 import { UpdateReplenishmentPolicy } from "@kontave/inventory/application";
 import { createSupabaseReplenishmentPolicyRepository } from "@kontave/inventory/supabase";
 export function createReplenishmentActions() {

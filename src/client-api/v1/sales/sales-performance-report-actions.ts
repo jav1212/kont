@@ -1,3 +1,4 @@
+import "server-only";
 import { GetSalesPerformanceReport } from "@kontave/sales/application";
 import { createSupabaseSalesPerformanceReportReader } from "@kontave/sales/supabase";
 

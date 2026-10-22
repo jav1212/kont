@@ -1,3 +1,4 @@
+import "server-only";
 // inventory-productos-factory — wires product and department use cases.
 // Role: sub-factory for the Products domain slice of inventory.
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.

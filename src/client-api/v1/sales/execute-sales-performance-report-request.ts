@@ -1,3 +1,4 @@
+import "server-only";
 import { AuthorizationDenied, PERMISSIONS, permissionCode } from "@kontave/access-control/domain";
 import { createSupabaseAuthorization } from "@kontave/access-control/supabase";
 import { companyId as operationalCompanyId } from "@kontave/companies/domain";

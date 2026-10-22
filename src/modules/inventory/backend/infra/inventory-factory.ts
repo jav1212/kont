@@ -1,3 +1,4 @@
+import "server-only";
 // inventory-factory — aggregator for inventory-only use cases.
 // Role: backward-compatible facade for existing inventory pages and routes.
 // Suppliers + purchase invoices + SENIAT retention exports moved out to

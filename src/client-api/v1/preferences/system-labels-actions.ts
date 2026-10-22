@@ -1,3 +1,4 @@
+import "server-only";
 import { GetEffectiveUserSystemLabels, UpdateUserSystemLabels } from "@kontave/preferences/application";
 import { createSupabaseUserProcessDefaultsRepository } from "@kontave/preferences/supabase";
 import { PRODUCT_SYSTEM_LABELS } from "@/src/modules/inventory/domain/product-system-labels";

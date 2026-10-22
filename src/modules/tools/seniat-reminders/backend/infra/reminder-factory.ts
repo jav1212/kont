@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 // =============================================================================
 // Infrastructure — ReminderFactory
 // Monta el grafo de dependencias del módulo seniat-reminders.

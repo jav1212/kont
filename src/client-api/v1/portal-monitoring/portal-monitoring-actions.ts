@@ -1,3 +1,5 @@
+import "server-only";
+// Prevent infrastructure adapters and service-role credentials from entering the client bundle.
 import { GetPortalMonitoring } from "@kontave/portal-monitoring/application";
 import { createPortalMonitoringRepository } from "@kontave/portal-monitoring/supabase";
 
