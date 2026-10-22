@@ -1,5 +1,6 @@
 import type { TreasuryCommandRequest, TreasuryQueryRequest, TreasuryReadRow } from "@kontave/treasury/contracts";
 
+// These validated transport types remain the source of truth; see ADR 0044.
 export type { TreasuryCommandRequest, TreasuryQueryRequest, TreasuryReadRow } from "@kontave/treasury/contracts";
 
 /** Serializable command receipt returned after an authorized treasury write. */
