@@ -1,14 +1,12 @@
-import { IvaLedgerView } from "@/app/(app)/fiscal/iva-ledger-view";
-import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
+﻿import { permanentRedirect } from "next/navigation";
 
-/** Opens the sales VAT ledger and read-only legacy-source review.
- * @returns The company-scoped sales VAT view.
+/** Redirects the legacy sales IVA ledger while preserving search parameters.
+ * @param input - Query parameters captured from the legacy route.
+ * @returns A permanent redirect to the fiscal sales ledger.
  */
-export default function SalesIvaLedgerPage(): React.JSX.Element {
-  return <>
-    <div className="border-b border-border-light bg-surface-1 px-4 py-3 md:px-8">
-      <Link href="/fiscal/iva-declarations" className="text-sm font-semibold text-primary-500 hover:underline">Ver y preparar borradores internos →</Link>
-    </div>
-    <IvaLedgerView direction="sale" title="Libro IVA de Ventas" />
-  </>;
+export default async function SalesIvaLedgerRedirect({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<never> {
+  const values = await searchParams;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) params.append(key, item);
+  permanentRedirect(`/fiscal/ventas${params.size ? `?${params}` : ""}`);
 }

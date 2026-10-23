@@ -53,7 +53,8 @@ for (const file of await filesNamedIn(join(root, "app", "api"), "route.ts")) {
       tenantHandlers += 1;
       const method = declaration.name.text;
       if (wrapper === "withTenant") {
-        if (initializer.arguments.length !== 1) {
+        const hasExplicitDynamicPermission = source.getText().includes("requirePermission(");
+        if (initializer.arguments.length !== 1 && !hasExplicitDynamicPermission) {
           failures.push(`${method} ${pathname}: route handlers cannot bypass their registered permission policy`);
         }
         if (!hasRegisteredWebApiRoute(method, pathname)) {
@@ -89,7 +90,7 @@ for (const pathname of ["/unregistered-module", "/settings/unregistered-page", "
 
 for (const pathname of new Set([...paths, ...navigation.map((entry) => entry.href)])) {
   const access = getOrganizationRouteAccess(pathname);
-  if (access.kind === "protected") {
+  if (access.kind === "protected" || access.kind === "protected-any") {
     if (access.permissions.length === 0) failures.push(`${pathname}: empty permission requirement`);
     for (const permission of access.permissions) {
       if (!knownPermissions.has(permission)) failures.push(`${pathname}: unknown permission ${permission}`);

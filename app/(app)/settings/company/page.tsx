@@ -12,6 +12,7 @@ import { notify } from "@/src/shared/frontend/notify";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { CompanyBranchSelector } from "@/src/modules/companies/frontend/components/company-branch-selector";
+import { InvoiceSeriesSettings } from "@/src/modules/iva/frontend/invoice-series-settings";
 
 export default function CompanySettingsPage() {
     const { company, update, reload } = useCompany();
@@ -443,6 +444,7 @@ export default function CompanySettingsPage() {
                     </div>
                 </div>}
             </SettingsSection>}
+            <InvoiceSeriesSettings />
             <SettingsSection
                 title="Logotipo empresarial"
                 subtitle="Se usa en la identidad de la empresa y en los reportes que tienen la opción de incluirlo. Se aceptan PNG, JPEG o WebP de hasta 5 MiB."

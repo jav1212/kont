@@ -41,10 +41,11 @@ test("withholding evidence accepts an ISO instant and rejects malformed timestam
   assert.throws(() => taxReportingFact({ ...fact, withholding: { kind: "practiced", amount: fact.signed.taxAmount, certificateReference: null, occurredAt: "2026-09-02" } }));
 });
 
-test("facts reject impossible dates and recognition periods detached from recognition date", () => {
+test("legacy facts may retain their stored fiscal period while other facts stay tied to recognition date", () => {
   const fact = taxReportingFactFixture();
   assert.throws(() => taxReportingFact({ ...fact, documentDate: "2026-02-31" }), TaxReportingFailure);
-  assert.throws(() => taxReportingFact({ ...fact, period: "2026-08" }), TaxReportingFailure);
+  assert.equal(taxReportingFact({ ...fact, period: "2026-08" }).period, "2026-08");
+  assert.throws(() => taxReportingFact({ ...fact, source: { ...fact.source, kind: "fiscal_document" }, period: "2026-08" }), TaxReportingFailure);
   assert.throws(() => taxReportingFact({ ...fact, recordedAt: "2026-02-31T12:00:00.000Z" }), TaxReportingFailure);
 });
 

@@ -15,6 +15,7 @@ export const POST = withTenantPermissions(["purchases.read", "sales.read", "purc
   let companyId: string;
   let period: string;
   let carryForwardText: string;
+  let carryForwardReason = "";
   let adjustmentsText: string;
   let declarationId: string;
   let expectedRevision: number | null;
@@ -25,6 +26,7 @@ export const POST = withTenantPermissions(["purchases.read", "sales.read", "purc
     companyId = requiredText(body.companyId, "companyId", 256);
     period = requiredText(body.period, "period", 7);
     carryForwardText = decimalText(body.carryForwardIn, "carryForwardIn");
+    carryForwardReason = body.carryForwardReason === undefined ? "" : optionalText(body.carryForwardReason, "carryForwardReason", 500);
     adjustmentsText = decimalText(body.adjustments, "adjustments");
     declarationId = requiredText(body.declarationId, "declarationId", 128);
     expectedRevision = body.expectedRevision === null ? null : body.expectedRevision as number;
@@ -76,13 +78,36 @@ export const POST = withTenantPermissions(["purchases.read", "sales.read", "purc
       }
     }
 
+    const priorPeriod = previousPeriod(period);
+    let priorCursor: { period: string; id: string; revision: number } | null = null;
+    let priorDeclaration: Awaited<ReturnType<typeof historyAction.execute>>["items"][number] | null = null;
+    let priorCount = 0;
+    do {
+      const page = await historyAction.execute(scope, { fromPeriod: priorPeriod, toPeriod: priorPeriod, limit: 100, cursor: priorCursor }, tenant.userId);
+      priorCount += page.items.length;
+      if (priorCount > 10_000) return Response.json({ error: "El historial del período anterior excede el límite permitido para preparar el arrastre." }, { status: 413 });
+      if (page.items.length > 0) priorDeclaration = page.items[page.items.length - 1]!;
+      priorCursor = page.nextCursor;
+    } while (priorCursor !== null);
+    let carryForwardMapping: Record<string, string>;
+    if (priorDeclaration) {
+      if (priorDeclaration.status !== "submitted" && priorDeclaration.status !== "paid") return Response.json({ error: `Completa la evidencia de la declaración ${priorPeriod} antes de preparar el arrastre.` }, { status: 409 });
+      const priorPayable = priorDeclaration.summary.payable;
+      if (priorPayable.currency.code !== "VES") return Response.json({ error: "El arrastre automático requiere un saldo declarado en bolívares." }, { status: 422 });
+      carryForwardText = priorPayable.minorAmount < 0n ? decimalFromMinor(-priorPayable.minorAmount, priorPayable.currency.minorUnit) : "0";
+      carryForwardMapping = { carryForwardMode: "prior-declaration", carryForwardSourcePeriod: priorPeriod, carryForwardSourceId: priorDeclaration.id, carryForwardSourceRevision: String(priorDeclaration.revision) };
+    } else {
+      if (!carryForwardReason) return Response.json({ error: "El arrastre manual requiere un motivo porque no existe una declaración previa en KONT." }, { status: 400 });
+      carryForwardMapping = { carryForwardMode: "manual-no-prior", carryForwardReason };
+    }
+
     const from = `${period}-01`;
     const throughDate = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0));
     const to = throughDate.toISOString().slice(0, 10);
     const facts = [];
     let cursor: { recognitionDate: string; id: string } | null = null;
     do {
-      const page = await repository.list(scope, { from, to, limit: 100, cursor }, tenant.userId);
+      const page = await repository.list(scope, { from, to, period, limit: 100, cursor }, tenant.userId);
       facts.push(...page.items);
       if (facts.length > 10_000) return Response.json({ error: "El período excede el límite de 10.000 hechos; divídelo antes de preparar el borrador." }, { status: 413 });
       cursor = page.nextCursor;
@@ -95,7 +120,7 @@ export const POST = withTenantPermissions(["purchases.read", "sales.read", "purc
       scope,
       period,
       facts,
-      template: { id: "kont-internal-vat-summary", version: "1", mapping: {} },
+      template: { id: "kont-internal-vat-summary", version: "1", mapping: carryForwardMapping },
       carryForwardIn: moneyFromDecimal(carryForwardText, ves),
       adjustments: moneyFromDecimal(adjustmentsText, ves),
       actorId: tenant.userId,
@@ -124,4 +149,23 @@ function requiredText(value: unknown, name: string, max: number): string {
 function decimalText(value: unknown, name: string): string {
   if (typeof value !== "string" || value.length > 32 || !/^-?\d+(\.\d{1,2})?$/.test(value.trim())) throw new Error(`${name} must be an exact decimal with at most two fractional digits.`);
   return value.trim();
+}
+
+function optionalText(value: unknown, name: string, max: number): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value !== "string" || value.trim().length > max) throw new Error(`${name} must be at most ${max} characters.`);
+  return value.trim();
+}
+
+function previousPeriod(period: string): string {
+  const date = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)) - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function decimalFromMinor(minorAmount: bigint, minorUnit: number): string {
+  const negative = minorAmount < 0n;
+  const absolute = negative ? -minorAmount : minorAmount;
+  if (minorUnit === 0) return `${negative ? "-" : ""}${absolute}`;
+  const divisor = 10n ** BigInt(minorUnit);
+  return `${negative ? "-" : ""}${absolute / divisor}.${(absolute % divisor).toString().padStart(minorUnit, "0")}`;
 }

@@ -35,6 +35,7 @@ export class RecordReviewedLegacyVatSource {
     readonly sourceId: string;
     readonly from: string;
     readonly to: string;
+    readonly period?: string;
     readonly seed: LegacyVatFactSeed;
     readonly evidence: LegacyVatRecordReviewEvidence;
     readonly actorId: string;
@@ -51,11 +52,38 @@ export class RecordReviewedLegacyVatSource {
       || input.seed.scope.companyId !== input.scope.companyId) {
       throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy source identity, range, or reporting scope is invalid.");
     }
+    const fact = await this.review(input);
+    return this.facts.persist({ fact, actorId, idempotencyKey });
+  }
+
+  /** Builds a reviewed source fact without persisting it, for an enclosing atomic batch.
+   * @param input - Authorized source scope, key, date range, reviewer decisions, and actor.
+   * @returns The validated historical fact snapshot.
+   * @throws {TaxReportingFailure} When the source is unavailable or the evidence is invalid.
+   */
+  async review(input: {
+    readonly scope: TaxReportingScope;
+    readonly direction: LegacyVatReadDirection;
+    readonly sourceId: string;
+    readonly from: string;
+    readonly to: string;
+    readonly period?: string;
+    readonly seed: LegacyVatFactSeed;
+    readonly evidence: LegacyVatRecordReviewEvidence;
+    readonly actorId: string;
+  }): Promise<TaxReportingFact> {
+    const actorId = input.actorId.trim();
+    if (!actorId || !input.sourceId.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(input.from) || !/^\d{4}-\d{2}-\d{2}$/.test(input.to) || input.from > input.to
+      || input.seed.scope.tenantId !== input.scope.tenantId
+      || input.seed.scope.organizationId !== input.scope.organizationId
+      || input.seed.scope.companyId !== input.scope.companyId) {
+      throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy source identity, range, or reporting scope is invalid.");
+    }
     let cursor: string | null = null;
     let source: LegacyVatSourceRecord | null = null;
     for (let pageNumber = 0; pageNumber < 100; pageNumber += 1) {
       const page = await this.sources.readLegacyVatSources({
-        scope: input.scope, actorId, direction: input.direction, from: input.from, to: input.to, cursor, limit: 100,
+        scope: input.scope, actorId, direction: input.direction, from: input.from, to: input.to, ...(input.period ? { period: input.period } : {}), cursor, limit: 100,
       });
       source = page.documents.find((document) => document.id === input.sourceId) ?? null;
       if (source !== null) break;
@@ -80,6 +108,6 @@ export class RecordReviewedLegacyVatSource {
     }
     const fact = reviewLegacyVatSourceRecord(source, { ...input.seed, counterpartyFiscalProfile }, input.evidence);
     if (fact.direction !== input.direction) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy source direction differs from the authorized book query.");
-    return this.facts.persist({ fact, actorId, idempotencyKey });
+    return fact;
   }
 }

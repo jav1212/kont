@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { encodeFiscalDocument } from "@kontave/fiscal/supabase";
 import type { FiscalIssuanceAttempt } from "@kontave/fiscal/domain";
-import { taxReportingFact, taxReportingFactPageRequest, vatDeclaration, type TaxReportingFact, type TaxReportingFactPageRequest, type TaxReportingFactRepository, type TaxReportingScope } from "../../domain";
+import { taxReportingFact, taxReportingFactPageRequest, vatDeclaration, type TaxReportingFact, type TaxReportingFactBatchRepository, type TaxReportingFactPageRequest, type TaxReportingFactRepository, type TaxReportingScope } from "../../domain";
 import type { IssuedFiscalDocumentTaxFactRepository, VatDeclarationRepository } from "../../application";
 import type { LegacyVatSourcePage, LegacyVatSourceReader, LegacyVatSourceRecord, LegacyVatReadDirection } from "../../application/legacy-vat-source";
 import type { VatDeclarationHistoryRepository } from "../../application";
@@ -10,13 +10,32 @@ import { TaxReportingFailure } from "../../domain";
 
 
 /** Supabase adapter for service-role-only, company-scoped reporting RPCs. */
-export class SupabaseTaxReportingRepository implements TaxReportingFactRepository, IssuedFiscalDocumentTaxFactRepository, LegacyVatSourceReader, VatDeclarationRepository, VatDeclarationHistoryRepository {
+export class SupabaseTaxReportingRepository implements TaxReportingFactRepository, TaxReportingFactBatchRepository, IssuedFiscalDocumentTaxFactRepository, LegacyVatSourceReader, VatDeclarationRepository, VatDeclarationHistoryRepository {
   /** @param client - Server-only Supabase client. @throws {TaxReportingFailure} If client is absent. */
   constructor(private readonly client: SupabaseClient) { if (!client) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Tax reporting needs a server database client."); }
   /** {@inheritDoc TaxReportingFactRepository.persist} */
   async persist(input: { readonly fact: TaxReportingFact; readonly actorId: string; readonly idempotencyKey: string }): Promise<{ readonly fact: TaxReportingFact; readonly replayed: boolean }> {
     const { fact } = input; const { data, error } = await this.client.rpc("shared_tax_reporting_fact_append", { p_tenant_id: fact.scope.tenantId, p_organization_id: fact.scope.organizationId, p_company_id: fact.scope.companyId, p_fact_id: fact.id, p_fact_snapshot: JSON.parse(encode(fact)), p_actor_id: input.actorId, p_idempotency_key: input.idempotencyKey });
     if (error) throw failure(error.message, error.code); const row = record(data); return { fact: decodeFact(row.fact_snapshot), replayed: bool(row.replayed) };
+  }
+  /** Persists a validated source batch through one transactional database function.
+   * @param input - Same-scope fact snapshots, reviewer, and stable batch identity.
+   * @returns Persisted facts and whether the exact batch was replayed.
+   * @throws {TaxReportingFailure} If a fact, scope, or batch command conflicts.
+   */
+  async persistBatch(input: { readonly scope: TaxReportingScope; readonly facts: readonly { readonly fact: TaxReportingFact; readonly idempotencyKey: string }[]; readonly actorId: string; readonly idempotencyKey: string }): Promise<{ readonly facts: readonly TaxReportingFact[]; readonly replayed: boolean }> {
+    const batch = input.facts.map(({ fact, idempotencyKey }) => {
+      if (fact.scope.tenantId !== input.scope.tenantId || fact.scope.organizationId !== input.scope.organizationId || fact.scope.companyId !== input.scope.companyId) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Batch facts must share the authorized company scope.");
+      return { factId: fact.id, factSnapshot: JSON.parse(encode(fact)), idempotencyKey };
+    });
+    const { data, error } = await this.client.rpc("shared_tax_reporting_fact_append_batch", {
+      p_tenant_id: input.scope.tenantId, p_organization_id: input.scope.organizationId, p_company_id: input.scope.companyId,
+      p_actor_id: input.actorId, p_batch_idempotency_key: input.idempotencyKey, p_facts: batch,
+    });
+    if (error) throw failure(error.message, error.code);
+    const result = record(data);
+    if (!Array.isArray(result.facts)) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Atomic fact batch response is invalid.");
+    return { facts: result.facts.map((item) => decodeFact(record(item))), replayed: bool(result.replayed) };
   }
   /** {@inheritDoc IssuedFiscalDocumentTaxFactRepository.persistIssued} */
   async persistIssued(input: { readonly attempt: FiscalIssuanceAttempt; readonly fact: TaxReportingFact; readonly actorId: string; readonly idempotencyKey: string }): Promise<{ readonly fact: TaxReportingFact; readonly replayed: boolean }> {
@@ -49,13 +68,23 @@ export class SupabaseTaxReportingRepository implements TaxReportingFactRepositor
   }
   /** {@inheritDoc TaxReportingFactRepository.list} */
   async list(scope: TaxReportingScope, request: TaxReportingFactPageRequest, actorId: string) {
-    const normalized = taxReportingFactPageRequest(request); const { data, error } = await this.client.rpc("shared_tax_reporting_fact_list", { p_tenant_id: scope.tenantId, p_organization_id: scope.organizationId, p_company_id: scope.companyId, p_actor_id: actorId, p_from: normalized.from, p_to: normalized.to, p_limit: normalized.limit, p_cursor_recognition_date: normalized.cursor?.recognitionDate ?? null, p_cursor_id: normalized.cursor?.id ?? null });
+    const normalized = taxReportingFactPageRequest(request);
+    const periodScoped = normalized.period !== undefined;
+    const { data, error } = await this.client.rpc(periodScoped ? "shared_tax_reporting_fact_list_period" : "shared_tax_reporting_fact_list", periodScoped
+      ? { p_tenant_id: scope.tenantId, p_organization_id: scope.organizationId, p_company_id: scope.companyId, p_actor_id: actorId, p_period: normalized.period, p_limit: normalized.limit, p_cursor_recognition_date: normalized.cursor?.recognitionDate ?? null, p_cursor_id: normalized.cursor?.id ?? null }
+      : { p_tenant_id: scope.tenantId, p_organization_id: scope.organizationId, p_company_id: scope.companyId, p_actor_id: actorId, p_from: normalized.from, p_to: normalized.to, p_limit: normalized.limit, p_cursor_recognition_date: normalized.cursor?.recognitionDate ?? null, p_cursor_id: normalized.cursor?.id ?? null });
     if (error) throw failure(error.message, error.code); const page = record(data); if (!Array.isArray(page.items)) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Reporting page is invalid."); return { items: page.items.map((item) => decodeFact(record(item).fact_snapshot)), nextCursor: page.nextCursor === null ? null : { recognitionDate: text(record(page.nextCursor).recognitionDate), id: text(record(page.nextCursor).id) } };
   }
   /** Reads legacy sources through a server-only RPC; this method never guesses rate categories or money semantics. @param input - Scoped source range, direction, and keyset bound. @returns Structurally decoded source page for an explicit mapper/reviewer. @throws {TaxReportingFailure} On malformed or unauthorized source data. */
-  async readLegacyVatSources(input: { readonly scope: TaxReportingScope; readonly actorId: string; readonly direction: LegacyVatReadDirection; readonly from: string; readonly to: string; readonly cursor: string | null; readonly limit: number }): Promise<LegacyVatSourcePage> {
+  async readLegacyVatSources(input: { readonly scope: TaxReportingScope; readonly actorId: string; readonly direction: LegacyVatReadDirection; readonly from: string; readonly to: string; readonly period?: string; readonly cursor: string | null; readonly limit: number }): Promise<LegacyVatSourcePage> {
     if (!input.actorId.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(input.from) || !/^\d{4}-\d{2}-\d{2}$/.test(input.to) || input.from > input.to || !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT read bounds are invalid.");
-    const cursor = input.cursor === null ? null : legacyCursor(input.cursor); const { data, error } = await this.client.rpc("read_iva_legacy_sources", { p_tenant_id: input.scope.tenantId, p_organization_id: input.scope.organizationId, p_company_id: input.scope.companyId, p_actor_user_id: input.actorId, p_direction: input.direction, p_from: input.from, p_to: input.to, p_after_date: cursor?.date ?? null, p_after_id: cursor?.id ?? null, p_limit: input.limit });
+    if (input.period !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.period)) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT period is invalid.");
+    const cursor = input.cursor === null ? null : legacyCursor(input.cursor);
+    const rpc = input.period === undefined ? "read_iva_legacy_sources" : "read_iva_legacy_sources_period";
+    const args = input.period === undefined
+      ? { p_tenant_id: input.scope.tenantId, p_organization_id: input.scope.organizationId, p_company_id: input.scope.companyId, p_actor_user_id: input.actorId, p_direction: input.direction, p_from: input.from, p_to: input.to, p_after_date: cursor?.date ?? null, p_after_id: cursor?.id ?? null, p_limit: input.limit }
+      : { p_tenant_id: input.scope.tenantId, p_organization_id: input.scope.organizationId, p_company_id: input.scope.companyId, p_actor_user_id: input.actorId, p_direction: input.direction, p_period: input.period, p_after_date: cursor?.date ?? null, p_after_id: cursor?.id ?? null, p_limit: input.limit };
+    const { data, error } = await this.client.rpc(rpc, args);
     if (error) throw failure(error.message, error.code); const page = record(data); if (!Array.isArray(page.documents) || typeof page.hasMore !== "boolean") throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT source page is invalid.");
     return { documents: page.documents.map(decodeLegacySource), hasMore: page.hasMore, nextCursor: page.nextCursor === null ? null : JSON.stringify({ date: text(record(page.nextCursor).date), id: text(record(page.nextCursor).id) }) };
   }
@@ -97,9 +126,9 @@ function failure(message: string, databaseCode?: string): TaxReportingFailure {
     return new TaxReportingFailure("TAX_REPORTING_UNAVAILABLE", "IVA reporting is not installed in the connected database environment.");
   }
   const code = /\b(TAX_REPORTING_[A-Z_]+)\b/.exec(message)?.[1];
-  const known = new Set(["TAX_REPORTING_SCOPE", "TAX_REPORTING_IDEMPOTENCY_CONFLICT", "TAX_REPORTING_CONCURRENCY_CONFLICT", "TAX_REPORTING_DECLARATION_NOT_FOUND", "TAX_REPORTING_CORRECTION_SOURCE_INVALID", "TAX_REPORTING_CORRECTION_EXCEEDS_SOURCE"]);
+  const known = new Set(["TAX_REPORTING_SCOPE", "TAX_REPORTING_IDEMPOTENCY_CONFLICT", "TAX_REPORTING_CONCURRENCY_CONFLICT", "TAX_REPORTING_DECLARATION_NOT_FOUND", "TAX_REPORTING_CORRECTION_SOURCE_INVALID", "TAX_REPORTING_CORRECTION_EXCEEDS_SOURCE", "TAX_REPORTING_PERIOD_CLOSED", "TAX_REPORTING_PERIOD_TRANSITION_INVALID"]);
   return new TaxReportingFailure(known.has(code ?? "") ? code as TaxReportingFailure["code"] : "TAX_REPORTING_INVALID", message);
 }
-function decodeLegacySource(value: unknown): LegacyVatSourceRecord { const row = record(value); const lines = row.lines; const documentDate = row.documentDate ?? row.document_date ?? row.date; const updatedAt = row.updatedAt ?? row.updated_at; const kind = row.kind ?? row.documentKind; const affectedId = row.affectedId ?? row.affected_id ?? null; if (typeof row.id !== "string" || typeof kind !== "string" || (documentDate !== null && typeof documentDate !== "string") || typeof updatedAt !== "string" || (affectedId !== null && typeof affectedId !== "string") || !Array.isArray(lines)) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT source document is invalid."); const header = row.header === undefined ? row : record(row.header); return { id: row.id, kind, affectedId, documentDate, updatedAt, header: Object.fromEntries(Object.entries(header).filter(([key]) => key !== "lines").map(([key, nested]) => [key, nested === null ? null : typeof nested === "string" ? nested : null])), lines: lines.map((line) => { const item = record(line); return { rateCode: optionalText(item.rateCode ?? item.rate_code), base: optionalText(item.base), net: optionalText(item.net), included: item.included === null || item.included === undefined ? null : bool(item.included), taxAmount: optionalText(item.taxAmount ?? item.tax_amount ?? null), taxType: optionalText(item.taxType ?? item.tax_type ?? null), taxValue: optionalText(item.taxValue ?? item.tax_value ?? null), taxConcept: optionalText(item.taxConcept ?? item.tax_concept ?? null) }; }) }; }
+function decodeLegacySource(value: unknown): LegacyVatSourceRecord { const row = record(value); const lines = row.lines; const documentDate = row.documentDate ?? row.document_date ?? row.date; const updatedAt = row.updatedAt ?? row.updated_at; const kind = row.kind ?? row.documentKind; const affectedId = row.affectedId ?? row.affected_id ?? null; const pendingReasons = row.pendingReasons ?? row.pending_reasons ?? []; if (typeof row.id !== "string" || typeof kind !== "string" || (documentDate !== null && typeof documentDate !== "string") || typeof updatedAt !== "string" || (affectedId !== null && typeof affectedId !== "string") || !Array.isArray(lines) || !Array.isArray(pendingReasons) || pendingReasons.some((reason) => typeof reason !== "string")) throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT source document is invalid."); const header = row.header === undefined ? row : record(row.header); return { id: row.id, kind, affectedId, documentDate, updatedAt, pendingReasons: pendingReasons as string[], header: Object.fromEntries(Object.entries(header).filter(([key]) => key !== "lines" && key !== "pendingReasons" && key !== "pending_reasons").map(([key, nested]) => [key, nested === null ? null : typeof nested === "string" ? nested : null])), lines: lines.map((line) => { const item = record(line); return { rateCode: optionalText(item.rateCode ?? item.rate_code), base: optionalText(item.base), net: optionalText(item.net), included: item.included === null || item.included === undefined ? null : bool(item.included), taxAmount: optionalText(item.taxAmount ?? item.tax_amount ?? null), taxType: optionalText(item.taxType ?? item.tax_type ?? null), taxValue: optionalText(item.taxValue ?? item.tax_value ?? null), taxConcept: optionalText(item.taxConcept ?? item.tax_concept ?? null) }; }) }; }
 function optionalText(value: unknown): string | null { return value === null ? null : text(value); }
 function legacyCursor(value: string): { readonly date: string; readonly id: string } { try { const cursor = record(JSON.parse(value)); const date = text(cursor.date); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(); return { date, id: text(cursor.id) }; } catch { throw new TaxReportingFailure("TAX_REPORTING_INVALID", "Legacy VAT cursor is invalid."); } }

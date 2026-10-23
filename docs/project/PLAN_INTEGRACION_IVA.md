@@ -270,3 +270,20 @@ El adaptador `packages/business/sales/src/adapters/taxation/sales-invoice-line-v
 No se agregaron migraciones ni valores tributarios por defecto. El alcance de esta ampliación sigue restringido a facturas en VES; ajustes a nivel de cabecera e impuesto financiero permanecen bloqueados. Las reglas de componentes adicionales continúan requiriendo selección/evidencia del flujo de negocio; no se infieren por tasa o producto. Las compras conservan los importes del documento del proveedor y no se recalculan con las reglas vigentes.
 
 Verificación local: `@kontave/taxation check` y `@kontave/sales check` pasan; suites `taxation` 60/60 y `sales` 110/110; ESLint focalizado sin errores. TypeScript raíz no reporta errores en los archivos IVA modificados, pero sigue fallando por diagnósticos preexistentes de Tesorería en `app/(app)/treasury/page.tsx` y `src/client-api/v1/treasury/treasury-money-factory.ts`. Esto no reemplaza QA funcional.
+
+### Consumidores Web del rediseño IVA — 2026-10-23
+
+| Casos | Consumidor Web implementado | Cobertura y límites conocidos |
+| --- | --- | --- |
+| IVA-001–007, 009–010 | `/fiscal/configuracion` · pestaña Alícuotas | Catálogo versionado por empresa, consulta histórica y evidencia legal. La asociación artículo-regla continúa en ficha de Inventario. |
+| IVA-008 | `/fiscal/configuracion` · enlace a `/inventory/productos` | El enlace lleva al catálogo; el conteo agrupado de asignaciones por regla y filtro de productos requiere el contrato de lectura del catálogo de productos. |
+| IVA-011–014 | Flujos operativos de Ventas/Compras; detalle del libro `/fiscal/compras` o `/fiscal/ventas` | Los libros muestran snapshots guardados. La conciliación proveedor-factura ya tiene API de borrador y confirmación atómica; el nuevo panel visual con selección de recepción/orden sigue condicionado a exponer sus candidatos autorizados. |
+| IVA-015–018 | `/fiscal/configuracion` · Contrapartes; `/fiscal/importaciones/nueva` | Picker de clientes/proveedores existentes por nombre/RIF; captura de evidencia de importación por asistente. |
+| IVA-019–022 | `/fiscal/compras`, `/fiscal/ventas`, `/fiscal` | Resumen por período y libros; las fuentes heredadas se consultan por `period` almacenado, con retenciones limitadas a hechos que sí contienen comprobante revisado. |
+| IVA-023–030 | Libros y Pendientes; exportaciones CSV/XLSX/PDF; incorporación revisada individual o por lote | Exportación pagina todas las filas de hechos guardados. Lote limitado a 100 y sin promoción automática; fuentes con errores bloqueantes se excluyen con motivo. |
+| IVA-031 | Tablero y detalle `/fiscal/declaraciones/[periodo]` | Totales internos y ciclo persistido; arrastre reproducido desde saldo negativo de una declaración previa presentada/pagada. |
+| IVA-032–034 | Detalle de declaración y PDF interno | Solo resumen interno con advertencia; Forma IVA 30 oficial sigue bloqueada hasta verificar la especificación SENIAT vigente. |
+| IVA-035 | Acciones del detalle de declaración | Registra evidencia de pagos ya ejecutados; no ejecuta pagos. |
+| IVA-036 | `/fiscal/declaraciones` · filtro de año/estado | Historial interno, todas las revisiones y enlace al detalle por período. |
+
+Las migraciones `20261023154003_iva_period_summary.sql`, `20261023154035_iva_legacy_period_sources.sql`, `20261023154113_vat_fiscal_periods.sql` y `20261023154126_iva_legacy_batch.sql` permanecen propuestas localmente. No están aplicadas ni verificadas contra el proyecto Supabase conectado.

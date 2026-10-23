@@ -8,11 +8,13 @@ import {
 export type OrganizationRouteAccess =
   | { readonly kind: "authenticated" }
   | { readonly kind: "protected"; readonly permissions: readonly `${string}.${string}`[] }
+  | { readonly kind: "protected-any"; readonly permissions: readonly `${string}.${string}`[] }
   | { readonly kind: "unknown" };
 
 export type OrganizationRouteAccessState = "loading" | "denied" | "allowed";
 
 type ProtectedRouteDefinition = readonly [route: string, permissions: readonly `${string}.${string}`[]];
+type AnyProtectedRouteDefinition = readonly [route: string, permissions: readonly `${string}.${string}`[]];
 
 /**
  * All organization-scoped Web pages. New pages must be added explicitly: no
@@ -23,11 +25,13 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/accounting", ["accounting.read"]], ["/accounting/accounts", ["accounting.read"]], ["/accounting/charts", ["accounting.read"]], ["/accounting/financial-statements", ["accounting.read"]], ["/accounting/integrations", ["accounting.read"]], ["/accounting/journal", ["accounting.read"]], ["/accounting/journal/[id]", ["accounting.read"]], ["/accounting/journal/new", ["accounting.read", "accounting.create"]], ["/accounting/periods", ["accounting.read"]], ["/accounting/trial-balance", ["accounting.read"]],
   ["/companies", ["companies.read"]], ["/companies/[id]", ["companies.read"]],
   ["/documents", ["documents.read"]], ["/documents/contracts", ["documents.read"]], ["/documents/files", ["documents.read"]],
+  ["/fiscal/compras", ["purchases.read"]], ["/fiscal/ventas", ["sales.read"]],
+  ["/fiscal/importaciones", ["purchases.read"]], ["/fiscal/importaciones/nueva", ["purchases.read", "purchases.confirm"]],
+  ["/fiscal/configuracion", ["companies.read"]],
   ["/inventory", ["inventory.read"]], ["/inventory/adjustments/generator", ["inventory.read", "inventory.create"]], ["/inventory/balance-report", ["inventory.read"]], ["/inventory/closings", ["inventory.read"]], ["/inventory/compras-pendientes", ["inventory.read"]], ["/inventory/compras-pendientes/[id]", ["inventory.read"]], ["/inventory/departments", ["inventory.read"]], ["/inventory/departments/[id]", ["inventory.read"]], ["/inventory/import", ["inventory.read", "inventory.create"]], ["/inventory/inventory-ledger", ["inventory.read"]], ["/inventory/islr-report", ["inventory.read"]], ["/inventory/movements", ["inventory.read"]], ["/inventory/operations", ["inventory.read"]], ["/inventory/operations/new", ["inventory.read", "inventory.create"]], ["/inventory/products", ["inventory.read"]], ["/inventory/products/[id]", ["inventory.read"]], ["/inventory/purchase-ledger", ["inventory.read"]], ["/inventory/report", ["inventory.read"]], ["/inventory/sales", ["inventory.read"]], ["/inventory/sales/generator", ["inventory.read", "inventory.create"]], ["/inventory/sales/new-manual", ["inventory.read", "inventory.create"]], ["/inventory/sales-ledger", ["inventory.read"]],
   ["/payroll", ["payroll.read"]], ["/payroll/ari", ["payroll.read"]], ["/payroll/employees", ["payroll.read", "employees.read"]], ["/payroll/history", ["payroll.read"]], ["/payroll/liquidations", ["payroll.read"]], ["/payroll/profit-sharing", ["payroll.read"]], ["/payroll/settings", ["payroll.read"]], ["/payroll/social-benefits", ["payroll.read"]], ["/payroll/tablero", ["payroll.read"]], ["/payroll/vacations", ["payroll.read"]],
   ["/purchases", ["purchases.read"]], ["/purchases/[id]", ["purchases.read"]], ["/purchases/archive", ["purchases.read"]], ["/purchases/import", ["purchases.read", "purchases.create", "inventory.create"]], ["/purchases/import-book", ["purchases.read", "purchases.create"]], ["/purchases/iva-imports", ["purchases.read", "purchases.confirm"]], ["/purchases/iva-ledger", ["purchases.read"]], ["/purchases/iva-matches", ["purchases.read", "purchases.confirm"]], ["/purchases/new", ["purchases.read", "purchases.create"]], ["/purchases/new/quick", ["purchases.read", "purchases.create"]], ["/purchases/new-manual", ["purchases.read", "purchases.create"]], ["/purchases/suppliers", ["purchases.read"]], ["/purchases/suppliers/[id]", ["purchases.read"]],
   ["/sales", salesDashboardAccessRequirement], ["/sales/[id]", ["sales.read"]], ["/sales/archive", ["sales.read"]], ["/sales/fiscal", ["sales.read"]], ["/sales/fiscal/[id]", ["sales.read"]], ["/sales/iva-ledger", ["sales.read"]], ["/sales/customers", ["sales.read"]], ["/sales/igtf-fortnightly", ["sales.read"]], ["/sales/receivables", ["sales.read"]], ["/sales/new", ["sales.read", "sales.create"]], ["/sales/pos", ["sales.read", "sales.create"]],
-  ["/fiscal/iva-declarations", ["purchases.read", "sales.read", "purchases.confirm", "sales.update"]],
   ["/settings/organization", ["organizations.update"]],
   ["/settings/members", ["members.read"]],
   ["/settings/roles", ["roles.read"]],
@@ -53,6 +57,13 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/treasury/reports", ["treasury.read"]],
   ["/treasury/reconciliation", ["treasury.read"]],
   ["/treasury/tax-policy", ["treasury.read"]],
+];
+
+const ANY_PERMISSION_ROUTES: readonly AnyProtectedRouteDefinition[] = [
+  ["/fiscal/pendientes", ["purchases.read", "sales.read"]],
+  ["/fiscal/declaraciones", ["purchases.read", "sales.read"]],
+  ["/fiscal/declaraciones/[periodo]", ["purchases.read", "sales.read"]],
+  ["/fiscal/iva-declarations", ["purchases.read", "sales.read"]],
 ];
 
 /** Authenticated pages without organization-level permissions. */
@@ -94,6 +105,9 @@ export function getOrganizationRouteAccess(pathname: string): OrganizationRouteA
   const match = PROTECTED_ROUTES.find(([template]) => template === route)
     ?? PROTECTED_ROUTES.find(([template]) => template.includes("[") && routeMatchesTemplate(route, template));
   if (match) return { kind: "protected", permissions: match[1] };
+  const anyMatch = ANY_PERMISSION_ROUTES.find(([template]) => template === route)
+    ?? ANY_PERMISSION_ROUTES.find(([template]) => template.includes("[") && routeMatchesTemplate(route, template));
+  if (anyMatch) return { kind: "protected-any", permissions: anyMatch[1] };
   if (AUTHENTICATED_ROUTES.some((template) => routeMatchesTemplate(route, template))) return { kind: "authenticated" };
   return { kind: "unknown" };
 }
@@ -143,6 +157,7 @@ export function resolveOrganizationRouteAccess(
   if (routeAccess.kind === "unknown") return "denied";
   if (snapshot.loading) return "loading";
   if (snapshot.error || !snapshot.permissions) return "denied";
+  if (routeAccess.kind === "protected-any") return routeAccess.permissions.some((permission) => hasOrganizationPermission(snapshot.permissions!, permission)) ? "allowed" : "denied";
   return routeAccess.permissions.every((permission) => hasOrganizationPermission(snapshot.permissions!, permission)) ? "allowed" : "denied";
 }
 

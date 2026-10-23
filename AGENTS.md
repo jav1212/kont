@@ -73,6 +73,7 @@ affected workspace plus proportional root validation.
   - `payroll/` — main quincena calculator
   - `payroll/vacaciones/`, `payroll/prestaciones/`, `payroll/utilidades/`, `payroll/liquidaciones/` — standalone benefit calculators
   - `payroll/employees/`, `payroll/history/` — employee management and payroll history
+  - `fiscal/` — IVA dashboard, purchase/sales books, pending reviews, imports, declaration history, and fiscal configuration
   - `billing/` — subscription/billing page
 - `app/admin/` — separate admin section with its own layout and auth pages (independent of `(public)`)
 - `app/api/` — Next.js Route Handlers (REST endpoints, server-side only)

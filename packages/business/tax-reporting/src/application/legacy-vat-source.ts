@@ -7,6 +7,8 @@ export interface LegacyVatSourceRecord {
   readonly affectedId: string | null;
   readonly documentDate: string | null;
   readonly updatedAt: string;
+  /** Known documentary issues calculated from the source snapshots. */
+  readonly pendingReasons?: readonly string[];
   readonly header: Readonly<Record<string, string | null>>;
   readonly lines: readonly {
     readonly rateCode: string | null;

@@ -12,13 +12,15 @@ import { taxReportingFailureResponse } from "../failure-response";
 export const GET = withTenantPermission("sales.read", async (request, tenant) => {
   const params = new URL(request.url).searchParams;
   const companyId = params.get("companyId")?.trim() ?? "";
-  const from = params.get("from")?.trim() ?? "";
-  const to = params.get("to")?.trim() ?? "";
+  const period = params.get("period")?.trim() ?? "";
+  const periodRange = /^\d{4}-(0[1-9]|1[0-2])$/.test(period) ? monthRange(period) : null;
+  const from = periodRange?.from ?? params.get("from")?.trim() ?? "";
+  const to = periodRange?.to ?? params.get("to")?.trim() ?? "";
   const rawLimit = params.get("limit");
   const limit = rawLimit === null ? 100 : Number(rawLimit);
   const rawCursor = params.get("cursor");
   const cursor = parseCursor(rawCursor);
-  if (!companyId || companyId.length > 256 || !isDate(from) || !isDate(to) || from > to
+  if (!companyId || companyId.length > 256 || (params.has("period") && periodRange === null) || !isDate(from) || !isDate(to) || from > to
     || !Number.isInteger(limit) || limit < 1 || limit > 100 || (rawCursor !== null && cursor === undefined)) {
     return Response.json({ error: "Rango, empresa, cursor o límite del libro inválido." }, { status: 400 });
   }
@@ -38,7 +40,7 @@ export const GET = withTenantPermission("sales.read", async (request, tenant) =>
   try {
     const ledger = await createSupabaseVatLedger(client).execute(
       { tenantId: tenant.tenantId, organizationId: authorization.organizationId, companyId },
-      { from, to, limit, cursor: cursor ?? null },
+      { from, to, ...(period ? { period } : {}), limit, cursor: cursor ?? null },
       tenant.userId,
     );
     return Response.json({ data: JSON.parse(encode(ledger)) });
@@ -48,6 +50,12 @@ export const GET = withTenantPermission("sales.read", async (request, tenant) =>
     return Response.json({ error: "No fue posible consultar el libro fiscal de ventas." }, { status: 500 });
   }
 });
+
+function monthRange(period: string): { readonly from: string; readonly to: string } {
+  const [year, month] = period.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return { from: `${period}-01`, to: `${period}-${String(lastDay).padStart(2, "0")}` };
+}
 
 function isDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;

@@ -28,9 +28,9 @@ export function taxReportingFact(value: TaxReportingFact): TaxReportingFact {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value.period)
     || !isRealDate(value.documentDate)
     || !isRealDate(value.recognitionDate)
-    || value.period !== value.recognitionDate.slice(0, 7)
+    || (!value.source.kind.startsWith("legacy_") && value.period !== value.recognitionDate.slice(0, 7))
     || !isRealInstant(value.recordedAt)) {
-    invalid("A fact needs real ISO dates, a matching recognition period, and a recorded instant.");
+    invalid("A fact needs real ISO dates, a valid fiscal period, and a recorded instant.");
   }
   const amounts = [value.signed.taxableBase, value.signed.taxAmount, value.signed.exemptBase, value.signed.total, value.deductible.amount];
   if (!amounts.every((amount) => sameCurrency(amount.currency, value.currency))) invalid("Fact amounts must use its historical currency.");

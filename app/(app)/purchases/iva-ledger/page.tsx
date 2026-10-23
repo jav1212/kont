@@ -1,18 +1,12 @@
-import { IvaLedgerView } from "@/app/(app)/fiscal/iva-ledger-view";
-import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
+﻿import { permanentRedirect } from "next/navigation";
 
-/** Opens the purchase VAT ledger and read-only legacy-source review.
- * @returns The company-scoped purchase VAT view.
+/** Redirects the legacy purchase IVA ledger while preserving search parameters.
+ * @param input - Query parameters captured from the legacy route.
+ * @returns A permanent redirect to the fiscal purchase ledger.
  */
-export default function PurchaseIvaLedgerPage(): React.JSX.Element {
-  return <>
-    <div className="border-b border-border-light bg-surface-1 px-4 py-3 md:px-8">
-      <Link href="/purchases/iva-imports" className="text-sm font-semibold text-primary-500 hover:underline">Registrar evidencia de importación →</Link>
-      <span className="mx-3 text-[var(--text-tertiary)]">·</span>
-      <Link href="/purchases/iva-matches" className="text-sm font-semibold text-primary-500 hover:underline">Conciliar factura recibida →</Link>
-      <span className="mx-3 text-[var(--text-tertiary)]">·</span>
-      <Link href="/fiscal/iva-declarations" className="text-sm font-semibold text-primary-500 hover:underline">Ver y preparar borradores internos →</Link>
-    </div>
-    <IvaLedgerView direction="purchase" title="Libro IVA de Compras" />
-  </>;
+export default async function PurchaseIvaLedgerRedirect({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<never> {
+  const values = await searchParams;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) params.append(key, item);
+  permanentRedirect(`/fiscal/compras${params.size ? `?${params}` : ""}`);
 }

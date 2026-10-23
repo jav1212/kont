@@ -47,6 +47,16 @@ test("fact ledger listing forwards its authenticated actor to the scoped RPC", a
   assert.equal(args?.p_actor_id, "actor"); assert.equal(page.items.length, 0);
 });
 
+test("manual fiscal period reads use the period-keyed fact RPC", async () => {
+  let name = ""; let args: Record<string, unknown> | undefined;
+  const client = { async rpc(nextName: string, nextArgs: Record<string, unknown>) { name = nextName; args = nextArgs; return { data: { items: [], nextCursor: null }, error: null }; } };
+  const scope = taxReportingFactFixture().scope;
+  await new SupabaseTaxReportingRepository(client as never).list(scope, { from: "2026-08-01", to: "2026-08-31", period: "2026-08", limit: 10, cursor: null }, "actor");
+  assert.equal(name, "shared_tax_reporting_fact_list_period");
+  assert.equal(args?.p_period, "2026-08");
+  assert.equal(args?.p_from, undefined);
+});
+
 test("missing reporting RPC is exposed as an unavailable database capability", async () => {
   const client = { async rpc() { return { data: null, error: { code: "PGRST202", message: "Could not find the function in the schema cache" } }; } };
   const scope = taxReportingFactFixture().scope;

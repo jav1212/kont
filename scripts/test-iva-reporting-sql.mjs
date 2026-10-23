@@ -101,8 +101,49 @@ try {
   `);
   await database.exec(await readFile(new URL("../supabase/migrations/322_iva_reporting.sql", import.meta.url), "utf8"));
   await database.exec(await readFile(new URL("../supabase/migrations/362_iva_correction_fact_integrity.sql", import.meta.url), "utf8"));
+  await database.exec(await readFile(new URL("../supabase/migrations/20261023154113_vat_fiscal_periods.sql", import.meta.url), "utf8"));
+  await database.exec(await readFile(new URL("../supabase/migrations/20261023154126_iva_legacy_batch.sql", import.meta.url), "utf8"));
+  await database.exec(await readFile(new URL("../supabase/migrations/20261023154141_iva_fact_period_list.sql", import.meta.url), "utf8"));
+  await database.exec(await readFile(new URL("../supabase/migrations/20261023154345_vat_fiscal_period_company_fk_index.sql", import.meta.url), "utf8"));
 
   const firstFact = fact("fact-1");
+  await database.query("update public.shared_companies set iva_periodicity='monthly' where tenant_id=$1 and id=$2", [tenantId, companyId]);
+  const changePeriod = async (target, expectedVersion, key, reason = null, declarationId = null) => database.query(
+    "select public.shared_tax_reporting_period_transition($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::timestamptz) as result",
+    [tenantId, organizationId, companyId, actorId, "2026-07", target, expectedVersion, key, reason, declarationId, "2026-10-22T12:00:00Z"],
+  );
+  const periodRead = async () => (await database.query("select public.shared_tax_reporting_period_read($1,$2,$3,$4,$5) as result", [tenantId, organizationId, companyId, actorId, "2026-07"])).rows[0].result;
+  assert.equal((await periodRead()).status, "open");
+
+  const batchItems = ["batch-fact-1", "batch-fact-2"].map((id, index) => ({ factId: id, idempotencyKey: `batch-document-${index}`, factSnapshot: { ...fact(id), source: { kind: "sales_invoice", id, lineageKey: `sales:${id}` } } }));
+  const saveBatch = (items) => database.query("select public.shared_tax_reporting_fact_append_batch($1,$2,$3,$4,$5,$6::jsonb) as result", [tenantId, organizationId, companyId, actorId, "selected-facts-batch-1", JSON.stringify(items)]);
+  assert.equal((await saveBatch(batchItems)).rows[0].result.facts.length, 2);
+  assert.equal((await saveBatch(batchItems)).rows[0].result.replayed, true);
+  const invalidBatch = [{ factId: "rollback-fact-1", idempotencyKey: "rollback-batch-item-1", factSnapshot: { ...fact("rollback-fact-1"), source: { kind: "sales_invoice", id: "rollback-fact-1", lineageKey: "sales:rollback-fact-1" } } }, { factId: "mismatch-id", idempotencyKey: "rollback-batch-item-2", factSnapshot: { ...fact("rollback-fact-2"), source: { kind: "sales_invoice", id: "rollback-fact-2", lineageKey: "sales:rollback-fact-2" } } }];
+  await expectDatabaseError(() => database.query("select public.shared_tax_reporting_fact_append_batch($1,$2,$3,$4,$5,$6::jsonb)", [tenantId, organizationId, companyId, actorId, "rollback-fact-batch", JSON.stringify(invalidBatch)]), "TAX_REPORTING_INVALID");
+  const rolledBack = await database.query("select count(*)::int as count from public.shared_tax_reporting_facts where tenant_id=$1 and id in ('rollback-fact-1','rollback-fact-2')", [tenantId]);
+  assert.equal(rolledBack.rows[0].count, 0, "failed second item rolls back the first fact from its batch");
+  await database.exec("set role authenticated");
+  await expectPermissionDenied(() => database.query("select * from public.shared_tax_reporting_batch_commands"));
+  await database.exec("reset role");
+  assert.equal((await database.query("select has_function_privilege('authenticated','public.shared_tax_reporting_fact_append_batch(uuid,uuid,text,uuid,text,jsonb)','execute') as allowed")).rows[0].allowed, false);
+  assert.equal((await changePeriod("in_review", 0, "period-review-1")).rows[0].result.replayed, false);
+  assert.equal((await changePeriod("in_review", 0, "period-review-1")).rows[0].result.replayed, true);
+  await changePeriod("prepared", 1, "period-prepared-1", null, "declaration-r1");
+  await changePeriod("declared", 2, "period-declared-1");
+  await changePeriod("paid", 3, "period-paid-1");
+  await changePeriod("closed", 4, "period-closed-1");
+  assert.equal((await periodRead()).status, "closed");
+  await expectDatabaseError(() => appendFact("closed-period-fact-command", { ...fact("closed-period-fact"), period: "2026-07", source: { kind: "sales_invoice", id: "closed-period-source", lineageKey: "closed-period-source" } }), "TAX_REPORTING_PERIOD_CLOSED");
+  const manualPeriodFact = { ...fact("manual-period-fact"), source: { kind: "legacy_purchase_invoice", id: "manual-period-source", lineageKey: "manual-period-source" }, direction: "purchase", recognitionDate: "2026-09-15", period: "2026-08" };
+  await appendFact("manual-period-fact-command", manualPeriodFact);
+  const manualPeriodRows = await database.query("select public.shared_tax_reporting_fact_list_period($1,$2,$3,$4,$5,$6,null,null) as result", [tenantId, organizationId, companyId, actorId, "2026-08", 100]);
+  assert.equal(manualPeriodRows.rows[0].result.items.length, 1, "fiscal-period reads retain a stored manual period independent from recognition date");
+  assert.equal(manualPeriodRows.rows[0].result.items[0].fact_snapshot.id, "manual-period-fact");
+  const calendarRangeRows = await database.query("select public.shared_tax_reporting_fact_list($1,$2,$3,$4,$5::date,$6::date,$7,null,null) as result", [tenantId, organizationId, companyId, actorId, "2026-08-01", "2026-08-31", 100]);
+  assert.equal(calendarRangeRows.rows[0].result.items.length, 0, "calendar-date reads do not silently include manually assigned fiscal facts");
+  const periodSecurity = await database.query("select count(*)::int as count from pg_policies where schemaname='public' and tablename in ('shared_tax_reporting_periods','shared_tax_reporting_period_events','shared_tax_reporting_period_commands')");
+  assert.equal(periodSecurity.rows[0].count, 0);
   assert.equal((await appendFact("fact-command-1", firstFact)).replayed, false);
   assert.equal((await appendFact("fact-command-1", firstFact)).replayed, true);
   await expectDatabaseError(() => appendFact("fact-command-1", { ...firstFact, id: "fact-other" }), "TAX_REPORTING_IDEMPOTENCY_CONFLICT");

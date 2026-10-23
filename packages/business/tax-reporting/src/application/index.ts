@@ -9,6 +9,10 @@ export * from "./legacy-vat-source";
 export * from "./legacy-source-review";
 export * from "./legacy-source-record-review";
 export * from "./record-reviewed-legacy-vat-source";
+export * from "./review-legacy-vat-sources-batch";
 export * from "./fiscal-document-fact";
 export * from "./get-vat-retention-export";
 export * from "./vat-retention-txt";
+export * from "./get-vat-period-summary"
+export * from "./vat-fiscal-period";
+export * from "./vat-periodicity";

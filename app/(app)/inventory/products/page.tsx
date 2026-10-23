@@ -97,6 +97,7 @@ const IVA_TIPOS: { value: VatType; label: string }[] = [
 ];
 
 type EstadoFilter = "todos" | "activo" | "inactivo";
+type IvaFilter = "todos" | "general" | "exento";
 
 function productSystemLabel(labels: Readonly<Record<string, string>>, key: string): string {
     const id = `system.inventory.products.${key}`;
@@ -196,6 +197,12 @@ export default function ProductosPage() {
     const fileRef = useRef<HTMLInputElement>(null);
     const [search, setSearch] = useState("");
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
+    const [ivaFilter, setIvaFilter] = useState<IvaFilter>("todos");
+    // Fiscal configuration links here with ?iva= to open the products it counted (active ones only).
+    useEffect(() => {
+        const iva = new URLSearchParams(window.location.search).get("iva");
+        if (iva === "general" || iva === "exento") { setIvaFilter(iva); setEstadoFilter("activo"); }
+    }, []);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
@@ -357,13 +364,14 @@ export default function ProductosPage() {
         return visibleProducts.filter((p) => {
             if (estadoFilter === "activo"   && !p.active) return false;
             if (estadoFilter === "inactivo" &&  p.active) return false;
+            if (ivaFilter !== "todos" && (p.vatType === "exento" ? "exento" : "general") !== ivaFilter) return false;
             if (!q) return true;
             return [p.code, p.barcode ?? "", p.name, p.description ?? "", p.departmentName ?? ""]
                 .join(" ").toLowerCase().includes(q);
         });
-    }, [visibleProducts, search, estadoFilter]);
+    }, [visibleProducts, search, estadoFilter, ivaFilter]);
 
-    const hasFilters = search.trim() !== "" || estadoFilter !== "todos";
+    const hasFilters = search.trim() !== "" || estadoFilter !== "todos" || ivaFilter !== "todos";
     const pageSize = 50;
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const pageProducts = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -507,10 +515,11 @@ export default function ProductosPage() {
     }, [totalPages]);
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, estadoFilter]);
+    }, [search, estadoFilter, ivaFilter]);
     function clearFilters() {
         setSearch("");
         setEstadoFilter("todos");
+        setIvaFilter("todos");
         setCurrentPage(1);
     }
 
@@ -677,12 +686,18 @@ export default function ProductosPage() {
                             </details>
                         )}
 
-                        <div className="order-1 flex items-center gap-2">
+                        <div className="order-1 flex flex-wrap items-center gap-2">
                             <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">Estado</span>
                             <div className="inline-flex overflow-hidden rounded-lg border border-border-light bg-surface-1">
                                 <FilterChip segmented active={estadoFilter === "todos"} onClick={() => setEstadoFilter("todos")} count={stats.total}>Todos</FilterChip>
                                 <FilterChip segmented active={estadoFilter === "activo"} onClick={() => setEstadoFilter("activo")} count={stats.active}>Activos</FilterChip>
                                 <FilterChip segmented active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")} count={stats.inactive}>Inactivos</FilterChip>
+                            </div>
+                            <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">IVA</span>
+                            <div className="inline-flex overflow-hidden rounded-lg border border-border-light bg-surface-1">
+                                <FilterChip segmented active={ivaFilter === "todos"} onClick={() => setIvaFilter("todos")}>Todos</FilterChip>
+                                <FilterChip segmented active={ivaFilter === "general"} onClick={() => setIvaFilter("general")}>General</FilterChip>
+                                <FilterChip segmented active={ivaFilter === "exento"} onClick={() => setIvaFilter("exento")}>Exento</FilterChip>
                             </div>
                         </div>
 

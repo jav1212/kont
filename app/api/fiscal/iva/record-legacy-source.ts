@@ -40,8 +40,8 @@ export async function recordLegacyVatSource(request: Request, tenant: TenantCont
       id: stableFactId(scope.tenantId, scope.organizationId, scope.companyId, direction, command.sourceId),
       scope,
       recognitionDate: command.recognitionDate,
-      period: command.recognitionDate.slice(0, 7),
-      affectedFactId: command.affectedFactId,
+      period: command.period ?? command.recognitionDate.slice(0, 7),
+      affectedFactId: reviewedAffectedFactId(command, scope, direction),
       deductible: command.deductible,
       customsEvidence: null,
       recordedAt: command.recordedAt,
@@ -52,6 +52,7 @@ export async function recordLegacyVatSource(request: Request, tenant: TenantCont
       sourceId: command.sourceId,
       from: command.from,
       to: command.to,
+      ...(command.period ? { period: command.period } : {}),
       seed,
       evidence: command.evidence,
       actorId: tenant.userId,
@@ -65,25 +66,30 @@ export async function recordLegacyVatSource(request: Request, tenant: TenantCont
   }
 }
 
-interface ReviewCommand {
+export interface ReviewCommand {
   readonly companyId: string;
   readonly sourceId: string;
   readonly from: string;
   readonly to: string;
+  readonly period: string | null;
   readonly recognitionDate: string;
   readonly affectedFactId: string | null;
+  /** Legacy document the correction affects; its reviewed fact identity is derived, never typed by the operator. */
+  readonly affectedSourceId: string | null;
   readonly deductible: { readonly state: "eligible" | "ineligible" | "pending_review"; readonly amount: ReturnType<typeof moneyFromDecimal>; readonly reason: string | null };
   readonly evidence: LegacyVatRecordReviewEvidence;
   readonly recordedAt: string;
   readonly idempotencyKey: string;
 }
 
-function parseCommand(value: unknown, idempotencyHeader: string | null, direction: LegacyVatReadDirection): ReviewCommand {
+export function parseCommand(value: unknown, idempotencyHeader: string | null, direction: LegacyVatReadDirection): ReviewCommand {
   const body = object(value);
   const companyId = text(body.companyId, "companyId", 256);
   const sourceId = text(body.sourceId, "sourceId", 220);
   const from = date(body.from, "from");
   const to = date(body.to, "to");
+  const periodValue = body.period === undefined ? null : text(body.period, "period", 7);
+  if (periodValue !== null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodValue)) invalid("period must use YYYY-MM format.");
   const recognitionDate = date(body.recognitionDate, "recognitionDate");
   const recordedAt = instant(body.recordedAt, "recordedAt");
   const idempotencyKey = text(idempotencyHeader, "Idempotency-Key", 128);
@@ -129,10 +135,12 @@ function parseCommand(value: unknown, idempotencyHeader: string | null, directio
     sourceId,
     from,
     to,
+    period: periodValue,
     recognitionDate,
     recordedAt,
     idempotencyKey,
     affectedFactId: optionalText(body.affectedFactId, "affectedFactId", 256),
+    affectedSourceId: optionalText(body.affectedSourceId, "affectedSourceId", 256),
     deductible,
     evidence: { currency: definition, exemptBase, historicalExemptBase, rates, withholdingOccurredAt },
   };
@@ -152,7 +160,19 @@ function parseDeductible(
   };
 }
 
-function stableFactId(tenantId: string, organizationId: string, companyId: string, direction: LegacyVatReadDirection, sourceId: string): string {
+/**
+ * Resolves the reviewed fact a legacy correction affects.
+ * @param command - Parsed review command; an explicit fact ID is kept for existing clients.
+ * @param scope - Server-derived tenant, organization, and company scope.
+ * @param direction - Legacy book direction shared by the note and its original document.
+ * @returns The affected fact identity, or null when the command is not a correction.
+ */
+export function reviewedAffectedFactId(command: ReviewCommand, scope: { readonly tenantId: string; readonly organizationId: string; readonly companyId: string }, direction: LegacyVatReadDirection): string | null {
+  if (command.affectedFactId !== null) return command.affectedFactId;
+  return command.affectedSourceId === null ? null : stableFactId(scope.tenantId, scope.organizationId, scope.companyId, direction, command.affectedSourceId);
+}
+
+export function stableFactId(tenantId: string, organizationId: string, companyId: string, direction: LegacyVatReadDirection, sourceId: string): string {
   const digest = createHash("sha256").update([tenantId, organizationId, companyId, direction, sourceId].join("\u001f")).digest("hex");
   return `legacy-review:${digest}`;
 }

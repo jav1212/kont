@@ -14,6 +14,7 @@ export * from "./service-taxation";
 export * from "./taxation-configuration";
 export * from "./venezuela-vat";
 export * from "./service-venezuela-vat";
+export * from "./product-tax-assignment-summary";
 
 /** Actor and tenant scope required by product-taxation operations. */
 export interface TaxationContext {

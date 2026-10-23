@@ -16,12 +16,14 @@ import { recordLegacyVatSource } from "../record-legacy-source";
 export const GET = withTenantPermission("purchases.read", async (request, tenant) => {
   const params = new URL(request.url).searchParams;
   const companyId = params.get("companyId")?.trim() ?? "";
-  const from = params.get("from")?.trim() ?? "";
-  const to = params.get("to")?.trim() ?? "";
+  const period = params.get("period")?.trim() ?? "";
+  const periodRange = /^\d{4}-(0[1-9]|1[0-2])$/.test(period) ? monthRange(period) : null;
+  const from = periodRange?.from ?? params.get("from")?.trim() ?? "";
+  const to = periodRange?.to ?? params.get("to")?.trim() ?? "";
   const rawLimit = params.get("limit");
   const limit = rawLimit === null ? 100 : Number(rawLimit);
   const cursor = params.get("cursor");
-  if (!companyId || companyId.length > 256 || !isDate(from) || !isDate(to) || from > to
+  if (!companyId || companyId.length > 256 || (params.has("period") && periodRange === null) || !isDate(from) || !isDate(to) || from > to
     || !Number.isInteger(limit) || limit < 1 || limit > 100 || !isCursor(cursor)) {
     return Response.json({ error: "Rango, empresa, cursor o límite de revisión inválido." }, { status: 400 });
   }
@@ -46,6 +48,7 @@ export const GET = withTenantPermission("purchases.read", async (request, tenant
       direction: "purchase",
       from,
       to,
+      ...(periodRange ? { period } : {}),
       cursor,
       limit,
     });
@@ -70,6 +73,12 @@ function isDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function monthRange(period: string): { readonly from: string; readonly to: string } {
+  const [year, month] = period.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return { from: `${period}-01`, to: `${period}-${String(lastDay).padStart(2, "0")}` };
 }
 
 function isCursor(value: string | null): value is string | null {

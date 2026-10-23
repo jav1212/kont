@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BookOpenCheck, FileSearch, RefreshCcw } from "lucide-react";
-import type { LegacyVatSourcePage, VatLedgerPage } from "@kontave/tax-reporting/application";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, BookOpenCheck, Download, FileSearch, RefreshCcw } from "lucide-react";
+import type { LegacyVatSourcePage, VatLedgerPage, VatPeriodSummary } from "@kontave/tax-reporting/application";
 import type { TaxReportingFact } from "@kontave/tax-reporting/domain";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseCheckbox } from "@/src/shared/frontend/components/base-checkbox";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseSelect } from "@/src/shared/frontend/components/base-select";
+import { DocumentDrawer } from "@/src/modules/iva/frontend/components/document-drawer";
+import { PeriodSelector } from "@/src/modules/iva/frontend/components/period-selector";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { formatIvaMoney } from "@/src/modules/iva/frontend/money-format";
+import { ivaLabelOrPending } from "@/src/modules/iva/frontend/labels";
+import { ivaRequest } from "@/src/modules/iva/frontend/iva-client";
 
 type LedgerDirection = "purchase" | "sale";
 type LedgerMode = "facts" | "sources";
@@ -14,7 +24,7 @@ type SerializedMoney = { readonly currency: { readonly code: string; readonly mi
 type LedgerPayload = Omit<VatLedgerPage, "facts" | "rateGroups" | "withholdingGroups"> & {
   readonly facts: readonly (Omit<TaxReportingFact, "signed" | "deductible" | "rateBreakdowns" | "withholding"> & {
     readonly signed: { readonly taxableBase: SerializedMoney; readonly taxAmount: SerializedMoney; readonly exemptBase: SerializedMoney; readonly total: SerializedMoney };
-    readonly deductible: { readonly amount: SerializedMoney };
+    readonly deductible: { readonly amount: SerializedMoney; readonly state: "eligible" | "ineligible" | "pending_review" };
     readonly rateBreakdowns: readonly { readonly rate: string; readonly category: string; readonly taxableBase: SerializedMoney; readonly taxAmount: SerializedMoney; readonly component?: string }[];
     readonly withholding: { readonly kind: "practiced" | "suffered"; readonly amount: SerializedMoney; readonly certificateReference: string | null; readonly occurredAt: string } | null;
   })[];
@@ -26,16 +36,29 @@ type LedgerPayload = Omit<VatLedgerPage, "facts" | "rateGroups" | "withholdingGr
  * @param props - Book direction and human-facing title.
  * @returns A paginated fiscal book with explicit unavailable and review states.
  */
-export function IvaLedgerView({ direction, title }: { readonly direction: LedgerDirection; readonly title: string }): React.JSX.Element {
+export function IvaLedgerView({ direction, title, initialMode = "facts" }: { readonly direction: LedgerDirection; readonly title: string; readonly initialMode?: LedgerMode }): React.JSX.Element {
   const { companyId } = useCompany();
-  const [period, setPeriod] = useState(currentPeriod());
-  const [mode, setMode] = useState<LedgerMode>("facts");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const periodParam = searchParams.get("periodo");
+  const period = periodParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodParam) ? periodParam : currentPeriod();
+  const [mode, setMode] = useState<LedgerMode>(initialMode);
   const [ledger, setLedger] = useState<LedgerPayload | null>(null);
   const [sources, setSources] = useState<LegacyVatSourcePage | null>(null);
+  const [summary, setSummary] = useState<VatPeriodSummary | null>(null);
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [fortnight, setFortnight] = useState(searchParams.get("quincena") ?? "all");
+  const [selectedFact, setSelectedFact] = useState<LedgerPayload["facts"][number] | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const range = useMemo(() => periodRange(period), [period]);
+  const setPeriod = (nextPeriod: string) => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.set("periodo", nextPeriod);
+    router.replace(`?${query.toString()}`);
+  };
   const endpoint = mode === "facts"
     ? `/api/fiscal/iva/${direction === "purchase" ? "purchase-ledger" : "sales-ledger"}`
     : `/api/fiscal/iva/legacy-${direction === "purchase" ? "purchase" : "sales"}-sources`;
@@ -53,49 +76,127 @@ export function IvaLedgerView({ direction, title }: { readonly direction: Ledger
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ companyId, from: range.from, to: range.to, limit: "100" });
-      if (cursor) params.set("cursor", cursor);
-      const response = await fetch(`${endpoint}?${params}`, { cache: "no-store" });
-      const body: unknown = await response.json();
-      if (!response.ok) {
-        const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
-          ? body.error : "No fue posible consultar el libro de IVA.";
-        throw new Error(message);
-      }
-      if (typeof body !== "object" || body === null || !("data" in body)) throw new Error("La respuesta del libro de IVA no es válida.");
-      if (mode === "facts") setLedger(body.data as LedgerPayload);
-      else setSources(body.data as LegacyVatSourcePage);
-    } catch (cause) {
+      let currentCursor = cursor
+      let result: LedgerPayload | LegacyVatSourcePage | null = null
+      const collectAll = mode === "facts" && cursor === null && (search.trim().length > 0 || fortnight !== "all")
+      do {
+        const params = new URLSearchParams({ companyId, from: range.from, to: range.to, period, limit: "100" })
+        if (currentCursor) params.set("cursor", currentCursor)
+        const response = await fetch(`${endpoint}?${params}`, { cache: "no-store" })
+        const body: unknown = await response.json()
+        if (!response.ok) {
+          const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
+            ? body.error : "No fue posible consultar el libro de IVA."
+          throw new Error(message)
+        }
+        if (typeof body !== "object" || body === null || !("data" in body)) throw new Error("Respuesta del libro no valida.")
+        const page = body.data as LedgerPayload | LegacyVatSourcePage
+        if (mode === "facts") {
+          const factPage = page as LedgerPayload
+          result = result && "facts" in result
+            ? { ...factPage, facts: [...result.facts, ...factPage.facts] }
+            : factPage
+          currentCursor = collectAll && factPage.nextCursor ? JSON.stringify(factPage.nextCursor) : null
+        } else {
+          result = page
+          currentCursor = null
+        }
+      } while (currentCursor)
+      if (mode === "facts") setLedger(result as LedgerPayload | null)
+      else setSources(result as LegacyVatSourcePage | null)    } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No fue posible consultar el libro de IVA.");
       setLedger(null);
       setSources(null);
     } finally {
       setLoading(false);
     }
-  }, [companyId, endpoint, mode, range.from, range.to]);
+  }, [companyId, endpoint, mode, period, range.from, range.to, search, fortnight]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    if (!companyId) { setSummary(null); return () => { active = false; }; }
+    const params = new URLSearchParams({ companyId, period });
+    void ivaRequest<VatPeriodSummary>(`/api/fiscal/iva/period-summary?${params}`)
+      .then((value) => { if (active) setSummary(value); })
+      .catch(() => { if (active) setSummary(null); });
+    return () => { active = false; };
+  }, [companyId, period]);
 
-  return <div className="min-h-full bg-surface-2 font-mono">
+  async function exportPeriod(format: "csv" | "xlsx" | "pdf"): Promise<void> {
+    if (!companyId || exporting) return;
+    setExporting(true);
+    try {
+      const exportFacts: LedgerPayload["facts"][number][] = [];
+      let cursor: NonNullable<LedgerPayload["nextCursor"]> | null = null;
+      do {
+        const params = new URLSearchParams({ companyId, period, from: range.from, to: range.to, limit: "100" });
+        if (cursor) params.set("cursor", JSON.stringify(cursor));
+        const response = await fetch(`${endpoint}?${params}`, { cache: "no-store" });
+        const body: unknown = await response.json();
+        if (!response.ok) throw new Error(responseError(body));
+        const page = (body as { data: LedgerPayload }).data;
+        exportFacts.push(...page.facts);
+        cursor = page.nextCursor;
+      } while (cursor);
+      if (!exportFacts.length) throw new Error("No hay documentos fiscales guardados para exportar.");
+      const rows = exportFacts.map((fact, index) => ({
+        "N.º operación": index + 1, Fecha: fact.documentDate, RIF: fact.counterparty.taxIdentifier ?? "", Contraparte: fact.counterparty.name ?? "",
+        Documento: fact.source.id, Tipo: ivaLabelOrPending(fact.documentKind), "Factura afectada": fact.affectedFactId ?? "",
+        Conciliación: ivaLabelOrPending(fact.reconciliation.state), Exento: formatIvaMoney(fact.signed.exemptBase),
+        Base: formatIvaMoney(fact.signed.taxableBase), IVA: formatIvaMoney(fact.signed.taxAmount),
+        Retención: fact.withholding ? formatIvaMoney(fact.withholding.amount) : "",
+        "Comprobante retención": fact.withholding?.certificateReference ?? "",
+      }));
+      if (format === "csv") {
+        const headers = Object.keys(rows[0]!);
+        const content = [headers, ...rows.map((row) => headers.map((header) => row[header as keyof typeof row]))].map((values) => values.map(csvCell).join(";")).join("\r\n");
+        downloadFile(`libro-iva-${direction}-${period}.csv`, new Blob(["\uFEFF", content], { type: "text/csv;charset=utf-8" }));
+      } else if (format === "xlsx") {
+        const xlsx = await import("xlsx");
+        const book = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(book, xlsx.utils.json_to_sheet(rows), "Libro IVA");
+        xlsx.writeFile(book, `libro-iva-${direction}-${period}.xlsx`);
+      } else {
+        const { jsPDF } = await import("jspdf");
+        const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        pdf.setFontSize(12); pdf.text(`Libro de IVA · ${direction === "purchase" ? "Compras" : "Ventas"} · ${period}`, 12, 12);
+        pdf.setFontSize(7);
+        const headings = ["N.º", "Fecha", "RIF", "Contraparte", "Documento", "Tipo", "Afectada", "Exento", "Base", "IVA", "Retención"];
+        const x = [12, 22, 42, 66, 116, 148, 174, 205, 225, 247, 265];
+        const drawHeader = (y: number) => headings.forEach((heading, column) => pdf.text(heading, x[column]!, y));
+        drawHeader(20);
+        let y = 25;
+        rows.forEach((row, index) => {
+          if (y > 195) { pdf.addPage(); y = 14; drawHeader(y); y += 5; }
+          const values = [String(index + 1), row.Fecha, row.RIF, row.Contraparte, row.Documento, row.Tipo, row["Factura afectada"], row.Exento, row.Base, row.IVA, row.Retención];
+          values.forEach((value, column) => pdf.text(String(value).slice(0, column === 3 ? 28 : 18), x[column]!, y));
+          y += 5;
+        });
+        pdf.save(`libro-iva-${direction}-${period}.pdf`);
+      }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "No fue posible exportar el período completo."); }
+    finally { setExporting(false); }
+  }
+
+  return <div className="min-h-full bg-surface-2">
     <PageHeader title={title} subtitle="Libro fiscal basado en snapshots históricos de IVA">
-      <BaseButton.Root variant="secondary" size="sm" disabled={loading} leftIcon={<RefreshCcw size={14} />} onClick={() => void load()}>
+      <BaseButton.Root variant="secondary" size="sm" isDisabled={loading} leftIcon={<RefreshCcw size={14} />} onPress={() => void load()}>
         Actualizar
       </BaseButton.Root>
     </PageHeader>
     <main className="px-4 py-6 md:px-8 space-y-5">
       <div className="flex flex-wrap items-end gap-4">
-        <label className="grid gap-1 text-xs text-[var(--text-secondary)]">
-          Período
-          <input aria-label="Período" type="month" value={period} onChange={(event) => setPeriod(event.target.value)} className="h-10 rounded-lg border border-border-light bg-surface-1 px-3 text-sm text-foreground" />
-        </label>
+        <PeriodSelector label="Período" value={period} onChange={setPeriod} />
         <div className="flex rounded-lg border border-border-light bg-surface-1 p-1" role="tablist" aria-label="Tipo de consulta IVA">
-          <button type="button" role="tab" aria-selected={mode === "facts"} onClick={() => setMode("facts")} className={tabClass(mode === "facts")}>
-            <BookOpenCheck size={14} /> Hechos guardados
-          </button>
-          <button type="button" role="tab" aria-selected={mode === "sources"} onClick={() => setMode("sources")} className={tabClass(mode === "sources")}>
-            <FileSearch size={14} /> Fuentes por revisar
-          </button>
+          <BaseButton.Root role="tab" aria-selected={mode === "facts"} size="sm" variant={mode === "facts" ? "secondary" : "ghost"} leftIcon={<BookOpenCheck size={14} />} onPress={() => setMode("facts")}>Hechos guardados</BaseButton.Root>
+          <BaseButton.Root role="tab" aria-selected={mode === "sources"} size="sm" variant={mode === "sources" ? "secondary" : "ghost"} leftIcon={<FileSearch size={14} />} onPress={() => setMode("sources")}>Fuentes por revisar</BaseButton.Root>
         </div>
+        {mode === "facts" && <>
+          <BaseInput.Field label="Buscar RIF, contraparte o documento" type="search" className="w-full sm:w-64" value={search} onValueChange={(value) => { setSearch(value); const query = new URLSearchParams(searchParams.toString()); if (value) query.set("q", value); else query.delete("q"); router.replace(`?${query}`); }} />
+          <div className="w-full sm:w-44"><BaseSelect label="Quincena" selectionMode="single" items={FORTNIGHT_OPTIONS} value={fortnight} onValueChange={(value) => { const next = value || "all"; setFortnight(next); const query = new URLSearchParams(searchParams.toString()); if (next === "all") query.delete("quincena"); else query.set("quincena", next); router.replace(`?${query}`); }} /></div>
+          <div className="flex flex-wrap gap-2"><BaseButton.Root variant="secondary" size="sm" isDisabled={exporting || !companyId} leftIcon={<Download size={14} />} onPress={() => void exportPeriod("csv")}>CSV</BaseButton.Root><BaseButton.Root variant="secondary" size="sm" isDisabled={exporting || !companyId} onPress={() => void exportPeriod("xlsx")}>Excel</BaseButton.Root><BaseButton.Root variant="secondary" size="sm" isDisabled={exporting || !companyId} onPress={() => void exportPeriod("pdf")}>PDF</BaseButton.Root></div>
+        </>}
       </div>
 
       <p className="text-xs text-[var(--text-secondary)]">Rango: {range.from} — {range.to}. Los hechos guardados usan tasas históricas; las fuentes heredadas aún no se consideran hechos conciliados.</p>
@@ -106,46 +207,70 @@ export function IvaLedgerView({ direction, title }: { readonly direction: Ledger
         <div><p className="font-semibold">No se pudo cargar esta consulta.</p><p className="mt-1 text-[var(--text-secondary)]">{error}</p>
           <p className="mt-2 text-xs text-[var(--text-tertiary)]">Una fuente no disponible no equivale a un libro vacío ni a una declaración conciliada.</p></div>
       </div>}
-      {!loading && !error && mode === "facts" && ledger && <FactLedger ledger={ledger} onNext={(cursor) => void load(JSON.stringify(cursor))} loading={loading} />}
-      {!loading && !error && mode === "sources" && sources && <LegacySources key={`${companyId}:${direction}:${period}`} sources={sources} direction={direction} companyId={companyId} from={range.from} to={range.to} onNext={(cursor) => void load(cursor)} loading={loading} />}
+      {exporting && <p role="status" className="text-xs text-[var(--text-secondary)]">Preparando la exportación del período…</p>}
+      {!loading && !error && mode === "facts" && ledger && <>{summary && <PeriodTotals summary={summary} direction={direction} />}<FactLedger ledger={ledger} onNext={(cursor) => void load(JSON.stringify(cursor))} loading={loading} search={search} fortnight={fortnight} onSelect={setSelectedFact} /></>}
+      {!loading && !error && mode === "sources" && sources && <LegacySources key={`${companyId}:${direction}:${period}`} sources={sources} direction={direction} companyId={companyId} from={range.from} to={range.to} period={period} onNext={(cursor) => void load(cursor)} loading={loading} />}
+      {selectedFact && <DocumentDetail fact={selectedFact} onClose={() => setSelectedFact(null)} />}
     </main>
   </div>;
 }
 
-function FactLedger({ ledger, onNext, loading }: { readonly ledger: LedgerPayload; readonly onNext: (cursor: NonNullable<LedgerPayload["nextCursor"]>) => void; readonly loading: boolean }): React.JSX.Element {
+function PeriodTotals({ summary, direction }: { readonly summary: VatPeriodSummary; readonly direction: LedgerDirection }): React.JSX.Element {
+  const sourceDirection = direction === "purchase" ? "purchase" : "sale";
+  const count = summary.factCounts[sourceDirection] + (direction === "purchase" ? summary.factCounts.import : 0);
+  const totals = summary.totals.filter((item) => item.direction === sourceDirection);
+  const rates = summary.rateTotals.filter((item) => item.direction === sourceDirection);
+  const relevant = direction === "purchase"
+    ? [{ kind: "credit", label: "Crédito fiscal admitido" }, { kind: "credit_pending", label: "Crédito fiscal por revisar" }, { kind: "withholding_suffered", label: "Retención soportada" }]
+    : [{ kind: "tax", label: "Débito fiscal" }, { kind: "withholding_practiced", label: "Retención practicada" }];
   return <section className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Kpi label="Documentos en esta página" value={String(ledger.facts.length)} />
-      <Kpi label="Grupos históricos de tasa" value={String(ledger.rateGroups.length)} />
-      <Kpi label="Retenciones agrupadas" value={String(ledger.withholdingGroups.length)} />
-      <Kpi label="Siguiente página" value={ledger.nextCursor ? "Disponible" : "No"} />
-    </div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><article className="rounded-xl border border-border-light bg-surface-1 p-4"><p className="text-xs text-[var(--text-tertiary)]">Documentos en el período</p><p className="mt-2 text-lg font-semibold">{count}</p></article>{relevant.map(({ kind, label }) => {
+      const amounts = totals.filter((item) => item.kind === kind);
+      return <article key={kind} className="rounded-xl border border-border-light bg-surface-1 p-4"><p className="text-xs text-[var(--text-tertiary)]">{label}</p>{amounts.length ? amounts.map((item, index) => <p key={`${item.amount.currency.code}-${index}`} className="mt-2 text-lg font-semibold tabular-nums">{formatIvaMoney(item.amount)}</p>) : <p className="mt-2 text-lg font-semibold">—</p>}</article>;
+    })}</div>
+    {rates.length > 0 && <div className="overflow-x-auto rounded-xl border border-border-light bg-surface-1"><h2 className="border-b border-border-light p-4 text-sm font-semibold">Totales completos del período por alícuota</h2><table className="w-full text-left text-sm"><thead><tr className="text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Componente</th><th className="p-3">Categoría</th><th className="p-3">Tasa</th><th className="p-3 text-right">Base</th><th className="p-3 text-right">Impuesto</th></tr></thead><tbody>{rates.map((item, index) => <tr key={`${item.component}:${item.category}:${item.rate}:${item.taxableBase.currency.code}:${index}`} className="border-t border-border-light/70"><td className="p-3">{ivaLabelOrPending(item.component ?? "base")}</td><td className="p-3">{ivaLabelOrPending(item.category)}</td><td className="p-3">{item.rate}%</td><td className="p-3 text-right">{formatIvaMoney(item.taxableBase)}</td><td className="p-3 text-right">{formatIvaMoney(item.taxAmount)}</td></tr>)}</tbody></table></div>}
+  </section>;
+}
+function FactLedger({ ledger, onNext, loading, search, fortnight, onSelect }: { readonly ledger: LedgerPayload; readonly onNext: (cursor: NonNullable<LedgerPayload["nextCursor"]>) => void; readonly loading: boolean; readonly search: string; readonly fortnight: string; readonly onSelect: (fact: LedgerPayload["facts"][number]) => void }): React.JSX.Element {
+  const facts = ledger.facts.filter((fact) => {
+    const needle = search.trim().toLocaleLowerCase("es-VE");
+    const matchesSearch = !needle || [fact.counterparty.name, fact.counterparty.taxIdentifier, fact.source.id, fact.documentKind, fact.affectedFactId].some((item) => item?.toLocaleLowerCase("es-VE").includes(needle));
+    const day = Number(fact.documentDate?.slice(8, 10));
+    const matchesFortnight = fortnight === "all" || (fortnight === "1" ? day <= 15 : day >= 16);
+    return matchesSearch && matchesFortnight;
+  });
+  return <section className="space-y-4">
     <div className="overflow-x-auto rounded-xl border border-border-light bg-surface-1">
-      {ledger.facts.length === 0 ? <p className="p-10 text-center text-sm">No hay hechos guardados en este rango.</p> : <table className="w-full text-left text-sm">
-        <thead><tr className="border-b border-border-light bg-surface-2/50 text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Fecha</th><th className="p-3">Origen</th><th className="p-3">Contraparte</th><th className="p-3">Conciliación</th><th className="p-3 text-right">Base</th><th className="p-3 text-right">IVA</th></tr></thead>
-        <tbody>{ledger.facts.map((fact) => <FactRow key={fact.id} fact={fact} />)}</tbody>
+      {facts.length === 0 ? <p className="p-10 text-center text-sm">No hay hechos guardados con estos filtros en esta página.</p> : <table className="w-full min-w-[1050px] text-left text-sm">
+        <thead><tr className="border-b border-border-light bg-surface-2/50 text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">N.º</th><th className="p-3">Fecha</th><th className="p-3">RIF / contraparte</th><th className="p-3">Factura / documento</th><th className="p-3">Tipo</th><th className="p-3">Afectada</th><th className="p-3">Conciliación</th><th className="p-3 text-right">Exento</th><th className="p-3 text-right">Base</th><th className="p-3 text-right">IVA</th><th className="p-3 text-right">Retención</th></tr></thead>
+        <tbody>{facts.map((fact, index) => <FactRow key={fact.id} fact={fact} operation={index + 1} onSelect={onSelect} />)}</tbody>
       </table>}
-      {ledger.nextCursor && <div className="border-t border-border-light p-4 text-center"><BaseButton.Root variant="secondary" size="sm" disabled={loading} onClick={() => onNext(ledger.nextCursor!)}>Cargar siguientes hechos</BaseButton.Root></div>}
+      {ledger.nextCursor && <div className="border-t border-border-light p-4 text-center"><BaseButton.Root variant="secondary" size="sm" isDisabled={loading} onPress={() => onNext(ledger.nextCursor!)}>Cargar siguientes hechos</BaseButton.Root></div>}
     </div>
-    {ledger.rateGroups.length > 0 && <div className="overflow-x-auto rounded-xl border border-border-light bg-surface-1">
-      <h2 className="border-b border-border-light p-4 text-xs font-bold uppercase tracking-wider">Totales por tasa guardada en esta página</h2>
-      <table className="w-full text-left text-sm"><thead><tr className="text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Componente</th><th className="p-3">Categoría</th><th className="p-3">Tasa</th><th className="p-3">Versión regla</th><th className="p-3 text-right">Base</th><th className="p-3 text-right">IVA</th></tr></thead>
-        <tbody>{ledger.rateGroups.map((group, index) => <tr key={`${group.component}:${group.category}:${group.rate}:${group.ruleVersion}:${group.taxableBase.currency.code}:${index}`} className="border-t border-border-light/70"><td className="p-3">{group.component ?? "base"}</td><td className="p-3">{group.category}</td><td className="p-3">{group.rate}%</td><td className="p-3">{group.ruleVersion ?? "Sin versión registrada"}</td><td className="p-3 text-right">{formatMoney(group.taxableBase)}</td><td className="p-3 text-right">{formatMoney(group.taxAmount)}</td></tr>)}</tbody>
-      </table>
-    </div>}
-    {ledger.withholdingGroups.length > 0 && <div className="overflow-x-auto rounded-xl border border-border-light bg-surface-1">
-      <h2 className="border-b border-border-light p-4 text-xs font-bold uppercase tracking-wider">Retenciones históricas en esta página</h2>
-      <table className="w-full text-left text-sm"><thead><tr className="text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Tipo</th><th className="p-3 text-right">Monto</th></tr></thead>
-        <tbody>{ledger.withholdingGroups.map((group, index) => <tr key={`${group.kind}:${index}`} className="border-t border-border-light/70"><td className="p-3">{group.kind === "practiced" ? "Practicada" : "Sufrida"}</td><td className="p-3 text-right">{formatMoney(group.amount)}</td></tr>)}</tbody>
-      </table>
-    </div>}
   </section>;
 }
 
-function FactRow({ fact }: { readonly fact: LedgerPayload["facts"][number] }): React.JSX.Element {
+function FactRow({ fact, operation, onSelect }: { readonly fact: LedgerPayload["facts"][number]; readonly operation: number; readonly onSelect: (fact: LedgerPayload["facts"][number]) => void }): React.JSX.Element {
   const state = fact.reconciliation.state;
-  return <tr className="border-t border-border-light/70"><td className="whitespace-nowrap p-3">{fact.documentDate}</td><td className="p-3">{fact.source.kind}<span className="block text-[10px] text-[var(--text-tertiary)]">{fact.documentKind}</span></td><td className="p-3">{fact.counterparty.name ?? fact.counterparty.taxIdentifier ?? "—"}</td><td className={state === "issue" ? "p-3 text-warning" : "p-3 text-success"}>{state === "issue" ? "Revisión requerida" : "Conciliado"}</td><td className="whitespace-nowrap p-3 text-right">{formatMoney(fact.signed.taxableBase)}</td><td className="whitespace-nowrap p-3 text-right">{formatMoney(fact.signed.taxAmount)}</td></tr>;
+  return <tr tabIndex={0} onClick={() => onSelect(fact)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(fact); } }} className="cursor-pointer border-t border-border-light/70 hover:bg-surface-2"><td className="p-3">{operation}</td><td className="whitespace-nowrap p-3">{fact.documentDate}</td><td className="p-3">{fact.counterparty.taxIdentifier ?? "—"}<span className="block text-xs">{fact.counterparty.name ?? "—"}</span></td><td className="p-3">{fact.source.id}</td><td className="p-3">{ivaLabelOrPending(fact.documentKind)}</td><td className="p-3">{fact.affectedFactId ?? "—"}</td><td className={state === "issue" ? "p-3 text-warning" : "p-3 text-success"}>{ivaLabelOrPending(state)}</td><td className="whitespace-nowrap p-3 text-right">{formatMoney(fact.signed.exemptBase)}</td><td className="whitespace-nowrap p-3 text-right">{formatMoney(fact.signed.taxableBase)}</td><td className="whitespace-nowrap p-3 text-right">{formatMoney(fact.signed.taxAmount)}</td><td className="whitespace-nowrap p-3 text-right">{fact.withholding ? formatMoney(fact.withholding.amount) : "—"}</td></tr>;
 }
+
+function DocumentDetail({ fact, onClose }: { readonly fact: LedgerPayload["facts"][number]; readonly onClose: () => void }): React.JSX.Element {
+  const fields: readonly (readonly [string, string])[] = [["Contraparte", fact.counterparty.name ?? "—"], ["RIF", fact.counterparty.taxIdentifier ?? "—"], ["Documento", fact.source.id], ["Factura afectada", fact.affectedFactId ?? "—"], ["Conciliación", ivaLabelOrPending(fact.reconciliation.state)], ["Deducibilidad", ivaLabelOrPending(fact.deductible.state)], ["Base", formatMoney(fact.signed.taxableBase)], ["Exento", formatMoney(fact.signed.exemptBase)], ["Impuesto", formatMoney(fact.signed.taxAmount)], ["Total", formatMoney(fact.signed.total)]];
+  return <DocumentDrawer isOpen onClose={onClose} title="Detalle del documento" subtitle={`${fact.documentDate} · ${ivaLabelOrPending(fact.documentKind)}`} footer={<BaseButton.Root variant="secondary" size="sm" onPress={onClose}>Cerrar</BaseButton.Root>}>
+    <div className="space-y-6 p-5">
+      <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">{fields.map(([label, value]) => <div key={label} className="rounded-lg bg-surface-2 p-3"><dt className="text-xs text-[var(--text-secondary)]">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>)}</dl>
+      <section><h3 className="font-semibold">Desglose por alícuota</h3><div className="mt-2 space-y-2">{fact.rateBreakdowns.map((rate, index) => <div key={index} className="rounded-lg border border-border-light p-3 text-sm">{ivaLabelOrPending(rate.category)} · {ivaLabelOrPending(rate.component ?? "base")} · {rate.rate}%<span className="mt-1 block">Base {formatMoney(rate.taxableBase)} · IVA {formatMoney(rate.taxAmount)}</span></div>)}</div></section>
+      {fact.withholding && <section><h3 className="font-semibold">Retención</h3><p className="mt-2 text-sm">{ivaLabelOrPending(fact.withholding.kind)} · {formatMoney(fact.withholding.amount)} · {fact.withholding.certificateReference ?? "Sin comprobante"}</p></section>}
+    </div>
+  </DocumentDrawer>;
+}
+
+const FORTNIGHT_OPTIONS = [{ id: "all", name: "Todo el período" }, { id: "1", name: "Primera" }, { id: "2", name: "Segunda" }];
+
+function csvCell(value: unknown): string { const text = String(value ?? ""); return `"${text.replaceAll('"', '""')}"`; }
+function downloadFile(filename: string, blob: Blob): void { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url); }
+function responseError(value: unknown): string { if (typeof value === "object" && value !== null && "error" in value && typeof value.error === "string") return value.error; return "No fue posible consultar el período completo."; }
 
 const REVIEW_RATE_CATEGORIES = ["taxable", "zero_rated", "exempt", "exonerated", "non_subject", "unknown"] as const;
 
@@ -157,31 +282,71 @@ interface ReviewRateInput {
   readonly ruleVersion: string;
 }
 
-function LegacySources({ sources, direction, companyId, from, to, onNext, loading }: { readonly sources: LegacyVatSourcePage; readonly direction: LedgerDirection; readonly companyId: string | null; readonly from: string; readonly to: string; readonly onNext: (cursor: string) => void; readonly loading: boolean }): React.JSX.Element {
+function LegacySources({ sources, direction, companyId, from, to, period, onNext, loading }: { readonly sources: LegacyVatSourcePage; readonly direction: LedgerDirection; readonly companyId: string | null; readonly from: string; readonly to: string; readonly period: string; readonly onNext: (cursor: string) => void; readonly loading: boolean }): React.JSX.Element {
   const [selected, setSelected] = useState<LegacyVatSourcePage["documents"][number] | null>(null);
   const [reviewedIds, setReviewedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchQueue, setBatchQueue] = useState<readonly LegacyVatSourcePage["documents"][number][]>([]);
+  const [batchPrepared, setBatchPrepared] = useState<readonly Record<string, unknown>[]>([]);
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const batchSubmission = useRef<{ readonly key: string; readonly body: string } | null>(null);
+  const startBatch = () => {
+    const queue = sources.documents.filter((source) => selectedIds.has(source.id) && !reviewedIds.has(source.id));
+    if (queue.length === 0 || queue.length > 100) { setBatchError("Selecciona entre uno y 100 documentos visibles."); return; }
+    setBatchError(null); setBatchPrepared([]); setBatchQueue(queue); setSelected(queue[0]!); setBatchMode(true); batchSubmission.current = null;
+  };
+  const prepareNext = (body: Record<string, unknown>) => {
+    setBatchPrepared((current) => [...current, body]);
+    setBatchQueue((current) => current.slice(1));
+    setSelected(batchQueue[1] ?? null);
+  };
+  const commitBatch = async () => {
+    if (!companyId || batchPrepared.length === 0) return;
+    const body = JSON.stringify({ direction, companyId, items: batchPrepared });
+    if (!batchSubmission.current || batchSubmission.current.body !== body) batchSubmission.current = { key: crypto.randomUUID(), body };
+    setBatchSaving(true); setBatchError(null);
+    try {
+      const response = await fetch("/api/fiscal/iva/legacy-sources/batch", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": batchSubmission.current.key }, body: batchSubmission.current.body });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(responseError(payload));
+      const results = (payload as { data: { items: readonly { readonly sourceId: string; readonly status: string; readonly reason?: string }[] } }).data.items;
+      const incorporated = results.filter((item) => item.status === "incorporated");
+      setReviewedIds((current) => new Set([...current, ...incorporated.map((item) => item.sourceId)]));
+      setBatchPrepared([]); setBatchQueue([]); setBatchMode(false); setSelectedIds(new Set()); batchSubmission.current = null;
+      const rejected = results.filter((item) => item.status === "rejected");
+      setBatchError(rejected.length ? `${incorporated.length} incorporados; ${rejected.length} requieren corrección: ${rejected.map((item) => `${item.sourceId}: ${item.reason}`).join(" · ")}` : null);
+    } catch (cause) { setBatchError(cause instanceof Error ? cause.message : "No fue posible completar el lote. Puedes reintentar sin cambiar su contenido."); }
+    finally { setBatchSaving(false); }
+  };
   return <div className="overflow-x-auto rounded-xl border border-border-light bg-surface-1">
     <div className="flex items-start gap-3 border-b border-border-light p-4 text-xs text-[var(--text-secondary)]"><AlertTriangle size={16} className="shrink-0 text-warning" /><p>Estos son snapshots crudos del sistema anterior. La vista no determina alícuotas, no los incorpora al libro fiscal y no los incluye en una declaración.</p></div>
-    {sources.documents.length === 0 ? <p className="p-10 text-center text-sm">No hay fuentes heredadas en este rango.</p> : <table className="w-full text-left text-sm">
-      <thead><tr className="border-b border-border-light bg-surface-2/50 text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Fecha</th><th className="p-3">Documento</th><th className="p-3">Número</th><th className="p-3 text-right">IVA cabecera</th><th className="p-3">Líneas</th><th className="p-3">Actualizado</th><th className="p-3">Acción</th></tr></thead>
-      <tbody>{sources.documents.map((source) => { const recorded = reviewedIds.has(source.id); return <tr key={source.id} className="border-t border-border-light/70"><td className="p-3">{source.documentDate ?? "—"}</td><td className="p-3">{source.kind}</td><td className="p-3">{source.header.number ?? source.id}</td><td className="p-3 text-right">{source.header.taxAmount ? String(source.header.taxAmount) : "—"}</td><td className="p-3">{source.lines.length}</td><td className="p-3">{source.updatedAt}</td><td className="p-3"><button type="button" disabled={recorded} className="whitespace-nowrap text-primary-500 underline disabled:text-success disabled:no-underline" onClick={() => setSelected(source)}>{recorded ? "Hecho registrado" : "Revisar evidencia"}</button></td></tr>; })}</tbody>
+    {companyId && sources.documents.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border-light p-4"><BaseButton.Root variant="primary" size="sm" isDisabled={selectedIds.size === 0 || selectedIds.size > 100 || batchMode} onPress={startBatch}>Revisar lote ({selectedIds.size})</BaseButton.Root>{selectedIds.size > 100 && <span className="text-xs text-warning">El límite es 100 documentos.</span>}</div>}
+    {batchError && <p role="status" className="border-b border-border-light p-4 text-sm">{batchError}</p>}
+    {batchMode && !selected && batchPrepared.length > 0 && <section className="space-y-3 border-b border-border-light bg-surface-2 p-4"><h3 className="font-semibold">Vista previa del lote · {batchPrepared.length} documentos</h3><p className="text-sm text-[var(--text-secondary)]">Se guardarán juntos solo los hechos revisados que no tengan pendientes bloqueantes. Si falla una inserción, la base revierte el lote completo.</p><ul className="max-h-40 space-y-1 overflow-y-auto text-xs">{batchPrepared.map((item, index) => <li key={`${String(item.sourceId)}:${index}`}>{String(item.sourceId)} · período {String(item.period)} · reconocimiento {String(item.recognitionDate)}</li>)}</ul><div className="flex flex-wrap gap-2"><BaseButton.Root variant="primary" size="sm" loading={batchSaving} onPress={() => void commitBatch()}>Confirmar incorporación revisada</BaseButton.Root><BaseButton.Root variant="secondary" size="sm" isDisabled={batchSaving} onPress={() => { setBatchPrepared([]); setBatchQueue([]); setBatchMode(false); batchSubmission.current = null; }}>Cancelar</BaseButton.Root></div></section>}
+    {sources.documents.length === 0 ? <p className="p-10 text-center text-sm">No hay fuentes heredadas en este rango.</p> : <table className="w-full min-w-[900px] text-left text-sm">
+      <thead><tr className="border-b border-border-light bg-surface-2/50 text-xs uppercase text-[var(--text-tertiary)]"><th className="p-3">Selección</th><th className="p-3">Fecha</th><th className="p-3">Documento</th><th className="p-3">Número</th><th className="p-3 text-right">IVA cabecera</th><th className="p-3">Pendientes detectados</th><th className="p-3">Actualizado</th><th className="p-3">Acción</th></tr></thead>
+      <tbody>{sources.documents.map((source) => { const recorded = reviewedIds.has(source.id); return <tr key={source.id} className="border-t border-border-light/70"><td className="p-3"><BaseCheckbox.Field aria-label={`Seleccionar ${source.header.number ?? source.id}`} className="!w-auto" isSelected={selectedIds.has(source.id)} isDisabled={reviewedIds.has(source.id) || batchMode} onValueChange={(checked) => setSelectedIds((current) => { const next = new Set(current); if (checked) next.add(source.id); else next.delete(source.id); return next; })} /></td><td className="p-3">{source.documentDate ?? "—"}</td><td className="p-3">{ivaLabelOrPending(source.kind)}</td><td className="p-3">{source.header.number ?? source.id}</td><td className="p-3 text-right">{source.header.taxAmount ? String(source.header.taxAmount) : "—"}</td><td className="p-3">{source.pendingReasons?.length ? source.pendingReasons.map(ivaLabelOrPending).join(" · ") : "Sin pendientes detectados"}</td><td className="p-3">{source.updatedAt}</td><td className="p-3">{recorded ? <span className="whitespace-nowrap text-success">Hecho registrado</span> : <BaseButton.Root variant="ghost" size="sm" className="whitespace-nowrap" onPress={() => setSelected(source)}>Revisar evidencia</BaseButton.Root>}</td></tr>; })}</tbody>
     </table>}
-    {sources.nextCursor && <div className="border-t border-border-light p-4 text-center"><BaseButton.Root variant="secondary" size="sm" disabled={loading} onClick={() => onNext(sources.nextCursor!)}>Cargar siguientes fuentes</BaseButton.Root></div>}
-    {selected && companyId && <LegacyReviewForm key={selected.id} source={selected} direction={direction} companyId={companyId} from={from} to={to} onSaved={() => setReviewedIds((current) => new Set(current).add(selected.id))} onClose={() => setSelected(null)} />}
+    {sources.nextCursor && <div className="border-t border-border-light p-4 text-center"><BaseButton.Root variant="secondary" size="sm" isDisabled={loading} onPress={() => onNext(sources.nextCursor!)}>Cargar siguientes fuentes</BaseButton.Root></div>}
+    {selected && companyId && <LegacyReviewForm key={`${selected.id}:${batchMode}`} source={selected} direction={direction} companyId={companyId} from={from} to={to} period={period} onSaved={() => setReviewedIds((current) => new Set(current).add(selected.id))} {...(batchMode ? { onPrepared: prepareNext } : {})} onClose={() => { if (batchMode) { setBatchQueue([]); setBatchMode(false); } setSelected(null); }} />}
   </div>;
 }
 
-function LegacyReviewForm({ source, direction, companyId, from, to, onSaved, onClose }: { readonly source: LegacyVatSourcePage["documents"][number]; readonly direction: LedgerDirection; readonly companyId: string; readonly from: string; readonly to: string; readonly onSaved: () => void; readonly onClose: () => void }): React.JSX.Element {
+function LegacyReviewForm({ source, direction, companyId, from, to, period, onSaved, onClose, onPrepared }: { readonly source: LegacyVatSourcePage["documents"][number]; readonly direction: LedgerDirection; readonly companyId: string; readonly from: string; readonly to: string; readonly period: string; readonly onSaved: () => void; readonly onClose: () => void; readonly onPrepared?: (body: Record<string, unknown>) => void }): React.JSX.Element {
   const [recognitionDate, setRecognitionDate] = useState(source.documentDate ?? "");
-  const [currencyCode, setCurrencyCode] = useState(source.header.currency ?? "");
-  const [minorUnit, setMinorUnit] = useState("");
+  const documentCurrency = isoCurrency(source.header.currency);
+  const [currencyCode, setCurrencyCode] = useState(documentCurrency?.code ?? "");
+  const minorUnit = isoCurrency(currencyCode)?.minorUnit ?? null;
+  const isCorrection = source.kind.includes("credit_note") || source.kind.includes("debit_note");
+  const affectedLabel = source.header.affectedNumber ?? source.affectedId;
   const [exemptBase, setExemptBase] = useState("");
   const [historicalExemptBase, setHistoricalExemptBase] = useState("");
   const [rates, setRates] = useState<ReviewRateInput[]>([{ rate: "", category: "", taxableBase: "", taxAmount: "", ruleVersion: "" }]);
   const [deductibleState, setDeductibleState] = useState<"eligible" | "ineligible" | "pending_review">("pending_review");
   const [deductibleAmount, setDeductibleAmount] = useState("0");
   const [deductibleReason, setDeductibleReason] = useState("");
-  const [affectedFactId, setAffectedFactId] = useState("");
   const [withholdingOccurredAt, setWithholdingOccurredAt] = useState("");
   const storageKey = `iva-review:${companyId}:${direction}:${source.id}`;
   const [pending, setPending] = useState<{ readonly key: string; readonly body: Record<string, unknown> } | null>(() => {
@@ -209,19 +374,25 @@ function LegacyReviewForm({ source, direction, companyId, from, to, onSaved, onC
           sourceId: source.id,
           from,
           to,
+          period,
           recognitionDate,
           recordedAt: new Date().toISOString(),
-          currency: { code: currencyCode, minorUnit: Number(minorUnit) },
+          currency: { code: currencyCode, minorUnit },
           exemptBase,
           historicalExemptBase: historicalExemptBase === "" ? null : historicalExemptBase,
           rates: rates.map((rate) => ({ ...rate, ruleVersion: rate.ruleVersion || null })),
           deductible: { state: deductibleState, amount: deductibleAmount, reason: deductibleReason || null },
-          affectedFactId: affectedFactId || null,
+          affectedSourceId: isCorrection ? source.affectedId : null,
           withholdingOccurredAt: withholdingOccurredAt ? new Date(withholdingOccurredAt).toISOString() : null,
         },
       };
       setPending(command);
       try { window.sessionStorage.setItem(storageKey, JSON.stringify(command)); } catch { /* Idempotency remains available while this dialog stays open. */ }
+      if (onPrepared) {
+        onPrepared(command.body);
+        setSaved({ id: source.id, state: "prepared" });
+        return;
+      }
       const endpoint = `/api/fiscal/iva/legacy-${direction === "purchase" ? "purchase" : "sales"}-sources`;
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": command.key }, body: JSON.stringify(command.body) });
       const payload: unknown = await response.json();
@@ -251,62 +422,66 @@ function LegacyReviewForm({ source, direction, companyId, from, to, onSaved, onC
     }
   };
 
-  return <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4" role="presentation">
-    <section role="dialog" aria-modal="true" aria-labelledby="legacy-review-title" className="mx-auto my-6 max-w-3xl rounded-xl border border-border-medium bg-surface-1 shadow-xl">
-      <header className="flex items-start justify-between gap-4 border-b border-border-light p-5"><div><h2 id="legacy-review-title" className="text-sm font-bold uppercase tracking-wider">Revisar fuente IVA</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{source.kind} · {source.header.number ?? source.id} · {source.documentDate ?? "Sin fecha"}</p></div><button type="button" aria-label="Cerrar" className="text-[var(--text-secondary)] underline" onClick={onClose}>Cerrar</button></header>
-      {saved ? <div className="space-y-3 p-5"><p role="status" className="text-sm">Revisión guardada como hecho {saved.id}. Estado: <strong>{saved.state === "reconciled" ? "conciliado" : "requiere revisión"}</strong>.</p><p className="text-xs text-[var(--text-secondary)]">Un hecho con incidencias no se incluye en la preparación de declaraciones.</p><BaseButton.Root variant="secondary" size="sm" onClick={onClose}>Listo</BaseButton.Root></div> : <form className="p-5" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-        <fieldset disabled={Boolean(pending)} className="space-y-5 disabled:opacity-60">
+  const formId = `legacy-review-${source.id}`;
+  const footer = saved
+    ? <BaseButton.Root variant="secondary" size="sm" onPress={onClose}>Listo</BaseButton.Root>
+    : <div className="flex flex-wrap justify-end gap-2"><BaseButton.Root variant="secondary" size="sm" isDisabled={saving} onPress={onClose}>Cancelar</BaseButton.Root><BaseButton.Root form={formId} type="submit" variant="primary" size="sm" loading={saving} isDisabled={Boolean(pending && !error) || minorUnit === null || (isCorrection && !source.affectedId)}>{pending ? "Reintentar guardado" : onPrepared ? "Agregar al lote" : "Guardar hecho revisado"}</BaseButton.Root></div>;
+
+  return <DocumentDrawer isOpen onClose={onClose} isDismissable={!saving} title="Revisar fuente IVA" subtitle={`${ivaLabelOrPending(source.kind)} · ${source.header.number ?? source.id} · ${source.documentDate ?? "Sin fecha"}`} footer={footer}>
+    {saved ? <div className="space-y-3 p-5"><p role="status" className="text-sm">Revisión guardada. Estado: <strong>{saved.state === "prepared" ? "preparado para el lote" : saved.state === "reconciled" ? "conciliado" : "requiere revisión"}</strong>.</p><p className="text-xs text-[var(--text-secondary)]">Un hecho con incidencias no se incluye en la preparación de declaraciones.</p></div> : <form id={formId} className="p-5" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      <fieldset disabled={Boolean(pending)} className="space-y-5 disabled:opacity-60">
         <div className="rounded-lg border border-warning/30 p-3 text-xs text-[var(--text-secondary)]"><AlertTriangle size={14} className="mr-2 inline text-warning" />Las tasas y bases siguientes son evidencia que tú debes revisar; el sistema no las deduce del código heredado ni de reglas actuales.</div>
         <div className="rounded-lg border border-border-light p-3 text-xs"><p><strong>Contraparte:</strong> {source.header.counterpartyName ?? "Sin nombre"} · {source.header.counterpartyTaxId ?? "Sin identificación"}</p><p className="mt-1"><strong>Retención IVA guardada:</strong> {source.header.withheldAmount ?? "Sin dato"} · <strong>Comprobante:</strong> {source.header.withholdingCertificate ?? "Sin comprobante"}</p>
-          <div className="mt-3 overflow-x-auto"><table className="w-full text-left"><thead><tr className="text-[10px] uppercase text-[var(--text-tertiary)]"><th className="p-1">Código heredado</th><th className="p-1 text-right">Base</th><th className="p-1 text-right">IVA guardado</th><th className="p-1 text-right">Neto línea</th></tr></thead><tbody>{source.lines.map((line, index) => <tr key={index} className="border-t border-border-light/70"><td className="p-1">{line.rateCode ?? "—"}</td><td className="p-1 text-right">{line.base ?? "—"}</td><td className="p-1 text-right">{line.taxAmount ?? "Sin dato"}</td><td className="p-1 text-right">{line.net ?? "—"}</td></tr>)}</tbody></table></div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Fecha de reconocimiento"><input required type="date" value={recognitionDate} onChange={(event) => setRecognitionDate(event.target.value)} className={fieldClass} /></Field>
-          <Field label="Moneda"><input required maxLength={3} value={currencyCode} onChange={(event) => setCurrencyCode(event.target.value.toUpperCase())} className={fieldClass} /></Field>
-          <Field label="Decimales de moneda"><input required type="number" min={0} max={6} value={minorUnit} onChange={(event) => setMinorUnit(event.target.value)} className={fieldClass} /></Field>
+          <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[360px] text-left"><thead><tr className="text-[10px] uppercase text-[var(--text-tertiary)]"><th className="p-1">Código heredado</th><th className="p-1 text-right">Base</th><th className="p-1 text-right">IVA guardado</th><th className="p-1 text-right">Neto línea</th></tr></thead><tbody>{source.lines.map((line, index) => <tr key={index} className="border-t border-border-light/70"><td className="p-1">{line.rateCode ?? "—"}</td><td className="p-1 text-right">{line.base ?? "—"}</td><td className="p-1 text-right">{line.taxAmount ?? "Sin dato"}</td><td className="p-1 text-right">{line.net ?? "—"}</td></tr>)}</tbody></table></div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Base exenta del documento"><input required inputMode="decimal" value={exemptBase} onChange={(event) => setExemptBase(event.target.value)} className={fieldClass} placeholder="0.00" /></Field>
-          <Field label="Base exenta histórica verificada"><input inputMode="decimal" value={historicalExemptBase} onChange={(event) => setHistoricalExemptBase(event.target.value)} className={fieldClass} placeholder="Vacío si no se pudo verificar" /></Field>
+          <BaseInput.Field label="Fecha de reconocimiento" type="date" isRequired value={recognitionDate} onValueChange={setRecognitionDate} />
+          {documentCurrency
+            ? <div className="text-sm"><p className="mb-1 text-xs text-[var(--text-tertiary)]">Moneda del documento</p><p className="font-medium">{documentCurrency.code} · {documentCurrency.minorUnit} decimales</p></div>
+            : <BaseSelect label="Moneda del documento" placeholder="El documento no indica moneda" selectionMode="single" isRequired items={REVIEW_CURRENCY_OPTIONS} value={currencyCode} onValueChange={setCurrencyCode} />}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <BaseInput.Field label="Base exenta del documento" isRequired inputMode="decimal" inputClassName="text-right" placeholder="0.00" value={exemptBase} onValueChange={setExemptBase} />
+          <BaseInput.Field label="Base exenta histórica verificada" inputMode="decimal" inputClassName="text-right" placeholder="Vacío si no se pudo verificar" value={historicalExemptBase} onValueChange={setHistoricalExemptBase} />
         </div>
         <div className="space-y-3">
-          <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-wider">Desglose histórico de alícuotas</h3><button type="button" className="text-xs text-primary-500 underline" onClick={() => setRates((current) => [...current, { rate: "", category: "", taxableBase: "", taxAmount: "", ruleVersion: "" }])}>Agregar tasa</button></div>
-          {rates.map((rate, index) => <div key={index} className="grid gap-2 rounded-lg border border-border-light p-3 sm:grid-cols-5">
-            <Field label="Tasa histórica"><input required inputMode="decimal" value={rate.rate} onChange={(event) => updateRate(index, "rate", event.target.value)} className={fieldClass} placeholder="ej. 16" /></Field>
-            <Field label="Categoría"><select required value={rate.category} onChange={(event) => updateRate(index, "category", event.target.value)} className={fieldClass}><option value="">Seleccionar</option>{REVIEW_RATE_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}</select></Field>
-            <Field label="Base gravada"><input required inputMode="decimal" value={rate.taxableBase} onChange={(event) => updateRate(index, "taxableBase", event.target.value)} className={fieldClass} placeholder="0.00" /></Field>
-            <Field label="IVA histórico"><input required inputMode="decimal" value={rate.taxAmount} onChange={(event) => updateRate(index, "taxAmount", event.target.value)} className={fieldClass} placeholder="0.00" /></Field>
-            <Field label="Versión/evidencia"><input value={rate.ruleVersion} onChange={(event) => updateRate(index, "ruleVersion", event.target.value)} className={fieldClass} placeholder="Opcional" /></Field>
-            {rates.length > 1 && <button type="button" className="justify-self-start text-xs text-danger underline sm:col-span-5" onClick={() => setRates((current) => current.filter((_, i) => i !== index))}>Quitar este grupo</button>}
+          <div className="flex items-center justify-between gap-3"><h3 className="text-xs font-bold uppercase tracking-wider">Desglose histórico de alícuotas</h3><BaseButton.Root variant="ghost" size="sm" onPress={() => setRates((current) => [...current, { rate: "", category: "", taxableBase: "", taxAmount: "", ruleVersion: "" }])}>Agregar tasa</BaseButton.Root></div>
+          {rates.map((rate, index) => <div key={index} className="grid gap-3 rounded-lg border border-border-light p-3 sm:grid-cols-2 lg:grid-cols-5">
+            <BaseInput.Field label="Tasa histórica" isRequired inputMode="decimal" suffix="%" inputClassName="text-right" placeholder="ej. 16" value={rate.rate} onValueChange={(value) => updateRate(index, "rate", value)} />
+            <BaseSelect label="Categoría" placeholder="Seleccionar" selectionMode="single" isRequired items={REVIEW_CATEGORY_OPTIONS} value={rate.category} onValueChange={(value) => updateRate(index, "category", value)} />
+            <BaseInput.Field label="Base gravada" isRequired inputMode="decimal" inputClassName="text-right" placeholder="0.00" value={rate.taxableBase} onValueChange={(value) => updateRate(index, "taxableBase", value)} />
+            <BaseInput.Field label="IVA histórico" isRequired inputMode="decimal" inputClassName="text-right" placeholder="0.00" value={rate.taxAmount} onValueChange={(value) => updateRate(index, "taxAmount", value)} />
+            <BaseInput.Field label="Versión/evidencia" placeholder="Opcional" value={rate.ruleVersion} onValueChange={(value) => updateRate(index, "ruleVersion", value)} />
+            {rates.length > 1 && <BaseButton.Root variant="dangerOutline" size="sm" className="justify-self-start sm:col-span-2 lg:col-span-5" onPress={() => setRates((current) => current.filter((_, i) => i !== index))}>Quitar este grupo</BaseButton.Root>}
           </div>)}
         </div>
         {direction === "purchase" && <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Crédito fiscal"><select value={deductibleState} onChange={(event) => setDeductibleState(event.target.value as typeof deductibleState)} className={fieldClass}><option value="pending_review">Pendiente de revisión</option><option value="eligible">Elegible</option><option value="ineligible">No elegible</option></select></Field>
-          <Field label="Monto deducible"><input required inputMode="decimal" value={deductibleAmount} onChange={(event) => setDeductibleAmount(event.target.value)} className={fieldClass} /></Field>
-          <Field label="Fundamento"><input value={deductibleReason} onChange={(event) => setDeductibleReason(event.target.value)} className={fieldClass} placeholder="Referencia revisada" /></Field>
+          <BaseSelect label="Crédito fiscal" selectionMode="single" items={REVIEW_DEDUCTIBLE_OPTIONS} value={deductibleState} onValueChange={(value) => value && setDeductibleState(value as typeof deductibleState)} />
+          <BaseInput.Field label="Monto deducible" isRequired inputMode="decimal" inputClassName="text-right" value={deductibleAmount} onValueChange={setDeductibleAmount} />
+          <BaseInput.Field label="Fundamento" placeholder="Referencia revisada" value={deductibleReason} onValueChange={setDeductibleReason} />
         </div>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {source.kind.includes("credit_note") || source.kind.includes("debit_note") ? <Field label="Hecho IVA afectado"><input value={affectedFactId} onChange={(event) => setAffectedFactId(event.target.value)} className={fieldClass} placeholder="ID del hecho original" /></Field> : <div />}
-          {Number(source.header.withheldAmount ?? "0") !== 0 && direction === "purchase" && <Field label="Fecha/hora revisada de retención"><input type="datetime-local" value={withholdingOccurredAt} onChange={(event) => setWithholdingOccurredAt(event.target.value)} className={fieldClass} /></Field>}
-        </div>
+        {(isCorrection || (Number(source.header.withheldAmount ?? "0") !== 0 && direction === "purchase")) && <div className="grid gap-3 sm:grid-cols-2">
+          {isCorrection && <div className="text-sm"><p className="mb-1 text-xs text-[var(--text-tertiary)]">Documento afectado</p>{affectedLabel ? <p className="font-medium">{affectedLabel}</p> : <p role="alert" className="text-warning">La nota no indica la factura afectada; corrígela en el documento de origen antes de incorporarla.</p>}<p className="mt-1 text-xs text-[var(--text-tertiary)]">El hecho original se vincula automáticamente; debe haberse incorporado antes.</p></div>}
+          {Number(source.header.withheldAmount ?? "0") !== 0 && direction === "purchase" && <BaseInput.Field label="Fecha/hora revisada de retención" type="datetime-local" value={withholdingOccurredAt} onValueChange={setWithholdingOccurredAt} />}
+        </div>}
         {error && <p role="alert" className="rounded-lg border border-danger/30 p-3 text-sm text-danger">{error}</p>}
         {pending && error && <p className="text-xs text-[var(--text-secondary)]">Al reintentar se reutiliza la misma clave y el mismo contenido para proteger contra duplicados.</p>}
-        </fieldset>
-        <footer className="flex flex-wrap justify-end gap-2 border-t border-border-light pt-4"><BaseButton.Root type="button" variant="secondary" size="sm" disabled={saving} onClick={onClose}>Cancelar</BaseButton.Root><BaseButton.Root type="submit" variant="primary" size="sm" disabled={saving || Boolean(pending && !error)}>{saving ? "Guardando…" : pending ? "Reintentar guardado" : "Guardar hecho revisado"}</BaseButton.Root></footer>
-      </form>}
-    </section>
-  </div>;
+      </fieldset>
+    </form>}
+  </DocumentDrawer>;
 }
 
-function Field({ label, children }: { readonly label: string; readonly children: React.ReactNode }): React.JSX.Element {
-  return <label className="grid min-w-0 gap-1 text-[10px] text-[var(--text-secondary)]">{label}{children}</label>;
+const REVIEW_CATEGORY_OPTIONS = REVIEW_RATE_CATEGORIES.map((category) => ({ id: category, name: ivaLabelOrPending(category) }));
+const REVIEW_DEDUCTIBLE_OPTIONS = [{ id: "pending_review", name: "Pendiente de revisión" }, { id: "eligible", name: "Elegible" }, { id: "ineligible", name: "No elegible" }];
+
+/** Resolves ISO 4217 decimals for a currency code; unknown codes stay unresolved instead of guessing. */
+function isoCurrency(code: string | null | undefined): { readonly code: string; readonly minorUnit: number } | null {
+  const normalized = code?.trim().toUpperCase() ?? "";
+  if (!/^[A-Z]{3}$/.test(normalized)) return null;
+  try { return { code: normalized, minorUnit: new Intl.NumberFormat("en", { style: "currency", currency: normalized }).resolvedOptions().maximumFractionDigits ?? 2 }; } catch { return null; }
 }
 
-const fieldClass = "h-9 w-full min-w-0 rounded-md border border-border-light bg-surface-1 px-2 text-xs text-foreground";
-
-function Kpi({ label, value }: { readonly label: string; readonly value: string }): React.JSX.Element {
-  return <div className="rounded-xl border border-border-light bg-surface-1 p-4"><p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">{label}</p><p className="mt-2 text-lg font-bold tabular-nums">{value}</p></div>;
-}
+const REVIEW_CURRENCY_OPTIONS = [{ id: "VES", name: "Bolívares (VES)" }, { id: "USD", name: "Dólares (USD)" }, { id: "EUR", name: "Euros (EUR)" }];
 
 function currentPeriod(): string {
   const now = new Date();
@@ -320,17 +495,5 @@ function periodRange(period: string): { readonly from: string; readonly to: stri
 }
 
 function formatMoney(money: SerializedMoney): string {
-  let minorAmount: bigint;
-  try { minorAmount = BigInt(money.minorAmount); } catch { return "—"; }
-  const negative = minorAmount < 0n;
-  const absolute = negative ? -minorAmount : minorAmount;
-  const scale = 10n ** BigInt(money.currency.minorUnit);
-  const whole = absolute / scale;
-  const fraction = money.currency.minorUnit === 0 ? "" : `,${String(absolute % scale).padStart(money.currency.minorUnit, "0")}`;
-  const groupedWhole = new Intl.NumberFormat("es-VE", { maximumFractionDigits: 0 }).format(whole);
-  return `${money.currency.code} ${negative ? "−" : ""}${groupedWhole}${fraction}`;
-}
-
-function tabClass(active: boolean): string {
-  return ["inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors", active ? "bg-primary-500/10 text-primary-500" : "text-[var(--text-secondary)] hover:bg-surface-2"].join(" ");
+  return formatIvaMoney(money);
 }

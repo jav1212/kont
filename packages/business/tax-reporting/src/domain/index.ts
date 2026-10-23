@@ -4,3 +4,6 @@ export * from "./persistence";
 export * from "./vat-declaration";
 export * from "./vat-declaration-lifecycle";
 export * from "./vat-retention-export";
+export * from "./vat-fiscal-period";
+export * from "./vat-fiscal-period-repository";
+export * from "./vat-periodicity";

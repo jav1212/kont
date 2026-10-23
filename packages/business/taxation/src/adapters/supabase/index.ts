@@ -26,6 +26,7 @@ import { createSupabaseTaxationConfigurationRepository } from "./taxation-config
 import { createSupabaseServiceTaxationRepository } from "./service-taxation";
 export { SupabaseServiceTaxationRepository, createSupabaseServiceTaxationRepository } from "./service-taxation";
 export { SupabaseTaxationConfigurationRepository, createSupabaseTaxationConfigurationRepository } from "./taxation-configuration";
+export { SupabaseProductTaxAssignmentSummaryReader } from "./product-tax-assignment-summary";
 
 const assignmentSchema = z.object({
   taxCode: z.string(),

@@ -23,6 +23,8 @@
     "test:barcode:sql": "node scripts/test-barcode-access-sql.mjs",
     "test:iva:taxation:sql": "node scripts/test-iva-taxation-configuration-sql.mjs",
     "test:iva:reporting:sql": "node scripts/test-iva-reporting-sql.mjs",
+    "test:iva:period:sql": "node scripts/test-iva-reporting-sql.mjs",
+    "test:iva:configuration:sql": "node scripts/test-iva-configuration-sql.mjs",
     "test:iva:supplier-match:sql": "node scripts/test-iva-supplier-match-sql.mjs",
     "test:company:monetary-policy:sql": "node scripts/test-company-monetary-policy-sql.mjs",
     "test:company:monetary-policy:web": "node --experimental-test-module-mocks --import tsx --test test/company-monetary-policy-route.test.ts",
