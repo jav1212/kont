@@ -2,22 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
-import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { useTreasuryContext } from "@/src/modules/treasury/frontend/context/treasury-context";
+import { useTreasuryCommand } from "@/src/modules/treasury/frontend/hooks/use-treasury-command";
+import type { TreasuryQueryRequest, TreasuryReadRow } from "@kontave/client-contracts";
+import type { TreasuryBankDebitTaxAssessmentRow, TreasuryBankDebitTaxPolicyRow } from "@/src/modules/treasury/frontend/treasury-rows";
 
 type PageData<T> = { items: T[]; total: number };
-type TaxPolicy = { rowKind: "bank_debit_tax_policy"; id: string; effectiveFrom: string; effectiveTo: string | null; ratePercent: string; baseCurrency: string; rounding: string; legalBasis: string; approvalReference: string; subjectTypes: string[]; version: number; active: boolean };
-type TaxAssessment = { rowKind: "bank_debit_tax_assessment"; id: string; ledgerEntryId: string; bankAccountId: string; movementType: string; concept: string; operationalDate: string; entryVersion: number; policyId: string; policyVersion: number; ratePercent: string; taxableAmount: string; taxAmount: string; currency: string; exclusionId: string | null; exclusionReason: string | null; evidenceReference: string | null };
+type TaxPolicy = TreasuryBankDebitTaxPolicyRow;
+type TaxAssessment = TreasuryBankDebitTaxAssessmentRow;
 
 /** Manages company-approved tax rules and auditable operation exclusions.
  * @returns The Treasury bank-debit tax workspace.
  */
 export default function TreasuryTaxPolicyPage(): React.JSX.Element {
-  const { companyId } = useCompany();
-  const { organization } = useOrganization();
+  const { companyId, query: treasuryQuery, revision } = useTreasuryContext();
   const { can } = useOrganizationModuleAccess("/treasury");
+  const runCommand = useTreasuryCommand();
   const [policies, setPolicies] = useState<TaxPolicy[]>([]);
   const [assessments, setAssessments] = useState<TaxAssessment[]>([]);
   const [policyId, setPolicyId] = useState("");
@@ -36,50 +37,36 @@ export default function TreasuryTaxPolicyPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const endpoint = useCallback((kind: "query" | "commands") => {
-    if (!companyId || !organization) throw new Error("Selecciona una empresa para continuar.");
-    return `/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/${kind}`;
-  }, [companyId, organization]);
-
   const load = useCallback(async () => {
-    if (!companyId || !organization || !can("treasury.read")) return;
+    if (!companyId || !can("treasury.read")) return;
     setLoading(true); setError(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const queryPage = async <T,>(kind: string): Promise<PageData<T>> => {
-        const response = await fetch(endpoint("query"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind, page: 1, pageSize: 500 }) });
-        const payload = await response.json() as { data?: PageData<T>; error?: { message?: string } };
-        if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "No se pudo consultar la política tributaria.");
-        return payload.data;
+      const queryPage = async <T extends TreasuryReadRow,>(kind: string): Promise<PageData<T>> => {
+        const page = await treasuryQuery<T>({ kind, page: 1, pageSize: 500 } as TreasuryQueryRequest);
+        return { items: [...page.items], total: page.total };
       };
       const [policyPage, assessmentPage] = await Promise.all([queryPage<TaxPolicy>("list_bank_debit_tax_policies"), queryPage<TaxAssessment>("list_bank_debit_tax_assessments")]);
       setPolicies(policyPage.items); setAssessments(assessmentPage.items);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cargar Tesorería."); }
     finally { setLoading(false); }
-  }, [can, companyId, endpoint, organization]);
+  }, [can, companyId, treasuryQuery]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, revision]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!can("treasury.tax.configure") || !policyId || !legalBasis.trim() || !approvalReference.trim() || subjectTypes.length === 0) return;
     setSaving(true); setError(null); setNotice(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const idempotencyKey = crypto.randomUUID();
-      const response = await fetch(endpoint("commands"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "configure_bank_debit_tax_policy", policyId, expectedVersion, effectiveFrom, ...(effectiveTo ? { effectiveTo } : {}), ratePercent, baseCurrency: "VES", rounding: "half_up", legalBasis: legalBasis.trim(), approvalReference: approvalReference.trim(), subjectTypes, idempotencyKey, correlationId: idempotencyKey }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo guardar la política.");
+      await runCommand.execute((identity) => ({ ...identity, kind: "configure_bank_debit_tax_policy", policyId, expectedVersion, effectiveFrom, ...(effectiveTo ? { effectiveTo } : {}), ratePercent, baseCurrency: "VES", rounding: "half_up", legalBasis: legalBasis.trim(), approvalReference: approvalReference.trim(), subjectTypes }), `policy:${policyId}`);
       setNotice("La política aprobada quedó registrada. Las nuevas operaciones usarán la vigencia configurada.");
-      setExpectedVersion(expectedVersion + 1); await load();
+      setExpectedVersion(expectedVersion + 1);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo guardar la política."); }
     finally { setSaving(false); }
   };
 
   const editPolicy = (policy: TaxPolicy) => {
-    setPolicyId(policy.id); setExpectedVersion(policy.version); setEffectiveFrom(policy.effectiveFrom); setEffectiveTo(policy.effectiveTo ?? ""); setRatePercent(policy.ratePercent); setLegalBasis(policy.legalBasis); setApprovalReference(policy.approvalReference); setSubjectTypes(policy.subjectTypes); setNotice(null);
+    setPolicyId(policy.id); setExpectedVersion(policy.version); setEffectiveFrom(policy.effectiveFrom); setEffectiveTo(policy.effectiveTo ?? ""); setRatePercent(policy.ratePercent); setLegalBasis(policy.legalBasis); setApprovalReference(policy.approvalReference); setSubjectTypes([...policy.subjectTypes]); setNotice(null);
   };
 
   const submitExclusion = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -87,13 +74,8 @@ export default function TreasuryTaxPolicyPage(): React.JSX.Element {
     if (!exclusion || !can("treasury.tax.configure") || !reason.trim() || !evidenceReference.trim()) return;
     setSaving(true); setError(null); setNotice(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const idempotencyKey = crypto.randomUUID();
-      const response = await fetch(endpoint("commands"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "exclude_bank_debit_tax_operation", exclusionId: crypto.randomUUID(), ledgerEntryId: exclusion.ledgerEntryId, reason: reason.trim(), evidenceReference: evidenceReference.trim(), expectedEntryVersion: exclusion.entryVersion, idempotencyKey, correlationId: idempotencyKey }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo registrar la exclusión.");
-      setExclusion(null); setReason(""); setEvidenceReference(""); setNotice("La exclusión quedó auditada; se generó la compensación tributaria correspondiente."); await load();
+      await runCommand.execute((identity, exclusionId) => ({ ...identity, kind: "exclude_bank_debit_tax_operation", exclusionId, ledgerEntryId: exclusion.ledgerEntryId, reason: reason.trim(), evidenceReference: evidenceReference.trim(), expectedEntryVersion: exclusion.entryVersion }), `exclusion:${exclusion.ledgerEntryId}`);
+      setExclusion(null); setReason(""); setEvidenceReference(""); setNotice("La exclusión quedó auditada; se generó la compensación tributaria correspondiente.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo registrar la exclusión."); }
     finally { setSaving(false); }
   };

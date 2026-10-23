@@ -60,4 +60,18 @@ test("treasury remote port validates movement origin and responsible actor metad
   await assert.rejects(new RemoteTreasuryPort(malformed).query("organization-1", "company-1", ledgerQuery), invalidResponse);
 });
 
+test("treasury remote port accepts reconciliation, tax-policy and payment-execution rows", async () => {
+  const rows = [
+    { rowKind: "reconciliation_rule", id: "rule-1", bankAccountId: "bank-account-1", activeFrom: "2026-10-01", dateWindowDays: 3, toleranceAmount: "0.00", currency: "VES", referenceWeight: "100", dateWeight: "1", version: 1, active: false },
+    { rowKind: "reconciliation_statement", id: "statement-1", bankAccountId: "bank-account-1", periodStart: "2026-10-01", periodEnd: "2026-10-31", externalReference: "EXT", status: "open", version: 1, closedAt: null, differenceExplanation: null },
+    { rowKind: "bank_debit_tax_policy", id: "policy-1", effectiveFrom: "2026-01-01", effectiveTo: null, ratePercent: "2", baseCurrency: "VES", rounding: "half_up", legalBasis: "IGTF", approvalReference: "APR-1", subjectTypes: ["bank_debit"], version: 1, active: true },
+    { rowKind: "bank_debit_tax_assessment", id: "assessment-1", ledgerEntryId: "entry-1", bankAccountId: "bank-account-1", movementType: "bank_debit", concept: "Pago", operationalDate: "2026-10-02", entryVersion: 1, policyId: "policy-1", policyVersion: 1, ratePercent: "2", taxableAmount: "100.00", taxAmount: "2.00", currency: "VES", exclusionId: null, exclusionReason: null, evidenceReference: null },
+    { rowKind: "payment_order_execution", paymentId: "payment-1", paymentOrderId: "order-1", amount: "100.00", currency: "VES", occurredOn: "2026-10-02", ledgerEntryId: "entry-1" },
+  ];
+  const transport: RemoteTransport = { get: async <T>() => undefined as T, request: async <T>() => ({ items: rows, page: 1, pageSize: 25, total: rows.length, asOf: "2026-10-02T00:00:00.000Z" }) as T };
+  assert.equal((await new RemoteTreasuryPort(transport).query("organization-1", "company-1", query)).items.length, rows.length);
+  const malformed: RemoteTransport = { get: async <T>() => undefined as T, request: async <T>() => ({ items: [{ ...rows[0], active: "no" }], page: 1, pageSize: 25, total: 1, asOf: "2026-10-02T00:00:00.000Z" }) as T };
+  await assert.rejects(new RemoteTreasuryPort(malformed).query("organization-1", "company-1", query), invalidResponse);
+});
+
 function invalidResponse(cause: unknown): boolean { return cause instanceof KontaveRemoteFailure && cause.code === "INVALID_RESPONSE"; }

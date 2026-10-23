@@ -2,47 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
-import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { useTreasuryContext } from "@/src/modules/treasury/frontend/context/treasury-context";
+import { useTreasuryCommand } from "@/src/modules/treasury/frontend/hooks/use-treasury-command";
+import { useTreasuryFilters } from "@/src/modules/treasury/frontend/hooks/use-treasury-filters";
+import type { TreasuryQueryRequest, TreasuryReadRow } from "@kontave/client-contracts";
 
-type BankAccount = { rowKind: "bank_account"; id: string; currency: string; holderName: string; status: string };
-type ReconciliationItem = {
-  rowKind: "reconciliation_pending" | "reconciliation";
-  id: string;
-  state: "reconciled" | "statement_pending" | "ledger_pending" | "ambiguous";
-  itemKind?: "statement_line" | "ledger_entry";
-  amount?: string;
-  currency?: string;
-  direction?: "credit" | "debit";
-  version?: number;
-  valueDate?: string;
-  reference?: string;
-  ageDays?: number;
-  reason: string;
-  matchType?: "manual" | "automatic" | null;
-  createdAt?: string;
-  createdBy?: string;
-};
-type ReconciliationHistory = {
-  rowKind: "reconciliation_history";
-  id: string;
-  statementLineId: string;
-  ledgerEntryId: string;
-  matchType: "manual" | "automatic";
-  status: "active" | "undone";
-  reason: string;
-  createdAt: string;
-  createdBy: string;
-  version: number;
-  undoneAt: string | null;
-  undoReason: string | null;
-};
-type ReconciliationRule = { rowKind: "reconciliation_rule"; id: string; bankAccountId: string; activeFrom: string; dateWindowDays: number; toleranceAmount: string; currency: string; referenceWeight: string; dateWeight: string; version: number; active: boolean };
-type ReconciliationStatement = { rowKind: "reconciliation_statement"; id: string; bankAccountId: string; periodStart: string; periodEnd: string; externalReference: string; status: "open" | "closed"; version: number; closedAt: string | null; differenceExplanation: string | null };
+type BankAccount = Extract<TreasuryReadRow, { rowKind: "bank_account" }>;
+type ReconciliationItem = Extract<TreasuryReadRow, { rowKind: "reconciliation_pending" | "reconciliation" }>;
+type PendingItem = Extract<TreasuryReadRow, { rowKind: "reconciliation_pending" }>;
+type ReconciliationHistory = Extract<TreasuryReadRow, { rowKind: "reconciliation_history" }>;
+type ReconciliationRule = Extract<TreasuryReadRow, { rowKind: "reconciliation_rule" }>;
+type ReconciliationStatement = Extract<TreasuryReadRow, { rowKind: "reconciliation_statement" }>;
+type ReconciliationPreview = Extract<TreasuryReadRow, { rowKind: "reconciliation_preview" }>;
 type PageData<T> = { items: T[]; page: number; pageSize: number; total: number };
-type ReconciliationPreview = { id: string; ruleSetId: string; ruleVersion: number; asOf: string; results: Array<{ statementLineId: string; state: "matched" | "ambiguous" | "unmatched"; ledgerEntryId?: string; candidateLedgerEntryIds?: string[]; score?: number; reason?: string }> };
 type CsvLine = { lineNumber: number; lineId: string; externalId: string; valueDate: string; direction: "credit" | "debit"; amount: string; currency: string; reference: string; description: string; errors: string[] };
 
 const reconciliationStates = ["statement_pending", "ledger_pending", "ambiguous", "reconciled"] as const;
@@ -86,14 +59,15 @@ function parseCsv(source: string): string[][] {
  * @throws Displays transport, authorization, and persistence errors inline.
  */
 export default function TreasuryReconciliationPage(): React.JSX.Element {
-  const { companyId } = useCompany();
-  const { organization } = useOrganization();
+  const { companyId, query: treasuryQuery, revision } = useTreasuryContext();
+  const command = useTreasuryCommand();
+  const { filters, setFilters } = useTreasuryFilters({ account: "", state: "statement_pending", page: "1" });
   const { can } = useOrganizationModuleAccess("/treasury");
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [accountId, setAccountId] = useState("");
+  const [accountId, setAccountId] = useState(filters.account);
   const [items, setItems] = useState<ReconciliationItem[]>([]);
-  const [statementCandidates, setStatementCandidates] = useState<ReconciliationItem[]>([]);
-  const [ledgerCandidates, setLedgerCandidates] = useState<ReconciliationItem[]>([]);
+  const [statementCandidates, setStatementCandidates] = useState<PendingItem[]>([]);
+  const [ledgerCandidates, setLedgerCandidates] = useState<PendingItem[]>([]);
   const [statementCandidatePage, setStatementCandidatePage] = useState(1);
   const [statementCandidateTotal, setStatementCandidateTotal] = useState(0);
   const [ledgerCandidatePage, setLedgerCandidatePage] = useState(1);
@@ -108,8 +82,9 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   const [closingStatement, setClosingStatement] = useState(false);
   const [ruleCatalogPage, setRuleCatalogPage] = useState(1);
   const [ruleCatalogTotal, setRuleCatalogTotal] = useState(0);
-  const [state, setState] = useState<(typeof reconciliationStates)[number]>("statement_pending");
-  const [page, setPage] = useState(1);
+  const state = (filters.state || "statement_pending") as (typeof reconciliationStates)[number];
+  const page = Math.max(1, Number(filters.page) || 1);
+  const setPage = (next: number | ((current: number) => number)) => setFilters({ page: String(typeof next === "function" ? next(page) : next) }, "replace");
   const [total, setTotal] = useState(0);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotal, setHistoryTotal] = useState(0);
@@ -138,37 +113,30 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   const [externalReference, setExternalReference] = useState("");
   const [csvLines, setCsvLines] = useState<CsvLine[]>([]);
   const [csvError, setCsvError] = useState<string | null>(null);
-  const [statementId, setStatementId] = useState(() => crypto.randomUUID());
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!companyId || !organization) return;
+    if (!companyId) return;
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const prefix = `/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/query`;
-      const query = async <T,>(kind: string, extra: Record<string, unknown> = {}): Promise<PageData<T>> => {
-        const response = await fetch(prefix, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind, page: 1, pageSize: 100, ...extra }) });
-        const payload = await response.json() as { data?: PageData<T>; error?: { message?: string } };
-        if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "No se pudo consultar la conciliación.");
-        return payload.data;
+      const query = async <T extends TreasuryReadRow,>(kind: string, extra: Record<string, unknown> = {}): Promise<PageData<T>> => {
+        const result = await treasuryQuery<T>({ kind, page: 1, pageSize: 100, ...extra } as TreasuryQueryRequest);
+        return { ...result, items: [...result.items] };
       };
       const accountPage = await query<BankAccount>("list_bank_accounts", { pageSize: 500, status: "active" });
       setAccounts(accountPage.items);
       const selectedAccountId = accountPage.items.some((account) => account.id === accountId) ? accountId : accountPage.items[0]?.id ?? "";
-      if (selectedAccountId !== accountId) setAccountId(selectedAccountId);
+      if (selectedAccountId !== accountId) { setAccountId(selectedAccountId); setFilters({ account: selectedAccountId }, "replace"); }
       if (!selectedAccountId) { setItems([]); setHistory([]); setRules([]); setRuleCatalogTotal(0); setStatements([]); setStatementsTotal(0); setStatementCandidates([]); setLedgerCandidates([]); setTotal(0); setHistoryTotal(0); return; }
       const [itemPage, historyResult, statementPage, ledgerPage, ruleResult, statementResult] = await Promise.all([
         query<ReconciliationItem>("list_reconciliation_items", { bankAccountId: selectedAccountId, state, page, pageSize: 50 }),
         query<ReconciliationHistory>("list_reconciliation_history", { bankAccountId: selectedAccountId, page: historyPage, pageSize: 50 }),
-        query<ReconciliationItem>("list_reconciliation_items", { bankAccountId: selectedAccountId, state: "statement_pending", page: statementCandidatePage, pageSize: 500 }),
-        query<ReconciliationItem>("list_reconciliation_items", { bankAccountId: selectedAccountId, state: "ledger_pending", page: ledgerCandidatePage, pageSize: 500 }),
+        query<PendingItem>("list_reconciliation_items", { bankAccountId: selectedAccountId, state: "statement_pending", page: statementCandidatePage, pageSize: 500 }),
+        query<PendingItem>("list_reconciliation_items", { bankAccountId: selectedAccountId, state: "ledger_pending", page: ledgerCandidatePage, pageSize: 500 }),
         query<ReconciliationRule>("list_reconciliation_rules", { bankAccountId: selectedAccountId, page: ruleCatalogPage, pageSize: 100 }),
         query<ReconciliationStatement>("list_reconciliation_statements", { bankAccountId: selectedAccountId, status: "open", page: statementCatalogPage, pageSize: 100 }),
       ]);
@@ -189,9 +157,11 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [accountId, companyId, historyPage, ledgerCandidatePage, organization, page, ruleCatalogPage, state, statementCandidatePage, statementCatalogPage]);
+  }, [accountId, companyId, historyPage, ledgerCandidatePage, page, ruleCatalogPage, state, statementCandidatePage, setFilters, statementCatalogPage, treasuryQuery]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, revision]);
+
+  useEffect(() => { if (filters.state !== state) setFilters({ state }, "replace"); }, [filters.state, setFilters, state]);
 
   const csvPreview = useMemo(() => csvLines, [csvLines]);
   const validLines = useMemo(() => csvPreview.filter((line) => line.errors.length === 0), [csvPreview]);
@@ -255,33 +225,20 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
 
   const importStatement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!companyId || !organization || !selectedAccount || !can("treasury.reconcile") || validLines.length === 0 || invalidLineCount > 0) return;
+    if (!companyId || !selectedAccount || !can("treasury.reconcile") || validLines.length === 0 || invalidLineCount > 0) return;
     setImporting(true);
     setError(null);
     setNotice(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" },
-        cache: "no-store",
-        body: JSON.stringify({
-          kind: "import_bank_statement", statementId, bankAccountId: accountId, periodStart, periodEnd, externalReference: externalReference.trim(),
-          lines: validLines.map((line) => ({ lineId: line.lineId, externalId: line.externalId, valueDate: line.valueDate, direction: line.direction, money: { amount: line.amount, currency: line.currency }, reference: line.reference, description: line.description })),
-          idempotencyKey, correlationId: idempotencyKey,
-        }),
-      });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo importar el extracto.");
+      // Line identifiers are fixed when the CSV is parsed, so the statement identity is keyed by that parse.
+      await command.execute((identity, statementId) => ({
+        ...identity, kind: "import_bank_statement", statementId, bankAccountId: accountId, periodStart, periodEnd, externalReference: externalReference.trim(),
+        lines: validLines.map((line) => ({ lineId: line.lineId, externalId: line.externalId, valueDate: line.valueDate, direction: line.direction, money: { amount: line.amount, currency: line.currency }, reference: line.reference, description: line.description })),
+      }), `import:${accountId}:${validLines[0]?.lineId ?? ""}`);
       setNotice("Extracto importado. Puedes revisar sus líneas pendientes y continuar con la conciliación.");
       setCsvLines([]);
-      setStatementId(crypto.randomUUID());
-      setIdempotencyKey(crypto.randomUUID());
-      setState("statement_pending");
-      setPage(1);
+      setFilters({ state: "statement_pending", page: "1" }, "replace");
       setStatementCatalogPage(1);
-      await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo importar el extracto.");
     } finally {
@@ -291,29 +248,19 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
 
   const reconcileManually = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!companyId || !organization || !selectedAccount || !selectedStatementLine?.version || !selectedLedger?.version || !manualReason.trim() || !can("treasury.reconcile")) return;
+    const statementLineVersion = selectedStatementLine?.version;
+    const ledgerEntryVersion = selectedLedger?.version;
+    if (!companyId || !selectedAccount || !selectedStatementLine || !selectedLedger || !statementLineVersion || !ledgerEntryVersion || !manualReason.trim() || !can("treasury.reconcile")) return;
     setReconciling(true);
     setError(null);
     setNotice(null);
-    const matchId = crypto.randomUUID();
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" },
-        cache: "no-store",
-        body: JSON.stringify({ kind: "reconcile_manually", matchId, bankAccountId: accountId, statementLineId: selectedStatementLine.id, ledgerEntryId: selectedLedger.id, expectedStatementLineVersion: selectedStatementLine.version, expectedLedgerEntryVersion: selectedLedger.version, reason: manualReason.trim(), idempotencyKey: matchId, correlationId: matchId }),
-      });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo conciliar las partidas seleccionadas.");
+      await command.execute((identity, matchId) => ({ ...identity, kind: "reconcile_manually", matchId, bankAccountId: accountId, statementLineId: selectedStatementLine.id, ledgerEntryId: selectedLedger.id, expectedStatementLineVersion: statementLineVersion, expectedLedgerEntryVersion: ledgerEntryVersion, reason: manualReason.trim() }), `match:${selectedStatementLine.id}:${selectedLedger.id}`);
       setNotice("Partidas conciliadas manualmente.");
       setManualStatementId("");
       setManualLedgerId("");
       setManualReason("");
-      setState("reconciled");
-      setPage(1);
-      await load();
+      setFilters({ state: "reconciled", page: "1" }, "replace");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo conciliar las partidas seleccionadas.");
     } finally {
@@ -323,15 +270,14 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
 
   const configureRule = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!companyId || !organization || !selectedAccount || !can("treasury.manage")) return;
+    if (!companyId || !selectedAccount || !can("treasury.manage")) return;
     setRuleSaving(true); setError(null); setNotice(null);
-    const newRuleId = crypto.randomUUID(); const idempotencyKey = crypto.randomUUID();
+    let newRuleId = "";
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "configure_reconciliation", ruleSetId: newRuleId, bankAccountId: accountId, expectedVersion: 0, activeFrom: ruleActiveFrom, dateWindowDays: Number(ruleDateWindow), amountTolerance: { amount: ruleTolerance, currency: selectedAccount.currency }, referenceWeight: Number(ruleReferenceWeight), dateWeight: Number(ruleDateWeight), idempotencyKey, correlationId: idempotencyKey }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo guardar la regla.");
+      await command.execute((identity, ruleSetId) => {
+        newRuleId = ruleSetId;
+        return { ...identity, kind: "configure_reconciliation", ruleSetId, bankAccountId: accountId, expectedVersion: 0, activeFrom: ruleActiveFrom, dateWindowDays: Number(ruleDateWindow), amountTolerance: { amount: ruleTolerance, currency: selectedAccount.currency }, referenceWeight: Number(ruleReferenceWeight), dateWeight: Number(ruleDateWeight) };
+      }, `rule:${accountId}`);
       const newRule: ReconciliationRule = { rowKind: "reconciliation_rule", id: newRuleId, bankAccountId: accountId, activeFrom: ruleActiveFrom, dateWindowDays: Number(ruleDateWindow), toleranceAmount: ruleTolerance, currency: selectedAccount.currency, referenceWeight: ruleReferenceWeight, dateWeight: ruleDateWeight, version: 1, active: false };
       setRules((current) => [newRule, ...current]); setRuleCatalogTotal((current) => current + 1); setRuleId(newRuleId); setRuleVersion(1); setAutomaticPreview(null); setRuleActivated(false);
       setNotice("Regla guardada como borrador. Genera una vista previa antes de activarla.");
@@ -340,85 +286,65 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   };
 
   const previewRule = async () => {
-    if (!companyId || !organization || !selectedRule || selectedRule.active || !previewAsOf || !can("treasury.reconcile")) return;
+    if (!companyId || !selectedRule || selectedRule.active || !previewAsOf || !can("treasury.reconcile")) return;
     setPreviewingRule(true); setError(null); setNotice(null);
-    const previewId = crypto.randomUUID(); const idempotencyKey = crypto.randomUUID();
+    let previewId = "";
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const prefix = `/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury`;
-      const response = await fetch(`${prefix}/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "preview_reconciliation_rule", previewId, ruleSetId: ruleId, ruleVersion, bankAccountId: accountId, asOf: previewAsOf, idempotencyKey, correlationId: idempotencyKey }) });
-      const commandPayload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(commandPayload.error?.message ?? "No se pudo evaluar la regla.");
-      const queryResponse = await fetch(`${prefix}/query`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "get_reconciliation_preview", previewId, page: 1, pageSize: 1 }) });
-      const queryPayload = await queryResponse.json() as { data?: PageData<ReconciliationPreview>; error?: { message?: string } };
-      if (!queryResponse.ok || !queryPayload.data?.items[0]) throw new Error(queryPayload.error?.message ?? "No se pudo leer la vista previa guardada.");
-      setAutomaticPreview(queryPayload.data.items[0]); setRuleActivated(false);
+      await command.execute((identity, id) => {
+        previewId = id;
+        return { ...identity, kind: "preview_reconciliation_rule", previewId: id, ruleSetId: ruleId, ruleVersion, bankAccountId: accountId, asOf: previewAsOf };
+      }, `preview:${ruleId}:${ruleVersion}:${previewAsOf}`);
+      const preview = (await treasuryQuery<ReconciliationPreview>({ kind: "get_reconciliation_preview", previewId, page: 1, pageSize: 1 })).items[0];
+      if (!preview) throw new Error("No se pudo leer la vista previa guardada.");
+      setAutomaticPreview(preview); setRuleActivated(false);
       setNotice("Vista previa generada. Los vínculos no se aplican hasta activar y ejecutar.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo evaluar la regla."); }
     finally { setPreviewingRule(false); }
   };
 
   const activateRule = async () => {
-    if (!companyId || !organization || !automaticPreview || !can("treasury.manage")) return;
-    setRuleActivating(true); setError(null); const idempotencyKey = crypto.randomUUID();
+    if (!companyId || !automaticPreview || !can("treasury.manage")) return;
+    setRuleActivating(true); setError(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "activate_reconciliation_rule", ruleSetId: automaticPreview.ruleSetId, ruleVersion: automaticPreview.ruleVersion, bankAccountId: accountId, previewId: automaticPreview.id, idempotencyKey, correlationId: idempotencyKey }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo activar la regla.");
+      await command.execute((identity) => ({ ...identity, kind: "activate_reconciliation_rule", ruleSetId: automaticPreview.ruleSetId, ruleVersion: automaticPreview.ruleVersion, bankAccountId: accountId, previewId: automaticPreview.id }), `activate:${automaticPreview.id}`);
       setRuleActivated(true); setNotice("Regla activada. Ejecuta la conciliación para aplicar coincidencias únicas.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo activar la regla."); }
     finally { setRuleActivating(false); }
   };
 
   const runAutomaticReconciliation = async () => {
-    if (!companyId || !organization || !selectedRule || !previewAsOf || !(selectedRule.active || ruleActivated) || !can("treasury.reconcile")) return;
-    setAutomaticRunning(true); setError(null); const runId = crypto.randomUUID();
+    if (!companyId || !selectedRule || !previewAsOf || !(selectedRule.active || ruleActivated) || !can("treasury.reconcile")) return;
+    setAutomaticRunning(true); setError(null);
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "run_automatic_reconciliation", runId, bankAccountId: accountId, ruleSetId: selectedRule.id, asOf: previewAsOf, idempotencyKey: runId, correlationId: runId }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo ejecutar la conciliación automática.");
-      setNotice("Ejecución terminada. Coincidencias únicas conciliadas; ambigüedades permanecen pendientes."); setState("ambiguous"); setPage(1); await load();
+      await command.execute((identity, runId) => ({ ...identity, kind: "run_automatic_reconciliation", runId, bankAccountId: accountId, ruleSetId: selectedRule.id, asOf: previewAsOf }), `run:${selectedRule.id}:${previewAsOf}`);
+      setNotice("Ejecución terminada. Coincidencias únicas conciliadas; ambigüedades permanecen pendientes."); setFilters({ state: "ambiguous", page: "1" }, "replace");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo ejecutar la conciliación automática."); }
     finally { setAutomaticRunning(false); }
   };
 
   const closeStatement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!companyId || !organization || !selectedStatement || !can("treasury.reconcile")) return;
+    if (!companyId || !selectedStatement || !can("treasury.reconcile")) return;
     setClosingStatement(true); setError(null); setNotice(null);
-    const closeId = crypto.randomUUID();
+    const explanation = closeExplanation.trim();
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "close_reconciliation", closeId, bankAccountId: accountId, statementId: selectedStatement.id, expectedStatementVersion: selectedStatement.version, closedAt: new Date().toISOString(), differenceExplanation: closeExplanation.trim() || undefined, idempotencyKey: closeId, correlationId: closeId }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo cerrar el extracto.");
+      await command.execute((identity, closeId) => ({ ...identity, kind: "close_reconciliation", closeId, bankAccountId: accountId, statementId: selectedStatement.id, expectedStatementVersion: selectedStatement.version, closedAt: new Date().toISOString(), ...(explanation ? { differenceExplanation: explanation } : {}) }), `close:${selectedStatement.id}`);
       setNotice("Conciliación cerrada. El extracto queda bloqueado para nuevos vínculos.");
-      setSelectedStatementId(""); setCloseExplanation(""); await load();
+      setSelectedStatementId(""); setCloseExplanation("");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cerrar el extracto."); }
     finally { setClosingStatement(false); }
   };
 
   const undoMatch = async (match: ReconciliationHistory) => {
-    if (!companyId || !organization || !can("treasury.reverse") || !undoReasons[match.id]?.trim()) return;
+    const reason = undoReasons[match.id]?.trim();
+    if (!companyId || !can("treasury.reverse") || !reason) return;
     setUndoingMatchId(match.id);
     setError(null);
     setNotice(null);
-    const idempotencyKey = crypto.randomUUID();
     try {
-      const { data: { session } } = await getSupabaseBrowser().auth.getSession();
-      if (!session?.access_token) throw new Error("La sesión expiró. Inicia sesión nuevamente.");
-      const response = await fetch(`/api/client/v1/organizations/${encodeURIComponent(organization.id)}/companies/${encodeURIComponent(companyId)}/treasury/commands`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}`, "x-kontave-client": "web" }, cache: "no-store", body: JSON.stringify({ kind: "undo_reconciliation_match", matchId: match.id, expectedVersion: match.version, reason: undoReasons[match.id].trim(), idempotencyKey, correlationId: idempotencyKey }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo deshacer el vínculo.");
+      await command.execute((identity) => ({ ...identity, kind: "undo_reconciliation_match", matchId: match.id, expectedVersion: match.version, reason }), `undo:${match.id}`);
       setNotice("Vínculo deshecho. El evento se conserva en el historial.");
       setUndoReasons((current) => ({ ...current, [match.id]: "" }));
-      await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo deshacer el vínculo.");
     } finally {
@@ -443,7 +369,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     {notice && <div role="status" className="rounded-lg border border-success-300 bg-success-50 p-4 text-sm text-success-700">{notice}</div>}
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-default-200 p-5"><div><h2 className="font-semibold">Importar extracto CSV</h2><p className="text-sm text-default-500">Formato neutral, hasta 1.000 filas y 2 MB. La vista previa marca errores antes de enviar.</p></div><button type="button" onClick={downloadTemplate} className="rounded-lg border border-default-300 px-3 py-2 text-sm">Descargar plantilla</button></div>
       <form onSubmit={importStatement} className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="grid gap-1 text-sm">Cuenta bancaria<select required value={accountId} onChange={(event) => { setAccountId(event.target.value); setStatementCandidatePage(1); setLedgerCandidatePage(1); setManualStatementId(""); setManualLedgerId(""); setRuleId(""); setRuleVersion(0); setRuleCatalogPage(1); setStatementCatalogPage(1); setSelectedStatementId(""); setCloseExplanation(""); setPreviewAsOf(""); setAutomaticPreview(null); setRuleActivated(false); setCsvLines((current) => current.map((line) => ({ ...line, errors: line.errors.filter((message) => !message.startsWith("La moneda no coincide con")) }))); }} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{accounts.filter((account) => account.status === "active").map((account) => <option key={account.id} value={account.id}>{account.holderName} · {account.currency}</option>)}</select></label>
+        <label className="grid gap-1 text-sm">Cuenta bancaria<select required value={accountId} onChange={(event) => { setAccountId(event.target.value); setFilters({ account: event.target.value }, "replace"); setStatementCandidatePage(1); setLedgerCandidatePage(1); setManualStatementId(""); setManualLedgerId(""); setRuleId(""); setRuleVersion(0); setRuleCatalogPage(1); setStatementCatalogPage(1); setSelectedStatementId(""); setCloseExplanation(""); setPreviewAsOf(""); setAutomaticPreview(null); setRuleActivated(false); setCsvLines((current) => current.map((line) => ({ ...line, errors: line.errors.filter((message) => !message.startsWith("La moneda no coincide con")) }))); }} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{accounts.filter((account) => account.status === "active").map((account) => <option key={account.id} value={account.id}>{account.holderName} · {account.currency}</option>)}</select></label>
         <label className="grid gap-1 text-sm">Inicio del período<input required type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label>
         <label className="grid gap-1 text-sm">Fin del período<input required type="date" min={periodStart || undefined} value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label>
         <label className="grid gap-1 text-sm">Referencia externa<input required maxLength={160} value={externalReference} onChange={(event) => setExternalReference(event.target.value)} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label>
@@ -467,11 +393,11 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       </form>
       <div className="grid gap-3 border-t border-default-200 p-4 sm:grid-cols-2"><label className="grid gap-1 text-sm">Versiones de reglas<select value={selectedRule ? `${selectedRule.id}|${selectedRule.version}` : ""} onChange={(event) => { const [id, rawVersion] = event.target.value.split("|"); const next = rules.find((item) => item.id === id && item.version === Number(rawVersion)); setRuleId(next?.id ?? ""); setRuleVersion(next?.version ?? 0); setRuleActivated(next?.active ?? false); setAutomaticPreview(null); }} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona una regla</option>{rules.map((item) => <option key={`${item.id}-${item.version}`} value={`${item.id}|${item.version}`}>{item.active ? "Activa" : "Borrador"} · v{item.version} · desde {item.activeFrom} · tol. {item.toleranceAmount} {item.currency}</option>)}</select></label><div className="flex items-end justify-between gap-2 text-sm"><span>{ruleCatalogTotal} versiones</span><div className="flex gap-2"><button type="button" disabled={ruleCatalogPage <= 1 || loading} onClick={() => setRuleCatalogPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-2 disabled:opacity-50">Anterior</button><button type="button" disabled={ruleCatalogPage * 100 >= ruleCatalogTotal || loading} onClick={() => setRuleCatalogPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-2 disabled:opacity-50">Siguiente</button></div></div></div>
       {selectedRule && <div className="grid gap-3 border-t border-default-200 p-4 sm:grid-cols-2 lg:grid-cols-4"><p className="self-end text-sm">{selectedRule.active || ruleActivated ? "Regla activa" : "Borrador"} · {selectedRule.id} · v{selectedRule.version}</p><label className="grid gap-1 text-sm">Evaluar hasta<input required type="date" value={previewAsOf} onChange={(event) => { setPreviewAsOf(event.target.value); setAutomaticPreview(null); setRuleActivated(false); }} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label>{!selectedRule.active && <button type="button" onClick={() => void previewRule()} disabled={!can("treasury.reconcile") || previewingRule || !previewAsOf} className="self-end rounded-lg border border-default-300 px-4 py-2 text-sm disabled:opacity-50">{previewingRule ? "Evaluando..." : "Generar vista previa"}</button>}{automaticPreview && !selectedRule.active && <button type="button" onClick={() => void activateRule()} disabled={!can("treasury.manage") || ruleActivating || ruleActivated} className="self-end rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{ruleActivating ? "Activando..." : ruleActivated ? "Regla activada" : "Activar regla"}</button>}{(selectedRule.active || ruleActivated) && <button type="button" onClick={() => void runAutomaticReconciliation()} disabled={!can("treasury.reconcile") || automaticRunning || !previewAsOf} className="self-end rounded-lg border border-default-300 px-4 py-2 text-sm disabled:opacity-50">{automaticRunning ? "Ejecutando..." : "Ejecutar conciliación"}</button>}</div>}
-      {automaticPreview && <div className="space-y-3 border-t border-default-200 p-4"><p className="text-sm">Vista previa ? {automaticPreview.asOf} ? {automaticPreview.results.filter((item) => item.state === "matched").length} coincidencias unicas ? {automaticPreview.results.filter((item) => item.state === "ambiguous").length} ambiguas ? {automaticPreview.results.filter((item) => item.state === "unmatched").length} sin candidato.</p><ul className="max-h-72 space-y-1 overflow-auto text-sm">{automaticPreview.results.map((item) => <li key={item.statementLineId} className="rounded bg-default-100 p-2">{item.state === "matched" ? "Coincidencia" : item.state === "ambiguous" ? "Ambigua" : "Sin candidato"} ? linea {item.statementLineId}{item.ledgerEntryId ? ` ? movimiento ${item.ledgerEntryId}` : ""}{item.candidateLedgerEntryIds?.length ? ` ? ${item.candidateLedgerEntryIds.length} candidatos` : ""}</li>)}</ul></div>}
+      {automaticPreview && <div className="space-y-3 border-t border-default-200 p-4"><p className="text-sm">Vista previa · {automaticPreview.asOf} · {automaticPreview.results.filter((item) => item.state === "matched").length} coincidencias únicas · {automaticPreview.results.filter((item) => item.state === "ambiguous").length} ambiguas · {automaticPreview.results.filter((item) => item.state === "unmatched").length} sin candidato.</p><ul className="max-h-72 space-y-1 overflow-auto text-sm">{automaticPreview.results.map((item) => <li key={item.statementLineId} className="rounded bg-default-100 p-2">{item.state === "matched" ? "Coincidencia" : item.state === "ambiguous" ? "Ambigua" : "Sin candidato"} · línea {item.statementLineId}{item.state === "matched" ? ` · movimiento ${item.ledgerEntryId}` : ""}{item.state === "ambiguous" && item.candidateLedgerEntryIds.length ? ` · ${item.candidateLedgerEntryIds.length} candidatos` : ""}</li>)}</ul></div>}
     </section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="border-b border-default-200 p-5"><h2 className="font-semibold">Cerrar conciliación</h2><p className="text-sm text-default-500">El cierre valida que todas las diferencias pendientes tengan una explicación y conserva la versión del extracto.</p></div><form onSubmit={closeStatement} className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"><label className="grid gap-1 text-sm sm:col-span-2">Extracto abierto<select required value={selectedStatementId} onChange={(event) => setSelectedStatementId(event.target.value)} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{statements.map((statement) => <option key={statement.id} value={statement.id}>{statement.periodStart} a {statement.periodEnd} · {statement.externalReference} · v{statement.version}</option>)}</select><span className="flex items-center gap-2 text-xs text-default-500"><button type="button" disabled={statementCatalogPage <= 1 || loading} onClick={() => { setStatementCatalogPage((current) => current - 1); setSelectedStatementId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Anterior</button>{statementCatalogPage} / {Math.max(1, Math.ceil(statementsTotal / 100))}<button type="button" disabled={statementCatalogPage * 100 >= statementsTotal || loading} onClick={() => { setStatementCatalogPage((current) => current + 1); setSelectedStatementId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Siguiente</button><span>{statementsTotal} abiertos</span></span></label><label className="grid gap-1 text-sm sm:col-span-2">Explicación de diferencias (si aplica)<textarea maxLength={1000} value={closeExplanation} onChange={(event) => setCloseExplanation(event.target.value)} className="min-h-20 rounded-lg border border-default-300 bg-background px-3 py-2" /></label><div className="flex items-end"><button type="submit" disabled={!can("treasury.reconcile") || closingStatement || loading || !selectedStatement} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{closingStatement ? "Cerrando..." : "Cerrar extracto"}</button></div>{!can("treasury.reconcile") && <p className="text-sm text-warning-700 sm:col-span-4">Necesitas el permiso de conciliación para cerrar extractos.</p>}</form></section>
-    <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-default-200 p-5"><div><h2 className="font-semibold">Partidas de conciliación</h2><p className="text-sm text-default-500">Pendientes, ambiguas y conciliadas para la cuenta seleccionada.</p></div><select aria-label="Estado de conciliación" value={state} onChange={(event) => { setState(event.target.value as (typeof reconciliationStates)[number]); setPage(1); }} className="rounded-lg border border-default-300 bg-background px-3 py-2">{reconciliationStates.map((item) => <option key={item} value={item}>{stateLabels[item]}</option>)}</select></div>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-default-100 text-default-600"><tr><th className="p-3">Estado</th><th className="p-3">Tipo</th><th className="p-3">Fecha</th><th className="p-3">Referencia</th><th className="p-3 text-right">Importe</th><th className="p-3">Detalle</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-default-100"><td className="p-3">{stateLabels[item.state]}</td><td className="p-3">{item.itemKind === "statement_line" ? "Extracto" : item.itemKind === "ledger_entry" ? "Libro" : item.matchType ?? "Vínculo"}</td><td className="p-3">{item.valueDate ?? item.createdAt ?? "--"}</td><td className="p-3">{item.reference ?? `${item.id}`}</td><td className="p-3 text-right">{item.amount ?? "--"} {item.currency ?? ""}</td><td className="p-3">{item.reason}</td></tr>)}{items.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-default-500">No hay partidas para este estado.</td></tr>}</tbody></table></div><div className="flex items-center justify-between gap-3 p-4 text-sm"><span>Página {page} · {total} partidas</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Anterior</button><button type="button" disabled={page * 50 >= total || loading} onClick={() => setPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Siguiente</button></div></div>
+    <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-default-200 p-5"><div><h2 className="font-semibold">Partidas de conciliación</h2><p className="text-sm text-default-500">Pendientes, ambiguas y conciliadas para la cuenta seleccionada.</p></div><select aria-label="Estado de conciliación" value={state} onChange={(event) => { setFilters({ state: event.target.value }, "replace"); setPage(1); }} className="rounded-lg border border-default-300 bg-background px-3 py-2">{reconciliationStates.map((item) => <option key={item} value={item}>{stateLabels[item]}</option>)}</select></div>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-default-100 text-default-600"><tr><th className="p-3">Estado</th><th className="p-3">Tipo</th><th className="p-3">Fecha</th><th className="p-3">Referencia</th><th className="p-3 text-right">Importe</th><th className="p-3">Detalle</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-default-100"><td className="p-3">{stateLabels[item.state]}</td>{item.rowKind === "reconciliation_pending" ? <><td className="p-3">{item.itemKind === "statement_line" ? "Extracto" : "Libro"}</td><td className="p-3">{item.valueDate}</td><td className="p-3">{item.reference}</td><td className="p-3 text-right">{item.amount} {item.currency}</td></> : <><td className="p-3">{item.matchType === "manual" ? "Manual" : item.matchType === "automatic" ? "Automático" : "Vínculo"}</td><td className="p-3">{item.createdAt}</td><td className="p-3">{item.id}</td><td className="p-3 text-right">--</td></>}<td className="p-3">{item.reason}</td></tr>)}{items.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-default-500">No hay partidas para este estado.</td></tr>}</tbody></table></div><div className="flex items-center justify-between gap-3 p-4 text-sm"><span>Página {page} · {total} partidas</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Anterior</button><button type="button" disabled={page * 50 >= total || loading} onClick={() => setPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Siguiente</button></div></div>
     </section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="border-b border-default-200 p-5"><h2 className="font-semibold">Historial de vínculos</h2><p className="text-sm text-default-500">Los deshacer se conservan como eventos compensatorios.</p></div><ul className="divide-y divide-default-100">{history.map((item) => <li key={item.id} className="grid gap-2 p-4 text-sm sm:grid-cols-2"><span className="font-medium">{item.matchType === "manual" ? "Manual" : "Automático"} · {item.status === "active" ? "Activo" : "Deshecho"}</span><span className="text-default-500">{item.createdAt} · {item.createdBy}</span><span>Línea {item.statementLineId} ↔ movimiento {item.ledgerEntryId}</span><span>{item.status === "undone" ? item.undoReason : item.reason}</span>{item.status === "active" && can("treasury.reverse") && <form className="flex flex-wrap items-center gap-2 sm:col-span-2" onSubmit={(event) => { event.preventDefault(); void undoMatch(item); }}><label className="flex min-w-64 flex-1 items-center gap-2">Motivo para deshacer<input required maxLength={500} value={undoReasons[item.id] ?? ""} onChange={(event) => setUndoReasons((current) => ({ ...current, [item.id]: event.target.value }))} className="min-w-0 flex-1 rounded-lg border border-default-300 bg-background px-3 py-2" /></label><button type="submit" disabled={undoingMatchId === item.id || loading || !undoReasons[item.id]?.trim()} className="rounded-lg border border-default-300 px-3 py-2 disabled:opacity-50">{undoingMatchId === item.id ? "Deshaciendo..." : "Deshacer vínculo"}</button></form>}</li>)}{history.length === 0 && <li className="p-6 text-center text-sm text-default-500">No hay vínculos en el historial.</li>}</ul><div className="flex items-center justify-between gap-3 p-4 text-sm"><span>Página {historyPage} · {historyTotal} vínculos</span><div className="flex gap-2"><button type="button" disabled={historyPage <= 1 || loading} onClick={() => setHistoryPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Anterior</button><button type="button" disabled={historyPage * 50 >= historyTotal || loading} onClick={() => setHistoryPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Siguiente</button></div></div></section>
   </main>;
