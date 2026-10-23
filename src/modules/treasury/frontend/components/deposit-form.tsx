@@ -6,7 +6,7 @@ import { addDecimal, exactDecimal } from "@kontave/monetary/domain";
 import { useTreasuryContext } from "../context/treasury-context";
 import { useTreasuryCatalogs } from "../hooks/use-treasury-catalogs";
 import { useTreasuryCommand } from "../hooks/use-treasury-command";
-import { TreasuryInput, TreasurySelect, treasuryAccountLabel, treasuryErrorMessage, treasuryToday } from "./treasury-form-controls";
+import { TreasuryInput, TreasurySelect, notifyTreasuryFailure, treasuryAccountLabel, treasuryToday } from "./treasury-form-controls";
 
 type Mode = "cash" | "collections";
 const COLLECTION_PAGE_SIZE = 100;
@@ -36,7 +36,6 @@ export function DepositForm({ onClose }: { readonly onClose: () => void }): Reac
   const [collectionPage, setCollectionPage] = useState(1);
   const [selected, setSelected] = useState<ReadonlyMap<string, TreasuryEligibleCollectionRow>>(new Map());
   const [loadingCollections, setLoadingCollections] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const destination = catalogs.accounts.find((item) => item.id === destinationId && item.rowKind === "bank_account");
   const source = catalogs.accounts.find((item) => item.id === sourceId && item.rowKind === "cash_box");
@@ -48,11 +47,11 @@ export function DepositForm({ onClose }: { readonly onClose: () => void }): Reac
 
   const loadCollections = useCallback(async () => {
     if (mode !== "collections" || !destination) { setCollections([]); setCollectionTotal(0); return; }
-    setLoadingCollections(true); setError(null);
+    setLoadingCollections(true);
     try {
       const result = await query<TreasuryEligibleCollectionRow>({ kind: "list_eligible_collections", currency: destination.currency, page: collectionPage, pageSize: COLLECTION_PAGE_SIZE });
       setCollections(result.items); setCollectionTotal(result.total);
-    } catch (cause: unknown) { setError(treasuryErrorMessage(cause, "No se pudieron consultar las cobranzas disponibles.")); }
+    } catch (cause: unknown) { notifyTreasuryFailure(cause, "No se pudieron consultar las cobranzas disponibles.", "treasury:deposits:collections"); }
     finally { setLoadingCollections(false); }
   }, [collectionPage, destination, mode, query]);
   useEffect(() => { void loadCollections(); }, [loadCollections, revision]);
@@ -66,7 +65,6 @@ export function DepositForm({ onClose }: { readonly onClose: () => void }): Reac
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
     try {
       if (!destination) throw new Error("Selecciona la cuenta bancaria de destino.");
       if (mode === "cash" && (!source || source.currency !== destination.currency)) throw new Error("Selecciona una caja de origen en la moneda de la cuenta de destino.");
@@ -87,7 +85,7 @@ export function DepositForm({ onClose }: { readonly onClose: () => void }): Reac
       }), `deposit:${mode}:${destination.id}`);
       onClose();
     } catch (cause: unknown) {
-      setError(treasuryErrorMessage(cause, "No se pudo registrar el depósito."));
+      notifyTreasuryFailure(cause, "No se pudo registrar el depósito.", "treasury:deposits:save");
       // A definitive rejection (e.g. another deposit reserved a collection) voids the selection; a lost
       // response keeps it so the retry replays the same deposit.
       const code = typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : "";
@@ -116,7 +114,6 @@ export function DepositForm({ onClose }: { readonly onClose: () => void }): Reac
           : <ul className="max-h-64 divide-y divide-default-100 overflow-y-auto">{collections.map((item) => <li key={item.collectionId}><label className="flex items-start gap-2 py-2"><input type="checkbox" checked={selected.has(item.collectionId)} onChange={() => toggle(item)} className="mt-1" /><span><span className="block">{item.availableAmount} {item.currency} · {item.receivedAt.slice(0, 10)}</span><span className="text-xs text-default-500">Cobro {item.collectionId}{exactDecimal(item.reservedAmount) !== exactDecimal("0") ? ` · reservado ${item.reservedAmount} de ${item.receivedAmount}` : ""}</span></span></label></li>)}</ul>}
         {destination && collectionTotal > COLLECTION_PAGE_SIZE && <div className="flex items-center justify-between pt-2"><button type="button" disabled={collectionPage === 1 || loadingCollections} onClick={() => setCollectionPage((page) => page - 1)} className="disabled:opacity-50">Anterior</button><span>Página {collectionPage} · {collectionTotal} cobranzas</span><button type="button" disabled={collectionPage * COLLECTION_PAGE_SIZE >= collectionTotal || loadingCollections} onClick={() => setCollectionPage((page) => page + 1)} className="disabled:opacity-50">Siguiente</button></div>}
       </fieldset>}
-      {error && <p role="alert" className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger sm:col-span-2 lg:col-span-3">{error}</p>}
       <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
         <button type="submit" disabled={command.pending || !destination || (mode === "collections" && selected.size === 0)} className="rounded-lg bg-primary px-3 py-2 text-sm text-white disabled:opacity-50">{command.pending ? "Guardando…" : "Registrar depósito"}</button>
         <button type="button" onClick={onClose} className="rounded-lg border px-3 py-2 text-sm">Cancelar</button>

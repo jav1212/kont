@@ -5,7 +5,8 @@ import type { TreasuryCheckRow } from "../treasury-rows";
 import { useTreasuryContext } from "../context/treasury-context";
 import { useTreasuryCatalogs } from "../hooks/use-treasury-catalogs";
 import { CHECK_DELIVERY_BATCH_LIMIT, type WebCheckDeliveryBatchItem, type WebCheckDeliveryBatchOutcome } from "../treasury-client";
-import { treasuryAccountLabel, treasuryErrorMessage } from "./treasury-form-controls";
+import { notifyTreasuryFailure, treasuryAccountLabel } from "./treasury-form-controls";
+import { notify } from "@/src/shared/frontend/notify";
 
 type ItemIdentity = Pick<WebCheckDeliveryBatchItem, "deliveryEventId" | "idempotencyKey" | "correlationId">;
 
@@ -30,19 +31,18 @@ export function CheckDeliveryBatch({ bankAccountId, canDeliver }: { readonly ban
   const [outcomes, setOutcomes] = useState<readonly WebCheckDeliveryBatchOutcome[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const identities = useRef(new Map<string, ItemIdentity>());
 
   useEffect(() => { setPage(1); setSelected(new Map()); }, [bankAccountId]);
 
   const load = useCallback(async () => {
-    setLoading(true); setError(null);
+    setLoading(true);
     try {
       const result = await query<TreasuryCheckRow>({ kind: "list_checks", status: "issued", ...(bankAccountId ? { bankAccountId } : {}), page, pageSize: CHECK_DELIVERY_BATCH_LIMIT });
       setChecks(result.items); setTotal(result.total);
       // Selections keep the version last seen; refresh it so a retry does not fail on a stale version.
       setSelected((current) => new Map([...current].map(([id, check]) => [id, result.items.find((item) => item.id === id) ?? check])));
-    } catch (cause: unknown) { setError(treasuryErrorMessage(cause, "No se pudieron consultar los cheques por entregar.")); }
+    } catch (cause: unknown) { notifyTreasuryFailure(cause, "No se pudieron consultar los cheques por entregar.", "treasury:checks:load"); }
     finally { setLoading(false); }
   }, [bankAccountId, page, query]);
   useEffect(() => { void load(); }, [load, revision]);
@@ -73,7 +73,7 @@ export function CheckDeliveryBatch({ bankAccountId, canDeliver }: { readonly ban
       identities.current.set(check.id, identity);
       return { ...identity, checkId: check.id, recipientName: name, deliveredAt, ...(reference ? { evidenceReference: reference } : {}), expectedVersion: check.version };
     });
-    setSubmitting(true); setError(null); setOutcomes([]);
+    setSubmitting(true); setOutcomes([]);
     try {
       const result = await deliverChecks(items);
       // Every item received a definitive answer; failed ones restart with fresh identifiers.
@@ -82,8 +82,9 @@ export function CheckDeliveryBatch({ bankAccountId, canDeliver }: { readonly ban
       const failed = new Set(result.filter((outcome) => outcome.status === "failed").map((outcome) => outcome.checkId));
       setSelected((current) => new Map([...current].filter(([id]) => failed.has(id))));
       if (failed.size === 0) { setRecipient(""); setEvidence(""); }
+      else notify.warning(`${failed.size} cheque${failed.size === 1 ? " no se entregó" : "s no se entregaron"}.`, { deduplicationKey: "treasury:checks:delivery-results" });
     } catch (cause: unknown) {
-      setError(treasuryErrorMessage(cause, "No se pudo procesar el lote de entregas. Reintenta: las entregas ya registradas no se duplicarán."));
+      notifyTreasuryFailure(cause, "No se pudo procesar el lote de entregas. Reintenta: las entregas ya registradas no se duplicarán.", "treasury:checks:deliver");
     } finally { setSubmitting(false); }
   };
 
@@ -102,10 +103,9 @@ export function CheckDeliveryBatch({ bankAccountId, canDeliver }: { readonly ban
       <p className="self-end text-sm text-default-500">{selected.size} de {CHECK_DELIVERY_BATCH_LIMIT} seleccionados</p>
       <button type="submit" disabled={submitting || selected.size === 0 || !recipient.trim()} className="self-end rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-50">{submitting ? "Registrando…" : `Entregar ${selected.size} ${selected.size === 1 ? "cheque" : "cheques"}`}</button>
     </form>}
-    {error && <p role="alert" className="rounded-lg border border-danger-200 bg-danger-50 p-4 text-sm text-danger">{error}</p>}
     {outcomes.length > 0 && <div role="status" className="space-y-2 rounded-lg border border-default-200 bg-content1 p-4 text-sm">
       <p>{recorded} entregas registradas · {failures.length} con error.</p>
-      {failures.length > 0 && <ul className="list-disc space-y-1 pl-5 text-danger">{failures.map((outcome) => <li key={outcome.checkId}>Cheque {checks.find((check) => check.id === outcome.checkId)?.number ?? outcome.checkId}: {outcome.message}</li>)}</ul>}
+      {failures.length > 0 && <div className="overflow-x-auto"><table className="min-w-full text-left"><thead><tr><th className="py-2">Cheque</th><th className="py-2">Resultado</th></tr></thead><tbody>{failures.map((outcome) => <tr key={outcome.checkId} className="border-t border-default-100"><td className="py-2">{checks.find((check) => check.id === outcome.checkId)?.number ?? outcome.checkId}</td><td className="py-2"><span className="rounded-full bg-surface-2 px-2 py-1 text-xs text-[var(--text-secondary)]">No entregado</span></td></tr>)}</tbody></table></div>}
     </div>}
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1">
       <div className="flex justify-between border-b border-default-200 p-4"><h2 className="font-semibold">Cheques por entregar</h2><span className="text-sm">{total} cheques</span></div>

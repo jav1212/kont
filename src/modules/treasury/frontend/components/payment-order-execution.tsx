@@ -7,7 +7,8 @@ import { exactDecimal } from "@kontave/monetary/domain";
 import { useTreasuryContext } from "../context/treasury-context";
 import { useTreasuryCatalogs } from "../hooks/use-treasury-catalogs";
 import { useTreasuryCommand } from "../hooks/use-treasury-command";
-import { TreasuryInput, TreasurySelect, treasuryAccountLabel, treasuryErrorMessage, treasuryToday } from "./treasury-form-controls";
+import { TreasuryInput, TreasurySelect, notifyTreasuryFailure, treasuryAccountLabel, treasuryToday } from "./treasury-form-controls";
+import { notify } from "@/src/shared/frontend/notify";
 
 type PaymentOrder = { readonly id: string; readonly beneficiary: string; readonly concept: string; readonly amount: string; readonly currency: string; readonly dueDate: string | null; readonly status: "draft" | "cancelled"; readonly version: number };
 type PaymentMethod = "cash" | "bank_debit" | "check";
@@ -41,12 +42,10 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
   const [paymentDate, setPaymentDate] = useState(treasuryToday);
   const [checks, setChecks] = useState<readonly TreasuryCheckRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!companyId) return;
-    setLoading(true); setError(null);
+    setLoading(true);
     try {
       const response = await fetch(`/api/security/payment-orders?companyId=${encodeURIComponent(companyId)}&offset=0&limit=${ORDER_LIMIT}`, { cache: "no-store" });
       if (!response.ok) throw new Error("No se pudieron consultar las órdenes de pago.");
@@ -57,7 +56,7 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
         return execution.items.length ? order.id : null;
       }));
       setOrders(drafts); setPaidOrderIds(new Set(settled.filter((id): id is string => id !== null)));
-    } catch (cause: unknown) { setError(treasuryErrorMessage(cause, "No se pudieron consultar las órdenes de pago.")); }
+    } catch (cause: unknown) { notifyTreasuryFailure(cause, "No se pudieron consultar las órdenes de pago.", "treasury:payments:orders"); }
     finally { setLoading(false); }
   }, [companyId, query]);
   useEffect(() => { void loadOrders(); }, [loadOrders, revision]);
@@ -67,7 +66,7 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
     let active = true;
     void query<TreasuryReportRow>({ kind: "treasury_report", report: "payments", from, to, page: historyPage, pageSize: HISTORY_PAGE_SIZE })
       .then((result) => { if (active) { setHistory(result.items); setHistoryTotal(result.total); } })
-      .catch((cause: unknown) => { if (active) setError(treasuryErrorMessage(cause, "No se pudo consultar el historial de pagos.")); });
+      .catch((cause: unknown) => { if (active) notifyTreasuryFailure(cause, "No se pudo consultar el historial de pagos.", "treasury:payments:history"); });
     return () => { active = false; };
   }, [from, historyPage, query, revision, to]);
 
@@ -84,7 +83,7 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
     // Issued and delivered checks are both payable instruments; voided or cleared ones are not.
     void Promise.all((["issued", "delivered"] as const).map((status) => query<TreasuryCheckRow>({ kind: "list_checks", bankAccountId: account.id, status, page: 1, pageSize: 500 })))
       .then((pages) => { if (active) setChecks(pages.flatMap((page) => page.items)); })
-      .catch((cause: unknown) => { if (active) setError(treasuryErrorMessage(cause, "No se pudieron consultar los cheques de la cuenta.")); });
+      .catch((cause: unknown) => { if (active) notifyTreasuryFailure(cause, "No se pudieron consultar los cheques de la cuenta.", "treasury:payments:checks"); });
     return () => { active = false; };
   }, [account, method, query, revision]);
 
@@ -94,16 +93,15 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
   const check = checkOptions.find((item) => item.id === checkId);
 
   const changeMethod = (next: PaymentMethod) => { setMethod(next); setAccountId(""); setCheckId(""); };
-  const changeOrder = (next: string) => { setOrderId(next); setAccountId(""); setCheckId(""); setNotice(null); };
+  const changeOrder = (next: string) => { setOrderId(next); setAccountId(""); setCheckId(""); };
 
   const pay = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null); setNotice(null);
-    if (!order || !account || !beneficiary) { setError("Selecciona la orden, la cuenta y el beneficiario."); return; }
-    if (account.status !== "active") { setError("La cuenta de pago debe estar activa."); return; }
-    if (account.currency !== order.currency) { setError("La moneda de la cuenta debe coincidir con la orden."); return; }
-    if ((method === "cash") !== (account.rowKind === "cash_box")) { setError("El efectivo se paga desde una caja; el débito y el cheque, desde una cuenta bancaria."); return; }
-    if (method === "check" && !check) { setError("Selecciona un cheque de la cuenta por el mismo monto y moneda de la orden."); return; }
+    if (!order || !account || !beneficiary) { notify.error("Selecciona la orden, la cuenta y el beneficiario.", { deduplicationKey: "treasury:payments:validation" }); return; }
+    if (account.status !== "active") { notify.error("La cuenta de pago debe estar activa.", { deduplicationKey: "treasury:payments:validation" }); return; }
+    if (account.currency !== order.currency) { notify.error("La moneda de la cuenta debe coincidir con la orden.", { deduplicationKey: "treasury:payments:validation" }); return; }
+    if ((method === "cash") !== (account.rowKind === "cash_box")) { notify.error("El efectivo se paga desde una caja; el débito y el cheque, desde una cuenta bancaria.", { deduplicationKey: "treasury:payments:validation" }); return; }
+    if (method === "check" && !check) { notify.error("Selecciona un cheque de la cuenta por el mismo monto y moneda de la orden.", { deduplicationKey: "treasury:payments:validation" }); return; }
     try {
       await command.execute((identity, paymentId) => ({
         ...identity,
@@ -120,8 +118,8 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
         expectedAccountVersion: account.version,
       }), `payment:${order.id}`);
       setOrderId(""); setCheckId("");
-      setNotice(`Orden pagada con ${METHOD_LABELS[method].toLowerCase()}.`);
-    } catch (cause: unknown) { setError(treasuryErrorMessage(cause, "No se pudo ejecutar el pago.")); }
+      notify.success(`Orden pagada con ${METHOD_LABELS[method].toLowerCase()}.`);
+    } catch (cause: unknown) { notifyTreasuryFailure(cause, "No se pudo ejecutar el pago.", "treasury:payments:execute"); }
   };
 
   const payable = orders.filter((item) => !paidOrderIds.has(item.id));
@@ -140,8 +138,6 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
         <TreasuryInput label="Fecha de pago" type="date" value={paymentDate} onChange={setPaymentDate} />
         <div className="flex items-end"><button type="submit" disabled={command.pending || !order || !account || !beneficiary || (method === "check" && !check)} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-50">{command.pending ? "Procesando…" : "Ejecutar pago"}</button></div>
       </form> : <p className="mt-4 text-sm text-warning-700">Necesitas el permiso de publicación de Tesorería para ejecutar pagos.</p>}
-      {error && <p role="alert" className="mt-4 rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger">{error}</p>}
-      {notice && <p role="status" className="mt-4 rounded-lg border border-success-200 bg-success-50 p-3 text-sm text-success-700">{notice}</p>}
     </section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1">
       <div className="flex justify-between border-b border-default-200 p-4"><h2 className="font-semibold">Historial de liquidaciones</h2><span className="text-sm">{historyTotal} pagos</span></div>

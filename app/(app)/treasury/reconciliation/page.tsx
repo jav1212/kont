@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { TreasuryPageFrame } from "@/src/modules/treasury/frontend/components/treasury-page-frame";
+import { notifyTreasuryFailure } from "@/src/modules/treasury/frontend/components/treasury-form-controls";
+import { notify } from "@/src/shared/frontend/notify";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { useTreasuryContext } from "@/src/modules/treasury/frontend/context/treasury-context";
 import { useTreasuryCommand } from "@/src/modules/treasury/frontend/hooks/use-treasury-command";
@@ -56,7 +58,7 @@ function parseCsv(source: string): string[][] {
 
 /** Shows statement-import preview and company-scoped reconciliation facts.
  * @returns A Treasury reconciliation workspace with row-level CSV validation.
- * @throws Displays transport, authorization, and persistence errors inline.
+ * @throws Reports transport, authorization, and persistence failures through notifications.
  */
 export default function TreasuryReconciliationPage(): React.JSX.Element {
   const { companyId, query: treasuryQuery, revision } = useTreasuryContext();
@@ -112,16 +114,15 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   const [periodEnd, setPeriodEnd] = useState("");
   const [externalReference, setExternalReference] = useState("");
   const [csvLines, setCsvLines] = useState<CsvLine[]>([]);
-  const [csvError, setCsvError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => { if (notice) notify.success(notice); }, [notice]);
 
   const load = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
-    setError(null);
     try {
       const query = async <T extends TreasuryReadRow,>(kind: string, extra: Record<string, unknown> = {}): Promise<PageData<T>> => {
         const result = await treasuryQuery<T>({ kind, page: 1, pageSize: 100, ...extra } as TreasuryQueryRequest);
@@ -153,7 +154,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       setHistory(historyResult.items);
       setHistoryTotal(historyResult.total);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo cargar la conciliación.");
+      notifyTreasuryFailure(cause, "No se pudo cargar la conciliación.", "treasury:reconciliation:load");
     } finally {
       setLoading(false);
     }
@@ -187,11 +188,10 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   }, [periodEnd, periodStart, selectedAccount]);
 
   const readCsv = async (file: File | undefined) => {
-    setCsvError(null);
     setNotice(null);
     setCsvLines([]);
     if (!file) return;
-    if (file.size > 2_000_000) { setCsvError("El archivo supera el límite de 2 MB."); return; }
+    if (file.size > 2_000_000) { notify.warning("El archivo supera el límite de 2 MB.", { deduplicationKey: "treasury:reconciliation:csv" }); return; }
     try {
       const rows = parseCsv(await file.text());
       const header = rows.shift()?.map((value) => value.trim());
@@ -219,7 +219,9 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       setCsvLines(lines);
       if (!externalReference) setExternalReference(file.name);
     } catch (cause) {
-      setCsvError(cause instanceof Error ? cause.message : "No se pudo leer el CSV.");
+      const message = cause instanceof Error ? cause.message : "No se pudo leer el CSV.";
+      setCsvLines([{ lineNumber: 1, lineId: crypto.randomUUID(), externalId: "", valueDate: "", direction: "credit", amount: "", currency: "", reference: "", description: "", errors: [message] }]);
+      notify.warning("El archivo CSV tiene errores de formato. Revisa la vista previa.", { deduplicationKey: "treasury:reconciliation:csv" });
     }
   };
 
@@ -227,7 +229,6 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     event.preventDefault();
     if (!companyId || !selectedAccount || !can("treasury.reconcile") || validLines.length === 0 || invalidLineCount > 0) return;
     setImporting(true);
-    setError(null);
     setNotice(null);
     try {
       // Line identifiers are fixed when the CSV is parsed, so the statement identity is keyed by that parse.
@@ -240,7 +241,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       setFilters({ state: "statement_pending", page: "1" }, "replace");
       setStatementCatalogPage(1);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo importar el extracto.");
+      notifyTreasuryFailure(cause, "No se pudo importar el extracto.", "treasury:reconciliation:import");
     } finally {
       setImporting(false);
     }
@@ -252,7 +253,6 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     const ledgerEntryVersion = selectedLedger?.version;
     if (!companyId || !selectedAccount || !selectedStatementLine || !selectedLedger || !statementLineVersion || !ledgerEntryVersion || !manualReason.trim() || !can("treasury.reconcile")) return;
     setReconciling(true);
-    setError(null);
     setNotice(null);
     try {
       await command.execute((identity, matchId) => ({ ...identity, kind: "reconcile_manually", matchId, bankAccountId: accountId, statementLineId: selectedStatementLine.id, ledgerEntryId: selectedLedger.id, expectedStatementLineVersion: statementLineVersion, expectedLedgerEntryVersion: ledgerEntryVersion, reason: manualReason.trim() }), `match:${selectedStatementLine.id}:${selectedLedger.id}`);
@@ -262,7 +262,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       setManualReason("");
       setFilters({ state: "reconciled", page: "1" }, "replace");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo conciliar las partidas seleccionadas.");
+      notifyTreasuryFailure(cause, "No se pudo conciliar las partidas seleccionadas.", "treasury:reconciliation:manual-match");
     } finally {
       setReconciling(false);
     }
@@ -271,7 +271,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
   const configureRule = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!companyId || !selectedAccount || !can("treasury.manage")) return;
-    setRuleSaving(true); setError(null); setNotice(null);
+    setRuleSaving(true); setNotice(null);
     let newRuleId = "";
     try {
       await command.execute((identity, ruleSetId) => {
@@ -281,13 +281,13 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       const newRule: ReconciliationRule = { rowKind: "reconciliation_rule", id: newRuleId, bankAccountId: accountId, activeFrom: ruleActiveFrom, dateWindowDays: Number(ruleDateWindow), toleranceAmount: ruleTolerance, currency: selectedAccount.currency, referenceWeight: ruleReferenceWeight, dateWeight: ruleDateWeight, version: 1, active: false };
       setRules((current) => [newRule, ...current]); setRuleCatalogTotal((current) => current + 1); setRuleId(newRuleId); setRuleVersion(1); setAutomaticPreview(null); setRuleActivated(false);
       setNotice("Regla guardada como borrador. Genera una vista previa antes de activarla.");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo guardar la regla."); }
+    } catch (cause) { notifyTreasuryFailure(cause, "No se pudo guardar la regla.", "treasury:reconciliation:rule-save"); }
     finally { setRuleSaving(false); }
   };
 
   const previewRule = async () => {
     if (!companyId || !selectedRule || selectedRule.active || !previewAsOf || !can("treasury.reconcile")) return;
-    setPreviewingRule(true); setError(null); setNotice(null);
+    setPreviewingRule(true); setNotice(null);
     let previewId = "";
     try {
       await command.execute((identity, id) => {
@@ -298,40 +298,40 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       if (!preview) throw new Error("No se pudo leer la vista previa guardada.");
       setAutomaticPreview(preview); setRuleActivated(false);
       setNotice("Vista previa generada. Los vínculos no se aplican hasta activar y ejecutar.");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo evaluar la regla."); }
+    } catch (cause) { notifyTreasuryFailure(cause, "No se pudo evaluar la regla.", "treasury:reconciliation:rule-preview"); }
     finally { setPreviewingRule(false); }
   };
 
   const activateRule = async () => {
     if (!companyId || !automaticPreview || !can("treasury.manage")) return;
-    setRuleActivating(true); setError(null);
+    setRuleActivating(true);
     try {
       await command.execute((identity) => ({ ...identity, kind: "activate_reconciliation_rule", ruleSetId: automaticPreview.ruleSetId, ruleVersion: automaticPreview.ruleVersion, bankAccountId: accountId, previewId: automaticPreview.id }), `activate:${automaticPreview.id}`);
       setRuleActivated(true); setNotice("Regla activada. Ejecuta la conciliación para aplicar coincidencias únicas.");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo activar la regla."); }
+    } catch (cause) { notifyTreasuryFailure(cause, "No se pudo activar la regla.", "treasury:reconciliation:rule-activate"); }
     finally { setRuleActivating(false); }
   };
 
   const runAutomaticReconciliation = async () => {
     if (!companyId || !selectedRule || !previewAsOf || !(selectedRule.active || ruleActivated) || !can("treasury.reconcile")) return;
-    setAutomaticRunning(true); setError(null);
+    setAutomaticRunning(true);
     try {
       await command.execute((identity, runId) => ({ ...identity, kind: "run_automatic_reconciliation", runId, bankAccountId: accountId, ruleSetId: selectedRule.id, asOf: previewAsOf }), `run:${selectedRule.id}:${previewAsOf}`);
       setNotice("Ejecución terminada. Coincidencias únicas conciliadas; ambigüedades permanecen pendientes."); setFilters({ state: "ambiguous", page: "1" }, "replace");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo ejecutar la conciliación automática."); }
+    } catch (cause) { notifyTreasuryFailure(cause, "No se pudo ejecutar la conciliación automática.", "treasury:reconciliation:automatic"); }
     finally { setAutomaticRunning(false); }
   };
 
   const closeStatement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!companyId || !selectedStatement || !can("treasury.reconcile")) return;
-    setClosingStatement(true); setError(null); setNotice(null);
+    setClosingStatement(true); setNotice(null);
     const explanation = closeExplanation.trim();
     try {
       await command.execute((identity, closeId) => ({ ...identity, kind: "close_reconciliation", closeId, bankAccountId: accountId, statementId: selectedStatement.id, expectedStatementVersion: selectedStatement.version, closedAt: new Date().toISOString(), ...(explanation ? { differenceExplanation: explanation } : {}) }), `close:${selectedStatement.id}`);
       setNotice("Conciliación cerrada. El extracto queda bloqueado para nuevos vínculos.");
       setSelectedStatementId(""); setCloseExplanation("");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cerrar el extracto."); }
+    } catch (cause) { notifyTreasuryFailure(cause, "No se pudo cerrar el extracto.", "treasury:reconciliation:close"); }
     finally { setClosingStatement(false); }
   };
 
@@ -339,14 +339,13 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     const reason = undoReasons[match.id]?.trim();
     if (!companyId || !can("treasury.reverse") || !reason) return;
     setUndoingMatchId(match.id);
-    setError(null);
     setNotice(null);
     try {
       await command.execute((identity) => ({ ...identity, kind: "undo_reconciliation_match", matchId: match.id, expectedVersion: match.version, reason }), `undo:${match.id}`);
       setNotice("Vínculo deshecho. El evento se conserva en el historial.");
       setUndoReasons((current) => ({ ...current, [match.id]: "" }));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo deshacer el vínculo.");
+      notifyTreasuryFailure(cause, "No se pudo deshacer el vínculo.", "treasury:reconciliation:undo");
     } finally {
       setUndoingMatchId(null);
     }
@@ -362,11 +361,8 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
     URL.revokeObjectURL(url);
   };
 
-  return <main className="min-h-full space-y-6 p-6">
-    <PageHeader title="Conciliación bancaria" subtitle="Importa extractos, revisa diferencias y conserva el historial de vínculos." />
+  return <TreasuryPageFrame title="Conciliación bancaria" description="Importa extractos, revisa diferencias y conserva el historial de vínculos.">
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default-200 bg-content1 p-4"><div><p className="text-sm text-default-500">Empresa activa</p><p className="font-medium">{companyId ?? "Selecciona una empresa"}</p></div><button type="button" onClick={() => void load()} disabled={loading} className="rounded-lg border border-default-300 px-3 py-2 text-sm disabled:opacity-50">{loading ? "Actualizando..." : "Actualizar"}</button></div>
-    {error && <div role="alert" className="rounded-lg border border-danger-300 bg-danger-50 p-4 text-sm text-danger-700">{error}</div>}
-    {notice && <div role="status" className="rounded-lg border border-success-300 bg-success-50 p-4 text-sm text-success-700">{notice}</div>}
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-default-200 p-5"><div><h2 className="font-semibold">Importar extracto CSV</h2><p className="text-sm text-default-500">Formato neutral, hasta 1.000 filas y 2 MB. La vista previa marca errores antes de enviar.</p></div><button type="button" onClick={downloadTemplate} className="rounded-lg border border-default-300 px-3 py-2 text-sm">Descargar plantilla</button></div>
       <form onSubmit={importStatement} className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-sm">Cuenta bancaria<select required value={accountId} onChange={(event) => { setAccountId(event.target.value); setFilters({ account: event.target.value }, "replace"); setStatementCandidatePage(1); setLedgerCandidatePage(1); setManualStatementId(""); setManualLedgerId(""); setRuleId(""); setRuleVersion(0); setRuleCatalogPage(1); setStatementCatalogPage(1); setSelectedStatementId(""); setCloseExplanation(""); setPreviewAsOf(""); setAutomaticPreview(null); setRuleActivated(false); setCsvLines((current) => current.map((line) => ({ ...line, errors: line.errors.filter((message) => !message.startsWith("La moneda no coincide con")) }))); }} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{accounts.filter((account) => account.status === "active").map((account) => <option key={account.id} value={account.id}>{account.holderName} · {account.currency}</option>)}</select></label>
@@ -377,8 +373,7 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
         <div className="flex items-end"><button type="submit" disabled={!can("treasury.reconcile") || importing || loading || !selectedAccount || !periodStart || !periodEnd || periodStart > periodEnd || !externalReference.trim() || !csvPreview.length || invalidLineCount > 0} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{importing ? "Importando..." : "Importar extracto"}</button></div>
         {!can("treasury.reconcile") && <p className="text-sm text-warning-700 sm:col-span-4">Necesitas el permiso de conciliación para importar extractos.</p>}
       </form>
-      {csvError && <p role="alert" className="border-t border-danger-200 bg-danger-50 p-4 text-sm text-danger-700">{csvError}</p>}
-      {csvPreview.length > 0 && <div className="space-y-3 border-t border-default-200 p-4"><p className="text-sm">Vista previa: {csvPreview.length} filas · {validLines.length} válidas · {invalidLineCount} con errores.</p><div className="max-h-96 overflow-auto"><table className="w-full text-left text-sm"><thead className="sticky top-0 bg-default-100"><tr><th className="p-2">Fila</th><th className="p-2">ID externo</th><th className="p-2">Fecha</th><th className="p-2">Dirección</th><th className="p-2">Importe</th><th className="p-2">Referencia</th><th className="p-2">Validación</th></tr></thead><tbody>{csvPreview.map((line) => <tr key={line.lineId} className="border-t border-default-100"><td className="p-2">{line.lineNumber}</td><td className="p-2">{line.externalId || "--"}</td><td className="p-2">{line.valueDate || "--"}</td><td className="p-2">{line.direction || "--"}</td><td className="p-2">{line.amount} {line.currency}</td><td className="p-2">{line.reference || "--"}</td><td className="p-2 text-danger-700">{line.errors.join(" ") || "Correcta"}</td></tr>)}</tbody></table></div></div>}
+      {csvPreview.length > 0 && <div className="space-y-3 border-t border-default-200 p-4"><p className="text-sm">Vista previa: {csvPreview.length} filas · {validLines.length} válidas · {invalidLineCount} con errores.</p><div className="max-h-96 overflow-auto"><table className="w-full text-left text-sm"><thead className="sticky top-0 bg-default-100"><tr><th className="p-2">Fila</th><th className="p-2">ID externo</th><th className="p-2">Fecha</th><th className="p-2">Dirección</th><th className="p-2">Importe</th><th className="p-2">Referencia</th><th className="p-2">Validación</th></tr></thead><tbody>{csvPreview.map((line) => <tr key={line.lineId} className="border-t border-default-100"><td className="p-2">{line.lineNumber}</td><td className="p-2">{line.externalId || "--"}</td><td className="p-2">{line.valueDate || "--"}</td><td className="p-2">{line.direction || "--"}</td><td className="p-2">{line.amount} {line.currency}</td><td className="p-2">{line.reference || "--"}</td><td className="p-2 text-[var(--text-secondary)]">{line.errors.join(" ") || "Correcta"}</td></tr>)}</tbody></table></div></div>}
     </section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="border-b border-default-200 p-5"><h2 className="font-semibold">Conciliar manualmente</h2><p className="text-sm text-default-500">Solo se ofrecen partidas con importe, moneda y dirección iguales. El servidor vuelve a comprobar ambas versiones y la cuenta.</p></div><form onSubmit={reconcileManually} className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"><label className="grid gap-1 text-sm">Línea del extracto<select required value={manualStatementId} onChange={(event) => { setManualStatementId(event.target.value); setManualLedgerId(""); }} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{statementCandidates.map((item) => <option key={item.id} value={item.id}>{item.valueDate} · {item.reference} · {item.amount} {item.currency} · {item.direction}</option>)}</select><span className="flex items-center gap-2 text-xs text-default-500"><button type="button" disabled={statementCandidatePage <= 1 || loading} onClick={() => { setStatementCandidatePage((current) => current - 1); setManualStatementId(""); setManualLedgerId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Anterior</button>{statementCandidatePage} / {Math.max(1, Math.ceil(statementCandidateTotal / 500))}<button type="button" disabled={statementCandidatePage * 500 >= statementCandidateTotal || loading} onClick={() => { setStatementCandidatePage((current) => current + 1); setManualStatementId(""); setManualLedgerId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Siguiente</button><span>{statementCandidateTotal} líneas</span></span></label><label className="grid gap-1 text-sm">Movimiento de Tesorería<select required value={manualLedgerId} onChange={(event) => setManualLedgerId(event.target.value)} disabled={!selectedStatementLine} className="rounded-lg border border-default-300 bg-background px-3 py-2"><option value="">Selecciona</option>{manualLedgerOptions.map((item) => <option key={item.id} value={item.id}>{item.valueDate} · {item.reference} · {item.amount} {item.currency} · {item.direction}</option>)}</select><span className="flex items-center gap-2 text-xs text-default-500"><button type="button" disabled={ledgerCandidatePage <= 1 || loading} onClick={() => { setLedgerCandidatePage((current) => current - 1); setManualLedgerId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Anterior</button>{ledgerCandidatePage} / {Math.max(1, Math.ceil(ledgerCandidateTotal / 500))}<button type="button" disabled={ledgerCandidatePage * 500 >= ledgerCandidateTotal || loading} onClick={() => { setLedgerCandidatePage((current) => current + 1); setManualLedgerId(""); }} className="rounded border border-default-300 px-2 py-1 disabled:opacity-50">Siguiente</button><span>{ledgerCandidateTotal} movimientos</span></span></label><label className="grid gap-1 text-sm lg:col-span-2">Motivo<input required maxLength={500} value={manualReason} onChange={(event) => setManualReason(event.target.value)} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label><div className="flex items-end"><button type="submit" disabled={!can("treasury.reconcile") || reconciling || loading || !selectedStatementLine || !selectedLedger || !manualReason.trim()} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{reconciling ? "Conciliando..." : "Conciliar seleccionados"}</button></div>{manualStatementId && manualLedgerOptions.length === 0 && <p className="text-sm text-warning-700 sm:col-span-4">No hay movimientos pendientes que coincidan en importe, moneda y dirección.</p>}{!can("treasury.reconcile") && <p className="text-sm text-warning-700 sm:col-span-4">Necesitas el permiso de conciliación para conciliar partidas.</p>}</form></section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1">
@@ -400,5 +395,5 @@ export default function TreasuryReconciliationPage(): React.JSX.Element {
       <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-default-100 text-default-600"><tr><th className="p-3">Estado</th><th className="p-3">Tipo</th><th className="p-3">Fecha</th><th className="p-3">Referencia</th><th className="p-3 text-right">Importe</th><th className="p-3">Detalle</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-t border-default-100"><td className="p-3">{stateLabels[item.state]}</td>{item.rowKind === "reconciliation_pending" ? <><td className="p-3">{item.itemKind === "statement_line" ? "Extracto" : "Libro"}</td><td className="p-3">{item.valueDate}</td><td className="p-3">{item.reference}</td><td className="p-3 text-right">{item.amount} {item.currency}</td></> : <><td className="p-3">{item.matchType === "manual" ? "Manual" : item.matchType === "automatic" ? "Automático" : "Vínculo"}</td><td className="p-3">{item.createdAt}</td><td className="p-3">{item.id}</td><td className="p-3 text-right">--</td></>}<td className="p-3">{item.reason}</td></tr>)}{items.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-default-500">No hay partidas para este estado.</td></tr>}</tbody></table></div><div className="flex items-center justify-between gap-3 p-4 text-sm"><span>Página {page} · {total} partidas</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Anterior</button><button type="button" disabled={page * 50 >= total || loading} onClick={() => setPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Siguiente</button></div></div>
     </section>
     <section className="overflow-hidden rounded-xl border border-default-200 bg-content1"><div className="border-b border-default-200 p-5"><h2 className="font-semibold">Historial de vínculos</h2><p className="text-sm text-default-500">Los deshacer se conservan como eventos compensatorios.</p></div><ul className="divide-y divide-default-100">{history.map((item) => <li key={item.id} className="grid gap-2 p-4 text-sm sm:grid-cols-2"><span className="font-medium">{item.matchType === "manual" ? "Manual" : "Automático"} · {item.status === "active" ? "Activo" : "Deshecho"}</span><span className="text-default-500">{item.createdAt} · {item.createdBy}</span><span>Línea {item.statementLineId} ↔ movimiento {item.ledgerEntryId}</span><span>{item.status === "undone" ? item.undoReason : item.reason}</span>{item.status === "active" && can("treasury.reverse") && <form className="flex flex-wrap items-center gap-2 sm:col-span-2" onSubmit={(event) => { event.preventDefault(); void undoMatch(item); }}><label className="flex min-w-64 flex-1 items-center gap-2">Motivo para deshacer<input required maxLength={500} value={undoReasons[item.id] ?? ""} onChange={(event) => setUndoReasons((current) => ({ ...current, [item.id]: event.target.value }))} className="min-w-0 flex-1 rounded-lg border border-default-300 bg-background px-3 py-2" /></label><button type="submit" disabled={undoingMatchId === item.id || loading || !undoReasons[item.id]?.trim()} className="rounded-lg border border-default-300 px-3 py-2 disabled:opacity-50">{undoingMatchId === item.id ? "Deshaciendo..." : "Deshacer vínculo"}</button></form>}</li>)}{history.length === 0 && <li className="p-6 text-center text-sm text-default-500">No hay vínculos en el historial.</li>}</ul><div className="flex items-center justify-between gap-3 p-4 text-sm"><span>Página {historyPage} · {historyTotal} vínculos</span><div className="flex gap-2"><button type="button" disabled={historyPage <= 1 || loading} onClick={() => setHistoryPage((current) => current - 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Anterior</button><button type="button" disabled={historyPage * 50 >= historyTotal || loading} onClick={() => setHistoryPage((current) => current + 1)} className="rounded border border-default-300 px-3 py-1 disabled:opacity-50">Siguiente</button></div></div></section>
-  </main>;
+  </TreasuryPageFrame>;
 }

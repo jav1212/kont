@@ -1,5 +1,7 @@
 "use client";
 
+import { KontaveRemoteFailure } from "@kontave/client-remote";
+import { notify } from "@/src/shared/frontend/notify";
 const CONTROL_CLASS = "rounded-lg border border-default-300 bg-background px-3 py-2";
 
 /** Labeled text-like input used by Treasury forms and filters.
@@ -55,4 +57,15 @@ export function treasuryToday(): string {
  */
 export function treasuryErrorMessage(cause: unknown, fallback: string): string {
   return cause instanceof Error && cause.message ? cause.message : fallback;
+}
+
+/** Reports a Treasury failure through the shared notification channel.
+ * @param cause - Failure returned by a Treasury command or read.
+ * @param fallback - Safe message when the failure has no presentable message.
+ * @param key - Stable toast key used to replace repeated notifications.
+ * @returns Nothing.
+ */
+export function notifyTreasuryFailure(cause: unknown, fallback: string, key: string): void {
+  const requestId = cause instanceof KontaveRemoteFailure ? cause.requestId : null;
+  notify.error(treasuryErrorMessage(cause, fallback), { deduplicationKey: key, ...(requestId ? { errorCode: requestId } : {}) });
 }

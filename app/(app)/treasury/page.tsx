@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowLeftRight, Banknote, BookOpenCheck, CircleDollarSign, Clock3, WalletCards } from "lucide-react";
 import type { TreasuryBankAccountRow, TreasuryBalanceRow, TreasuryCashBoxRow } from "@/src/modules/treasury/frontend/treasury-rows";
 import { addDecimal, exactDecimal } from "@kontave/monetary/domain";
-import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { TreasuryPageFrame } from "@/src/modules/treasury/frontend/components/treasury-page-frame";
+import { TreasuryInput, notifyTreasuryFailure } from "@/src/modules/treasury/frontend/components/treasury-form-controls";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { useTreasuryContext } from "@/src/modules/treasury/frontend/context/treasury-context";
 import { useTreasuryCatalogs } from "@/src/modules/treasury/frontend/hooks/use-treasury-catalogs";
@@ -35,12 +36,11 @@ export default function TreasuryPage(): React.JSX.Element {
   const [balances, setBalances] = useState<readonly AccountBalance[]>([]);
   const [counts, setCounts] = useState({ checks: 0, deliveries: 0, drafts: 0, orders: 0, unreconciled: 0 });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const asOf = filters.asOf || today();
 
   const load = useCallback(async () => {
     if (!companyId) return;
-    setLoading(true); setError(null);
+    setLoading(true);
     try {
       const accounts = catalogs.accounts;
       const asOfBalances = await Promise.all(accounts.map(async (account): Promise<AccountBalance> => {
@@ -72,7 +72,7 @@ export default function TreasuryPage(): React.JSX.Element {
       setBalances(asOfBalances);
       setCounts({ checks, deliveries, drafts, orders, unreconciled });
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "No se pudo cargar el resumen de Tesorería.");
+      notifyTreasuryFailure(cause, "No se pudo cargar el resumen de Tesorería.", "treasury:dashboard");
     } finally { setLoading(false); }
   }, [asOf, can, catalogs.accounts, companyId, query]);
 
@@ -90,18 +90,12 @@ export default function TreasuryPage(): React.JSX.Element {
     { href: "/treasury/reconciliation", label: "Conciliar banco", icon: BookOpenCheck, detail: "Extractos y partidas pendientes" },
   ];
 
-  return <main className="space-y-6 p-4 sm:p-6">
-    <PageHeader title="Tesorería" subtitle="Saldos y tareas pendientes de caja y bancos" />
-    <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-default-200 bg-content1 p-4">
-      <p className="text-sm text-default-500">Empresa activa: <span className="font-medium text-foreground">{companyId ?? "Selecciona una empresa"}</span></p>
-      <label className="grid gap-1 text-sm">Saldo al día<input type="date" value={asOf} onChange={(event) => setFilters({ asOf: event.target.value }, "replace")} className="rounded-lg border border-default-300 bg-background px-3 py-2" /></label>
-    </div>
-    {error && <p role="alert" className="rounded-lg border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700">{error}</p>}
+  return <TreasuryPageFrame title="Tesorería" description="Saldos y tareas pendientes de caja y bancos" toolbar={<TreasuryInput label="Saldo al día" type="date" value={asOf} onChange={(value) => setFilters({ asOf: value }, "replace")} />}>
     <section aria-label="Resumen operativo" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {[{ title: "Cheques emitidos", value: counts.checks }, { title: "Por entregar", value: counts.deliveries }, { title: "Borradores", value: counts.drafts }, { title: "Órdenes pendientes", value: counts.orders }, { title: "Partidas sin conciliar", value: counts.unreconciled }].map((item) => <article key={item.title} className="rounded-xl border border-default-200 bg-content1 p-4"><p className="text-sm text-default-500">{item.title}</p><p className="mt-2 text-2xl font-semibold">{loading ? "…" : item.value}</p></article>)}
+      {[{ title: "Cheques emitidos", value: counts.checks }, { title: "Por entregar", value: counts.deliveries }, { title: "Borradores", value: counts.drafts }, { title: "Órdenes pendientes", value: counts.orders }, { title: "Partidas sin conciliar", value: counts.unreconciled }].map((item) => <article key={item.title} className="rounded-xl border border-border-light bg-surface-1 p-4"><p className="text-sm text-[var(--text-secondary)]">{item.title}</p><p className="mt-2 text-2xl font-semibold">{loading ? "…" : item.value}</p></article>)}
     </section>
-    <section className="rounded-xl border border-default-200 bg-content1 p-5"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold">Saldo por moneda</h2><p className="text-sm text-default-500">Saldos al {asOf}</p></div><CircleDollarSign className="text-primary" /></div>{Object.keys(balancesByCurrency).length === 0 ? <p className="text-sm text-default-500">{catalogs.loading || loading ? "Cargando saldos…" : "No hay cuentas registradas."}</p> : <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(balancesByCurrency).map(([currency, balance]) => <div key={currency} className="rounded-lg bg-default-100 p-4"><dt className="text-sm text-default-500">{currency}</dt><dd className="mt-1 text-xl font-semibold">{formatExactMoney(balance)}</dd></div>)}</dl>}</section>
-    <section className="rounded-xl border border-default-200 bg-content1 p-5"><div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Saldos por cuenta</h2><Link href="/treasury/accounts" className="text-sm text-primary underline">Ver todas</Link></div>{catalogs.error && <p role="alert" className="mb-3 text-sm text-danger">{catalogs.error}</p>}<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{catalogs.accounts.map((account: TreasuryAccount) => <li key={account.id}><Link href={`/treasury/accounts/${encodeURIComponent(account.id)}`} className="block rounded-lg border border-default-200 p-4 hover:border-primary"><p className="text-sm text-default-500">{account.rowKind === "cash_box" ? "Caja" : "Banco"} · {account.currency}</p><p className="mt-1 font-medium">{"holderName" in account ? account.holderName : `${account.name} · ${account.code}`}</p><p className="mt-2 text-lg font-semibold">{balances.find((balance) => balance.accountId === account.id)?.balance ?? "—"} {account.currency}</p></Link></li>)}</ul></section>
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{links.map(({ href, label, detail, icon: Icon }) => <Link key={href} href={href} className="rounded-xl border border-default-200 bg-content1 p-4 hover:border-primary"><Icon className="mb-3 text-primary" /><p className="font-medium">{label}</p><p className="mt-1 text-sm text-default-500">{detail}</p></Link>)}<Link href="/treasury/reports" className="rounded-xl border border-default-200 bg-content1 p-4 hover:border-primary"><Clock3 className="mb-3 text-primary" /><p className="font-medium">Reportes</p><p className="mt-1 text-sm text-default-500">Exportaciones por período</p></Link></section>
-  </main>;
+    <section className="rounded-xl border border-border-light bg-surface-1 p-5"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold">Saldo por moneda</h2><p className="text-sm text-[var(--text-secondary)]">Saldos al {asOf}</p></div><CircleDollarSign className="text-primary" /></div>{Object.keys(balancesByCurrency).length === 0 ? <p className="text-sm text-[var(--text-secondary)]">{catalogs.loading || loading ? "Cargando saldos…" : "No hay cuentas registradas."}</p> : <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(balancesByCurrency).map(([currency, balance]) => <div key={currency} className="rounded-lg bg-surface-2 p-4"><dt className="text-sm text-[var(--text-secondary)]">{currency}</dt><dd className="mt-1 text-xl font-semibold">{formatExactMoney(balance)}</dd></div>)}</dl>}</section>
+    <section className="rounded-xl border border-border-light bg-surface-1 p-5"><div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Saldos por cuenta</h2><Link href="/treasury/accounts" className="text-sm text-primary underline">Ver todas</Link></div>{catalogs.failed && <div className="mb-3 flex items-center justify-between gap-3 text-sm text-[var(--text-secondary)]"><span>No se pudieron cargar las cuentas.</span><button type="button" onClick={() => void catalogs.refresh()} className="underline">Reintentar</button></div>}<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{catalogs.accounts.map((account: TreasuryAccount) => <li key={account.id}><Link href={`/treasury/accounts/${encodeURIComponent(account.id)}`} className="block rounded-lg border border-border-light p-4 hover:border-primary"><p className="text-sm text-[var(--text-secondary)]">{account.rowKind === "cash_box" ? "Caja" : "Banco"} · {account.currency}</p><p className="mt-1 font-medium">{"holderName" in account ? account.holderName : `${account.name} · ${account.code}`}</p><p className="mt-2 text-lg font-semibold">{balances.find((balance) => balance.accountId === account.id) ? formatExactMoney(balances.find((balance) => balance.accountId === account.id)?.balance ?? "0") : "—"} {account.currency}</p></Link></li>)}</ul></section>
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{links.map(({ href, label, detail, icon: Icon }) => <Link key={href} href={href} className="rounded-xl border border-border-light bg-surface-1 p-4 hover:border-primary"><Icon className="mb-3 text-primary" /><p className="font-medium">{label}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p></Link>)}<Link href="/treasury/reports" className="rounded-xl border border-border-light bg-surface-1 p-4 hover:border-primary"><Clock3 className="mb-3 text-primary" /><p className="font-medium">Reportes</p><p className="mt-1 text-sm text-[var(--text-secondary)]">Exportaciones por período</p></Link></section>
+  </TreasuryPageFrame>;
 }

@@ -52,6 +52,19 @@ La Web consume los paquetes por sus exports públicos. Las reglas para separar
 imports cliente y servidor, composition roots y subrutas de prueba están en
 [ADR 0044](../adr/0044-web-client-server-package-boundary.md).
 
+## RPC de lectura estable y bloqueos
+
+Una función SQL `STABLE` o `IMMUTABLE` expuesta como RPC puede ejecutarse en una
+transacción de solo lectura de PostgREST. Por ello no puede contener `FOR SHARE`
+ni `FOR UPDATE`, ni llamar directa o indirectamente a una función que los use.
+La autorización de lectura debe verificar el alcance sin bloquear filas.
+
+Los comandos que deciden o modifican estado conservan sus bloqueos dentro de
+una RPC de escritura. Antes de declarar o modificar una RPC de lectura estable,
+se debe auditar su cadena de llamadas para confirmar que ningún helper introduce
+un bloqueo de fila. Las pruebas de integración SQL deben ejecutar al menos una
+consulta autorizada y una denegada dentro de una transacción de solo lectura.
+
 ## Autoridad de inventario
 
 El dominio portable mantiene las invariantes que puede evaluar sin persistencia:

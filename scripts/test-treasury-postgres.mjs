@@ -45,7 +45,9 @@ try {
   const admin = await connection();
   await admin.query("create role anon; create role authenticated; create role service_role");
   await admin.query(await readFile(join(repository, "supabase/checks/treasury-fixture.sql"), "utf8"));
+  await admin.query(await readFile(join(repository, "supabase/migrations/291_user_security_access.sql"), "utf8"));
   await admin.query(await readFile(join(repository, "supabase/migrations/20261001200000_treasury_foundation.sql"), "utf8"));
+  await admin.query(await readFile(join(repository, "supabase/migrations/20261023080000_treasury_read_only_access_assertion.sql"), "utf8"));
   assert.equal((await admin.query("select provolatile from pg_proc where oid='public.shared_treasury_query(jsonb,jsonb)'::regprocedure")).rows[0].provolatile, "s", "read queries must share one MVCC snapshot across count and page projection");
   assert.equal((await admin.query("select count(*)::integer count from public.access_control_permissions where code like 'treasury.%'")).rows[0].count, 7, "Treasury migration must register its complete permission catalog");
   assert.equal((await admin.query("select count(*)::integer count from public.organization_role_permissions rp join public.organization_roles r on r.id=rp.role_id where r.code='owner' and rp.permission_code like 'treasury.%'")).rows[0].count, 7, "Treasury migration must install owner grants");
@@ -64,6 +66,13 @@ try {
   await assert.rejects(execute(a, { ...createCash, name: "Changed intent" }), /IDEMPOTENCY/i);
   await assert.rejects(execute(a, { ...createCash, idempotencyKey: "unauthorized-cash", cashBoxId: "unauthorized-cash" }, { ...scope, actorId: "00000000-0000-4000-8000-000000000099" }), /ORGANIZATIONAL_USER_ACCESS_DENIED/i);
   await assert.rejects(a.query("select public.shared_treasury_query($1::jsonb,$2::jsonb)", [JSON.stringify({ ...scope, actorId: viewerId }), JSON.stringify({ kind: "list_cash_boxes", page: 1, pageSize: 1 })]), /ORGANIZATIONAL_USER_ACCESS_DENIED/i);
+  await a.query("begin read only");
+  try {
+    await a.query("select public.shared_treasury_query($1::jsonb,$2::jsonb)", [JSON.stringify(scope), JSON.stringify({ kind: "list_cash_boxes", page: 1, pageSize: 1 })]);
+    await assert.rejects(a.query("select public.shared_treasury_query($1::jsonb,$2::jsonb)", [JSON.stringify({ ...scope, actorId: viewerId }), JSON.stringify({ kind: "list_cash_boxes", page: 1, pageSize: 1 })]), /ORGANIZATIONAL_USER_ACCESS_DENIED/i);
+  } finally {
+    await a.query("rollback");
+  }
   const taxActorId = "00000000-0000-4000-8000-000000000097";
   const taxRoleId = "00000000-0000-4000-8000-000000000096";
   await admin.query("insert into auth.users(id) values($1)", [taxActorId]);

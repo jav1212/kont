@@ -152,10 +152,18 @@ function reportValues(row: Readonly<Record<string, unknown>>): Readonly<Record<s
 function isVersionRecord(value: unknown): value is Readonly<Record<string, number>> { return !!value && typeof value === "object" && !Array.isArray(value) && Object.values(value).every(item => Number.isSafeInteger(item) && item > 0); }
 /** Converts the stable SQL failure prefix into the portable Treasury failure vocabulary. */
 function postgresFailure(cause: unknown): TreasuryFailure {
-  const message = cause instanceof Error ? cause.message : "Treasury PostgreSQL adapter is unavailable.";
+  const message = postgresErrorMessage(cause);
+  if (message.includes("ORGANIZATIONAL_USER_ACCESS_DENIED")) return new TreasuryFailure("FORBIDDEN", "No tienes permiso para consultar Tesorería en esta empresa.", { cause });
+  if (message.includes("ORGANIZATIONAL_USER_COMPANY_INVALID")) return new TreasuryFailure("NOT_FOUND", "La empresa no pertenece a la organización seleccionada.", { cause });
   const code = treasurySqlCode(message);
-  if (!code) return cause instanceof Error ? new TreasuryFailure("UNAVAILABLE", "Treasury PostgreSQL adapter is unavailable.", { cause }) : new TreasuryFailure("UNAVAILABLE", "Treasury PostgreSQL adapter is unavailable.");
-  return cause instanceof Error ? new TreasuryFailure(code, message, { cause }) : new TreasuryFailure(code, message);
+  if (!code) return new TreasuryFailure("UNAVAILABLE", "Tesorería no está disponible en este momento.", { cause });
+  return new TreasuryFailure(code, message, { cause });
+}
+/** Extracts the database message from native and PostgREST-shaped failures. */
+function postgresErrorMessage(cause: unknown): string {
+  if (cause instanceof Error) return cause.message;
+  if (cause && typeof cause === "object" && "message" in cause && typeof cause.message === "string") return cause.message;
+  return "";
 }
 function treasurySqlCode(message: string): TreasuryFailure["code"] | undefined {
   const candidate = /TREASURY_([A-Z_]+)/.exec(message)?.[1];

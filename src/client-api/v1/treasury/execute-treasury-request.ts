@@ -142,6 +142,7 @@ export async function executeTreasuryRequest(
     if (cause instanceof TreasuryOperationFailure) {
       const status = cause.code === "INVALID" ? 400 : cause.code === "NOT_FOUND" ? 404
         : cause.code === "FORBIDDEN" ? 403 : cause.code === "UNAVAILABLE" ? 503 : 409;
+      if (cause.code === "UNAVAILABLE") console.error("client.treasury.unavailable", { requestId, operation, cause: cause.cause });
       return apiError(`TREASURY_${cause.code}` as Parameters<typeof apiError>[0], cause.message, requestId, status);
     }
     console.error("client.treasury.failed", { requestId, cause });

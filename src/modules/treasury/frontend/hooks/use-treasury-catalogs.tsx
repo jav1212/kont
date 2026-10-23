@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { TreasuryPageDto, TreasuryQueryRequest, TreasuryReadRow } from "@kontave/client-contracts";
 import type { TreasuryBankAccountRow, TreasuryBankRow, TreasuryBeneficiaryRow, TreasuryCashBoxRow, TreasuryCheckbookRow } from "../treasury-rows";
 import { useTreasuryContext } from "../context/treasury-context";
+import { notifyTreasuryFailure } from "../components/treasury-form-controls";
 
 export interface TreasuryCatalogs {
   readonly accounts: readonly (TreasuryBankAccountRow | TreasuryCashBoxRow)[];
@@ -13,7 +14,7 @@ export interface TreasuryCatalogs {
 }
 
 const EMPTY: TreasuryCatalogs = { accounts: [], banks: [], beneficiaries: [], checkbooks: [] };
-type CatalogValue = TreasuryCatalogs & { readonly loading: boolean; readonly error: string | null; readonly refresh: () => Promise<void> };
+type CatalogValue = TreasuryCatalogs & { readonly loading: boolean; readonly failed: boolean; readonly refresh: () => Promise<void> };
 const CatalogContext = createContext<CatalogValue | null>(null);
 
 /** Loads shared Treasury catalogs once per workspace and refreshes them after catalog writes.
@@ -23,9 +24,9 @@ export function TreasuryCatalogsProvider({ children }: { readonly children: Reac
   const { query, catalogRevision } = useTreasuryContext();
   const [catalogs, setCatalogs] = useState<TreasuryCatalogs>(EMPTY);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const refresh = useCallback(async () => {
-    setLoading(true); setError(null); setCatalogs(EMPTY);
+    setLoading(true); setFailed(false); setCatalogs(EMPTY);
     try {
       const [cashBoxes, bankAccounts, banks, beneficiaries, checkbooks] = await Promise.all([
         readAll<TreasuryCashBoxRow>(query, "list_cash_boxes"),
@@ -36,11 +37,12 @@ export function TreasuryCatalogsProvider({ children }: { readonly children: Reac
       ]);
       setCatalogs({ accounts: [...cashBoxes, ...bankAccounts], banks, beneficiaries, checkbooks });
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "No se pudieron cargar los catálogos de Tesorería.");
+      setFailed(true);
+      notifyTreasuryFailure(cause, "No se pudieron cargar los catálogos de Tesorería.", "treasury:catalogs");
     } finally { setLoading(false); }
   }, [query]);
   useEffect(() => { void refresh(); }, [catalogRevision, refresh]);
-  const value = useMemo(() => ({ ...catalogs, loading, error, refresh }), [catalogs, loading, error, refresh]);
+  const value = useMemo(() => ({ ...catalogs, loading, failed, refresh }), [catalogs, loading, failed, refresh]);
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
 

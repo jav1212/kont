@@ -37,6 +37,20 @@ test("Postgres adapter preserves stable Treasury SQL failure classifications", a
   await assert.rejects(repository.query({ tenantId: "t", organizationId: "o", companyId: "c", actorId: "a" }, { tenantId: "t", organizationId: "o", companyId: "c", actorId: "a", kind: "list_cash_boxes", page: 1, pageSize: 10 }), (error: unknown) => error instanceof TreasuryFailure && error.code === "INSUFFICIENT_FUNDS");
 });
 
+test("Postgres adapter maps read authorization failures without exposing database messages", async () => {
+  const scope = { tenantId: "t", organizationId: "o", companyId: "c", actorId: "a" };
+  const denied = new PostgresTreasuryRepository({ async call() { throw { message: "ORGANIZATIONAL_USER_ACCESS_DENIED", code: "P0001" }; } });
+  await assert.rejects(denied.query(scope, { ...scope, kind: "list_cash_boxes", page: 1, pageSize: 10 }), (error: unknown) => error instanceof TreasuryFailure && error.code === "FORBIDDEN" && error.message === "No tienes permiso para consultar Tesorería en esta empresa.");
+  const invalidCompany = new PostgresTreasuryRepository({ async call() { throw new Error("ORGANIZATIONAL_USER_COMPANY_INVALID"); } });
+  await assert.rejects(invalidCompany.query(scope, { ...scope, kind: "list_cash_boxes", page: 1, pageSize: 10 }), (error: unknown) => error instanceof TreasuryFailure && error.code === "NOT_FOUND" && error.message === "La empresa no pertenece a la organización seleccionada.");
+});
+
+test("Postgres adapter retains unknown PostgREST failures as unavailable causes", async () => {
+  const cause = { message: "cannot execute SELECT FOR SHARE in a read-only transaction", code: "25006" };
+  const repository = new PostgresTreasuryRepository({ async call() { throw cause; } });
+  await assert.rejects(repository.query({ tenantId: "t", organizationId: "o", companyId: "c", actorId: "a" }, { tenantId: "t", organizationId: "o", companyId: "c", actorId: "a", kind: "list_cash_boxes", page: 1, pageSize: 10 }), (error: unknown) => error instanceof TreasuryFailure && error.code === "UNAVAILABLE" && error.message === "Tesorería no está disponible en este momento." && error.cause === cause);
+});
+
 test("Postgres adapter decodes balance aggregates instead of treating them as ledger entries", async () => {
   const repository = new PostgresTreasuryRepository({ async call() { return { items: [{ accountId: "account", accountKind: "bank_account", asOf: "2026-01-31", currency: "VES", balance: "12.34000000" }], page: 1, pageSize: 10, total: 1, asOf: "2026-02-01T00:00:00Z" }; } });
   const result = await repository.query({ tenantId: "t", organizationId: "o", companyId: "c", actorId: "a" }, { tenantId: "t", organizationId: "o", companyId: "c", actorId: "a", kind: "get_balance", accountKind: "bank_account", accountId: "account", asOf: "2026-01-31", page: 1, pageSize: 10 });
