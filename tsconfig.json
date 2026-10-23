@@ -19,7 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@kontave/payables": ["./packages/business/payables/src/index.ts"],
+      "@kontave/payables/domain": ["./packages/business/payables/src/domain/index.ts"],
+      "@kontave/payables/application": ["./packages/business/payables/src/application/index.ts"],
+      "@kontave/payables/supabase": ["./packages/business/payables/src/adapters/supabase/index.ts"]
     }
   },
   "include": [

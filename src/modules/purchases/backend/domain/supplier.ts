@@ -11,6 +11,12 @@ export interface Supplier {
   address: string;
   notes: string;
   active: boolean;
+  /** Default calendar credit duration for future supplier invoices. */
+  defaultCreditDays?: number;
+  /** VAT withholding rate configured for this supplier, when applicable. */
+  vatWithholdingRate?: 75 | 100 | null;
+  /** Supplier tax category used by the existing ISLR retention calculator. */
+  incomeTaxSupplierType?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

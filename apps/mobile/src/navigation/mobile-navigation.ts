@@ -22,6 +22,7 @@ const MODULE_ICONS: Readonly<Record<ModuleCode, MobileIconName>> = {
   [ModuleCode.Purchases]: "cart-outline",
   [ModuleCode.Sales]: "storefront-outline",
   [ModuleCode.Treasury]: "cash-outline",
+  [ModuleCode.Payables]: "wallet-outline",
   [ModuleCode.Inventory]: "cube-outline",
   [ModuleCode.Accounting]: "calculator-outline",
   [ModuleCode.Tools]: "construct-outline",

@@ -140,6 +140,9 @@ export default function NuevaFacturaPage() {
 
     // Form state
     const [supplierId, setSupplierId] = useState("");
+    const [paymentTerms, setPaymentTerms] = useState<"contado" | "credito">("contado");
+    const [creditDays, setCreditDays] = useState(0);
+    const [dueDate, setDueDate] = useState("");
     const [documentType, setDocumentType] = useState<PurchaseDocumentType>("factura");
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
@@ -203,6 +206,14 @@ export default function NuevaFacturaPage() {
         }
     }, [companyId, loadProducts, loadSuppliers, loadPeriodCloses, loadDepartments, loadPurchaseInvoices]);
 
+    useEffect(() => {
+        const supplier = suppliers.find((item) => item.id === supplierId);
+        if (!supplier || draftIdParam) return;
+        const days = Math.max(0, Math.trunc(supplier.defaultCreditDays ?? 0));
+        setCreditDays(days);
+        setPaymentTerms(days > 0 ? "credito" : "contado");
+    }, [supplierId, suppliers, draftIdParam]);
+
     // ── Resume-draft banner ───────────────────────────────────────────────────
     // Shows the most recent unconfirmed invoice for this company when the user
     // didn't open the page with `?draft=<id>` already. Reset whenever the
@@ -231,6 +242,9 @@ export default function NuevaFacturaPage() {
         if (!inv || inv.id !== draftIdParam) return;
 
         setSupplierId(inv.supplierId ?? "");
+        setPaymentTerms(inv.paymentTerms ?? "contado");
+        setCreditDays(inv.creditDays ?? 0);
+        setDueDate(inv.dueDate ?? "");
         setDocumentType(inv.documentType ?? "factura");
         setInvoiceNumber(inv.invoiceNumber ?? "");
         setControlNumber(inv.controlNumber ?? "");
@@ -363,6 +377,10 @@ export default function NuevaFacturaPage() {
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         companyId:     companyId!,
         supplierId,
+        paymentTerms: documentType === "factura" ? paymentTerms : null,
+        creditDays: documentType === "factura" && paymentTerms === "credito" ? creditDays : null,
+        dueDate: documentType === "factura" && paymentTerms === "credito" ? dueDate || undefined : null,
+        paidAtRegistration: documentType === "factura" && paymentTerms === "contado",
         documentType,
         invoiceNumber,
         controlNumber,
@@ -395,7 +413,7 @@ export default function NuevaFacturaPage() {
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
         impuestos: resolvedImpuestos,
-    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
+    }), [companyId, supplierId, paymentTerms, creditDays, dueDate, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -420,7 +438,7 @@ export default function NuevaFacturaPage() {
     // Snapshots only the user-editable shape so the watcher fires on real
     // edits, not on every render. Keys are flattened to avoid deep diffs.
     const autosavePayload = useMemo(() => ({
-        supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
+        supplierId, paymentTerms, creditDays, dueDate, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
         rate: effectiveDollarRate, rateDecimals, retencionIvaPct,
         headerAdj: {
             d: headerAdj.descuentoTipo, dv: headerAdj.descuentoValor, dm: headerAdj.descuentoMoneda,
@@ -877,6 +895,14 @@ export default function NuevaFacturaPage() {
                                         }} disabled={currenciesLoading} />
                                     {!isLocalCurrency(invoiceCurrencyCode) && <BaseInput.Field label={`Tasa · Bs/${invoiceCurrencyCode}`} type="number" min="0" step="0.0001" value={getRate(invoiceCurrencyCode) ? String(getRate(invoiceCurrencyCode)) : ""} onValueChange={(value) => setManualRate(invoiceCurrencyCode, Number(String(value).replace(",", ".")) || 0)} description={publishedDate ? `BCV ${publishedDate}` : "Tasa manual"} />}
                                 </div>
+
+                                {documentType === "factura" && <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <ResponsiveSelect<"contado" | "credito"> label="Condición de pago" title="Condición de pago" value={paymentTerms} onChange={setPaymentTerms} options={[{ value: "contado", label: "Contado" }, { value: "credito", label: "Crédito" }]} />
+                                    {paymentTerms === "credito" && <>
+                                        <BaseInput.Field label="Días de crédito" type="number" min="0" max="3650" value={String(creditDays)} onValueChange={(value) => setCreditDays(Math.max(0, Math.min(3650, Math.trunc(Number(value) || 0))))} />
+                                        <BaseInput.Field label="Vencimiento acordado (opcional)" type="date" value={dueDate} onValueChange={setDueDate} description={creditDays > 0 ? `Por defecto: ${creditDays} días desde la fecha de factura` : "Se calcula desde la fecha de factura"} />
+                                    </>}
+                                </div>}
 
                                 <div className="mt-3 flex items-start gap-1.5">
                                     <Info size={12} strokeWidth={2} className="mt-[2px] flex-shrink-0 text-[var(--text-tertiary)]" />

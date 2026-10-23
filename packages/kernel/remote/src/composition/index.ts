@@ -4,6 +4,7 @@ import type {
   InventoryPort,
   OperationContextPort,
   OrganizationsPort,
+  PayablesPort,
   PortalMonitoringPort,
   ProductsPort,
   ProfilePort,
@@ -16,6 +17,7 @@ import { RemoteBillingPort } from "../domains/billing";
 import { RemoteInventoryPort } from "../domains/inventory";
 import { RemoteOperationContextPort } from "../domains/operation-context";
 import { RemoteOrganizationsPort } from "../domains/organizations";
+import { RemotePayablesPort } from "../domains/payables";
 import { RemotePortalMonitoringPort } from "../domains/portal-monitoring";
 import { RemoteProductsPort } from "../domains/products";
 import { RemoteProfilePort } from "../domains/profile";
@@ -35,6 +37,7 @@ export interface RemoteKontavePorts {
   readonly inventory: InventoryPort;
   readonly operationContext: OperationContextPort;
   readonly organizations: OrganizationsPort;
+  readonly payables: PayablesPort;
   readonly portalMonitoring: PortalMonitoringPort;
   readonly products: ProductsPort;
   readonly profile: ProfilePort;
@@ -70,6 +73,7 @@ export function createRemoteKontavePortsFromTransport(
     inventory: new RemoteInventoryPort(transport),
     operationContext: new RemoteOperationContextPort(transport),
     organizations: new RemoteOrganizationsPort(transport),
+    payables: new RemotePayablesPort(transport),
     portalMonitoring: new RemotePortalMonitoringPort(transport),
     products: new RemoteProductsPort(transport),
     profile: new RemoteProfilePort(transport),

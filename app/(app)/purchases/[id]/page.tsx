@@ -102,6 +102,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
     // Editable form state (only used when draft)
     const [supplierId, setSupplierId] = useState("");
+    const [paymentTerms, setPaymentTerms] = useState<"contado" | "credito">("contado");
+    const [creditDays, setCreditDays] = useState(0);
+    const [dueDate, setDueDate] = useState("");
     const [documentType, setDocumentType] = useState<PurchaseDocumentType>("factura");
     const [affectedInvoiceNumber, setAffectedInvoiceNumber] = useState("");
     const [affectedControlNumber, setAffectedControlNumber] = useState("");
@@ -194,6 +197,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     if (currentPurchaseInvoice?.id === id && formSourceId !== id) {
         setFormSourceId(id ?? null);
         setSupplierId(currentPurchaseInvoice.supplierId);
+        setPaymentTerms(currentPurchaseInvoice.paymentTerms ?? "contado");
+        setCreditDays(currentPurchaseInvoice.creditDays ?? 0);
+        setDueDate(currentPurchaseInvoice.dueDate ?? "");
         setDocumentType(currentPurchaseInvoice.documentType ?? "factura");
         setAffectedInvoiceNumber(currentPurchaseInvoice.affectedInvoiceNumber ?? "");
         setAffectedControlNumber(currentPurchaseInvoice.affectedControlNumber ?? "");
@@ -313,6 +319,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         id,
         companyId:      currentPurchaseInvoice?.companyId ?? companyId!,
         supplierId,
+        paymentTerms: documentType === "factura" ? paymentTerms : null,
+        creditDays: documentType === "factura" && paymentTerms === "credito" ? creditDays : null,
+        dueDate: documentType === "factura" && paymentTerms === "credito" ? dueDate || undefined : null,
+        paidAtRegistration: documentType === "factura" && paymentTerms === "contado",
         documentType,
         affectedInvoiceNumber: documentType === "factura" ? null : affectedInvoiceNumber || null,
         affectedControlNumber: documentType === "factura" ? null : affectedControlNumber || null,
@@ -357,7 +367,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         igtfCurrencyCode: igtf.currencyCode,
         igtfExchangeRate: getRate(igtf.currencyCode),
         impuestos:      totals.impuestos,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
+    }), [id, currentPurchaseInvoice, companyId, supplierId, paymentTerms, creditDays, dueDate, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -850,7 +860,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     {isDraft ? (
-                                        <ResponsiveSelect label="Proveedor" title="Seleccionar proveedor" subtitle="Busca por nombre o RIF" searchable value={supplierId} placeholder="Seleccionar proveedor…" onChange={value => { setSupplierId(value); setHasUnsavedChanges(true); }} options={suppliers.filter((supplier) => supplier.active && supplier.id).map((supplier) => ({ value: supplier.id!, label: supplier.name, description: supplier.rif }))} />
+                                        <ResponsiveSelect label="Proveedor" title="Seleccionar proveedor" subtitle="Busca por nombre o RIF" searchable value={supplierId} placeholder="Seleccionar proveedor…" onChange={value => { setSupplierId(value); const days = suppliers.find((supplier) => supplier.id === value)?.defaultCreditDays ?? 0; setCreditDays(days); setPaymentTerms(days > 0 ? "credito" : "contado"); setDueDate(""); setHasUnsavedChanges(true); }} options={suppliers.filter((supplier) => supplier.active && supplier.id).map((supplier) => ({ value: supplier.id!, label: supplier.name, description: supplier.rif }))} />
                                     ) : (
                                         <><label className={labelCls}>Proveedor</label><div className={readonlyCls + " flex items-center"}>{invoice.supplierName ?? "—"}</div></>
                                     )}
@@ -958,6 +968,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     )}
                                 </div>
                             </div>
+
+                            {activeDocumentType === "factura" && <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div>{isDraft ? <ResponsiveSelect<"contado" | "credito"> label="Condición de pago" title="Condición de pago" value={paymentTerms} onChange={(value) => { setPaymentTerms(value); setHasUnsavedChanges(true); }} options={[{ value: "contado", label: "Contado" }, { value: "credito", label: "Crédito" }]} /> : <><label className={labelCls}>Condición de pago</label><div className={readonlyCls}>{invoice.paymentTerms === "credito" ? "Crédito" : "Contado"}</div></>}</div>
+                                {paymentTerms === "credito" && <>
+                                    {isDraft ? <BaseInput.Field label="Días de crédito" type="number" min="0" max="3650" value={String(creditDays)} onValueChange={(value) => { setCreditDays(Math.max(0, Math.min(3650, Math.trunc(Number(value) || 0)))); setHasUnsavedChanges(true); }} /> : <div><label className={labelCls}>Días de crédito</label><div className={readonlyCls}>{invoice.creditDays ?? 0}</div></div>}
+                                    {isDraft ? <BaseInput.Field label="Vencimiento acordado (opcional)" type="date" value={dueDate} onValueChange={(value) => { setDueDate(value); setHasUnsavedChanges(true); }} /> : <div><label className={labelCls}>Vencimiento</label><div className={readonlyCls}>{invoice.dueDate ?? "Calculado desde los días de crédito"}</div></div>}
+                                </>}
+                            </div>}
 
                             {activeDocumentType !== "factura" && (
                                 <div className="rounded-lg border border-border-light bg-surface-2 p-4 mb-4">

@@ -24,6 +24,7 @@ export enum ModuleCode {
   Companies = "companies",
   Documents = "documents",
   Treasury = "treasury",
+  Payables = "payables",
 }
 
 export enum ModuleLifecycleStatus {
@@ -71,6 +72,13 @@ export enum ModuleCapability {
   DocumentsFiles = "documents.files",
   PurchasingDashboard = "purchases.dashboard",
   TreasuryManagement = "treasury.management",
+  PayablesRead = "payables.read",
+  PayablesCreate = "payables.create",
+  PayablesAdjust = "payables.adjust",
+  PayablesAuthorize = "payables.authorize",
+  PayablesPost = "payables.post",
+  PayablesVoid = "payables.void",
+  PayablesReverse = "payables.reverse",
 }
 
 export interface ModuleDefinition {

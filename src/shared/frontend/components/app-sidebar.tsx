@@ -221,7 +221,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             .map((mod) => ({
                 id: mod.id,
                 label: navigationLabels[mod.id] ?? mod.label,
-                ...(navigationIcons[mod.id] || mod.id === "treasury" || mod.id === "iva" ? { iconKey: navigationIcons[mod.id] ?? (mod.id === "iva" ? "receipt" : "wallet") } : {}),
+                ...(navigationIcons[mod.id] || mod.id === "treasury" || mod.id === "payables" || mod.id === "iva" ? { iconKey: navigationIcons[mod.id] ?? (mod.id === "iva" ? "receipt" : "wallet") } : {}),
                 href: mod.id === "sales"
                     ? resolveSalesLanding(organizationAccess.permissions ?? []) ?? "/tools"
                     : mod.href,

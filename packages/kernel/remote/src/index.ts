@@ -6,6 +6,7 @@ export * from "./domains/exchange-rates";
 export * from "./domains/inventory";
 export * from "./domains/operation-context";
 export * from "./domains/organizations";
+export * from "./domains/payables";
 export * from "./domains/portal-monitoring";
 export * from "./domains/profile";
 export * from "./domains/products";

@@ -47,6 +47,7 @@ export interface PurchaseInvoiceItem {
 export type InvoiceStatus = 'borrador' | 'confirmada';
 export type PurchaseDocumentType = 'factura' | 'nota_credito' | 'nota_debito';
 export type PurchaseInventoryEffect = 'none' | 'return_to_supplier' | 'additional_purchase';
+export type PurchasePaymentTerms = 'contado' | 'credito';
 
 export interface PurchaseInvoice {
   id?: string;
@@ -58,6 +59,14 @@ export interface PurchaseInvoice {
   date: string;       // YYYY-MM-DD — drives BCV lookup
   period: string;     // YYYY-MM — período contable (puede diferir del mes de fecha)
   status: InvoiceStatus;
+  /** Payment terms used to determine whether confirmation opens a supplier payable. */
+  paymentTerms?: PurchasePaymentTerms | null;
+  /** Credit duration in calendar days, copied from supplier defaults when omitted. */
+  creditDays?: number | null;
+  /** Explicit due date when the supplier agreement overrides calculated terms. */
+  dueDate?: string | null;
+  /** Marks a contado invoice settled in the same registration event. */
+  paidAtRegistration?: boolean;
   /** Currency of the invoice. All lines must use the same currency. */
   currency?: ItemCurrency;
   exchangeRates?: AppliedExchangeRate[];

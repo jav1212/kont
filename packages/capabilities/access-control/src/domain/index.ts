@@ -101,6 +101,20 @@ export const PERMISSIONS = {
   PAYMENT_ORDERS_READ: "payment_orders.read",
   /** Grants read access to company cash and bank activity. */
   TREASURY_READ: "treasury.read",
+  /** Grants access to supplier obligations and payables reports. */
+  PAYABLES_READ: "payables.read",
+  /** Grants creation of supplier obligations and payment batches. */
+  PAYABLES_CREATE: "payables.create",
+  /** Grants adjustment of payable documents and due dates. */
+  PAYABLES_ADJUST: "payables.adjust",
+  /** Grants authorization of supplier payment batches. */
+  PAYABLES_AUTHORIZE: "payables.authorize",
+  /** Grants execution of supplier payments. */
+  PAYABLES_POST: "payables.post",
+  /** Grants voiding of supplier payments. */
+  PAYABLES_VOID: "payables.void",
+  /** Grants reversal of supplier payments. */
+  PAYABLES_REVERSE: "payables.reverse",
   /** Grants maintenance of Treasury accounts, beneficiaries, and reconciliation rules. */
   TREASURY_MANAGE: "treasury.manage",
   /** Grants posting of Treasury movements and payments. */

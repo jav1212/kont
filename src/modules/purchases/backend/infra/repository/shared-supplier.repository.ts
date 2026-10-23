@@ -15,6 +15,9 @@ type RawSupplier = {
     address: string | null;
     notes: string | null;
     active: boolean | null;
+    default_credit_days: number | null;
+    vat_withholding_rate: number | null;
+    income_tax_supplier_type: string | null;
     created_at: string | null;
     updated_at: string | null;
 };
@@ -57,6 +60,9 @@ export class SharedSupplierRepository implements ISupplierRepository {
                     address: supplier.address,
                     notes: supplier.notes,
                     active: supplier.active,
+                    default_credit_days: supplier.defaultCreditDays ?? 0,
+                    vat_withholding_rate: supplier.vatWithholdingRate ?? null,
+                    income_tax_supplier_type: supplier.incomeTaxSupplierType ?? null,
                     updated_at: new Date().toISOString(),
                 }, { onConflict: 'tenant_id,id' })
                 .select('*')
@@ -93,6 +99,9 @@ export class SharedSupplierRepository implements ISupplierRepository {
             address: row.address ?? '',
             notes: row.notes ?? '',
             active: Boolean(row.active ?? true),
+            defaultCreditDays: row.default_credit_days ?? 0,
+            vatWithholdingRate: row.vat_withholding_rate === 75 || row.vat_withholding_rate === 100 ? row.vat_withholding_rate : null,
+            incomeTaxSupplierType: row.income_tax_supplier_type,
             createdAt: row.created_at ?? undefined,
             updatedAt: row.updated_at ?? undefined,
         };

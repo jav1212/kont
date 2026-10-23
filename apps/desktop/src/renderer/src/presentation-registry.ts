@@ -12,6 +12,7 @@ export const desktopPresentationRegistry =
     inventory: { status: "ready" },
     operationContext: { status: "ready" },
     organizations: { status: "ready" },
+    payables: { status: "planned", reason: "Accounts Payable presentation has not been activated." },
     portalMonitoring: { status: "ready" },
     products: { status: "ready" },
     profile: { status: "ready" },

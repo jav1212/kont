@@ -57,6 +57,15 @@ const PROTECTED_ROUTES: readonly ProtectedRouteDefinition[] = [
   ["/treasury/reports", ["treasury.read"]],
   ["/treasury/reconciliation", ["treasury.read"]],
   ["/treasury/tax-policy", ["treasury.read"]],
+  ["/payables", ["payables.read"]],
+  ["/payables/documents", ["payables.read"]],
+  ["/payables/suppliers", ["payables.read"]],
+  ["/payables/suppliers/[supplierId]", ["payables.read"]],
+  ["/payables/documents/[id]", ["payables.read"]],
+  ["/payables/schedule", ["payables.read"]],
+  ["/payables/payments", ["payables.read"]],
+  ["/payables/withholdings", ["payables.read"]],
+  ["/payables/reconciliation", ["payables.read"]],
 ];
 
 const ANY_PERMISSION_ROUTES: readonly AnyProtectedRouteDefinition[] = [
@@ -177,6 +186,7 @@ export function getModuleVisibilityPermission(moduleId: string): `${string}.${st
     case "companies": return "companies.read";
     case "documents": return "documents.read";
     case "treasury": return "treasury.read";
+    case "payables": return "payables.read";
     case "iva": return null;
     default: return null;
   }
@@ -189,7 +199,7 @@ export function getModuleVisibilityPermission(moduleId: string): `${string}.${st
  * @returns True only for explicitly public or permission-scoped modules.
  */
 export function isKnownOrganizationModule(moduleId: string): boolean {
-  return ["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents", "treasury", "iva", "tools"].includes(moduleId);
+  return ["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents", "treasury", "payables", "iva", "tools"].includes(moduleId);
 }
 
 /** Determines whether an organization member may open the shared IVA workspace.

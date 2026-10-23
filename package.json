@@ -55,6 +55,7 @@
     "@kontave/fiscal": "workspace:*",
     "@kontave/inventory": "workspace:*",
     "@kontave/modules": "workspace:*",
+    "@kontave/payables": "workspace:*",
     "@kontave/monetary": "workspace:*",
     "@kontave/operation-context": "workspace:*",
     "@kontave/organizations": "workspace:*",

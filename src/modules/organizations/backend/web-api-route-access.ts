@@ -110,6 +110,7 @@ const ROUTES: readonly RouteRule[] = [
   ["POST","/api/payroll/runs/unconfirm","payroll.delete"],
   ["GET","/api/payroll/settings","payroll.read"],
   ["PUT","/api/payroll/settings","payroll.create"],
+  ["POST","/api/payables/query","payables.read"],
   ["GET","/api/purchases/imports","purchases.read"],
   ["POST","/api/purchases/imports","purchases.create"],
   ["POST","/api/purchases/imports/[id]/execute","purchases.create"],

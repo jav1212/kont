@@ -25,6 +25,10 @@ type RawSharedInvoice = {
     period: string;
     manual_period: boolean | null;
     status: string;
+    payment_terms: string | null;
+    credit_days: number | null;
+    due_date: string | null;
+    paid_at_registration: boolean | null;
     document_type: string | null;
     affected_invoice_id: string | null;
     affected_invoice_number: string | null;
@@ -292,6 +296,10 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                     period: invoice.period,
                     manual_period: invoice.periodoManual ?? false,
                     status: 'borrador',
+                    payment_terms: invoice.paymentTerms ?? null,
+                    credit_days: invoice.creditDays ?? null,
+                    due_date: invoice.dueDate ?? null,
+                    paid_at_registration: invoice.paidAtRegistration ?? false,
                     subtotal: invoice.subtotal,
                     vat_percentage: invoice.vatPercentage,
                     vat_amount: invoice.vatAmount,
@@ -546,6 +554,10 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             period: row.period,
             periodoManual: row.manual_period === true,
             status: row.status as InvoiceStatus,
+            paymentTerms: row.payment_terms === 'credito' || row.payment_terms === 'contado' ? row.payment_terms : null,
+            creditDays: row.credit_days,
+            dueDate: row.due_date,
+            paidAtRegistration: row.paid_at_registration === true,
             documentType: row.document_type === 'nota_credito' || row.document_type === 'nota_debito'
                 ? row.document_type as PurchaseDocumentType : 'factura',
             affectedInvoiceId: row.affected_invoice_id,

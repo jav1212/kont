@@ -93,6 +93,13 @@ export function SupplierEditor({ supplier, saving = false, onSave, onCancel, onD
                     <textarea className={`${fieldCls} h-auto py-2 leading-relaxed`} rows={3} value={draft.notes} onChange={(event) => set("notes", event.target.value)} placeholder="Condiciones de pago, catálogo, retenciones aplicables, etc." />
                 </FormSection>
 
+                <FormSection icon={CheckCircle2} title="Condiciones de pago y retenciones" description="Valores sugeridos al registrar una factura de este proveedor.">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <BaseInput.Field label="Días de crédito por defecto" type="number" min="0" max="3650" value={String(draft.defaultCreditDays ?? 0)} onValueChange={(value) => setDraft((current) => ({ ...current, defaultCreditDays: Math.max(0, Math.min(3650, Math.trunc(Number(value) || 0))) }))} />
+                        <div><label className="mb-1.5 block text-sm">Retención IVA</label><select className={fieldCls} value={draft.vatWithholdingRate ?? ""} onChange={(event) => setDraft((current) => ({ ...current, vatWithholdingRate: event.target.value === "75" ? 75 : event.target.value === "100" ? 100 : null }))}><option value="">Sin valor predeterminado</option><option value="75">75 %</option><option value="100">100 %</option></select></div>
+                    </div>
+                </FormSection>
+
                 <FormSection icon={CheckCircle2} title={label("status", "Estado")} description="Los proveedores inactivos no aparecen en facturas nuevas.">
                     <label className="inline-flex cursor-pointer select-none items-center gap-3">
                         <span className="relative inline-flex">

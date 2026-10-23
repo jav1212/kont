@@ -8,6 +8,7 @@ export const webPresentationRegistry = definePresentationRegistry<KontaveClientF
   inventory: { status: "planned", reason: "Web has no portable inventory feature integration." },
   operationContext: { status: "planned", reason: "Web has no portable operation-context feature integration." },
   organizations: { status: "planned", reason: "Web has no portable organizations feature integration." },
+  payables: { status: "planned", reason: "Web uses its own payables routes; the portable feature is not activated." },
   portalMonitoring: { status: "planned", reason: "Web has no portable portal-monitoring feature integration." },
   products: { status: "planned", reason: "Web has no portable products feature integration." },
   profile: { status: "planned", reason: "Web has no portable profile feature integration." },

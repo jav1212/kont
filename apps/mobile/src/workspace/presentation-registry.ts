@@ -8,6 +8,7 @@ export const mobilePresentationRegistry = definePresentationRegistry<KontaveClie
   inventory: { status: "planned", reason: "Mobile has no portable inventory feature integration." },
   operationContext: { status: "planned", reason: "Mobile has no portable operation-context feature integration." },
   organizations: { status: "planned", reason: "Mobile has no portable organizations feature integration." },
+  payables: { status: "planned", reason: "Accounts Payable presentation has not been activated." },
   portalMonitoring: { status: "planned", reason: "Mobile has no portable portal-monitoring feature integration." },
   products: { status: "planned", reason: "Mobile has no portable products feature integration." },
   profile: { status: "planned", reason: "Mobile has no portable profile feature integration." },

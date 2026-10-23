@@ -6,6 +6,7 @@ import type {
   KontaveClient,
   OperationContextPort,
   OrganizationsPort,
+  PayablesPort,
   PortalMonitoringPort,
   ProductsPort,
   ProfilePort,
@@ -23,6 +24,7 @@ export interface KontaveClientPorts {
   readonly inventory: InventoryPort;
   readonly operationContext: OperationContextPort;
   readonly organizations: OrganizationsPort;
+  readonly payables: PayablesPort;
   readonly portalMonitoring: PortalMonitoringPort;
   readonly products: ProductsPort;
   readonly profile: ProfilePort;
@@ -38,6 +40,7 @@ export type KontaveClientFeatures = {
   readonly inventory: ClientPortFeature<InventoryPort>;
   readonly operationContext: ClientPortFeature<OperationContextPort>;
   readonly organizations: ClientPortFeature<OrganizationsPort>;
+  readonly payables: ClientPortFeature<PayablesPort>;
   readonly portalMonitoring: ClientPortFeature<PortalMonitoringPort>;
   readonly products: ClientPortFeature<ProductsPort>;
   readonly profile: ClientPortFeature<ProfilePort>;
@@ -255,6 +258,10 @@ export function createKontaveApplicationClient(
     performanceReport: (organizationId, companyId, query) =>
       options.ports.sales.performanceReport(organizationId, companyId, query),
   });
+  const payables = createPortFeature<PayablesPort>({
+    command: (organizationId, companyId, request) => options.ports.payables.command(organizationId, companyId, request),
+    query: (organizationId, companyId, request) => options.ports.payables.query(organizationId, companyId, request),
+  });
   const treasury = createPortFeature<TreasuryPort>({
     command: (organizationId, companyId, request) => options.ports.treasury.command(organizationId, companyId, request),
     query: (organizationId, companyId, request) => options.ports.treasury.query(organizationId, companyId, request),
@@ -266,6 +273,7 @@ export function createKontaveApplicationClient(
     inventory,
     operationContext,
     organizations,
+    payables,
     portalMonitoring,
     products,
     profile,
@@ -281,6 +289,7 @@ export function createKontaveApplicationClient(
       inventory: inventory.feature,
       operationContext: operationContext.feature,
       organizations: organizations.feature,
+      payables: payables.feature,
       portalMonitoring: portalMonitoring.feature,
       products: products.feature,
       profile: profile.feature,
