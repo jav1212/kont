@@ -1,4 +1,5 @@
 import type {
+  AccountingPort,
   AuthenticationPort,
   BillingPort,
   ClientPortFeature,
@@ -19,6 +20,7 @@ import { createPortFeature } from "./features/port-feature";
 
 /** Portable application ports required by the connected Kontave client. */
 export interface KontaveClientPorts {
+  readonly accounting: AccountingPort;
   readonly authentication: AuthenticationPort;
   readonly billing: BillingPort;
   readonly inventory: InventoryPort;
@@ -35,6 +37,7 @@ export interface KontaveClientPorts {
 
 /** Exhaustive portable feature catalog shared by every Kontave renderer. */
 export type KontaveClientFeatures = {
+  readonly accounting: ClientPortFeature<AccountingPort>;
   readonly authentication: ClientPortFeature<AuthenticationPort>;
   readonly billing: ClientPortFeature<BillingPort>;
   readonly inventory: ClientPortFeature<InventoryPort>;
@@ -64,6 +67,10 @@ export interface KontaveApplicationClientOptions {
 export function createKontaveApplicationClient(
   options: KontaveApplicationClientOptions,
 ): KontaveClient<KontaveClientFeatures> {
+  const accounting = createPortFeature<AccountingPort>({
+    command: (organizationId, companyId, request) => options.ports.accounting.command(organizationId, companyId, request),
+    query: (organizationId, companyId, request) => options.ports.accounting.query(organizationId, companyId, request),
+  });
   const authentication = createPortFeature<AuthenticationPort>({
     sessions: () => options.ports.authentication.sessions(),
     changePassword: (command) =>
@@ -268,6 +275,7 @@ export function createKontaveApplicationClient(
   });
 
   const runtimes = [
+    accounting,
     authentication,
     billing,
     inventory,
@@ -284,6 +292,7 @@ export function createKontaveApplicationClient(
 
   return createKontaveClient({
     features: Object.freeze({
+      accounting: accounting.feature,
       authentication: authentication.feature,
       billing: billing.feature,
       inventory: inventory.feature,

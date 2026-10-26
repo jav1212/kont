@@ -1,0 +1,157 @@
+{
+  "report": "T0 accounting chart audit",
+  "observedAt": "2026-10-23T20:09:10.869Z",
+  "scope": {
+    "database": "public.shared_accounting_*",
+    "mode": "read-only",
+    "access": "Supabase PostgREST GET using the configured service-role credential; results were paginated in 1000-row ranges.",
+    "limitations": [
+      "The private shared_native_payroll_accounting_posts, shared_native_purchase_accounting_posts, and shared_payables_accounting_posts tables returned HTTP 403 through PostgREST. Their schemas and account foreign keys were inspected from migrations, but their live row counts were not bypassed.",
+      "This report contains aggregated identifiers only. It does not contain credentials or account names."
+    ]
+  },
+  "planDecisionSnapshot": {
+    "source": "docs/project/PLAN_CONTABILIDAD_PLAN_DE_CUENTAS_Y_MAESTROS.md",
+    "acceptedOn": "2026-10-23",
+    "D1_D8": "accepted",
+    "D5": "Accounting consumes existing rates. Manual rates belong to the rate owner and require date, source, and audit traceability.",
+    "D6": "Voucher sequence is scoped by company, document type, and period; final numbering happens at posting and voided numbers are retained.",
+    "D7": "Out-of-structure accounts remain readable. recode_account preserves account id and postings, validates the replacement hierarchy, and records old and new codes.",
+    "D8": "opening_balance/saldo_inicial remains historical read-only data; future openings use opening entries after reconciliation."
+  },
+  "liveFacts": {
+    "charts": 5,
+    "accounts": 2129,
+    "companiesWithAccounts": 6,
+    "entries": 4,
+    "entryLines": 14,
+    "integrationRules": 0,
+    "accountsByType": {
+      "asset": 434,
+      "liability": 390,
+      "equity": 93,
+      "revenue": 93,
+      "expense": 1119
+    },
+    "accountsByKind": {
+      "summary_is_group_true": 677,
+      "detail_is_group_false": 1452
+    },
+    "accountsByActive": {
+      "active": 2129,
+      "inactive": 0
+    },
+    "codeSegmentDepth": {
+      "1": 44,
+      "2": 101,
+      "3": 197,
+      "4": 356,
+      "5": 1431
+    },
+    "referentialChecks": {
+      "accountChartIdsNotFound": 0,
+      "entryLinesWithUnknownEntry": 0,
+      "entryLinesWithUnknownAccount": 0,
+      "parentCodeMissing": 6,
+      "parentCodeNonPrefix": 0,
+      "parentTypeMismatch": 4,
+      "summaryAccountsWithLines": 0,
+      "accountsReferencedByEntryLines": 8,
+      "accountsReferencedByIntegrationRules": 0
+    },
+    "chartsByCompany": {
+      "624a5ef3-6e23-43ba-b3de-30686fa944e5:J-3122611-0": 1,
+      "624a5ef3-6e23-43ba-b3de-30686fa944e5:J-40721349-0": 1,
+      "80ed2eeb-59e1-47d8-bd56-1c91c2735634:J-30875696-2": 1,
+      "80ed2eeb-59e1-47d8-bd56-1c91c2735634:J-40548909-0": 1,
+      "80ed2eeb-59e1-47d8-bd56-1c91c2735634:J-30910209-5": 1
+    },
+    "looseAccounts": {
+      "total": 16,
+      "byCompany": {
+        "80ed2eeb-59e1-47d8-bd56-1c91c2735634:J-40548909-0": 3,
+        "9bebad90-0f27-4b69-ba68-4018d0112709:J506935210": 13
+      },
+      "J506935210": {
+        "charts": 0,
+        "accounts": 13,
+        "accountsWithoutChart": 13,
+        "entryLines": 2,
+        "W3Action": "Create a chart for J506935210 and assign these 13 existing accounts without deletion."
+      }
+    },
+    "nonzeroOpeningBalances": {
+      "accounts": 11,
+      "summaryAccounts": 0
+    }
+  },
+  "codeStructureAssessment": {
+    "observed": "Existing codes use one through five dot-separated segments. The five existing charts consistently infer segment lengths 1.1.2.2.3 from the modal length at each level; zero accounts depart from that inferred structure. All recorded parent codes are code prefixes. Six parent codes have no account in the same tenant and company, and four child accounts have a different type from their existing parent.",
+    "perPlan": {
+      "J-3122611-0": { "accounts": 375, "structure": "1.1.2.2.3", "depths": { "1": 6, "2": 12, "3": 25, "4": 58, "5": 274 }, "nonConforming": 0, "missingParents": 0, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 },
+      "J-40721349-0": { "accounts": 375, "structure": "1.1.2.2.3", "depths": { "1": 6, "2": 12, "3": 25, "4": 58, "5": 274 }, "nonConforming": 0, "missingParents": 0, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 },
+      "J-30875696-2": { "accounts": 453, "structure": "1.1.2.2.3", "depths": { "1": 9, "2": 25, "3": 47, "4": 80, "5": 292 }, "nonConforming": 0, "missingParents": 0, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 },
+      "J-40548909-0": { "accounts": 457, "structure": "1.1.2.2.3", "depths": { "1": 9, "2": 25, "3": 47, "4": 80, "5": 296 }, "nonConforming": 0, "missingParents": 0, "parentTypeMismatch": 4, "deepCodesWithoutParent": 0, "accountsWithNonzeroOpeningBalance": 11, "summaryAccountsWithNonzeroOpeningBalance": 0 },
+      "J-30910209-5": { "accounts": 453, "structure": "1.1.2.2.3", "depths": { "1": 9, "2": 25, "3": 47, "4": 80, "5": 292 }, "nonConforming": 0, "missingParents": 0, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 },
+      "J-40548909-0_without_chart": { "accounts": 3, "structure": "1.1.2.2.3", "depths": { "5": 3 }, "nonConforming": 0, "missingParents": 3, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 },
+      "J506935210_without_chart": { "accounts": 13, "structure": "1.1.2", "depths": { "1": 5, "2": 2, "3": 6 }, "nonConforming": 0, "missingParents": 3, "parentTypeMismatch": 0, "deepCodesWithoutParent": 0 }
+    },
+    "implementationConsequence": "P2 must infer and validate a CodeStructure per chart, publish a non-conformity report before activation, and preserve the six affected accounts for D7 recoding rather than deleting or replacing their identifiers. The four type mismatches need a product decision or a recode/reclassification sequence before a same-type-parent invariant is enforced."
+  },
+  "consumerAndPermissionInventory": {
+    "legacyWeb": [
+      "src/modules/accounting/backend/infrastructure/repository/shared-account.repository.ts calls shared_accounting_accounts_get.",
+      "src/modules/accounting/backend/infrastructure/repository/shared-chart.repository.ts calls shared_accounting_charts_get.",
+      "supabase/migrations/140_shared_accounting_chart_account_transactions.sql owns legacy account/chart save, import, and delete RPCs."
+    ],
+    "postedEntryDependencies": [
+      "shared_accounting_entry_lines.account_id has a tenant-scoped foreign key to shared_accounting_accounts.",
+      "Migrations 340-349 validate active, non-group accounts while configuring and posting native payroll and purchase integrations.",
+      "20261023191644_payables_accounting_integration.sql validates the same conditions for payables payment postings."
+    ],
+    "liveReferences": "Four entries and fourteen lines reference eight distinct accounts. No legacy integration rules are currently configured.",
+    "existingPermissions": [
+      "accounting.read",
+      "accounting.create",
+      "accounting.update",
+      "accounting.post",
+      "accounting.close"
+    ],
+    "permissionSources": [
+      "supabase/migrations/185_shared_authorization_permissions.sql",
+      "supabase/migrations/201_organization_access_control_foundation.sql",
+      "src/modules/organizations/backend/web-api-route-access.ts"
+    ],
+    "p0PermissionConclusion": "The proposed accounting.chart.manage, accounting.masters.manage, and accounting.configure permissions are new and must be registered additively with route and command authorization in P2/P3/P5."
+  },
+  "manualRateSupport": {
+    "finding": "Manual exchange-rate selection already exists in @kontave/operation-context. It accepts base currency, exact decimal value, and a required audit reason, then emits source.kind = manual. @kontave/monetary defines the manual source variant.",
+    "evidence": [
+      "packages/operation-context/src/application/index.ts",
+      "packages/operation-context/src/domain/index.ts",
+      "packages/monetary/src/domain/exchange.ts",
+      "app/api/client/v1/organizations/[organizationId]/companies/[companyId]/operation-context/route.ts"
+    ],
+    "decisionD5Impact": "Accounting must consume that rate context. Any durable rate maintenance needs to be added in its owner with effective date, source, and traceability; it does not belong in @kontave/accounting."
+  },
+  "saldoInicial": {
+    "storage": "public.shared_accounting_accounts.opening_balance numeric(18,2) not null default 0",
+    "legacyMapping": "The Web Account.saldoInicial field maps to opening_balance in SharedAccountRepository.",
+    "decisionD8Impact": "Do not add write commands for this field in the new accounting package. Preserve it for historical reads and reconcile it before opening-entry migration."
+  },
+  "reproducibleSql": {
+    "structureByChart": "select a.tenant_id,a.company_id,a.chart_id,count(*) account_count,min(array_length(string_to_array(a.code,'.'),1)) min_segments,max(array_length(string_to_array(a.code,'.'),1)) max_segments from public.shared_accounting_accounts a group by a.tenant_id,a.company_id,a.chart_id order by a.tenant_id,a.company_id,a.chart_id nulls first;",
+    "multipleCharts": "select tenant_id,company_id,count(*) chart_count from public.shared_accounting_charts group by tenant_id,company_id having count(*) > 1;",
+    "looseAccounts": "select tenant_id,company_id,count(*) account_count from public.shared_accounting_accounts where chart_id is null group by tenant_id,company_id order by tenant_id,company_id;",
+    "missingParents": "select a.tenant_id,a.company_id,a.id,a.code,a.parent_code from public.shared_accounting_accounts a left join public.shared_accounting_accounts p on p.tenant_id=a.tenant_id and p.company_id=a.company_id and p.code=a.parent_code where a.parent_code is not null and p.id is null order by a.tenant_id,a.company_id,a.code;",
+    "parentTypeMismatch": "select a.tenant_id,a.company_id,a.id,a.code,a.type child_type,p.id parent_id,p.type parent_type from public.shared_accounting_accounts a join public.shared_accounting_accounts p on p.tenant_id=a.tenant_id and p.company_id=a.company_id and p.code=a.parent_code where a.parent_code is not null and a.type is distinct from p.type order by a.tenant_id,a.company_id,a.code;",
+    "summaryWithLines": "select a.tenant_id,a.company_id,a.id,a.code,count(l.id) line_count from public.shared_accounting_accounts a join public.shared_accounting_entry_lines l on l.tenant_id=a.tenant_id and l.account_id=a.id where a.is_group group by a.tenant_id,a.company_id,a.id,a.code having count(l.id)>0 order by a.tenant_id,a.company_id,a.code;",
+    "accountReferences": "select 'entry_line' reference_kind,a.tenant_id,a.company_id,a.id,a.code,count(l.id) reference_count from public.shared_accounting_accounts a join public.shared_accounting_entry_lines l on l.tenant_id=a.tenant_id and l.account_id=a.id group by a.tenant_id,a.company_id,a.id,a.code union all select 'integration_rule_debit',a.tenant_id,a.company_id,a.id,a.code,count(r.id) from public.shared_accounting_accounts a join public.shared_accounting_integration_rules r on r.tenant_id=a.tenant_id and r.debit_account_id=a.id group by a.tenant_id,a.company_id,a.id,a.code union all select 'integration_rule_credit',a.tenant_id,a.company_id,a.id,a.code,count(r.id) from public.shared_accounting_accounts a join public.shared_accounting_integration_rules r on r.tenant_id=a.tenant_id and r.credit_account_id=a.id group by a.tenant_id,a.company_id,a.id,a.code;"
+  },
+  "nextActions": [
+    "Use the six missing-parent rows as the P2/W3 non-conformity report input.",
+    "Implement the partial unique active-chart index from D2 while retaining current chart and account identifiers.",
+    "Protect all account-id references during recode_account and record the old/new code pair in the audit trail.",
+    "Keep existing opening_balance read-only during migration and validate its reconciliation against any opening entries."
+  ]
+}

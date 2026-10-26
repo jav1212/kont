@@ -1,5 +1,6 @@
 export * from "./composition";
 export * from "./domains/authentication";
+export * from "./domains/accounting";
 export * from "./domains/billing";
 export * from "./domains/connectivity";
 export * from "./domains/exchange-rates";

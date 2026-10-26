@@ -1,4 +1,5 @@
 import type {
+  AccountingPort,
   AuthenticationPort,
   BillingPort,
   InventoryPort,
@@ -13,6 +14,7 @@ import type {
   TreasuryPort,
 } from "@kontave/client-contracts";
 import { RemoteAuthenticationPort } from "../domains/authentication";
+import { RemoteAccountingPort } from "../domains/accounting";
 import { RemoteBillingPort } from "../domains/billing";
 import { RemoteInventoryPort } from "../domains/inventory";
 import { RemoteOperationContextPort } from "../domains/operation-context";
@@ -32,6 +34,7 @@ import {
 
 /** Complete set of remote application ports consumed by the client runtime. */
 export interface RemoteKontavePorts {
+  readonly accounting: AccountingPort;
   readonly authentication: AuthenticationPort;
   readonly billing: BillingPort;
   readonly inventory: InventoryPort;
@@ -68,6 +71,7 @@ export function createRemoteKontavePortsFromTransport(
   transport: RemoteTransport,
 ): RemoteKontavePorts {
   return Object.freeze({
+    accounting: new RemoteAccountingPort(transport),
     authentication: new RemoteAuthenticationPort(transport),
     billing: new RemoteBillingPort(transport),
     inventory: new RemoteInventoryPort(transport),

@@ -3,6 +3,7 @@ import type { KontaveClientFeatures } from "@kontave/client-runtime";
 
 /** Web's explicit portable-feature classification; no treasury route is activated here. */
 export const webPresentationRegistry = definePresentationRegistry<KontaveClientFeatures>({
+  accounting: { status: "planned", reason: "Web uses authenticated accounting routes; the portable kernel client is not the runtime composition yet." },
   authentication: { status: "planned", reason: "Web has no portable authentication feature integration." },
   billing: { status: "planned", reason: "Web has no portable billing feature integration." },
   inventory: { status: "planned", reason: "Web has no portable inventory feature integration." },

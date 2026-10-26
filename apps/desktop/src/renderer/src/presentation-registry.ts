@@ -7,6 +7,7 @@ import type { KontaveClientFeatures } from "@kontave/client-runtime";
 /** Exhaustive Desktop presentation decision for every portable client feature. */
 export const desktopPresentationRegistry =
   definePresentationRegistry<KontaveClientFeatures>({
+    accounting: { status: "planned", reason: "Desktop accounting presentation has not been activated." },
     authentication: { status: "ready" },
     billing: { status: "ready" },
     inventory: { status: "ready" },

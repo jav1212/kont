@@ -3,6 +3,7 @@ import type { KontaveClientFeatures } from "@kontave/client-runtime";
 
 /** Mobile's explicit portable-feature classification; no treasury screen is activated here. */
 export const mobilePresentationRegistry = definePresentationRegistry<KontaveClientFeatures>({
+  accounting: { status: "planned", reason: "Mobile accounting presentation has not been activated." },
   authentication: { status: "planned", reason: "Mobile has no portable authentication feature integration." },
   billing: { status: "planned", reason: "Mobile has no portable billing feature integration." },
   inventory: { status: "planned", reason: "Mobile has no portable inventory feature integration." },

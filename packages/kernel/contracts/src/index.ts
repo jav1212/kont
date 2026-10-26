@@ -2,6 +2,7 @@ export * from "./core";
 export * from "./protocol";
 export * from "./domains/authentication";
 export * from "./domains/billing";
+export * from "./domains/accounting";
 export * from "./domains/documents";
 export * from "./domains/exchange-rates";
 export * from "./domains/inventory";

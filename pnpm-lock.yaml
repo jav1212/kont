@@ -32,6 +32,9 @@ importers:
       '@kontave/access-control':
         specifier: workspace:*
         version: link:packages/capabilities/access-control
+      '@kontave/accounting':
+        specifier: workspace:*
+        version: link:packages/business/accounting
       '@kontave/audit-trail':
         specifier: workspace:*
         version: link:packages/capabilities/audit-trail
@@ -513,6 +516,15 @@ importers:
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/business/accounting:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
