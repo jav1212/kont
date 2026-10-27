@@ -17,6 +17,7 @@ export default function SalesInvoiceDetailPage({ params }: { params: Promise<{ i
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader
                 title="Factura de Venta"
+                breadcrumbTitle={currentSalesInvoice?.invoiceNumber ?? `#${id.slice(0, 8)}`}
                 subtitle={currentSalesInvoice?.invoiceNumber ? `Nº ${currentSalesInvoice.invoiceNumber}` : `#${id.slice(0, 8)}`}
             >
                 {currentSalesInvoice && (

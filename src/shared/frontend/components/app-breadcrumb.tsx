@@ -1,113 +1,84 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, Archive, BookOpen, Briefcase, Building2, CalendarDays, BarChart3, ClipboardList, Coins, CreditCard, FileText, Folder, Home, Package, Users, Receipt, Settings, Shield, ShoppingCart, Wrench, Truck, UserRound, Wallet, ChevronRight, type LucideIcon } from "lucide-react";
+import { Activity, Archive, BookOpen, Briefcase, Building2, CalendarDays, BarChart3, ChevronLeft, CircleHelp, ClipboardList, Clock, Coins, CreditCard, Download, FileText, Folder, Home, KeyRound, List, LockKeyhole, Mail, Package, Percent, Search, Tag, Users, Receipt, Settings, Shield, ShoppingCart, Wrench, Truck, UserRound, Wallet, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE, navigationDestinationFor } from "@/src/shared/frontend/navigation";
-
-type BreadcrumbItem = { href?: string; label: string; iconKey?: string };
+import { Breadcrumbs, type BreadcrumbItem, type BreadcrumbLinkProps } from "@kontave/ui";
+import { NAVIGATION_DESTINATIONS, resolveBreadcrumbs, resolveNavigationTargetFromPath, type NavigationLabels } from "@kontave/navigation";
+import { useNavigationPreferences } from "@/src/shared/frontend/components/navigation-preferences-provider";
 
 const SEMANTIC_ICONS: Readonly<Record<string, LucideIcon>> = {
-    activity: Activity, archive: Archive, book: BookOpen, briefcase: Briefcase, building: Building2,
-    calendar: CalendarDays, chart: BarChart3, clipboard: ClipboardList, coins: Coins,
-    "credit-card": CreditCard, document: FileText, folder: Folder, home: Home, inventory: Package,
-    people: Users, receipt: Receipt, settings: Settings, shield: Shield, "shopping-cart": ShoppingCart,
-    tool: Wrench, truck: Truck, user: UserRound, wallet: Wallet,
+  activity: Activity, archive: Archive, book: BookOpen, briefcase: Briefcase, building: Building2,
+  calendar: CalendarDays, chart: BarChart3, check: Activity, clipboard: ClipboardList, clock: Clock, coins: Coins,
+  "credit-card": CreditCard, document: FileText, download: Download, folder: Folder, grid: Package, help: CircleHelp,
+  home: Home, inventory: Package, key: KeyRound, list: List, lock: LockKeyhole, mail: Mail, package: Package,
+  people: Users, percent: Percent, receipt: Receipt, search: Search, settings: Settings, shield: Shield, tag: Tag,
+  "shopping-cart": ShoppingCart, tool: Wrench, truck: Truck, user: UserRound, wallet: Wallet,
 };
 
-function getBreadcrumbItems(pathname: string, pageTitle: string | undefined, labels: Readonly<Record<string, string>>, icons: Readonly<Record<string, string>>): BreadcrumbItem[] {
-    const normalizedPath = pathname.replace(/\/$/, "") || "/";
-    const matchedModule = APP_MODULES.find((module) => {
-        const moduleId = "parentId" in module ? module.parentId ?? module.id : module.id;
-        return normalizedPath === `/${moduleId}` || normalizedPath.startsWith(`/${moduleId}/`);
-    });
-    const isSettingsPath = normalizedPath === "/profile" || normalizedPath === "/settings" || normalizedPath.startsWith("/settings/");
-    if (!matchedModule && !isSettingsPath) return [{ label: pageTitle ?? "Página" }];
-
-    const moduleId = isSettingsPath ? "settings" : ("parentId" in matchedModule! ? matchedModule!.parentId ?? matchedModule!.id : matchedModule!.id);
-    const moduleDefinition = isSettingsPath
-        ? WEB_SETTINGS_MODULE
-        : APP_MODULES.find((module) => module.id === moduleId) ?? matchedModule!;
-    const matchingSubnav = (MODULE_SUBNAV[moduleId] ?? [])
-        .filter((item) => normalizedPath === item.href || normalizedPath.startsWith(`${item.href}/`))
-        .sort((a, b) => b.href.length - a.href.length)[0];
-    const destination = matchingSubnav ? navigationDestinationFor(moduleId, matchingSubnav.href) : undefined;
-    const subnavLabel = destination ? labels[destination] ?? matchingSubnav?.label : matchingSubnav?.label;
-    const exactSubnav = Boolean(matchingSubnav && normalizedPath === matchingSubnav.href);
-
-    const items: BreadcrumbItem[] = [
-        { label: "Inicio", href: "/" },
-        { label: labels[moduleId] ?? moduleDefinition.label, href: moduleDefinition.href },
-    ];
-    if (matchingSubnav && exactSubnav) items.push({ label: subnavLabel ?? pageTitle ?? "Página" });
-    else if (matchingSubnav && matchingSubnav.href !== moduleDefinition.href && normalizedPath.startsWith(`${matchingSubnav.href}/`)) {
-        items.push({ label: subnavLabel ?? matchingSubnav.label, href: matchingSubnav.href });
-        items.push({ label: pageTitle ?? "Detalle" });
-    } else items.push({ label: pageTitle ?? subnavLabel ?? "Detalle" });
-    if (icons[moduleId]) items[1] = { ...items[1], iconKey: icons[moduleId] };
-    if (matchingSubnav && destination && icons[destination]) {
-        const isNestedDestination = !exactSubnav
-            && matchingSubnav.href !== moduleDefinition.href
-            && normalizedPath.startsWith(`${matchingSubnav.href}/`);
-        const destinationIndex = isNestedDestination ? items.length - 2 : items.length - 1;
-        items[destinationIndex] = { ...items[destinationIndex], iconKey: icons[destination] };
-    }
-    return items;
-}
-
 /**
- * Renders route breadcrumbs with the signed-in user's navigation label overrides.
- * @param props - Optional page title used for dynamic detail routes.
- * @returns Responsive breadcrumb navigation without changing canonical routes.
+ * Renders the shared route hierarchy and user navigation preferences.
+ * @param props - Optional entity title for a route-specific page heading.
+ * @returns Accessible responsive breadcrumb navigation, or null for unrecognized and single-level routes.
  */
 export function AppBreadcrumb({ pageTitle }: { readonly pageTitle?: string }) {
-    const pathname = usePathname();
-    const [navigationLabels, setNavigationLabels] = useState<Record<string, string>>({});
-    const [navigationIcons, setNavigationIcons] = useState<Record<string, string>>({});
+  const pathname = usePathname();
+  const { labels, icons, ready } = useNavigationPreferences();
+  if (!ready) return null;
+  const target = resolveNavigationTargetFromPath(pathname);
+  if (!target) return null;
+  const trail = resolveBreadcrumbs(target, labels as NavigationLabels);
+  if (trail.length < 2) return null;
+  const items: BreadcrumbItem[] = trail.map((entry, index) => {
+    const destination = NAVIGATION_DESTINATIONS.find((node) => node.id === entry.destination.id);
+    const destinationPath = destination && "webPath" in destination ? destination.webPath : undefined;
+    const moduleIcon = index === 1 ? SEMANTIC_ICONS[icons[entry.destination.id] ?? ""] : undefined;
+    const Icon = moduleIcon;
+    const label = entry.current && pageTitle ? pageTitle : entry.label;
+    return {
+      id: entry.destination.id,
+      label,
+      labelClassName: "min-w-0 truncate",
+      href: entry.current ? undefined : destinationPath,
+      current: entry.current,
+      className: "hidden min-w-0 sm:flex",
+      prefix: Icon ? <Icon aria-hidden="true" size={13} className="mr-1 shrink-0" /> : undefined,
+    };
+  });
+  const parent = items.at(-2);
+  if (!parent?.href) return null;
+  const renderLink = (props: BreadcrumbLinkProps) => <Link href={props.href} title={props.title} className={`${props.className ?? ""} inline-flex min-h-6 max-w-40 min-w-0 overflow-hidden items-center rounded px-1 text-[var(--text-tertiary)] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}>{props.children}</Link>;
+  return (
+    <div className="min-w-0 flex-1">
+      <nav aria-label="Ruta de navegación" className="sm:hidden">
+        <Link href={parent.href} title={parent.label} className="inline-flex min-h-6 max-w-40 min-w-0 items-center gap-1 rounded px-1 text-[var(--text-tertiary)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <ChevronLeft size={14} aria-hidden="true" />
+          <span className="min-w-0 truncate">{parent.label}</span>
+        </Link>
+      </nav>
+      <Breadcrumbs
+        ariaLabel="Ruta de navegación"
+        className="hidden min-w-0 sm:block"
+        listClassName="flex min-w-0 items-center gap-1 text-[13px]"
+        items={collapseTrail(items)}
+        linkComponent={renderLink}
+      />
+    </div>
+  );
+}
 
-    useEffect(() => {
-        let current = true;
-        const loadLabels = () => void fetch("/api/preferences/navigation-labels", { cache: "no-store" })
-            .then(async (response) => response.ok ? response.json() : null)
-            .then((payload) => { if (current && payload?.data?.labels) setNavigationLabels(payload.data.labels); })
-            .catch(() => undefined);
-        loadLabels();
-        window.addEventListener("kontave:navigation-labels-updated", loadLabels);
-        return () => { current = false; window.removeEventListener("kontave:navigation-labels-updated", loadLabels); };
-    }, []);
-
-    useEffect(() => {
-        let current = true;
-        const loadIcons = () => void fetch("/api/preferences/navigation-icons", { cache: "no-store" })
-            .then(async (response) => response.ok ? response.json() : null)
-            .then((payload) => { if (current && payload?.data?.icons) setNavigationIcons(payload.data.icons); })
-            .catch(() => undefined);
-        loadIcons();
-        window.addEventListener("kontave:navigation-icons-updated", loadIcons);
-        return () => { current = false; window.removeEventListener("kontave:navigation-icons-updated", loadIcons); };
-    }, []);
-
-    const items = getBreadcrumbItems(pathname, pageTitle, navigationLabels, navigationIcons);
-    return (
-        <nav aria-label="Migas de pan" className="min-w-0 flex-1 overflow-hidden">
-            <ol className="flex min-w-0 items-center gap-1 text-[12px]">
-                {items.map((item, index) => {
-                    const current = index === items.length - 1;
-                    const Icon = item.iconKey ? SEMANTIC_ICONS[item.iconKey] : undefined;
-                    return (
-                        <li key={`${item.label}-${index}`} className={["min-w-0 items-center gap-1", current ? "flex" : "hidden sm:flex"].join(" ")}>
-                            {index > 0 && <ChevronRight size={13} className="hidden shrink-0 text-[var(--text-tertiary)] sm:block" aria-hidden />}
-                            {Icon && <Icon size={12} className="shrink-0" aria-hidden="true" />}
-                            {item.href && !current ? (
-                                <Link href={item.href} className="shrink-0 text-[var(--text-tertiary)] transition-colors hover:text-foreground">{item.label}</Link>
-                            ) : (
-                                <span aria-current={current ? "page" : undefined} className={current ? "min-w-0 truncate font-medium text-foreground" : "min-w-0 truncate text-[var(--text-tertiary)]"}>{item.label}</span>
-                            )}
-                        </li>
-                    );
-                })}
-            </ol>
-        </nav>
-    );
+function collapseTrail(items: readonly BreadcrumbItem[]): readonly BreadcrumbItem[] {
+  if (items.length <= 4) return items;
+  const first = items[0];
+  const penultimate = items.at(-2);
+  const last = items.at(-1);
+  if (!first || !penultimate || !last) return items;
+  const hiddenItems = items.slice(1, -2);
+  const overflowContent = <details className="relative">
+    <summary aria-label="Mostrar niveles anteriores" title="Mostrar niveles anteriores" className="inline-flex min-h-6 min-w-6 cursor-pointer list-none items-center justify-center rounded px-1 text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">…</summary>
+    <ul className="absolute left-0 top-full z-30 mt-1 min-w-44 rounded-md border border-border-light bg-surface-1 p-1 shadow-lg">
+      {hiddenItems.map((item) => <li key={item.id}>{item.href ? <Link href={item.href} className="block min-h-6 rounded px-2 py-1 text-[13px] text-foreground hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{item.label}</Link> : <span className="block px-2 py-1 text-[13px] text-foreground">{item.label}</span>}</li>)}
+    </ul>
+  </details>;
+  return [first, { id: "breadcrumb-ellipsis", label: "…", current: false, className: "hidden sm:flex", overflowContent }, penultimate, last];
 }

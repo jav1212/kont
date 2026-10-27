@@ -636,6 +636,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         <div className="min-h-full bg-surface-2 font-mono max-md:pb-28" onChangeCapture={() => { if (isDraft) setHasUnsavedChanges(true); }}>
             <PageHeader
                 title={`${documentTypeLabel} de Compra`}
+                breadcrumbTitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
                 subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
             >
                 {isConfirmed ? (

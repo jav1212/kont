@@ -67,19 +67,6 @@
   outline: 2px solid var(--kt-focus);
   outline-offset: 2px;
 }
-@media (max-width: 48rem) {
-  .kt-breadcrumbs__item:not(:nth-last-child(-n + 2)) {
-    display: none;
-  }
-}
-@media (max-width: 30rem) {
-  .kt-breadcrumbs__item:not(:last-child) {
-    display: none;
-  }
-  .kt-breadcrumbs__item:last-child .kt-breadcrumbs__separator {
-    display: none;
-  }
-}
 
 .kt-button {
   display: inline-flex;

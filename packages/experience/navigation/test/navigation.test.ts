@@ -7,6 +7,7 @@ import {
   createNavigationLabels,
   createNavigationIcons,
   resolveBreadcrumbs,
+  resolveNavigationTargetFromPath,
   staticNavigationTarget,
 } from "../src/index";
 
@@ -33,6 +34,15 @@ test("resolves a portable breadcrumb without platform routes", () => {
     { label: "Empleados", id: "payroll.employees", current: true },
   ]);
   assert.equal("href" in breadcrumb[0]!, false);
+});
+
+test("resolves the most specific Web destination and dynamic route parameters", () => {
+  assert.equal(resolveNavigationTargetFromPath("/payroll/employees")?.id, "payroll.employees");
+  assert.deepEqual(resolveNavigationTargetFromPath("/sales/invoices/inv-42"), undefined);
+  assert.equal(resolveNavigationTargetFromPath("/sales/sale-42")?.id, "sales.detail");
+  assert.equal(resolveNavigationTargetFromPath("/payroll/employees/123"), undefined);
+  assert.equal(resolveNavigationTargetFromPath("/fiscal/declaraciones/2026-10")?.id, "iva.declaration-detail");
+  assert.equal(resolveNavigationTargetFromPath("/unknown/path"), undefined);
 });
 
 test("preserves typed parameters for a dynamic destination", () => {

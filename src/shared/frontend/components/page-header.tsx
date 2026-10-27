@@ -23,6 +23,8 @@ import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
 interface PageHeaderProps {
     title: string;
+    /** Entity name or identifier used for the current breadcrumb item. */
+    breadcrumbTitle?: string;
     /** Supporting information rendered as part of the page canvas. */
     subtitle?: ReactNode;
     /** Legacy action slot. The last visible child is treated as primary. */
@@ -146,6 +148,7 @@ function ActionOverflow({ children }: { children: ReactNode }) {
  */
 export function PageHeader({
     title,
+    breadcrumbTitle,
     subtitle: _subtitle,
     children,
     primaryAction,
@@ -181,7 +184,7 @@ export function PageHeader({
             <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-border-light bg-surface-1">
                 <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 md:px-6 xl:px-8">
                     <h1 className="sr-only">{title}</h1>
-                    <AppBreadcrumb pageTitle={title} />
+                    <AppBreadcrumb pageTitle={breadcrumbTitle ?? title} />
 
                     <div className="flex shrink-0 items-center justify-end gap-2 [&_a]:normal-case [&_a]:tracking-normal [&_a]:font-sans [&_button]:normal-case [&_button]:tracking-normal [&_button]:font-sans">
                         <div className="flex h-9 items-center overflow-hidden rounded-lg border border-border-light bg-surface-1 shadow-sm">

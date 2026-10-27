@@ -1,91 +1,145 @@
 /** Canonical portable navigation hierarchy shared by every client presentation. */
 export const NAVIGATION_DESTINATIONS = [
-  { id: "home", label: "Inicio", parentId: null },
+  { id: "home", label: "Inicio", parentId: null, webPath: "/" },
 
-  { id: "payroll", label: "Nómina", parentId: "home" },
-  { id: "payroll.dashboard", label: "Tablero", parentId: "payroll" },
-  { id: "payroll.employees", label: "Empleados", parentId: "payroll" },
-  { id: "payroll.settings", label: "Configuración", parentId: "payroll" },
-  { id: "payroll.calculator", label: "Calculadora", parentId: "payroll" },
-  { id: "payroll.vacations", label: "Vacaciones", parentId: "payroll" },
-  { id: "payroll.profit-sharing", label: "Utilidades", parentId: "payroll" },
-  { id: "payroll.social-benefits", label: "Prestaciones", parentId: "payroll" },
-  { id: "payroll.liquidations", label: "Liquidaciones", parentId: "payroll" },
-  { id: "payroll.ari", label: "AR-I (ISLR)", parentId: "payroll" },
-  { id: "payroll.history", label: "Historial", parentId: "payroll" },
+  { id: "payroll", label: "Nómina", parentId: "home", webPath: "/payroll/tablero" },
+  { id: "payroll.dashboard", label: "Tablero", parentId: "payroll", webPath: "/payroll/tablero" },
+  { id: "payroll.employees", label: "Empleados", parentId: "payroll", webPath: "/payroll/employees" },
+  { id: "payroll.settings", label: "Configuración", parentId: "payroll", webPath: "/payroll/settings" },
+  { id: "payroll.calculator", label: "Calculadora", parentId: "payroll", webPath: "/payroll" },
+  { id: "payroll.vacations", label: "Vacaciones", parentId: "payroll", webPath: "/payroll/vacations" },
+  { id: "payroll.profit-sharing", label: "Utilidades", parentId: "payroll", webPath: "/payroll/profit-sharing" },
+  { id: "payroll.social-benefits", label: "Prestaciones", parentId: "payroll", webPath: "/payroll/social-benefits" },
+  { id: "payroll.liquidations", label: "Liquidaciones", parentId: "payroll", webPath: "/payroll/liquidations" },
+  { id: "payroll.ari", label: "AR-I (ISLR)", parentId: "payroll", webPath: "/payroll/ari" },
+  { id: "payroll.history", label: "Historial", parentId: "payroll", webPath: "/payroll/history" },
 
-  { id: "purchases", label: "Compras", parentId: "home" },
-  { id: "purchases.dashboard", label: "Tablero", parentId: "purchases" },
-  { id: "purchases.suppliers", label: "Proveedores", parentId: "purchases" },
-  { id: "purchases.import-book", label: "Importar libro", parentId: "purchases" },
-  { id: "purchases.archive", label: "Archivo de facturas", parentId: "purchases" },
-  { id: "purchases.detail", label: "Factura", parentId: "purchases" },
+  { id: "purchases", label: "Compras", parentId: "home", webPath: "/purchases" },
+  { id: "purchases.dashboard", label: "Tablero", parentId: "purchases", webPath: "/purchases" },
+  { id: "purchases.suppliers", label: "Proveedores", parentId: "purchases", webPath: "/purchases/suppliers" },
+  { id: "purchases.import-book", label: "Importar libro", parentId: "purchases", webPath: "/purchases/import-book" },
+  { id: "purchases.archive", label: "Archivo de facturas", parentId: "purchases", webPath: "/purchases/archive" },
+  { id: "purchases.iva-ledger", label: "Libro IVA", parentId: "purchases", webPath: "/purchases/iva-ledger" },
+  { id: "purchases.detail", label: "Factura", parentId: "purchases.archive", webPath: "/purchases/[purchaseId]" },
+  { id: "purchases.supplier-detail", label: "Proveedor", parentId: "purchases.suppliers", webPath: "/purchases/suppliers/[supplierId]" },
 
-  { id: "sales", label: "Ventas", parentId: "home" },
-  { id: "sales.dashboard", label: "Tablero", parentId: "sales" },
-  { id: "sales.point-of-sale", label: "Punto de venta", parentId: "sales" },
-  { id: "sales.customers", label: "Clientes", parentId: "sales" },
-  { id: "sales.archive", label: "Archivo de facturas", parentId: "sales" },
-  { id: "sales.igtf", label: "IGTF Quincenal", parentId: "sales" },
-  { id: "sales.detail", label: "Factura", parentId: "sales" },
+  { id: "sales", label: "Ventas", parentId: "home", webPath: "/sales" },
+  { id: "sales.dashboard", label: "Tablero", parentId: "sales", webPath: "/sales" },
+  { id: "sales.point-of-sale", label: "Punto de venta", parentId: "sales", webPath: "/sales/pos" },
+  { id: "sales.customers", label: "Clientes", parentId: "sales", webPath: "/sales/customers" },
+  { id: "sales.receivables", label: "Cuentas por cobrar", parentId: "sales", webPath: "/sales/receivables" },
+  { id: "sales.fiscal", label: "Documentos fiscales", parentId: "sales", webPath: "/sales/fiscal" },
+  { id: "sales.iva-ledger", label: "Libro IVA", parentId: "sales", webPath: "/sales/iva-ledger" },
+  { id: "sales.archive", label: "Archivo de facturas", parentId: "sales", webPath: "/sales/archive" },
+  { id: "sales.igtf", label: "IGTF Quincenal", parentId: "sales", webPath: "/sales/igtf-fortnightly" },
+  { id: "sales.detail", label: "Factura", parentId: "sales.archive", webPath: "/sales/[saleId]" },
+  { id: "sales.fiscal-detail", label: "Documento fiscal", parentId: "sales", webPath: "/sales/fiscal/[fiscalId]" },
 
-  { id: "inventory", label: "Inventario", parentId: "home" },
-  { id: "inventory.dashboard", label: "Tablero", parentId: "inventory" },
-  { id: "inventory.products", label: "Productos", parentId: "inventory" },
-  { id: "inventory.product-detail", label: "Producto", parentId: "inventory.products" },
+  { id: "inventory", label: "Inventario", parentId: "home", webPath: "/inventory" },
+  { id: "inventory.dashboard", label: "Tablero", parentId: "inventory", webPath: "/inventory" },
+  { id: "inventory.products", label: "Productos", parentId: "inventory", webPath: "/inventory/products" },
+  { id: "inventory.product-detail", label: "Producto", parentId: "inventory.products", webPath: "/inventory/products/[productId]" },
   { id: "inventory.product-categories", label: "Categorías", parentId: "inventory" },
   { id: "inventory.product-category-detail", label: "Categoría", parentId: "inventory.product-categories" },
   // Compatibility aliases for existing clients while they migrate to the portable product-category terminology.
-  { id: "inventory.departments", label: "Categorías", parentId: "inventory" },
-  { id: "inventory.department-detail", label: "Categoría", parentId: "inventory.departments" },
-  { id: "inventory.inputs", label: "Entradas", parentId: "inventory" },
-  { id: "inventory.outputs", label: "Salidas", parentId: "inventory" },
-  { id: "inventory.operations", label: "Operaciones", parentId: "inventory" },
-  { id: "inventory.pending-purchases", label: "Compras pendientes", parentId: "inventory" },
-  { id: "inventory.purchase-ledger", label: "Libro de Entradas", parentId: "inventory" },
-  { id: "inventory.sales-ledger", label: "Libro de Salidas", parentId: "inventory" },
-  { id: "inventory.inventory-ledger", label: "Libro de Inventarios", parentId: "inventory" },
-  { id: "inventory.period-report", label: "Reporte Período", parentId: "inventory" },
-  { id: "inventory.balance-report", label: "Reporte SALDO", parentId: "inventory" },
-  { id: "inventory.islr-report", label: "Reporte ISLR 177", parentId: "inventory" },
+  { id: "inventory.departments", label: "Departamentos", parentId: "inventory", webPath: "/inventory/departments" },
+  { id: "inventory.department-detail", label: "Categoría", parentId: "inventory.departments", webPath: "/inventory/departments/[departmentId]" },
+  { id: "inventory.inputs", label: "Entradas", parentId: "inventory", webPath: "/inventory/inputs" },
+  { id: "inventory.outputs", label: "Salidas", parentId: "inventory", webPath: "/inventory/sales" },
+  { id: "inventory.operations", label: "Operaciones", parentId: "inventory", webPath: "/inventory/operations" },
+  { id: "inventory.pending-purchases", label: "Compras pendientes", parentId: "inventory", webPath: "/inventory/compras-pendientes" },
+  { id: "inventory.pending-purchase-detail", label: "Compra pendiente", parentId: "inventory.pending-purchases", webPath: "/inventory/compras-pendientes/[purchaseId]" },
+  { id: "inventory.purchase-ledger", label: "Libro de Entradas", parentId: "inventory", webPath: "/inventory/purchase-ledger" },
+  { id: "inventory.sales-ledger", label: "Libro de Salidas", parentId: "inventory", webPath: "/inventory/sales-ledger" },
+  { id: "inventory.inventory-ledger", label: "Libro de Inventarios", parentId: "inventory", webPath: "/inventory/inventory-ledger" },
+  { id: "inventory.period-report", label: "Reporte Período", parentId: "inventory", webPath: "/inventory/report" },
+  { id: "inventory.balance-report", label: "Reporte SALDO", parentId: "inventory", webPath: "/inventory/balance-report" },
+  { id: "inventory.islr-report", label: "Reporte ISLR 177", parentId: "inventory", webPath: "/inventory/islr-report" },
 
-  { id: "accounting", label: "Contabilidad", parentId: "home" },
-  { id: "accounting.dashboard", label: "Inicio", parentId: "accounting" },
-  { id: "accounting.charts", label: "Planes de cuentas", parentId: "accounting" },
-  { id: "accounting.accounts", label: "Cuentas", parentId: "accounting" },
-  { id: "accounting.periods", label: "Períodos", parentId: "accounting" },
-  { id: "accounting.integrations", label: "Integraciones", parentId: "accounting" },
-  { id: "accounting.journal", label: "Libro diario", parentId: "accounting" },
-  { id: "accounting.journal-entry", label: "Asiento", parentId: "accounting.journal" },
-  { id: "accounting.trial-balance", label: "Balance de sumas", parentId: "accounting" },
-  { id: "accounting.financial-statements", label: "Estados financieros", parentId: "accounting" },
+  { id: "treasury", label: "Tesorería", parentId: "home", webPath: "/treasury" },
+  { id: "treasury.dashboard", label: "Tablero", parentId: "treasury", webPath: "/treasury" },
+  { id: "treasury.movements", label: "Movimientos", parentId: "treasury", webPath: "/treasury/movements" },
+  { id: "treasury.checks", label: "Cheques", parentId: "treasury", webPath: "/treasury/checks" },
+  { id: "treasury.deposits", label: "Depósitos", parentId: "treasury", webPath: "/treasury/deposits" },
+  { id: "treasury.payments", label: "Órdenes y pagos", parentId: "treasury", webPath: "/treasury/payments" },
+  { id: "treasury.reconciliation", label: "Conciliación bancaria", parentId: "treasury", webPath: "/treasury/reconciliation" },
+  { id: "treasury.accounts", label: "Cajas y cuentas", parentId: "treasury", webPath: "/treasury/accounts" },
+  { id: "treasury.account-detail", label: "Cuenta", parentId: "treasury.accounts", webPath: "/treasury/accounts/[accountId]" },
+  { id: "treasury.checkbooks", label: "Chequeras", parentId: "treasury", webPath: "/treasury/checkbooks" },
+  { id: "treasury.beneficiaries", label: "Beneficiarios", parentId: "treasury", webPath: "/treasury/beneficiaries" },
+  { id: "treasury.reports", label: "Reportes", parentId: "treasury", webPath: "/treasury/reports" },
+  { id: "treasury.tax-policy", label: "Política tributaria", parentId: "treasury", webPath: "/treasury/tax-policy" },
 
-  { id: "documents", label: "Documentos", parentId: "home" },
-  { id: "documents.dashboard", label: "Tablero", parentId: "documents" },
-  { id: "documents.files", label: "Archivos", parentId: "documents" },
-  { id: "documents.contracts", label: "Contratos", parentId: "documents" },
+  { id: "payables", label: "Cuentas por pagar", parentId: "home", webPath: "/payables" },
+  { id: "payables.dashboard", label: "Tablero", parentId: "payables", webPath: "/payables" },
+  { id: "payables.documents", label: "Documentos", parentId: "payables", webPath: "/payables/documents" },
+  { id: "payables.document-detail", label: "Documento", parentId: "payables.documents", webPath: "/payables/documents/[documentId]" },
+  { id: "payables.suppliers", label: "Proveedores", parentId: "payables", webPath: "/payables/suppliers" },
+  { id: "payables.supplier-detail", label: "Proveedor", parentId: "payables.suppliers", webPath: "/payables/suppliers/[supplierId]" },
+  { id: "payables.schedule", label: "Programación", parentId: "payables", webPath: "/payables/schedule" },
+  { id: "payables.payments", label: "Pagos", parentId: "payables", webPath: "/payables/payments" },
+  { id: "payables.withholdings", label: "Retenciones", parentId: "payables", webPath: "/payables/withholdings" },
+  { id: "payables.reconciliation", label: "Conciliación contable", parentId: "payables", webPath: "/payables/reconciliation" },
 
-  { id: "companies", label: "Empresas", parentId: "home" },
-  { id: "companies.detail", label: "Empresa", parentId: "companies" },
+  { id: "iva", label: "IVA", parentId: "home", webPath: "/fiscal" },
+  { id: "iva.dashboard", label: "Tablero", parentId: "iva", webPath: "/fiscal" },
+  { id: "iva.purchase-ledger", label: "Libro de compras", parentId: "iva", webPath: "/fiscal/compras" },
+  { id: "iva.sales-ledger", label: "Libro de ventas", parentId: "iva", webPath: "/fiscal/ventas" },
+  { id: "iva.purchase-matches", label: "Pendientes", parentId: "iva", webPath: "/fiscal/pendientes" },
+  { id: "iva.imports", label: "Importaciones", parentId: "iva", webPath: "/fiscal/importaciones" },
+  { id: "iva.declarations", label: "Declaraciones", parentId: "iva", webPath: "/fiscal/declaraciones" },
+  { id: "iva.declaration-detail", label: "Declaración", parentId: "iva.declarations", webPath: "/fiscal/declaraciones/[periodo]" },
+  { id: "iva.configuration", label: "Configuración", parentId: "iva", webPath: "/fiscal/configuracion" },
+  { id: "iva.withholdings", label: "Retenciones de IVA", parentId: "iva", webPath: "/fiscal/retenciones-iva" },
 
-  { id: "tools", label: "Herramientas", parentId: "home" },
-  { id: "tools.dashboard", label: "Tablero", parentId: "tools" },
-  { id: "tools.exchange-rates", label: "Divisas BCV", parentId: "tools" },
-  { id: "tools.seniat-calendar", label: "Calendario SENIAT", parentId: "tools" },
-  { id: "tools.portal-monitoring", label: "Estatus de portales", parentId: "tools" },
-  { id: "tools.portal-status-detail", label: "Portal", parentId: "tools.portal-monitoring" },
+  { id: "accounting", label: "Contabilidad", parentId: "home", webPath: "/accounting" },
+  { id: "accounting.dashboard", label: "Inicio", parentId: "accounting", webPath: "/accounting" },
+  { id: "accounting.charts", label: "Planes de cuentas", parentId: "accounting", webPath: "/accounting/charts" },
+  { id: "accounting.accounts", label: "Cuentas", parentId: "accounting", webPath: "/accounting/accounts" },
+  { id: "accounting.account-detail", label: "Cuenta", parentId: "accounting.accounts", webPath: "/accounting/accounts/[accountId]" },
+  { id: "accounting.chart-detail", label: "Plan de cuentas", parentId: "accounting.charts", webPath: "/accounting/charts/[chartId]" },
+  { id: "accounting.periods", label: "Períodos", parentId: "accounting", webPath: "/accounting/periods" },
+  { id: "accounting.integrations", label: "Integraciones", parentId: "accounting", webPath: "/accounting/integrations" },
+  { id: "accounting.journal", label: "Libro diario", parentId: "accounting", webPath: "/accounting/journal" },
+  { id: "accounting.journal-entry", label: "Asiento", parentId: "accounting.journal", webPath: "/accounting/journal/[entryId]" },
+  { id: "accounting.trial-balance", label: "Balance de sumas", parentId: "accounting", webPath: "/accounting/trial-balance" },
+  { id: "accounting.financial-statements", label: "Estados financieros", parentId: "accounting", webPath: "/accounting/financial-statements" },
+
+  { id: "documents", label: "Documentos", parentId: "home", webPath: "/documents" },
+  { id: "documents.dashboard", label: "Tablero", parentId: "documents", webPath: "/documents" },
+  { id: "documents.files", label: "Archivos", parentId: "documents", webPath: "/documents/files" },
+  { id: "documents.contracts", label: "Contratos", parentId: "documents", webPath: "/documents/contracts" },
+
+  { id: "companies", label: "Empresas", parentId: "home", webPath: "/companies" },
+  { id: "companies.detail", label: "Empresa", parentId: "companies", webPath: "/companies/[companyId]" },
+
+  { id: "tools", label: "Herramientas", parentId: "home", webPath: "/tools" },
+  { id: "tools.dashboard", label: "Tablero", parentId: "tools", webPath: "/tools" },
+  { id: "tools.exchange-rates", label: "Divisas BCV", parentId: "tools", webPath: "/tools/divisas" },
+  { id: "tools.seniat-calendar", label: "Calendario SENIAT", parentId: "tools", webPath: "/tools/calendario-seniat" },
+  { id: "tools.portal-monitoring", label: "Estatus Portales", parentId: "tools", webPath: "/tools/status" },
+  { id: "tools.portal-status-detail", label: "Portal", parentId: "tools.portal-monitoring", webPath: "/tools/status/[portalSlug]" },
 
   { id: "profile", label: "Perfil", parentId: "home" },
   { id: "help", label: "Ayuda", parentId: "home" },
-  { id: "settings", label: "Configuración", parentId: "home" },
-  { id: "settings.profile", label: "Perfil", parentId: "settings" },
-  { id: "settings.appearance", label: "Apariencia", parentId: "settings" },
-  { id: "settings.security", label: "Seguridad", parentId: "settings" },
-  { id: "settings.organization", label: "Organización", parentId: "settings" },
-  { id: "settings.members", label: "Miembros", parentId: "settings" },
-  { id: "settings.roles", label: "Roles y permisos", parentId: "settings" },
-  { id: "settings.billing", label: "Facturación", parentId: "settings" },
-  { id: "settings.devices", label: "Dispositivos", parentId: "settings" },
+  { id: "settings", label: "Configuración", parentId: "home", webPath: "/settings/organization" },
+  { id: "settings.profile", label: "Mi perfil", parentId: "settings", webPath: "/profile" },
+  { id: "settings.appearance", label: "Apariencia", parentId: "settings", webPath: "/settings/apariencia" },
+  { id: "settings.security", label: "Seguridad", parentId: "settings", webPath: "/settings/security" },
+  { id: "settings.organization", label: "Configuración general", parentId: "settings", webPath: "/settings/organization" },
+  { id: "settings.members", label: "Miembros", parentId: "settings", webPath: "/settings/members" },
+  { id: "settings.roles", label: "Roles", parentId: "settings", webPath: "/settings/roles" },
+  { id: "settings.billing", label: "Facturación", parentId: "settings", webPath: "/settings/billing" },
+  { id: "settings.devices", label: "Dispositivos", parentId: "settings", webPath: "/settings/devices" },
+  { id: "settings.iva", label: "Configuración IVA", parentId: "settings", webPath: "/settings/iva" },
+  { id: "settings.security-sales", label: "Control comercial", parentId: "settings", webPath: "/settings/security-sales" },
+  { id: "settings.audit", label: "Auditoría", parentId: "settings", webPath: "/settings/audit" },
+  { id: "settings.payment-orders", label: "Órdenes de pago", parentId: "settings", webPath: "/settings/payment-orders" },
+  { id: "settings.access", label: "Acceso", parentId: "settings", webPath: "/settings/access" },
+  { id: "settings.referrals", label: "Referidos", parentId: "settings", webPath: "/settings/referrals" },
+  { id: "settings.company", label: "Datos de empresa", parentId: "settings", webPath: "/settings/company" },
+  { id: "settings.inventory-config", label: "Inventario", parentId: "settings", webPath: "/settings/inventory-config" },
+  { id: "settings.install-app", label: "Instalar app", parentId: "settings", webPath: "/settings/instalar-app" },
   { id: "organization.invitation.accept", label: "Aceptar invitación", parentId: "home" },
 ] as const satisfies readonly NavigationNode[];
 
@@ -100,17 +154,28 @@ export interface NavigationNode<TId extends string = string> {
   readonly label: string;
   /** Parent identifier, or `null` for the root destination. */
   readonly parentId: TId | null;
+  /** Optional canonical Web path used only by Web route resolution. */
+  readonly webPath?: string;
 }
 
 /** Required dynamic parameters keyed by their destination identifier. */
 export interface NavigationParametersByDestination {
   readonly "purchases.detail": { readonly purchaseId: string };
+  readonly "purchases.supplier-detail": { readonly supplierId: string };
   readonly "sales.detail": { readonly saleId: string };
+  readonly "sales.fiscal-detail": { readonly fiscalId: string };
   readonly "inventory.product-detail": { readonly productId: string };
+  readonly "inventory.pending-purchase-detail": { readonly purchaseId: string };
   readonly "inventory.product-category-detail": { readonly categoryId: string };
   readonly "inventory.department-detail": { readonly departmentId: string };
   readonly "accounting.journal-entry": { readonly entryId: string };
+  readonly "accounting.account-detail": { readonly accountId: string };
+  readonly "accounting.chart-detail": { readonly chartId: string };
   readonly "companies.detail": { readonly companyId: string };
+  readonly "treasury.account-detail": { readonly accountId: string };
+  readonly "payables.supplier-detail": { readonly supplierId: string };
+  readonly "payables.document-detail": { readonly documentId: string };
+  readonly "iva.declaration-detail": { readonly periodo: string };
   readonly "tools.portal-status-detail": { readonly portalSlug: string };
   readonly "organization.invitation.accept": { readonly token: string };
 }
@@ -222,12 +287,21 @@ export function createNavigationIcons(input: Readonly<Record<string, unknown>>):
 
 const REQUIRED_PARAMETERS: Readonly<Partial<Record<NavigationDestinationId, readonly string[]>>> = Object.freeze({
   "purchases.detail": ["purchaseId"],
+  "purchases.supplier-detail": ["supplierId"],
   "sales.detail": ["saleId"],
+  "sales.fiscal-detail": ["fiscalId"],
   "inventory.product-detail": ["productId"],
+  "inventory.pending-purchase-detail": ["purchaseId"],
   "inventory.product-category-detail": ["categoryId"],
   "inventory.department-detail": ["departmentId"],
   "accounting.journal-entry": ["entryId"],
+  "accounting.account-detail": ["accountId"],
+  "accounting.chart-detail": ["chartId"],
   "companies.detail": ["companyId"],
+  "treasury.account-detail": ["accountId"],
+  "payables.supplier-detail": ["supplierId"],
+  "payables.document-detail": ["documentId"],
+  "iva.declaration-detail": ["periodo"],
   "tools.portal-status-detail": ["portalSlug"],
   "organization.invitation.accept": ["token"],
 });
@@ -348,6 +422,49 @@ export function resolveBreadcrumbs(target: NavigationTarget, labels: NavigationL
       current,
     });
   }));
+}
+
+/**
+ * Resolves the most specific catalog destination for a Web pathname.
+ * @param pathname - Browser pathname, optionally containing dynamic route segments.
+ * @returns A typed navigation target, including extracted dynamic parameters, or undefined when unmatched.
+ */
+export function resolveNavigationTargetFromPath(pathname: string): NavigationTarget | undefined {
+  const path = pathname.split(/[?#]/, 1)[0]?.replace(/\/+$/, "") || "/";
+  const candidates = NAVIGATION_DESTINATIONS
+    .flatMap((node) => "webPath" in node ? [{ node, parts: node.webPath.split("/").filter(Boolean) }] : [])
+    .sort((left, right) => right.parts.length - left.parts.length
+      || right.node.id.split(".").length - left.node.id.split(".").length);
+  const actual = path.split("/").filter(Boolean);
+  for (const candidate of candidates) {
+    if (actual.length !== candidate.parts.length) continue;
+    const parameters: Record<string, string> = {};
+    let matches = true;
+    for (let index = 0; index < candidate.parts.length; index += 1) {
+      const expected = candidate.parts[index];
+      const value = actual[index];
+      if (expected === undefined || value === undefined) { matches = false; break; }
+      if (expected.startsWith(":") || expected.startsWith("[")) {
+        try {
+          const name = expected.replace(/^:|\[|\]/g, "");
+          const destinationId = candidate.node.id as NavigationDestinationId;
+          const parameterName = REQUIRED_PARAMETERS[destinationId]?.[0] ?? name;
+          parameters[parameterName] = decodeURIComponent(value);
+        }
+        catch { matches = false; break; }
+      }
+      else if (expected !== value) { matches = false; break; }
+    }
+    if (!matches) continue;
+    const id = candidate.node.id as NavigationDestinationId;
+    if (id in REQUIRED_PARAMETERS) {
+      const key = REQUIRED_PARAMETERS[id]?.[0];
+      if (!key || !parameters[key]) continue;
+      return dynamicNavigationTarget(id as DynamicNavigationDestinationId, parameters as never);
+    }
+    return staticNavigationTarget(id as StaticNavigationDestinationId);
+  }
+  return undefined;
 }
 
 function validateParameters<TId extends DynamicNavigationDestinationId>(

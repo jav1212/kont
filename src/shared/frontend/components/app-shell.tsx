@@ -10,7 +10,13 @@ import { usePathname } from "next/navigation";
 import { AppSidebar }    from "@/src/shared/frontend/components/app-sidebar";
 import { MobileTopBar }  from "@/src/shared/frontend/components/mobile-topbar";
 import { OrganizationRouteGuard } from "@/src/modules/organizations/frontend/components/organization-route-guard";
+import { NavigationPreferencesProvider } from "@/src/shared/frontend/components/navigation-preferences-provider";
 
+/**
+ * Renders the authenticated Web shell and its shared navigation state.
+ * @param props - Authenticated route content displayed beside the navigation.
+ * @returns Application chrome with the current route guarded by organization access.
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const pathname = usePathname();
@@ -26,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <div className="flex h-dvh bg-background overflow-hidden">
+        <NavigationPreferencesProvider><div className="flex h-dvh bg-background overflow-hidden">
 
             {/* Drawer overlay — mobile/tablet only */}
             <div
@@ -47,6 +53,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </main>
             </div>
 
-        </div>
+        </div></NavigationPreferencesProvider>
     );
 }

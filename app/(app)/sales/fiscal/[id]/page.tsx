@@ -109,7 +109,7 @@ function FiscalDetail({ companyId, documentId }: { companyId: string | null; doc
   const parties = [["Emisor", document.issuer], ["Receptor", document.recipient]] as const;
   return (
     <div className="min-h-full bg-surface-2 font-mono">
-      <PageHeader title={document.status === "draft" ? "Borrador fiscal" : "Documento fiscal"} subtitle={document.number ?? document.id}>
+      <PageHeader title={document.status === "draft" ? "Borrador fiscal" : "Documento fiscal"} breadcrumbTitle={document.number ?? `#${documentId.slice(0, 8)}`} subtitle={document.number ?? document.id}>
         <BaseButton.Root variant="secondary" size="sm" disabled={busy} leftIcon={<RefreshCcw size={14} />} onClick={reload}>Actualizar</BaseButton.Root>
       </PageHeader>
       <main className="space-y-5 px-4 py-6 md:px-8">

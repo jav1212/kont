@@ -20,6 +20,7 @@ export {
   Breadcrumbs,
   type BreadcrumbItem,
   type BreadcrumbsProps,
+  type BreadcrumbLinkProps,
 } from "./breadcrumbs";
 export { Checkbox, type CheckboxProps } from "./checkbox";
 export {

@@ -1,0 +1,3893 @@
+[
+  {
+    "pathname": "/payroll/tablero",
+    "legacyDestination": "payroll.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/employees",
+    "legacyDestination": "payroll.employees",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Empleados",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.employees",
+        "label": "Empleados",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases",
+    "legacyDestination": "purchases",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales",
+    "legacyDestination": "sales",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory",
+    "legacyDestination": "inventory",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury",
+    "legacyDestination": "treasury.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables",
+    "legacyDestination": "payables.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal",
+    "legacyDestination": "iva.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting",
+    "legacyDestination": "accounting.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Inicio",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.dashboard",
+        "label": "Inicio",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/tools",
+    "legacyDestination": "tools.dashboard",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "tools",
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "id": "tools.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/companies",
+    "legacyDestination": "companies",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Empresas",
+        "href": "/companies"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "companies",
+        "label": "Empresas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/documents",
+    "legacyDestination": "documents",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "label": "Tablero",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "documents",
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "id": "documents.dashboard",
+        "label": "Tablero",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/settings",
+    "legacyDestination": "payroll.settings",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Configuración",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.settings",
+        "label": "Configuración",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll",
+    "legacyDestination": "payroll.calculator",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Calculadora",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.calculator",
+        "label": "Calculadora",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/vacations",
+    "legacyDestination": "payroll.vacations",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Vacaciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.vacations",
+        "label": "Vacaciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/profit-sharing",
+    "legacyDestination": "payroll.profit-sharing",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Utilidades",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.profit-sharing",
+        "label": "Utilidades",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/social-benefits",
+    "legacyDestination": "payroll.social-benefits",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Prestaciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.social-benefits",
+        "label": "Prestaciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/liquidations",
+    "legacyDestination": "payroll.liquidations",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Liquidaciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.liquidations",
+        "label": "Liquidaciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/ari",
+    "legacyDestination": "payroll.ari",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "AR-I (ISLR)",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.ari",
+        "label": "AR-I (ISLR)",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payroll/history",
+    "legacyDestination": "payroll.history",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "label": "Historial",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payroll",
+        "label": "Nómina",
+        "href": "/payroll/tablero"
+      },
+      {
+        "id": "payroll.history",
+        "label": "Historial",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/documents/files",
+    "legacyDestination": "documents.files",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "label": "Archivos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "documents",
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "id": "documents.files",
+        "label": "Archivos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/documents/contracts",
+    "legacyDestination": "documents.contracts",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "label": "Contratos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "documents",
+        "label": "Documentos",
+        "href": "/documents"
+      },
+      {
+        "id": "documents.contracts",
+        "label": "Contratos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/suppliers",
+    "legacyDestination": "purchases.suppliers",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Proveedores",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.suppliers",
+        "label": "Proveedores",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/import-book",
+    "legacyDestination": "purchases.import-book",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Importar libro",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.import-book",
+        "label": "Importar libro",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/archive",
+    "legacyDestination": "purchases.archive",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Archivo de facturas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.archive",
+        "label": "Archivo de facturas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/iva-ledger",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Libro IVA",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.iva-ledger",
+        "label": "Libro IVA",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/pos",
+    "legacyDestination": "sales.point-of-sale",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Punto de venta",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.point-of-sale",
+        "label": "Punto de venta",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/receivables",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Cuentas por cobrar",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.receivables",
+        "label": "Cuentas por cobrar",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/customers",
+    "legacyDestination": "sales.customers",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Clientes",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.customers",
+        "label": "Clientes",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/archive",
+    "legacyDestination": "sales.archive",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Archivo de facturas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.archive",
+        "label": "Archivo de facturas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/fiscal",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Documentos fiscales",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.fiscal",
+        "label": "Documentos fiscales",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/igtf-fortnightly",
+    "legacyDestination": "sales.igtf",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "IGTF Quincenal",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.igtf",
+        "label": "IGTF Quincenal",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/iva-ledger",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Libro IVA",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.iva-ledger",
+        "label": "Libro IVA",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/products",
+    "legacyDestination": "inventory.products",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Productos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.products",
+        "label": "Productos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/departments",
+    "legacyDestination": "inventory.departments",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Departamentos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.departments",
+        "label": "Departamentos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/sales",
+    "legacyDestination": "inventory.outputs",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Salidas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.outputs",
+        "label": "Salidas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/operations",
+    "legacyDestination": "inventory.operations",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Operaciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.operations",
+        "label": "Operaciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/compras-pendientes",
+    "legacyDestination": "inventory.pending-purchases",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Compras pendientes",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.pending-purchases",
+        "label": "Compras pendientes",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/purchase-ledger",
+    "legacyDestination": "inventory.purchase-ledger",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Libro de Entradas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.purchase-ledger",
+        "label": "Libro de Entradas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/sales-ledger",
+    "legacyDestination": "inventory.sales-ledger",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Libro de Salidas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.sales-ledger",
+        "label": "Libro de Salidas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/inventory-ledger",
+    "legacyDestination": "inventory.inventory-ledger",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Libro de Inventarios",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.inventory-ledger",
+        "label": "Libro de Inventarios",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/report",
+    "legacyDestination": "inventory.period-report",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Reporte Período",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.period-report",
+        "label": "Reporte Período",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/balance-report",
+    "legacyDestination": "inventory.balance-report",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Reporte SALDO",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.balance-report",
+        "label": "Reporte SALDO",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/islr-report",
+    "legacyDestination": "inventory.islr-report",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Reporte ISLR 177",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.islr-report",
+        "label": "Reporte ISLR 177",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/movements",
+    "legacyDestination": "treasury.movements",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Movimientos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.movements",
+        "label": "Movimientos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/checks",
+    "legacyDestination": "treasury.checks",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Cheques",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.checks",
+        "label": "Cheques",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/deposits",
+    "legacyDestination": "treasury.deposits",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Depósitos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.deposits",
+        "label": "Depósitos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/payments",
+    "legacyDestination": "treasury.payments",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Órdenes y pagos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.payments",
+        "label": "Órdenes y pagos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/reconciliation",
+    "legacyDestination": "treasury.reconciliation",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Conciliación bancaria",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.reconciliation",
+        "label": "Conciliación bancaria",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/accounts",
+    "legacyDestination": "treasury.accounts",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Cajas y cuentas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.accounts",
+        "label": "Cajas y cuentas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/checkbooks",
+    "legacyDestination": "treasury.checkbooks",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Chequeras",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.checkbooks",
+        "label": "Chequeras",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/beneficiaries",
+    "legacyDestination": "treasury.beneficiaries",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Beneficiarios",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.beneficiaries",
+        "label": "Beneficiarios",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/reports",
+    "legacyDestination": "treasury.reports",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Reportes",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.reports",
+        "label": "Reportes",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/tax-policy",
+    "legacyDestination": "treasury.tax-policy",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Política tributaria",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.tax-policy",
+        "label": "Política tributaria",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/documents",
+    "legacyDestination": "payables.documents",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Documentos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.documents",
+        "label": "Documentos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/suppliers",
+    "legacyDestination": "payables.suppliers",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Proveedores",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.suppliers",
+        "label": "Proveedores",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/schedule",
+    "legacyDestination": "payables.schedule",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Programación",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.schedule",
+        "label": "Programación",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/payments",
+    "legacyDestination": "payables.payments",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Pagos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.payments",
+        "label": "Pagos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/withholdings",
+    "legacyDestination": "payables.withholdings",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Retenciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.withholdings",
+        "label": "Retenciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/reconciliation",
+    "legacyDestination": "payables.reconciliation",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Conciliación contable",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.reconciliation",
+        "label": "Conciliación contable",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/compras",
+    "legacyDestination": "iva.purchase-ledger",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.purchase-ledger",
+        "label": "Libro de compras",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/ventas",
+    "legacyDestination": "iva.sales-ledger",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.sales-ledger",
+        "label": "Libro de ventas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/pendientes",
+    "legacyDestination": "iva.purchase-matches",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.purchase-matches",
+        "label": "Pendientes",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/importaciones",
+    "legacyDestination": "iva.imports",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.imports",
+        "label": "Importaciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/declaraciones",
+    "legacyDestination": "iva.declarations",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.declarations",
+        "label": "Declaraciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/retenciones-iva",
+    "legacyDestination": "iva.withholdings",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.withholdings",
+        "label": "Retenciones de IVA",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/configuracion",
+    "legacyDestination": "iva.configuration",
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.configuration",
+        "label": "Configuración",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/charts",
+    "legacyDestination": "accounting.charts",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Planes de cuentas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.charts",
+        "label": "Planes de cuentas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/accounts",
+    "legacyDestination": "accounting.accounts",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Cuentas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.accounts",
+        "label": "Cuentas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/periods",
+    "legacyDestination": "accounting.periods",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Períodos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.periods",
+        "label": "Períodos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/integrations",
+    "legacyDestination": "accounting.integrations",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Integraciones",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.integrations",
+        "label": "Integraciones",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/journal",
+    "legacyDestination": "accounting.journal",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Libro diario",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.journal",
+        "label": "Libro diario",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/trial-balance",
+    "legacyDestination": "accounting.trial-balance",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Balance de sumas",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.trial-balance",
+        "label": "Balance de sumas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/financial-statements",
+    "legacyDestination": "accounting.financial-statements",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Estados Financieros",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.financial-statements",
+        "label": "Estados financieros",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/tools/divisas",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "label": "Divisas BCV",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "tools",
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "id": "tools.exchange-rates",
+        "label": "Divisas BCV",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/tools/calendario-seniat",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "label": "Calendario SENIAT",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "tools",
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "id": "tools.seniat-calendar",
+        "label": "Calendario SENIAT",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/tools/status",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "label": "Estatus Portales",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "tools",
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "id": "tools.portal-monitoring",
+        "label": "Estatus Portales",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/organization",
+    "legacyDestination": "settings.organization",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Configuración general",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.organization",
+        "label": "Configuración general",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/iva",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Configuración IVA",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.iva",
+        "label": "Configuración IVA",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/members",
+    "legacyDestination": "settings.members",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Miembros",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.members",
+        "label": "Miembros",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/roles",
+    "legacyDestination": "settings.roles",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Roles",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.roles",
+        "label": "Roles",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/security-sales",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Control comercial",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.security-sales",
+        "label": "Control comercial",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/security",
+    "legacyDestination": "settings.security",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Seguridad",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.security",
+        "label": "Seguridad",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/audit",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Auditoría",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.audit",
+        "label": "Auditoría",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/payment-orders",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Órdenes de pago",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.payment-orders",
+        "label": "Órdenes de pago",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/access",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Acceso",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.access",
+        "label": "Acceso",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/billing",
+    "legacyDestination": "settings.billing",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Facturación",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.billing",
+        "label": "Facturación",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/referrals",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Referidos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.referrals",
+        "label": "Referidos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/company",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Datos de empresa",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.company",
+        "label": "Datos de empresa",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/inventory-config",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Inventario",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.inventory-config",
+        "label": "Inventario",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/profile",
+    "legacyDestination": "settings.profile",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Mi perfil",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.profile",
+        "label": "Mi perfil",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/apariencia",
+    "legacyDestination": "settings.appearance",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Apariencia",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.appearance",
+        "label": "Apariencia",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/instalar-app",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Instalar app",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.install-app",
+        "label": "Instalar app",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/settings/devices",
+    "legacyDestination": "settings.devices",
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "label": "Dispositivos",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "settings",
+        "label": "Configuración",
+        "href": "/settings/organization"
+      },
+      {
+        "id": "settings.devices",
+        "label": "Dispositivos",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/sample-invoice",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.archive",
+        "label": "Archivo de facturas",
+        "href": "/purchases/archive"
+      },
+      {
+        "id": "purchases.detail",
+        "label": "Factura",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/purchases/suppliers/sample-supplier",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "label": "Proveedores",
+        "href": "/purchases/suppliers"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "purchases",
+        "label": "Compras",
+        "href": "/purchases"
+      },
+      {
+        "id": "purchases.suppliers",
+        "label": "Proveedores",
+        "href": "/purchases/suppliers"
+      },
+      {
+        "id": "purchases.supplier-detail",
+        "label": "Proveedor",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/sample-sale",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.archive",
+        "label": "Archivo de facturas",
+        "href": "/sales/archive"
+      },
+      {
+        "id": "sales.detail",
+        "label": "Factura",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/sales/fiscal/sample-document",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "label": "Documentos fiscales",
+        "href": "/sales/fiscal"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "sales",
+        "label": "Ventas",
+        "href": "/sales"
+      },
+      {
+        "id": "sales.fiscal-detail",
+        "label": "Documento fiscal",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/products/sample-product",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Productos",
+        "href": "/inventory/products"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.products",
+        "label": "Productos",
+        "href": "/inventory/products"
+      },
+      {
+        "id": "inventory.product-detail",
+        "label": "Producto",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/departments/sample-category",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Departamentos",
+        "href": "/inventory/departments"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.departments",
+        "label": "Departamentos",
+        "href": "/inventory/departments"
+      },
+      {
+        "id": "inventory.department-detail",
+        "label": "Categoría",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/inventory/compras-pendientes/sample-purchase",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "label": "Compras pendientes",
+        "href": "/inventory/compras-pendientes"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "inventory",
+        "label": "Inventario",
+        "href": "/inventory"
+      },
+      {
+        "id": "inventory.pending-purchases",
+        "label": "Compras pendientes",
+        "href": "/inventory/compras-pendientes"
+      },
+      {
+        "id": "inventory.pending-purchase-detail",
+        "label": "Compra pendiente",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/treasury/accounts/sample-account",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "label": "Cajas y cuentas",
+        "href": "/treasury/accounts"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "treasury",
+        "label": "Tesorería",
+        "href": "/treasury"
+      },
+      {
+        "id": "treasury.accounts",
+        "label": "Cajas y cuentas",
+        "href": "/treasury/accounts"
+      },
+      {
+        "id": "treasury.account-detail",
+        "label": "Cuenta",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/documents/sample-document",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Documentos",
+        "href": "/payables/documents"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.documents",
+        "label": "Documentos",
+        "href": "/payables/documents"
+      },
+      {
+        "id": "payables.document-detail",
+        "label": "Documento",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/payables/suppliers/sample-supplier",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "label": "Proveedores",
+        "href": "/payables/suppliers"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "payables",
+        "label": "Cuentas por pagar",
+        "href": "/payables"
+      },
+      {
+        "id": "payables.suppliers",
+        "label": "Proveedores",
+        "href": "/payables/suppliers"
+      },
+      {
+        "id": "payables.supplier-detail",
+        "label": "Proveedor",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/fiscal/declaraciones/2026-10",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "iva",
+        "label": "IVA",
+        "href": "/fiscal"
+      },
+      {
+        "id": "iva.declarations",
+        "label": "Declaraciones",
+        "href": "/fiscal/declaraciones"
+      },
+      {
+        "id": "iva.declaration-detail",
+        "label": "Declaración",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/charts/sample-chart",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Planes de cuentas",
+        "href": "/accounting/charts"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.charts",
+        "label": "Planes de cuentas",
+        "href": "/accounting/charts"
+      },
+      {
+        "id": "accounting.chart-detail",
+        "label": "Plan de cuentas",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/accounts/sample-account",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Cuentas",
+        "href": "/accounting/accounts"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.accounts",
+        "label": "Cuentas",
+        "href": "/accounting/accounts"
+      },
+      {
+        "id": "accounting.account-detail",
+        "label": "Cuenta",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/accounting/journal/sample-entry",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "label": "Libro diario",
+        "href": "/accounting/journal"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "accounting",
+        "label": "Contabilidad",
+        "href": "/accounting"
+      },
+      {
+        "id": "accounting.journal",
+        "label": "Libro diario",
+        "href": "/accounting/journal"
+      },
+      {
+        "id": "accounting.journal-entry",
+        "label": "Asiento",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/companies/sample-company",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Empresas",
+        "href": "/companies"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "companies",
+        "label": "Empresas",
+        "href": "/companies"
+      },
+      {
+        "id": "companies.detail",
+        "label": "Empresa",
+        "href": null
+      }
+    ]
+  },
+  {
+    "pathname": "/tools/status/sample-portal",
+    "legacyDestination": null,
+    "baselineTrail": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "label": "Estatus Portales",
+        "href": "/tools/status"
+      },
+      {
+        "label": "Registro de ejemplo",
+        "href": null
+      }
+    ],
+    "trail": [
+      {
+        "id": "home",
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "id": "tools",
+        "label": "Herramientas",
+        "href": "/tools"
+      },
+      {
+        "id": "tools.portal-monitoring",
+        "label": "Estatus Portales",
+        "href": "/tools/status"
+      },
+      {
+        "id": "tools.portal-status-detail",
+        "label": "Portal",
+        "href": null
+      }
+    ]
+  }
+]

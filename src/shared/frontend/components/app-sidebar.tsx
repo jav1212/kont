@@ -42,6 +42,7 @@ import { OrganizationSwitcher } from "@/src/modules/organizations/frontend/compo
 import { canViewIvaModule, getOrganizationRouteAccess, getModuleVisibilityPermission, isKnownOrganizationModule, resolveSalesLanding } from "@/src/modules/organizations/frontend/module-access-policy";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
 import { Tooltip } from "@heroui/react";
+import { useNavigationPreferences } from "@/src/shared/frontend/components/navigation-preferences-provider";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -129,31 +130,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const isDesktop = useIsDesktop();
     const persistedSidebarPinned = useSyncExternalStore(subscribeToSidebarPreference, getSidebarPinnedSnapshot, getServerSidebarPinnedSnapshot);
     const [sidebarPinnedOverride, setSidebarPinnedOverride] = useState<boolean | null>(null);
-    const [navigationLabels, setNavigationLabels] = useState<Record<string, string>>({});
-    const [navigationIcons, setNavigationIcons] = useState<Record<string, string>>({});
+    const { labels: navigationLabels, icons: navigationIcons, ready: navigationPreferencesReady } = useNavigationPreferences();
     const sidebarPinned = sidebarPinnedOverride ?? persistedSidebarPinned;
 
     const { signOut } = useAuth();
-    useEffect(() => {
-        let active = true;
-        const loadLabels = () => void fetch("/api/preferences/navigation-labels", { cache: "no-store" })
-            .then(async (response) => response.ok ? response.json() : null)
-            .then((payload) => { if (active && payload?.data?.labels) setNavigationLabels(payload.data.labels); })
-            .catch(() => undefined);
-        loadLabels();
-        window.addEventListener("kontave:navigation-labels-updated", loadLabels);
-        return () => { active = false; window.removeEventListener("kontave:navigation-labels-updated", loadLabels); };
-    }, []);
-    useEffect(() => {
-        let active = true;
-        const loadIcons = () => void fetch("/api/preferences/navigation-icons", { cache: "no-store" })
-            .then(async (response) => response.ok ? response.json() : null)
-            .then((payload) => { if (active && payload?.data?.icons) setNavigationIcons(payload.data.icons); })
-            .catch(() => undefined);
-        loadIcons();
-        window.addEventListener("kontave:navigation-icons-updated", loadIcons);
-        return () => { active = false; window.removeEventListener("kontave:navigation-icons-updated", loadIcons); };
-    }, []);
     useTheme();
     const { companies, companyId, selectCompany, loading: companyLoading } = useCompany();
     const { controller: workspaceController, snapshot: workspaceApplication } = useWebApplication();
@@ -378,7 +358,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
             <div className={["px-3 py-3 border-b border-sidebar-border flex flex-col gap-2", collapsed && "xl:hidden"].filter(Boolean).join(" ")}>
                 <OrganizationSwitcher />
-                <p className="px-1 pt-1 font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-sidebar-label">Empresa</p>
+                <p className="px-1 pt-1 text-caption font-medium text-sidebar-label">Empresa</p>
                 <SidebarCompanySelector
                     companies={companies}
                     selectedId={companyId}
@@ -386,21 +366,21 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     onSelect={selectCompany}
                     companiesHref={buildContextHref("/companies")}
                 />
-                <SidebarModuleSelector
+                {navigationPreferencesReady ? <SidebarModuleSelector
                     modules={kioskModules}
                     activeModuleId={visibleModuleId}
                     onSelect={handleSelectModule}
                     subtitle={moduleSubtitle}
-                />
+                /> : <div aria-hidden="true" className="h-11 rounded-lg bg-sidebar-bg-hover/40" />}
             </div>
 
-            <nav
+            {navigationPreferencesReady && <nav
                 className={["flex-1 min-h-0 px-3 pt-3 pb-5 overflow-y-auto", collapsed && "xl:px-2"].filter(Boolean).join(" ")}
                 style={collapsed ? undefined : { scrollbarGutter: "stable" }}
                 aria-label="Secciones del módulo"
             >
                 <SidebarSubnav subnav={kioskSubnav} pathname={pathname} compact={collapsed} />
-            </nav>
+            </nav>}
 
             <div
                 style={{ paddingBottom: "calc(0.875rem + env(safe-area-inset-bottom))" }}
@@ -412,14 +392,14 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         href={settingsHref}
                         active={isSettingsRoute}
                         label="Configuración"
-                        icon={<Settings size={17} strokeWidth={1.8} />}
+                        icon={<Settings size={16} strokeWidth={1.75} />}
                         compact={collapsed}
                     />
                     <UtilityShortcut
                         href={buildContextHref("/help")}
                         active={pathname.startsWith("/help")}
                         label="Ayuda"
-                        icon={<CircleHelp size={17} strokeWidth={1.8} />}
+                        icon={<CircleHelp size={16} strokeWidth={1.75} />}
                         compact={collapsed}
                     />
                 </div>
@@ -452,15 +432,15 @@ function UtilityShortcut({ href, active, label, icon, compact }: { href: string;
             aria-current={active ? "page" : undefined}
             aria-label={compact ? label : undefined}
             className={[
-                "group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150",
-                "font-sans text-[15px] font-semibold",
+                "group flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-150",
+                "text-body font-medium",
                 compact && "xl:justify-center xl:px-2",
                 active
-                    ? "text-sidebar-active-fg bg-sidebar-active-bg/60"
+                    ? "text-sidebar-active-fg bg-sidebar-bg-hover"
                     : "text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover",
             ].join(" ")}
         >
-            <span className="shrink-0 w-5 h-5 flex items-center justify-center text-sidebar-label group-hover:text-sidebar-fg-hover">
+            <span className="shrink-0 w-4 h-4 flex items-center justify-center">
                 {icon}
             </span>
             {!compact && <span>{label}</span>}
@@ -522,11 +502,11 @@ function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref,
 
             {!compact && <>
                 <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
+                    <span className="text-body font-semibold text-sidebar-fg-hover truncate">
                         {displayName}
                     </span>
                     {email && email !== displayName && (
-                        <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                        <span className="text-caption text-sidebar-label truncate mt-0.5">
                             {email}
                         </span>
                     )}
@@ -575,12 +555,12 @@ function Avatar({ avatarUrl, initial, size }: { avatarUrl?: string | null; initi
         <span
             aria-hidden="true"
             style={{ width: size, height: size }}
-            className="relative rounded-full bg-primary-500/10 border border-primary-500/20 overflow-hidden flex items-center justify-center shrink-0 shadow-sm"
+            className="relative rounded-full bg-sidebar-bg border border-sidebar-border text-sidebar-fg-hover overflow-hidden flex items-center justify-center shrink-0"
         >
             {avatarUrl ? (
                 <Image src={avatarUrl} alt="" fill unoptimized sizes="32px" className="object-cover" />
             ) : (
-                <span className="font-mono text-[11px] font-bold text-primary-500 uppercase">{initial}</span>
+                <span className="text-caption font-semibold uppercase">{initial}</span>
             )}
         </span>
     );
@@ -631,12 +611,12 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
         >
             <div className="px-3 py-3 border-b border-sidebar-border flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                    <p className="font-sans text-[16px] font-bold text-sidebar-fg-hover truncate">{displayName}</p>
+                    <p className="text-body font-semibold text-sidebar-fg-hover truncate">{displayName}</p>
                     {email && (
-                        <p className="font-mono text-[12px] text-sidebar-label truncate mt-0.5">{email}</p>
+                        <p className="text-caption text-sidebar-label truncate mt-0.5">{email}</p>
                     )}
                     {planName && (
-                        <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md font-sans text-[11px] font-semibold bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
+                        <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md text-caption font-medium bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
                             {sentenceCase(planName)}
                         </span>
                     )}
@@ -653,7 +633,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
             </div>
 
             <div className="p-1.5 border-b border-sidebar-border">
-                <div className="h-10 px-2 flex items-center justify-between gap-3 font-sans text-[14px] font-semibold text-sidebar-fg">
+                <div className="h-10 px-2 flex items-center justify-between gap-3 text-body font-medium text-sidebar-fg">
                     <span>Tema</span>
                     <span className="inline-flex items-center rounded-lg border border-sidebar-border bg-sidebar-bg-hover/60 p-0.5">
                         <button
@@ -685,7 +665,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
                 <button
                     role="menuitem"
                     onClick={onProfileClick}
-                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 text-body font-medium text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
                 >
                     <UserRound size={16} className="text-sidebar-label" strokeWidth={1.8} />
                     Mi perfil
@@ -693,7 +673,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
                 <button
                     role="menuitem"
                     onClick={onHelpClick}
-                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 text-body font-medium text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
                 >
                     <LifeBuoy size={16} className="text-sidebar-label" strokeWidth={1.8} />
                     Ayuda
@@ -701,7 +681,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
                 <button
                     role="menuitem"
                     onClick={onSignOut}
-                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 text-body font-medium text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
                 >
                     <LogOut size={16} strokeWidth={1.8} />
                     Cerrar sesión
@@ -712,7 +692,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
                 <button
                     type="button"
                     onClick={onBillingClick}
-                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg bg-sidebar-fg-hover text-sidebar-bg font-sans text-[14px] font-bold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg bg-sidebar-fg-hover text-sidebar-bg text-body font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
                 >
                     <CreditCard size={15} strokeWidth={1.8} />
                     Facturación y plan
@@ -722,7 +702,7 @@ function AccountMenu({ className, email, displayName, planName, onProfileClick, 
             <button
                 type="button"
                 onClick={onStatusClick}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-sans text-[13px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-body-sm font-medium text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors"
             >
                 <Activity size={15} className="text-sidebar-label" strokeWidth={1.8} />
                 <span className="flex-1">Estado de portales</span>

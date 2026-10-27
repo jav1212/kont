@@ -86,6 +86,9 @@ importers:
       '@kontave/monetary':
         specifier: workspace:*
         version: link:packages/monetary
+      '@kontave/navigation':
+        specifier: workspace:*
+        version: link:packages/experience/navigation
       '@kontave/observability':
         specifier: workspace:*
         version: link:packages/platform/observability
@@ -137,6 +140,9 @@ importers:
       '@kontave/treasury':
         specifier: workspace:*
         version: link:packages/business/treasury
+      '@kontave/ui':
+        specifier: workspace:*
+        version: link:packages/ui
       '@kontave/unit-economics':
         specifier: workspace:*
         version: link:packages/business/unit-economics
