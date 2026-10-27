@@ -13,7 +13,8 @@ import { BaseInput }                    from '@/src/shared/frontend/components/b
 import { BaseTable }                    from '@/src/shared/frontend/components/base-table';
 import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                   from '@/src/modules/companies/frontend/hooks/use-companies';
-import { useAccounts }                  from '@/src/modules/accounting/frontend/hooks/use-accounts';
+import { usePostingAccounts }           from '@/src/modules/accounting/frontend/hooks/use-posting-accounts';
+import { useOrganization }              from '@/src/modules/organizations/frontend/context/organization-context';
 import { useIntegrationRules }          from '@/src/modules/accounting/frontend/hooks/use-integration-rules';
 import { useIntegrationLog }            from '@/src/modules/accounting/frontend/hooks/use-integration-log';
 import { notify }                       from '@/src/shared/frontend/notify';
@@ -120,7 +121,8 @@ interface RuleRow extends IntegrationRule {
 export default function IntegrationsPage() {
     const formId = useId();
     const { companyId }    = useCompany();
-    const { data: accounts }                                     = useAccounts(companyId);
+    const { organization } = useOrganization();
+    const { data: accounts } = usePostingAccounts(organization?.id ?? null, companyId);
     const { data: rules, loading: rulesLoading, reload: reloadRules } = useIntegrationRules(companyId);
     const { data: log,   loading: logLoading,   reload: reloadLog }   = useIntegrationLog(companyId, 50);
 

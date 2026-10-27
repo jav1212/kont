@@ -11,7 +11,8 @@ import { BaseButton }                   from '@/src/shared/frontend/components/b
 import { BaseInput }                    from '@/src/shared/frontend/components/base-input';
 import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                   from '@/src/modules/companies/frontend/hooks/use-companies';
-import { useAccounts }                  from '@/src/modules/accounting/frontend/hooks/use-accounts';
+import { usePostingAccounts }           from '@/src/modules/accounting/frontend/hooks/use-posting-accounts';
+import { useOrganization }              from '@/src/modules/organizations/frontend/context/organization-context';
 import { useAccountingPeriods }         from '@/src/modules/accounting/frontend/hooks/use-accounting-periods';
 import { notify }                       from '@/src/shared/frontend/notify';
 import type { SaveEntryInput }          from '@/src/modules/accounting/backend/domain/repository/journal-entry.repository';
@@ -49,7 +50,8 @@ export default function NewJournalEntryPage() {
     const formId                   = useId();
     const router                   = useRouter();
     const { companyId }            = useCompany();
-    const { data: accounts }       = useAccounts(companyId);
+    const { organization }         = useOrganization();
+    const { data: accounts }       = usePostingAccounts(organization?.id ?? null, companyId);
     const { data: periods }        = useAccountingPeriods(companyId);
     const openPeriods              = periods.filter((p) => p.status === 'open');
 
@@ -100,7 +102,12 @@ export default function NewJournalEntryPage() {
                 body:    JSON.stringify(body),
             });
             const json = await res.json() as { data?: string; error?: string };
-            if (!res.ok) { notify.error(json.error ?? 'No se pudo guardar el asiento. Inténtalo de nuevo.'); return; }
+            if (!res.ok) {
+                notify.error(json.error === 'ACCOUNTING_POSTING_ACCOUNT_INVALID'
+                    ? 'Selecciona cuentas de detalle activas del plan de cuentas activo.'
+                    : (json.error ?? 'No se pudo guardar el asiento. Inténtalo de nuevo.'));
+                return;
+            }
 
             if (andPost) {
                 const entryId = json.data;
