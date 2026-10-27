@@ -17,7 +17,7 @@ import { apiError, apiSuccess } from "../http/response";
 
 type Operation = "commands" | "query";
 const scopeKeys = new Set(["tenantId", "organizationId", "companyId", "actorId"]);
-const chartCommands = new Set(["create_chart","change_chart_structure","activate_chart","archive_chart","create_account","update_account","recode_account","set_account_active","delete_account","convert_account_kind","set_account_classification","pair_memorandum_accounts","unpair_memorandum_accounts"]);
+const chartCommands = new Set(["create_chart","change_chart_structure","activate_chart","archive_chart","create_account","assign_account_to_chart","update_account","recode_account","set_account_active","delete_account","convert_account_kind","set_account_classification","pair_memorandum_accounts","unpair_memorandum_accounts"]);
 const masterCommands = new Set(["create_cost_center","set_cost_center_active","upsert_expense_class","upsert_accounting_attribute","upsert_attribute_value","set_account_dimensions","set_auxiliary_source_enabled","upsert_other_auxiliary","set_other_auxiliary_active"]);
 const configureCommands = new Set(["upsert_document_type","set_special_account","save_accounting_settings"]);
 

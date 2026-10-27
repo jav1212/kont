@@ -15,6 +15,7 @@ try {
   await db.exec(await readFile(new URL("../migrations/20261026132419_accounting_dimensions.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../migrations/20261026134135_accounting_auxiliaries.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../migrations/20261026135757_accounting_settings.sql", import.meta.url), "utf8"));
+  await db.exec(await readFile(new URL("../migrations/20261027122933_accounting_assign_account_to_chart.sql", import.meta.url), "utf8"));
   const scope = { tenantId:"00000000-0000-4000-8000-000000000001", organizationId:"00000000-0000-4000-8000-000000000002", companyId:"J-00000000-0", actorId:"00000000-0000-4000-8000-000000000003" };
   const execute = async command => (await db.query("select public.shared_accounting_execute_command($1,$2) value",[scope,command])).rows[0].value;
   const query = async request => (await db.query("select public.shared_accounting_query($1,$2) value",[scope,request])).rows[0].value;
@@ -27,6 +28,9 @@ try {
   await execute({idempotencyKey:"child",correlationId:"test",kind:"create_account",accountId:"child",chartId:"chart",code:"1.1.01",name:"Child",accountKind:"detail",accountType:"asset",isMemorandum:false,monetaryClass:"monetary"});
   const accounts=await query({kind:"find_accounts",chartId:"chart"}); assert.equal(accounts.length,3); assert.equal(accounts[1].parentCode,"1");
   const detail=await query({kind:"get_account",accountId:"child"}); assert.equal(detail.account.version,1); assert.equal(detail.references.postings,0);
+  await db.query("insert into public.shared_accounting_accounts(tenant_id,id,company_id,chart_id,code,name,type,parent_code,is_group,account_kind,is_memorandum,normal_balance,monetary_class,version) values($1,'legacy-loose','J-00000000-0',null,'3.1','Legacy loose','revenue','3',false,'detail',false,'credit',null,1)",[scope.tenantId]);
+  await execute({idempotencyKey:"assign-loose",correlationId:"test",kind:"assign_account_to_chart",accountId:"legacy-loose",expectedVersion:1,chartId:"chart"});
+  const assigned=await query({kind:"get_account",accountId:"legacy-loose"}); assert.equal(assigned.account.id,"legacy-loose"); assert.equal(assigned.account.chartId,"chart"); assert.equal(assigned.account.code,"3.1"); assert.equal(assigned.account.parentCode,"3"); assert.equal(assigned.account.version,2);
   await execute({idempotencyKey:"recode-root",correlationId:"test",kind:"recode_account",accountId:"root",expectedVersion:1,code:"2"});
   const moved=(await db.query("select id,code,parent_code from public.shared_accounting_accounts where tenant_id=$1 and id in ('root','leaf','child') order by code",[scope.tenantId])).rows;
   assert.deepEqual(moved,[{id:"root",code:"2",parent_code:null},{id:"leaf",code:"2.1",parent_code:"2"},{id:"child",code:"2.1.01",parent_code:"2.1"}]);

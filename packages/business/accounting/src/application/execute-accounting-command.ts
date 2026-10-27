@@ -155,6 +155,11 @@ function validateCommand(command: AccountingWriteCommand): void {
         invalid("The memorandum flag is invalid.");
       normalizeCode(command.code);
       return;
+    case "assign_account_to_chart":
+      text(command.accountId, "Account id");
+      text(command.chartId, "Chart id");
+      version(command.expectedVersion);
+      return;
     case "update_account":
       text(command.accountId, "Account id");
       text(command.name, "Account name");

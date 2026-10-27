@@ -10,6 +10,7 @@ import {
   type AccountingScope,
   type ChartOfAccounts,
   type LedgerAccount,
+  type LedgerAccountReadModel,
 } from "../domain";
 import type {
   AccountReferences,
@@ -34,6 +35,8 @@ export class AccountingCommandEngine
   private readonly charts = new Map<string, ChartOfAccounts>();
   private readonly chartScopes = new Map<string, string>();
   private readonly accounts = new Map<string, LedgerAccount>();
+  private readonly unassignedAccounts = new Map<string, LedgerAccountReadModel>();
+  private readonly accountScopes = new Map<string, string>();
   private readonly references = new Map<string, AccountReferences>();
   private readonly receipts = new Map<
     string,
@@ -68,6 +71,7 @@ export class AccountingCommandEngine
    * @param charts - Charts to make available to tests.
    * @param accounts - Accounts belonging to the supplied charts.
    * @param scope - Required owner of nonempty seed snapshots.
+   * @param unassignedAccounts - Legacy account snapshots awaiting chart assignment.
    * @returns A repository retaining its own copies of the supplied facts.
    * @throws {AccountingFailure} When a seed violates domain invariants.
    */
@@ -75,6 +79,7 @@ export class AccountingCommandEngine
     charts: readonly ChartOfAccounts[] = [],
     accounts: readonly LedgerAccount[] = [],
     scope?: AccountingScope,
+    unassignedAccounts: readonly LedgerAccountReadModel[] = [],
   ) {
     if ((charts.length || accounts.length) && !scope)
       throw new AccountingFailure(
@@ -85,8 +90,16 @@ export class AccountingCommandEngine
       this.charts.set(chart.id, structuredClone(chartOfAccounts(chart)));
       if (scope) this.chartScopes.set(chart.id, this.scopeKey(scope));
     }
-    for (const account of accounts)
+    for (const account of accounts) {
       this.accounts.set(account.id, structuredClone(account));
+      if (scope) this.accountScopes.set(account.id, this.scopeKey(scope));
+    }
+    for (const account of unassignedAccounts) {
+      if (!scope || account.chartId !== null)
+        throw new AccountingFailure("INVALID", "Unassigned seed accounts require an owning scope and null chart id.");
+      this.unassignedAccounts.set(account.id, structuredClone(account));
+      this.accountScopes.set(account.id, this.scopeKey(scope));
+    }
   }
   /** Sets fixture references that emulate posting, relationship, and policy use.
    * @param accountId - Account to annotate.
@@ -157,6 +170,8 @@ export class AccountingCommandEngine
     const charts = new Map(this.charts);
     const scopes = new Map(this.chartScopes);
     const accounts = new Map(this.accounts);
+    const unassigned = new Map(this.unassignedAccounts);
+    const accountScopes = new Map(this.accountScopes);
     const auditLength = this.events.length;
     try {
       const result = this.apply(scope, command);
@@ -184,6 +199,10 @@ export class AccountingCommandEngine
       for (const [id, value] of scopes) this.chartScopes.set(id, value);
       this.accounts.clear();
       for (const [id, value] of accounts) this.accounts.set(id, value);
+      this.unassignedAccounts.clear();
+      for (const [id, value] of unassigned) this.unassignedAccounts.set(id, value);
+      this.accountScopes.clear();
+      for (const [id, value] of accountScopes) this.accountScopes.set(id, value);
       this.events.length = auditLength;
       throw cause;
     }
@@ -261,6 +280,8 @@ export class AccountingCommandEngine
         );
       case "create_account":
         return this.createAccount(scope, command);
+      case "assign_account_to_chart":
+        return this.assignAccountToChart(scope, command);
       case "update_account":
         return this.updateAccount(scope, command);
       case "recode_account":
@@ -289,6 +310,43 @@ export class AccountingCommandEngine
       case "set_account_classification":
         return this.classify(scope, command);
     }
+  }
+  private assignAccountToChart(
+    scope: AccountingScope,
+    command: Extract<
+      AccountingWriteCommand,
+      { readonly kind: "assign_account_to_chart" }
+    >,
+  ): AccountingCommandResult {
+    const account = this.unassignedAccounts.get(command.accountId);
+    if (
+      !account ||
+      this.accountScopes.get(account.id) !== this.scopeKey(scope)
+    )
+      throw new AccountingFailure("NOT_FOUND", "Unassigned account does not exist.");
+    if (account.version !== command.expectedVersion)
+      throw new AccountingFailure("VERSION_CONFLICT", "Account changed; reload it before retrying.");
+    const chart = this.chart(scope, command.chartId);
+    const position = accountCodePosition(chart.structure, account.code);
+    if (position.parentCode !== account.parentCode)
+      throw new AccountingFailure("PARENT_INVALID", "Stored parent does not match the chart structure.");
+    if (account.parentCode !== null) {
+      const parent =
+        [...this.accounts.values()].find((item) => item.code === account.parentCode) ??
+        [...this.unassignedAccounts.values()].find((item) => item.code === account.parentCode);
+      if (parent && (parent.kind !== "summary" || (parent.chartId !== null && parent.chartId !== chart.id)))
+        throw new AccountingFailure("PARENT_INVALID", "Existing parent must be a summary in the target chart or remain unassigned.");
+    }
+    if (this.forChart(chart.id).some((item) => item.code === account.code))
+      throw new AccountingFailure("DUPLICATE_CODE", "Target chart already has this account code.");
+    const assigned = ledgerAccount(chart.structure, {
+      ...account,
+      chartId: chart.id,
+      version: account.version + 1,
+    });
+    this.unassignedAccounts.delete(account.id);
+    this.accounts.set(account.id, assigned);
+    return receipt(command, [account.id], { [account.id]: assigned.version });
   }
   private pairMemorandum(
     scope: AccountingScope,

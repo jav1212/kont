@@ -34,3 +34,9 @@ corepack pnpm --filter @kontave/architecture check
 ```
 
 Una plantilla VEN-NIF aprobada sigue pendiente para cerrar la puerta P1.
+
+## Asignación de cuentas legacy
+
+El comando `assign_account_to_chart` incorpora una cuenta histórica sin reemplazar su `id` ni su código. La persistencia valida tenant, empresa, revisión esperada, estructura de código y plan destino; conserva `parent_code`, incrementa `version` y emite recibo y auditoría idempotentes. Las referencias históricas a padres ausentes se conservan para su revisión, y la asignación no cambia clasificaciones incompatibles.
+
+W3 asignó 13 cuentas al plan creado para `J506935210` y 3 al plan activo de `J-40548909-0`; PGlite y las pruebas del paquete pasaron. La plantilla VEN-NIF aún requiere aprobación del contador.

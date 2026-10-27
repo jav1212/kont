@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AccountingCommandEngine,
   ExecuteAccountingCommand,
   inspectAccountStructure,
   type AccountingWriteCommand,
   type AccountingCommandEnvelope,
 } from "../src/application";
+import { chartOfAccounts, codeStructure } from "../src/domain";
 import {
   AllowAccountingAuthorization,
   DenyAccountingAuthorization,
@@ -18,6 +20,58 @@ const scope = {
   companyId: "company",
   actorId: "actor",
 };
+
+test("assign_account_to_chart preserves a legacy account id, code and orphan parent reference", async () => {
+  const structure = codeStructure({
+    segments: [
+      { length: 1, separator: null },
+      { length: 2, separator: "." },
+      { length: 2, separator: "." },
+    ],
+  });
+  const chart = chartOfAccounts({
+    id: "target",
+    companyId: scope.companyId,
+    name: "Target",
+    status: "draft",
+    structure,
+    version: 1,
+  });
+  const engine = new AccountingCommandEngine([chart], [], scope, [
+    {
+      id: "legacy-account",
+      chartId: null,
+      code: "1.01",
+      name: "Historical account",
+      parentCode: "1",
+      level: 2,
+      kind: "detail",
+      type: "revenue",
+      isMemorandum: false,
+      normalBalance: "credit",
+      monetaryClass: null,
+      isActive: true,
+      version: 1,
+    },
+  ]);
+  const result = await engine.execute(scope, {
+    ...scope,
+    kind: "assign_account_to_chart",
+    accountId: "legacy-account",
+    chartId: "target",
+    expectedVersion: 1,
+    idempotencyKey: "assign-legacy-account",
+    correlationId: "test-assign-legacy-account",
+  });
+  assert.deepEqual(result.affectedIds, ["legacy-account"]);
+  assert.equal(result.versions["legacy-account"], 2);
+  const account = await engine.getAccount({ ...scope, accountId: "legacy-account" });
+  assert.equal(account?.account.id, "legacy-account");
+  assert.equal(account?.account.chartId, "target");
+  assert.equal(account?.account.code, "1.01");
+  assert.equal(account?.account.parentCode, "1");
+  assert.equal(account?.account.type, "revenue");
+});
 type Input<T = AccountingWriteCommand> = T extends AccountingWriteCommand
   ? Omit<T, keyof AccountingCommandEnvelope>
   : never;

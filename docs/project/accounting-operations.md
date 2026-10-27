@@ -30,3 +30,9 @@ Las RPC de comandos son solo para `service_role`. Los helpers de trigger y scope
 - W3 actual: [reporte de datos](../audit/accounting-w3-2026-10-26.md) y [balance posterior](../audit/accounting-trial-balance-after-w3-2026-10-26.json).
 
 El smoke de PGlite valida D9 y coexistencia con RPC legacy, dimensiones, auxiliares y configuración; no sustituye el recorrido de navegador ni demuestra autorización HTTP para usuarios delegados. El piloto manual sigue requerido: [guion](ACCOUNTING_PILOT.md).
+
+## Incremento de cierre independiente (2026-10-27)
+
+Las migraciones posteriores al primer paquete son `20261026175448_accounting_legacy_write_lockdown.sql`, `20261026175733_accounting_legacy_read_policy_initplan.sql` y `20261027122933_accounting_assign_account_to_chart.sql`. Sus prefijos coinciden con las versiones devueltas por `list_migrations`. La primera conserva lectura de miembros y elimina DML directo de `anon`/`authenticated` en las siete tablas legacy; la segunda mantiene la lectura member-scoped sin reevaluación por fila; la tercera registra recibo/auditoría e incrementa versión al asignar una cuenta al plan de su misma empresa.
+
+W3 asignó las 16 cuentas sin plan: 13 al plan nuevo activo de `J506935210` y 3 al plan activo de `J-40548909-0`. Se comprobó la igualdad por cuenta de saldos iniciales, débitos y créditos antes/después. Las seis referencias a padres ausentes y las cuatro diferencias de tipo de `J-40548909-0` permanecen sin cambios.

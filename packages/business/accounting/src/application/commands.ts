@@ -57,6 +57,7 @@ export type AccountingWriteCommand =
   | ActivateChartCommand
   | ArchiveChartCommand
   | CreateAccountCommand
+  | AssignAccountToChartCommand
   | UpdateAccountCommand
   | RecodeAccountCommand
   | SetAccountActiveCommand
@@ -106,6 +107,13 @@ export interface CreateAccountCommand extends AccountingCommandEnvelope {
   readonly normalBalance?: NormalBalance;
   readonly normalBalanceOverrideReason?: string;
   readonly monetaryClass: MonetaryClass | null;
+}
+/** Moves an existing legacy account into a same-company chart without changing its id or code. */
+export interface AssignAccountToChartCommand extends AccountingCommandEnvelope {
+  readonly kind: "assign_account_to_chart";
+  readonly accountId: string;
+  readonly expectedVersion: number;
+  readonly chartId: string;
 }
 /** CON-005 changes only fields that do not change an account's identity or code. */
 export interface UpdateAccountCommand extends AccountingCommandEnvelope {

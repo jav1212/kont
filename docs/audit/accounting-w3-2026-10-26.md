@@ -40,3 +40,13 @@ No se alteraron tipos ni se recodificaron cuentas.
 El producto carece aún de un comando de paquete persistente para asignar cuentas existentes sin plan a un plan, conservando su `id` y registrando auditoría. No se debe simular la asignación con `UPDATE` ni reutilizar una importación que inserta IDs duplicados. Añadir y probar el comando explícito, validar su impacto en PGlite y contra Supabase en `begin/rollback`, ejecutar los smokes obligatorios y volver a tomar el balance antes de considerar las 16 cuentas sin plan.
 
 Pendiente de aprobación humana: resolver los seis padres ausentes, los cuatro tipos incompatibles y cualquier recodificación; realizar recorrido piloto y confirmar activaciones de planes borrador.
+
+## Cierre determinista de W3 (2026-10-27)
+
+La migración `20261027122933_accounting_assign_account_to_chart.sql` agrega el comando `assign_account_to_chart`. El smoke de PGlite y las 39 pruebas de `@kontave/accounting` pasaron. En Supabase, la migración fue validada en `begin/rollback`; el smoke reversible de nómina, compras y reglas de configuración también pasó antes y después de aplicar. `list_migrations` registra `20261027122933` (`accounting_assign_account_to_chart`).
+
+Se creó y activó `acc-chart-J506935210-20261027`; se asignaron sus 13 cuentas, y otras 3 cuentas se asignaron al plan activo `e8c0b198-0989-4718-870e-3a5b6b72df26` de `J-40548909-0`. Las 16 operaciones quedaron en `shared_accounting_command_audit` como `assign_account_to_chart`. Se conservaron los 16 IDs, los códigos, los padres almacenados y los saldos iniciales; cada cuenta pasó de versión 1 a 2. No quedan cuentas sin plan en esas dos empresas.
+
+Una aserción dentro de la transacción comparó, para cada cuenta de ambas empresas, saldo inicial, débitos y créditos antes/después de las asignaciones y terminó sin diferencias. Totales observados después: `J506935210`, 13 cuentas, VES 0,00 de saldo inicial, débitos/créditos de VES 1.000.000,00; `J-40548909-0`, 460 cuentas, VES 16.718.432,84 de saldo inicial, débitos VES 77.891,1033 y créditos VES 77.891,1032. El resultado fue idéntico al corte tomado al comienzo de la misma transacción.
+
+Quedan para revisión/aprobación: seis referencias a padres ausentes (tres de `J506935210`: `3.1.01`→`3.1`, `4.1.01`→`4.1`, `5.1.01`→`5.1`; tres de `J-40548909-0`: `1.1.01.03.001`–`.003`→`1.1.01.03`) y cuatro cuentas de pasivo (`3.1.01.01.001`–`.004`) bajo el padre de patrimonio `3.1.01.01`. La asignación no modificó ninguno de esos campos.
