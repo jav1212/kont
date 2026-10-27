@@ -14,7 +14,9 @@ export function IncidentReference({ incident }: { readonly incident: BoundaryInc
 
     return (
         <div aria-live="polite" className="flex items-center gap-3 font-mono text-[10px] tracking-widest text-[var(--text-disabled)]">
-            {incident.status === "reporting" ? (
+            {incident.status === "reloading" ? (
+                <span>Hay una versión nueva de Kontave. Recargando…</span>
+            ) : incident.status === "reporting" ? (
                 <span>Registrando referencia…</span>
             ) : (
                 <>

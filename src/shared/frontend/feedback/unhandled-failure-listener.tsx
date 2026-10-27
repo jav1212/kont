@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { recoverFromChunkLoadError } from "./chunk-load-recovery";
 import { WebFailureClassifier } from "./web-failure-classifier";
 import { resolveUnexpectedWebFailure } from "./web-feedback";
 
@@ -19,6 +20,7 @@ const classifier = new WebFailureClassifier();
 export function UnhandledFailureListener(): null {
     useEffect(() => {
         const record = (error: unknown, eventName: string, attributes?: Record<string, unknown>) => {
+            if (recoverFromChunkLoadError(error)) return;
             if (classifier.classify(error) !== null) return;
             if (error instanceof Error && error.name === "AbortError") return;
             void resolveUnexpectedWebFailure.execute({
