@@ -6,11 +6,6 @@ import { SharedPeriodRepository }                            from './repository/
 import { SharedJournalEntryRepository }                       from './repository/shared-journal-entry.repository';
 import { SharedIntegrationRuleRepository }                    from './repository/shared-integration-rule.repository';
 import { SharedIntegrationLogRepository }                     from './repository/shared-integration-log.repository';
-import { SaveAccountUseCase }                                from '../application/commands/save-account.use-case';
-import { DeleteAccountUseCase }                              from '../application/commands/delete-account.use-case';
-import { SaveChartUseCase }                                  from '../application/commands/save-chart.use-case';
-import { DeleteChartUseCase }                                from '../application/commands/delete-chart.use-case';
-import { ImportChartUseCase }                                from '../application/commands/import-chart.use-case';
 import { SaveJournalEntryUseCase }                           from '../application/commands/save-journal-entry.use-case';
 import { PostJournalEntryUseCase }                           from '../application/commands/post-journal-entry.use-case';
 import { SaveAccountingPeriodUseCase }                       from '../application/commands/save-accounting-period.use-case';
@@ -42,14 +37,9 @@ export function getAccountingActions(userId: string) {
     return {
         // Accounts
         getAccounts:    new GetAccountsUseCase(accountRepo),
-        saveAccount:    new SaveAccountUseCase(accountRepo),
-        deleteAccount:  new DeleteAccountUseCase(accountRepo),
 
         // Charts (plan de cuentas)
         getCharts:    new GetChartsUseCase(chartRepo),
-        saveChart:    new SaveChartUseCase(chartRepo),
-        deleteChart:  new DeleteChartUseCase(chartRepo),
-        importChart:  new ImportChartUseCase(chartRepo),
 
         // Periods
         getPeriods:     new GetAccountingPeriodsUseCase(periodRepo),

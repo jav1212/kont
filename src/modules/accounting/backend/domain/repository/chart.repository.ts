@@ -12,7 +12,4 @@ export interface ImportAccountInput {
 
 export interface IChartRepository {
     findByCompany(companyId: string): Promise<Result<AccountChart[]>>;
-    save(chart: { id?: string; companyId: string; name: string }): Promise<Result<string>>;
-    delete(chartId: string): Promise<Result<void>>;
-    import(companyId: string, name: string, accounts: ImportAccountInput[]): Promise<Result<string>>;
 }

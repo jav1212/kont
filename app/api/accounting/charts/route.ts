@@ -1,4 +1,4 @@
-// Route handler for accounting charts: GET (list), POST (create).
+// Read-only route for accounting charts.
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
@@ -10,13 +10,3 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, 
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
-    const ownerId = effectiveOwnerId;
-    const body    = await req.json() as Record<string, unknown>;
-    const result  = await getAccountingActions(tenantId).saveChart.execute({
-        id:        typeof body.id === 'string' ? body.id : undefined,
-        companyId: String(body.companyId ?? ''),
-        name:      String(body.name ?? ''),
-    });
-    return handleResult(result, 201);
-});

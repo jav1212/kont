@@ -17,6 +17,4 @@ export interface SaveAccountInput {
 
 export interface IAccountRepository {
     findByCompany(companyId: string): Promise<Result<Account[]>>;
-    save(input: SaveAccountInput): Promise<Result<string>>;
-    delete(accountId: string): Promise<Result<void>>;
 }
