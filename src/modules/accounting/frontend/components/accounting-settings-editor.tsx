@@ -5,6 +5,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { notify } from "@/src/shared/frontend/notify";
 import { createWebAccountingClient } from "../accounting-client";
 
 interface SettingsSnapshot {
@@ -18,7 +19,7 @@ interface SettingsSnapshot {
 /** Edits versioned company profile and currency settings through the audited command API.
  * @param props - The settings section displayed on this route.
  * @returns A company scoped editor with optimistic revision checking.
- * @throws Never; request failures are shown inline.
+ * @throws Never; request failures are announced through `notify.error`.
  */
 export function AccountingSettingsEditor(props: { readonly section: "profile" | "currencies" }): React.JSX.Element {
   const { organization } = useOrganization();
@@ -28,11 +29,9 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
   const [profile, setProfile] = useState({ accountantName: "", cpc: "", commercialRegistry: "", fiscalYearStartMonth: "1", fiscalYearStartDay: "1" });
   const [currencies, setCurrencies] = useState("USD");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const load = useCallback(async () => {
     if (!organization || !company) { setSnapshot(null); return; }
-    setBusy(true); setError(null);
+    setBusy(true);
     try {
       const value = await client.query(organization.id, company.id, { kind: "get_accounting_settings" }) as unknown as SettingsSnapshot;
       setSnapshot(value);
@@ -44,14 +43,14 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
         fiscalYearStartDay: String(value.profile?.fiscalYearStartDay ?? 1),
       });
       setCurrencies((value.reportingCurrencies ?? []).join(", "));
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cargar la configuración contable."); }
+    } catch (cause) { notifySettingsFailure("No se pudo cargar la configuración contable.", cause, "accounting-settings-load"); }
     finally { setBusy(false); }
   }, [client, company, organization]);
   useEffect(() => { void load(); }, [load]);
   async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (!organization || !company || !snapshot) return;
-    setBusy(true); setError(null); setSaved(false);
+    setBusy(true);
     const requestId = crypto.randomUUID();
     try {
       await client.command(organization.id, company.id, {
@@ -70,17 +69,15 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
         idempotencyKey: requestId,
         correlationId: requestId,
       });
-      setSaved(true);
+      notify.success("Configuración guardada en una nueva revisión.");
       await load();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo guardar la configuración contable."); }
+    } catch (cause) { notifySettingsFailure("No se pudo guardar la configuración contable.", cause); }
     finally { setBusy(false); }
   }
   const profileSection = props.section === "profile";
   return <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6">
     <PageHeader title={profileSection ? "Perfil contable de la empresa" : "Monedas contables"} subtitle={profileSection ? "Datos del contador, registro mercantil e inicio del ejercicio." : "La moneda funcional del libro es VES; configura monedas adicionales de reporte."} />
     {!company && <p className="rounded-xl bg-warning-50 p-4 text-sm text-warning-800">Selecciona una empresa para consultar su configuración contable.</p>}
-    {error && <p role="alert" className="rounded-xl bg-danger-50 p-4 text-sm text-danger-700">{error}</p>}
-    {saved && <p role="status" className="rounded-xl bg-success-50 p-4 text-sm text-success-700">Configuración guardada en una nueva revisión.</p>}
     <form onSubmit={(event) => void save(event)} className="grid gap-4 rounded-2xl border border-default-200 bg-content1 p-5 sm:grid-cols-2">
       <p className="text-sm text-default-500 sm:col-span-2">Revisión {snapshot?.version ?? 0} · Moneda funcional VES</p>
       {profileSection ? <>
@@ -96,4 +93,16 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
       <div className="sm:col-span-2"><BaseButton.Root type="submit" loading={busy} disabled={!company || !organization || !snapshot}>Guardar configuración</BaseButton.Root></div>
     </form>
   </main>;
+}
+
+/** Toasts a Spanish, operation-specific failure; the backend's diagnostic text travels only as incident metadata. */
+function notifySettingsFailure(message: string, cause: unknown, deduplicationKey?: string): void {
+  notify.error(message, {
+    deduplicationKey,
+    errorMetadata: {
+      cause: cause instanceof Error ? cause.message : String(cause),
+      ...(cause && typeof cause === "object" && "code" in cause ? { code: String(cause.code) } : {}),
+      ...(cause && typeof cause === "object" && "requestId" in cause ? { requestId: String(cause.requestId) } : {}),
+    },
+  });
 }

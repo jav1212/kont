@@ -5,6 +5,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { notify } from "@/src/shared/frontend/notify";
 import { createWebAccountingClient } from "../accounting-client";
 import type { AccountingCommandRequest } from "@kontave/client-contracts";
 
@@ -46,7 +47,7 @@ export interface AccountingPageRowAction {
 /** Renders an authenticated, company-scoped accounting master query and command form.
  * @param props - Route copy, query kind, visible columns and optional command fields.
  * @returns A searchable-by-refresh master page with server-authorized writes.
- * @throws Never; expected transport errors are shown inline.
+ * @throws Never; expected transport errors are announced through `notify.error`.
  */
 export function AccountingMasterPage(props: AccountingMasterPageProps): React.JSX.Element {
   const { organization } = useOrganization();
@@ -57,27 +58,26 @@ export function AccountingMasterPage(props: AccountingMasterPageProps): React.JS
   const [rows, setRows] = useState<readonly Readonly<Record<string, unknown>>[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     if (!organization || !company) { setRows([]); return; }
-    setBusy(true); setError(null);
+    setBusy(true);
     try {
       const result = await client.query(organization.id, company.id, query);
       setRows(Array.isArray(result) ? result : result && typeof result === "object" ? [result] : []);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cargar la información contable."); }
+    } catch (cause) { notifyAccountingFailure("No se pudo cargar la información contable.", cause, `accounting-load:${query.kind}`); }
     finally { setBusy(false); }
   }, [client, company, organization, query]);
   useEffect(() => { void load(); }, [load]);
   async function submit(event: React.FormEvent<HTMLFormElement>, spec: AccountingAdditionalCommand): Promise<void> {
     event.preventDefault();
     if (!organization || !company) return;
-    setBusy(true); setError(null);
+    setBusy(true);
     const nowId = crypto.randomUUID();
     const fields = Object.fromEntries(spec.fields.map((field) => [field.name, values[field.name] ?? ""]));
     const id = values[spec.idField] || crypto.randomUUID();
     const command = { ...spec.commandDefaults, ...fields, [spec.idField]: id, kind: spec.command, idempotencyKey: nowId, correlationId: nowId };
     try { await client.command(organization.id, company.id, command); setValues({}); await load(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo guardar la información contable."); }
+    catch (cause) { notifyAccountingFailure("No se pudo guardar la información contable.", cause); }
     finally { setBusy(false); }
   }
   async function runRowAction(action: AccountingPageRowAction, row: Readonly<Record<string, unknown>>): Promise<void> {
@@ -85,15 +85,14 @@ export function AccountingMasterPage(props: AccountingMasterPageProps): React.JS
     const command: { kind: string; idempotencyKey: string; correlationId: string; [key: string]: unknown } = { kind: action.kind, idempotencyKey: crypto.randomUUID(), correlationId: crypto.randomUUID() };
     for (const [field, rowKey] of Object.entries(action.fields)) command[field] = row[rowKey];
     if (action.toggleField) command[action.toggleField] = !Boolean(row[action.toggleField]);
-    setBusy(true); setError(null);
+    setBusy(true);
     try { await client.command(organization.id, company.id, command as AccountingCommandRequest); await load(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo actualizar el registro."); }
+    catch (cause) { notifyAccountingFailure("No se pudo actualizar el registro.", cause); }
     finally { setBusy(false); }
   }
   return <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
     <PageHeader title={props.title} subtitle={props.description} />
     {!company && <p className="rounded-xl bg-warning-50 p-4 text-sm text-warning-800">Selecciona una empresa para consultar sus maestros contables.</p>}
-    {error && <p role="alert" className="rounded-xl bg-danger-50 p-4 text-sm text-danger-700">{error}</p>}
     {props.command && <CommandForm title={props.title} spec={{ title: props.title, command: props.command, idField: props.idField ?? "id", fields: props.fields ?? [], commandDefaults: props.commandDefaults }} values={values} setValues={setValues} busy={busy} disabled={!company || !organization} onSubmit={submit} />}
     {props.additionalCommands?.map((spec) => <CommandForm key={spec.command} title={spec.title} spec={spec} values={values} setValues={setValues} busy={busy} disabled={!company || !organization} onSubmit={submit} />)}
     <section className="overflow-hidden rounded-2xl border border-default-200 bg-content1">
@@ -117,6 +116,18 @@ function CommandForm(props: {
     {props.spec.fields.map((field) => field.values ? <label key={field.name} className="grid gap-1 text-sm">{field.label}<select required value={props.values[field.name] ?? ""} onChange={(event) => props.setValues((current) => ({ ...current, [field.name]: event.target.value }))} className="rounded-lg border border-default-300 bg-content1 px-3 py-2"><option value="">Selecciona</option>{field.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : <label key={field.name} className="grid gap-1 text-sm">{field.label}<input required value={props.values[field.name] ?? ""} onChange={(event) => props.setValues((current) => ({ ...current, [field.name]: event.target.value }))} className="rounded-lg border border-default-300 bg-content1 px-3 py-2" /></label>)}
     <div className="flex items-end"><BaseButton.Root type="submit" loading={props.busy} disabled={props.disabled}>Guardar</BaseButton.Root></div>
   </form>;
+}
+
+/** Toasts a Spanish, operation-specific failure; the backend's diagnostic text travels only as incident metadata. */
+function notifyAccountingFailure(message: string, cause: unknown, deduplicationKey?: string): void {
+  notify.error(message, {
+    deduplicationKey,
+    errorMetadata: {
+      cause: cause instanceof Error ? cause.message : String(cause),
+      ...(cause && typeof cause === "object" && "code" in cause ? { code: String(cause.code) } : {}),
+      ...(cause && typeof cause === "object" && "requestId" in cause ? { requestId: String(cause.requestId) } : {}),
+    },
+  });
 }
 
 function displayValue(value: unknown): string {
