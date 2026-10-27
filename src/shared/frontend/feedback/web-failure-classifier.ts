@@ -65,7 +65,7 @@ function classifyHttpFailure(failure: HttpFailure): ClassifiedFailure | null {
 
 function classifyRemoteFailure(error: KontaveRemoteFailure): ClassifiedFailure | null {
     if (error.code === "NETWORK_UNAVAILABLE") return { kind: "expected", code: null, message: NETWORK_UNAVAILABLE_MESSAGE };
-    if (error.code === "INVALID_RESPONSE" || error.code.endsWith("REPOSITORY_UNAVAILABLE")) return null;
+    if (error.code === "INTERNAL_ERROR" || error.code === "INVALID_RESPONSE" || error.code.endsWith("REPOSITORY_UNAVAILABLE")) return null;
     return { kind: "expected", code: error.code, message: error.message };
 }
 

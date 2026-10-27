@@ -118,6 +118,14 @@ function isAbort(error: unknown): boolean {
     return typeof error === "object" && error !== null && "name" in error && (error as { name: unknown }).name === "AbortError";
 }
 
+// ApiRequestFailure and KontaveRemoteFailure carry the server request id; it
+// links the client incident to the server log line for the same request.
+function requestIdOf(error: unknown): string | undefined {
+    if (typeof error !== "object" || error === null || !("requestId" in error)) return undefined;
+    const requestId = (error as { requestId: unknown }).requestId;
+    return typeof requestId === "string" && requestId ? requestId : undefined;
+}
+
 function failureFeedback(error: unknown, fallbackMessage: string, opts: NotifyFailureOpts | undefined): Promise<ClientFeedback> {
     const publicMessage = messageOf(fallbackMessage);
     const deduplicationKey = deduplicationKeyOf(opts);
@@ -127,6 +135,7 @@ function failureFeedback(error: unknown, fallbackMessage: string, opts: NotifyFa
         publicMessage,
         attributes: opts?.attributes,
         route: typeof window !== "undefined" ? window.location.pathname : undefined,
+        requestId: requestIdOf(error),
     }).then(({ feedback }) => clientFeedback({
         ...feedback,
         message: opts?.useFallbackMessage ? publicMessage : feedback.message,

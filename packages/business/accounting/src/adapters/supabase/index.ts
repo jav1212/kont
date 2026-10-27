@@ -377,9 +377,12 @@ function sqlFailure(error: {
       "INVALID",
       "The accounting request is invalid.",
     );
+  // Keep the PostgREST/Postgres error as the cause: the public message is
+  // generic, and without it an outage (e.g. SQLSTATE 25006) is undiagnosable.
   return new AccountingFailure(
     "UNAVAILABLE",
     "The accounting service is unavailable.",
+    { cause: error },
   );
 }
 

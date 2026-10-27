@@ -45,6 +45,8 @@ test("domain errors, legacy status errors, and plain public errors are expected"
 
 test("remote repository outages are reported; remote business codes are expected", () => {
     assert.equal(classifier.classify(new KontaveRemoteFailure("PRODUCT_REPOSITORY_UNAVAILABLE", "down", "req-9")), null);
+    assert.equal(classifier.classify(new KontaveRemoteFailure("ACCOUNTING_REPOSITORY_UNAVAILABLE", "down", "req-10")), null);
+    assert.equal(classifier.classify(new KontaveRemoteFailure("INTERNAL_ERROR", "No se pudo procesar la solicitud contable.", "req-11")), null);
     assert.deepEqual(classifier.classify(new KontaveRemoteFailure("INVALID_REQUEST", "Datos inválidos.")), { kind: "expected", code: "INVALID_REQUEST", message: "Datos inválidos." });
 });
 

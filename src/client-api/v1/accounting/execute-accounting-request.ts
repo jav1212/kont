@@ -75,8 +75,14 @@ export async function executeAccountingRequest(request: Request, rawOrganization
     return apiSuccess(result, requestId);
   } catch (cause) {
     if (cause instanceof AuthorizationDenied || cause instanceof DelegatedAccessFailure) return apiError("ACCOUNTING_ACCESS_DENIED", "No tienes acceso a esta operación contable.", requestId, 403);
+    if (cause instanceof AccountingFailure && cause.code === "UNAVAILABLE") {
+      // An infrastructure failure, not a business conflict: log the original
+      // database error so the client's incident can be traced by requestId.
+      console.error("client.accounting.unavailable", { requestId, operation, cause: cause.cause ?? cause });
+      return apiError("ACCOUNTING_REPOSITORY_UNAVAILABLE", "El servicio contable no está disponible. Intenta de nuevo en unos minutos.", requestId, 503);
+    }
     if (cause instanceof AccountingFailure) {
-      const status = cause.code === "INVALID" ? 400 : cause.code === "FORBIDDEN" ? 403 : cause.code === "NOT_FOUND" ? 404 : cause.code === "UNAVAILABLE" ? 503 : 409;
+      const status = cause.code === "INVALID" ? 400 : cause.code === "FORBIDDEN" ? 403 : cause.code === "NOT_FOUND" ? 404 : 409;
       return apiError(cause.code === "INVALID" ? "ACCOUNTING_INVALID" : cause.code === "FORBIDDEN" ? "ACCOUNTING_ACCESS_DENIED" : "ACCOUNTING_CONFLICT", cause.message, requestId, status);
     }
     console.error("client.accounting.failed", { requestId, operation, cause });
