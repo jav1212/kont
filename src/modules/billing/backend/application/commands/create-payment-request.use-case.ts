@@ -41,6 +41,13 @@ export class CreatePaymentRequestUseCase extends UseCase<Input, PaymentRequest> 
         if (!['monthly', 'quarterly', 'annual'].includes(rest.billingCycle)) {
             return Result.fail("Ciclo de facturacion invalido.");
         }
+        // `PaymentMethod` is compile-time only and the route forwards the raw
+        // body; validate here so the payment_requests check constraint never
+        // reaches the client as a Postgres message. `credit` is reserved for
+        // requests fully covered by referral credit, which this use case sets itself.
+        if (!['transfer', 'cash'].includes(rest.paymentMethod)) {
+            return Result.fail("Método de pago no válido. Usa transferencia o efectivo.");
+        }
         const plansResult = await this.repo.getPlans();
         if (plansResult.isFailure) return Result.fail(plansResult.getError());
         const plan = plansResult.getValue().find((candidate) => candidate.id === rest.planId);

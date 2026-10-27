@@ -44,3 +44,18 @@ test('disabled Kiosco cycles are rejected before payment persistence', async () 
     assert.equal(result.isFailure, true);
     assert.equal(persisted, false);
 });
+
+test('payment methods outside the persisted catalog are rejected before persistence', async () => {
+    let persisted = false;
+    const repository = {
+        async getPlans() { return Result.success([kioskPlan]); },
+        async createPaymentRequest() { persisted = true; return Result.fail('must not persist'); },
+    } as unknown as IBillingRepository;
+    // The billing page historically sent Spanish labels such as "zelle" or "transferencia".
+    for (const paymentMethod of ['zelle', 'transferencia', 'credit']) {
+        const result = await new CreatePaymentRequestUseCase(repository).execute({ tenantId: 'tenant', planId: 'kiosk-plan', billingCycle: 'monthly', amountUsd: 6, paymentMethod: paymentMethod as 'transfer', receiptUrl: null });
+        assert.equal(result.isFailure, true);
+        assert.match(result.getError(), /Método de pago no válido/);
+    }
+    assert.equal(persisted, false);
+});

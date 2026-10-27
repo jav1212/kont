@@ -53,18 +53,27 @@ interface TenantData {
     plan:               Plan | null;
 }
 
+// Mirrors the camelCase domain model returned by GET /api/billing/payment-requests.
 interface PaymentRequest {
-    id:             string;
-    plan_id:        string;
-    billing_cycle:  string;
-    amount_usd:     number;
-    payment_method: string;
-    receipt_url:    string | null;
-    status:         "pending" | "approved" | "rejected";
-    submitted_at:   string;
-    reviewed_at:    string | null;
-    admin_note:     string | null;
+    id:            string;
+    planId:        string;
+    billingCycle:  string;
+    amountUsd:     number;
+    paymentMethod: string;
+    receiptUrl:    string | null;
+    status:        "pending" | "approved" | "rejected";
+    submittedAt:   string;
+    reviewedAt:    string | null;
+    notes:         string | null;
 }
+
+// Values accepted by payment_requests.payment_method; `credit` is set by the server
+// when referral credit covers the whole plan.
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+    transfer: "Transferencia",
+    cash:     "Efectivo",
+    credit:   "Crédito de referidos",
+};
 
 // ============================================================================
 // HELPERS
@@ -172,7 +181,7 @@ export default function BillingPage() {
     const [formOpen,    setFormOpen]    = useState(false);
     const [selPlanId,   setSelPlanId]   = useState("");
     const [selCycle,    setSelCycle]    = useState("monthly");
-    const [payMethod,   setPayMethod]   = useState("transferencia");
+    const [payMethod,   setPayMethod]   = useState("transfer");
     const [receiptUrl,  setReceiptUrl]  = useState("");
     const [submitting,  setSubmitting]  = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -637,11 +646,8 @@ export default function BillingPage() {
                                             <div className="space-y-1.5">
                                                 <label htmlFor="sel-method" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Método de pago</label>
                                                 <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
-                                                    <option value="transferencia">Transferencia bancaria</option>
-                                                    <option value="zelle">Zelle</option>
-                                                    <option value="paypal">PayPal</option>
-                                                    <option value="binance">Binance Pay</option>
-                                                    <option value="efectivo">Efectivo</option>
+                                                    <option value="transfer">Transferencia bancaria</option>
+                                                    <option value="cash">Efectivo</option>
                                                 </select>
                                             </div>
                                         )}
@@ -713,30 +719,30 @@ export default function BillingPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border-light/60">
                                         {history.map((req) => {
-                                            const plan = plans.find((p) => p.id === req.plan_id);
+                                            const plan = plans.find((p) => p.id === req.planId);
                                             return (
                                                 <tr key={req.id} className="hover:bg-surface-2/40 transition-colors group">
                                                     <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)] tabular-nums whitespace-nowrap">
-                                                        {formatDate(req.submitted_at)}
+                                                        {formatDate(req.submittedAt)}
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         <div className="font-mono text-[13px] font-bold text-foreground">
-                                                            {plan?.name ?? req.plan_id}
+                                                            {plan?.name ?? req.planId}
                                                         </div>
-                                                        {req.admin_note && (
-                                                            <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1 group-hover:line-clamp-none max-w-[200px]" title={req.admin_note}>
-                                                                Nota: {req.admin_note}
+                                                        {req.notes && (
+                                                            <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1 group-hover:line-clamp-none max-w-[200px]" title={req.notes}>
+                                                                Nota: {req.notes}
                                                             </p>
                                                         )}
                                                     </td>
                                                     <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)]">
-                                                        {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
+                                                        {CYCLE_LABEL[req.billingCycle] ?? req.billingCycle}
                                                     </td>
                                                     <td className="px-5 py-3 font-mono text-[13px] font-bold text-foreground tabular-nums">
-                                                        ${req.amount_usd}
+                                                        ${req.amountUsd}
                                                     </td>
-                                                    <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)] capitalize">
-                                                        {req.payment_method}
+                                                    <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)]">
+                                                        {PAYMENT_METHOD_LABEL[req.paymentMethod] ?? req.paymentMethod}
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         <span className={[
