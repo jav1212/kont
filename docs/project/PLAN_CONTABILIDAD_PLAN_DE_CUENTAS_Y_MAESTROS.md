@@ -1,6 +1,6 @@
 # Plan de contabilidad general (plan de cuentas y maestros): packages primero, Web después
 
-Fecha de análisis: 2026-10-23. Estado actual (2026-10-26): **P2–P6 aplicadas/implementadas; W1 con build/lint en verde; W2 y W3 parciales; T10 documentado; pendiente cerrar código y validaciones humanas**. Ejecutor: Codex, con los roles de `.codex/agents/`.
+Fecha de análisis: 2026-10-23. Estado actual (2026-10-27): **código completo; pendiente de QA, aprobación contable y datos ambiguos**. Ejecutor: Codex, con los roles de `.codex/agents/`.
 
 ## Seguimiento de ejecución (2026-10-26)
 
@@ -13,6 +13,14 @@ Fecha de análisis: 2026-10-23. Estado actual (2026-10-26): **P2–P6 aplicadas/
 - **W3 — correcciones deterministas aplicadas:** plan creado/activado en `J506935210`; 13 cuentas asignadas ahí y 3 a `J-40548909-0` mediante `assign_account_to_chart`, conservando IDs y balance. Seis padres ausentes y cuatro tipos incompatibles siguen intactos a la espera de aprobación; ver [cierre W3](../audit/accounting-w3-2026-10-26.md).
 - **T10 — documentación parcial:** ADR 0047, README del paquete, auditoría W3, [guía operativa](accounting-operations.md) y [guion de piloto](ACCOUNTING_PILOT.md) preparados. Falta consolidar los criterios de aceptación del contador y adjuntar evidencia del piloto humano.
 - **Estado global:** código en cierre, pendiente de prueba HTTP W1, aprobación contable VEN-NIF, aprobación de los datos ambiguos y recorrido piloto.
+
+### Seguimiento del cierre de código (2026-10-27)
+
+- Punto 1: commit `24bd9959`; las RPC legacy se sustituyeron en producción por respuestas `ACCOUNTING_LEGACY_WRITER_RETIRED` tras validación `begin/rollback`.
+- Punto 2: commit `c1ac42d8`; selectores limitados a cuentas de detalle activas del plan activo.
+- Punto 3: commit `4a6f10d5`; prueba del Route Handler 3/3.
+- Punto 4 y evidencia completa de smoke, check/test, lint, auditor de rutas, asesores y limitación de build: ver la sección **Reparto código / QA y cierre de código (2026-10-27)** más abajo.
+- Estado final: **código completo; pendiente de QA, aprobación contable y datos ambiguos**. Sin navegación ni piloto; los 6 padres ausentes y 4 tipos incompatibles no se tocaron.
 ## Objetivo y fuente
 
 Implementar los 40 casos CON-001 a CON-040 como un bounded context portable en `packages/business/accounting` (`@kontave/accounting`), con persistencia compartida en Supabase y pruebas de comportamiento, y consumirlo después en la Web de producción (`app/(app)/accounting/**`) mediante composición servidor, rutas y presentación. Las factories Web ensamblan casos de uso del paquete; no reimplementan reglas de negocio.
@@ -266,5 +274,22 @@ Hallazgos que bloquean el cierre:
 - **Seguridad legacy — aplicada:** ramas nuevas `20261026175448_accounting_legacy_write_lockdown.sql` y `20261026175733_accounting_legacy_read_policy_initplan.sql` coinciden con las versiones que informa Supabase. Ambas se probaron en `begin/rollback` con smokes de nómina, compras y configuración CxP; los advisors no reportan nuevos hallazgos de seguridad contable ni la advertencia de evaluación RLS por fila. Permanecen INFO preexistentes de RLS sin política para tablas solo `service_role` y avisos de índices contables sin uso.
 - **W3 — correcciones deterministas aplicadas:** plan creado/activado en `J506935210`; 13 cuentas asignadas ahí y 3 a `J-40548909-0` mediante `assign_account_to_chart`, conservando IDs y balance. Seis padres ausentes y cuatro tipos incompatibles siguen intactos a la espera de aprobación; ver [cierre W3](../audit/accounting-w3-2026-10-26.md).
 - **W2 — formularios implementados; piloto pendiente:** valores de atributos, activación de fuentes auxiliares, perfil contable y monedas tienen formularios de escritura. Build y lint pasan; ESLint reporta 328 warnings preexistentes.
-- **W1 — implementado; HTTP pendiente:** rutas autenticadas y factory servidor. `corepack pnpm build` terminó correctamente; `corepack pnpm lint` terminó sin errores. La validación SQL de autorización delegada pasó con `service_role`; falta prueba HTTP de integración.
-- **Pendiente humano:** aprobación contable de la plantilla VEN-NIF, aprobación de padres/tipos ambiguos y recorrido piloto. El estado global sigue siendo **código en cierre; pendiente de aprobación contable y piloto**, no cerrado.
+- **W1 — implementado; HTTP real asignado a QA:** rutas autenticadas, factory servidor y prueba automatizada de autorización del Route Handler. La validación SQL de autorización delegada pasó con `service_role`; el equipo de QA ejecutará el HTTP real.
+- **Pendiente humano:** aprobación contable de la plantilla VEN-NIF y aprobación de padres/tipos ambiguos. QA asume navegación, recorrido piloto y prueba HTTP real.
+
+## Reparto código / QA y cierre de código (2026-10-27)
+
+**Decisión del usuario:** las pruebas de QA, la navegación, el recorrido piloto y la prueba HTTP de extremo a extremo del flujo delegado (W1) pasan al equipo de QA y **no bloquean el cierre de código**. La aprobación contable (plantilla VEN-NIF) y la de los datos ambiguos (6 padres ausentes y 4 tipos) siguen siendo del contador y del usuario. El ejecutor se concentra solo en el código.
+
+Verificado el 2026-10-27: rama `codex/accounting-chart-masters-closeout-2026-10-26` (commits base `74d8d067`, `524ff379`; cierre `24bd9959`, `c1ac42d8`, `4a6f10d5`), 0 cuentas sin plan, 6 planes activos, 0 permisos de escritura de `anon`/`authenticated` y solo políticas `SELECT` en las tablas contables.
+
+### Estado final: código completo; pendiente de QA, aprobación contable y datos ambiguos
+
+1. **Escritor legacy retirado — commit `24bd9959`.** Se conservaron los `GET` necesarios, se retiraron los métodos de escritura de rutas, casos de uso, factory, repositorios y `use-charts.ts`. La migración `20261027130610_accounting_retire_legacy_writers` conserva las cinco firmas y reemplaza sus cuerpos por `ACCOUNTING_LEGACY_WRITER_RETIRED`; no usa `DROP`. Las cinco llamadas rechazadas pasaron en el smoke PGlite. En Supabase se probó el SQL dentro de `BEGIN … ROLLBACK`, se aplicó con `apply_migration` y `list_migrations` confirmó la versión `20261027130610`.
+2. **Selectores alineados — commit `c1ac42d8`.** El libro y las integraciones consultan el plan activo, y ofrecen solo cuentas de detalle activas. El alta del asiento traduce `ACCOUNTING_POSTING_ACCOUNT_INVALID` a un mensaje para la persona usuaria.
+3. **Prueba delegada — commit `4a6f10d5`.** `test/accounting-delegated-route.test.ts` simula el puerto contable y cubre permiso directo concedido, permiso denegado y miembro delegado. Pasaron 3/3 pruebas. La prueba HTTP real queda para QA.
+4. **Validación final (2026-10-27).** `@kontave/accounting` typecheck pasó y sus 39 pruebas pasaron; smoke PGlite pasó; `@kontave/architecture check` pasó y sus 17 pruebas pasaron; `tsc --noEmit --incremental false` del Web pasó; ESLint terminó con 0 errores y 310 avisos; el auditor de rutas pasó (135 páginas, 104 entradas de navegación y 209 handlers de tenant).
+
+   El build de Next no pudo terminar en este entorno: el árbol local de dependencias quedó incompleto y falta `core-js/modules/*` bajo `node_modules/.pnpm` (la reconstrucción offline de pnpm se detuvo porque faltaba metadata de `@0no-co/graphql.web`). El build sí alcanzó a empaquetar el service worker, pero webpack no pudo resolver `core-js`; no se declara exitoso. `get_advisors` respondió después de la migración: las tablas contables service-role-only aparecen con el aviso INFO esperado de RLS sin políticas; también siguen avisos generales de índices sin uso y configuración de seguridad ajenos a esta migración.
+
+**Estado del plan:** **código completo; pendiente de QA, aprobación contable y datos ambiguos**. No se hicieron pruebas de navegación ni piloto. No se modificaron los 6 padres ausentes ni los 4 tipos incompatibles; quedan pendientes de aprobación.
