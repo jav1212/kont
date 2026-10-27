@@ -21,6 +21,8 @@
     "test:barcode": "node --conditions=react-server --import tsx --test test/barcode-*.test.ts test/code128-badge.test.ts src/modules/auth/backend/barcode/*.test.ts src/modules/auth/backend/barcode/application/*.test.ts src/shared/backend/barcode/*.test.ts apps/device-bridge/test/access-capture.test.ts apps/device-bridge/test/protocol.test.ts",
     "test:barcode:workspace": "node --experimental-test-module-mocks --import tsx --test test/auth-barcode-route.test.ts src/modules/auth/backend/barcode/application/barcode-workspace-policy.test.ts",
     "test:barcode:sql": "node scripts/test-barcode-access-sql.mjs",
+    "test:accounting:route": "node --experimental-test-module-mocks --import tsx --test test/accounting-delegated-route.test.ts",
+    "test:accounting:sql": "node supabase/checks/accounting-pglite.mjs",
     "test:iva:taxation:sql": "node scripts/test-iva-taxation-configuration-sql.mjs",
     "test:iva:reporting:sql": "node scripts/test-iva-reporting-sql.mjs",
     "test:iva:period:sql": "node scripts/test-iva-reporting-sql.mjs",

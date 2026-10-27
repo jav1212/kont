@@ -293,3 +293,12 @@ Verificado el 2026-10-27: rama `codex/accounting-chart-masters-closeout-2026-10-
    El build de Next no pudo terminar en este entorno: el árbol local de dependencias quedó incompleto y falta `core-js/modules/*` bajo `node_modules/.pnpm` (la reconstrucción offline de pnpm se detuvo porque faltaba metadata de `@0no-co/graphql.web`). El build sí alcanzó a empaquetar el service worker, pero webpack no pudo resolver `core-js`; no se declara exitoso. `get_advisors` respondió después de la migración: las tablas contables service-role-only aparecen con el aviso INFO esperado de RLS sin políticas; también siguen avisos generales de índices sin uso y configuración de seguridad ajenos a esta migración.
 
 **Estado del plan:** **código completo; pendiente de QA, aprobación contable y datos ambiguos**. No se hicieron pruebas de navegación ni piloto. No se modificaron los 6 padres ausentes ni los 4 tipos incompatibles; quedan pendientes de aprobación.
+
+### Verificación independiente del cierre de código (2026-10-27)
+
+- La falla del build era del entorno, no del código: `node_modules` estaba incompleto (sin `.bin` ni `.modules.yaml`). Tras `corepack pnpm install --frozen-lockfile` (sin cambios en `pnpm-lock.yaml`), **`corepack pnpm build` terminó con código 0** ("Compiled successfully"). Esto sustituye la nota anterior sobre `core-js`.
+- Las cinco RPC legacy (`shared_accounting_account_upsert`, `_account_delete`, `_chart_save`, `_chart_delete`, `_chart_import`) contienen `ACCOUNTING_LEGACY_WRITER_RETIRED` en producción.
+- `test/accounting-delegated-route.test.ts` requiere `--experimental-test-module-mocks`. Sin esa bandera falla con `mock.module is not a function`. Se añadieron los scripts `test:accounting:route` (3/3 en verde) y `test:accounting:sql` (smoke PGlite en verde) en `package.json`.
+- `@kontave/accounting`: 39/39 pruebas en verde.
+
+**Estado: código completo; pendiente de QA, aprobación contable (VEN-NIF) y decisión sobre los datos ambiguos (6 padres ausentes y 4 tipos).**
