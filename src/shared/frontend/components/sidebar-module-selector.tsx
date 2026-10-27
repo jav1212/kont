@@ -218,7 +218,8 @@ export function SidebarModuleSelector({
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Buscar módulo…"
-                            className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-[14px] text-sidebar-fg-hover placeholder:text-sidebar-label outline-none ring-0 focus:outline-none focus:ring-0"
+                            aria-label="Buscar módulo"
+                            className="h-[var(--control-height-md)] min-h-[var(--control-height-md)] min-w-0 flex-1 rounded-[var(--control-radius)] border border-[var(--control-border)] bg-[var(--surface-1)] px-3 font-[family-name:var(--font-darker-grotesque)] text-[14px] leading-5 text-[var(--text-primary)] shadow-[0_1px_2px_rgb(0_0_0_/_0.02)] transition-[border-color,box-shadow,background-color] placeholder:text-[var(--control-placeholder)] hover:border-[var(--control-border-hover)] focus:border-[var(--control-border-focus)] focus:shadow-[var(--control-focus-shadow)] focus:outline-none"
                         />
                         <kbd className="shrink-0 rounded-md border border-sidebar-border bg-sidebar-bg-hover/50 px-1.5 py-0.5 font-sans text-[11px] text-sidebar-label">
                             Esc

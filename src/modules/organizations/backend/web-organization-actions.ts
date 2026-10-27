@@ -13,6 +13,7 @@ import { parseOrganizationInput, webOrganizationErrorResponse } from "./web-orga
 const linkSchema = z.object({ id: z.uuid(), legacy_tenant_id: z.uuid().nullable() });
 const tenantSchema = z.object({ id: z.uuid() });
 const membershipSchema = z.object({ tenant_id: z.uuid() });
+const profileAvatarSchema = z.object({ id: z.uuid(), avatar_url: z.string().nullable() });
 
 /**
  * Composes existing organization use cases with cookie-authenticated Web compatibility.
@@ -27,13 +28,45 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
   const server = new ServerSupabaseSource();
 
   /**
-   * Projects the explicit organization branding into the legacy Web avatar field.
-   * Personal profile images never represent an organization in the Web.
-   * @param workspace Authorized workspace containing its managed branding.
-   * @returns The workspace with an avatar matching its explicit logo or null.
+   * Reads owner profile images for workspaces; the legacy tenant ID is the owner's user ID.
+   * @param workspaces Authorized workspaces whose owners should be resolved.
+   * @returns Profile image URLs keyed by legacy tenant ID; owners without an image are omitted.
+   * @throws Persistence errors when profiles cannot be read.
    */
-  function withPresentation(workspace: OrganizationWorkspace): OrganizationWorkspace {
-    return workspaceSchema.parse({ ...workspace, avatarUrl: workspace.logoUrl });
+  async function ownerAvatars(workspaces: readonly OrganizationWorkspace[]): Promise<Map<string, string>> {
+    const ownerIds = [...new Set(workspaces.map((workspace) => workspace.legacyTenantId))];
+    if (ownerIds.length === 0) return new Map();
+    const { data, error } = await server.instance.from("profiles").select("id,avatar_url").in("id", ownerIds);
+    if (error) throw error;
+    return new Map(profileAvatarSchema.array().parse(data)
+      .filter((row): row is { id: string; avatar_url: string } => Boolean(row.avatar_url))
+      .map((row) => [row.id, row.avatar_url]));
+  }
+
+  /**
+   * Projects organization branding into the Web avatar field. An explicit logo
+   * wins; otherwise the owner's profile image identifies the organization.
+   * @param workspaces Authorized workspaces containing their managed branding.
+   * @returns The workspaces with their resolved avatar, or null when neither image exists.
+   * @throws Persistence errors when owner profiles cannot be read.
+   */
+  async function withPresentation(workspaces: readonly OrganizationWorkspace[]): Promise<OrganizationWorkspace[]> {
+    const avatars = await ownerAvatars(workspaces.filter((workspace) => !workspace.logoUrl));
+    return workspaces.map((workspace) => workspaceSchema.parse({
+      ...workspace,
+      avatarUrl: workspace.logoUrl ?? avatars.get(workspace.legacyTenantId) ?? null,
+    }));
+  }
+
+  /**
+   * Presents one workspace after a branding or identity change.
+   * @param workspace Updated workspace.
+   * @returns The workspace with its resolved avatar.
+   * @throws Persistence errors when the owner profile cannot be read.
+   */
+  async function presentOne(workspace: OrganizationWorkspace): Promise<OrganizationWorkspace> {
+    const [presented] = await withPresentation([workspace]);
+    return presented;
   }
 
   /**
@@ -76,7 +109,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     const workspaces = unresolvedWorkspaces.filter((workspace): workspace is OrganizationWorkspace => workspace !== null);
     if (workspaces.length === 0) return [];
 
-    return workspaces.map(withPresentation);
+    return withPresentation(workspaces);
   }
 
   /**
@@ -115,7 +148,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async update(id: string, input: { name: string; expectedVersion: number }): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.updateOrganization.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), ...input });
-      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
+      return presentOne(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Uploads branding with the shared storage lifecycle and concurrency checks.
@@ -128,7 +161,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async uploadLogo(id: string, file: File, expectedVersion: number): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.uploadLogo.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), expectedVersion, logo: { bytes: new Uint8Array(await file.arrayBuffer()), contentType: file.type } });
-      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
+      return presentOne(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Removes branding through the shared versioned organization use case.
@@ -140,7 +173,7 @@ export function createWebOrganizationActions(request: Request, tenant: TenantCon
     async deleteLogo(id: string, expectedVersion: number): Promise<OrganizationWorkspace> {
       const selected = await workspace(id, permissionCode("organizations.update"));
       const updated = await organizations.deleteLogo.execute({ actorUserId: userId(tenant.userId), organizationId: organizationId(id), expectedVersion });
-      return withPresentation(workspaceSchema.parse({ ...selected, ...updated }));
+      return presentOne(workspaceSchema.parse({ ...selected, ...updated }));
     },
     /**
      * Reads operational companies from the owning organization's shared projection.

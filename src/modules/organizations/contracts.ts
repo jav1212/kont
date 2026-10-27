@@ -5,7 +5,7 @@ export const workspaceSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1),
   slug: z.string().min(1),
-  /** Explicit organization branding mirrored for legacy Web consumers; never a personal profile image. */
+  /** Display image: the explicit organization logo, or the owner's profile image when no logo exists. */
   avatarUrl: z.string().nullable().optional(),
   /** Explicit organization branding managed from organization settings. */
   logoUrl: z.string().nullable(),
