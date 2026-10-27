@@ -90,8 +90,9 @@ export function AccountingMasterPage(props: AccountingMasterPageProps): React.JS
     catch (cause) { notifyAccountingFailure("No se pudo actualizar el registro.", cause); }
     finally { setBusy(false); }
   }
-  return <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+  return <div className="flex min-h-full flex-col">
     <PageHeader title={props.title} subtitle={props.description} />
+    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-8 py-8">
     {!company && <p className="rounded-xl bg-warning-50 p-4 text-sm text-warning-800">Selecciona una empresa para consultar sus maestros contables.</p>}
     {props.command && <CommandForm title={props.title} spec={{ title: props.title, command: props.command, idField: props.idField ?? "id", fields: props.fields ?? [], commandDefaults: props.commandDefaults }} values={values} setValues={setValues} busy={busy} disabled={!company || !organization} onSubmit={submit} />}
     {props.additionalCommands?.map((spec) => <CommandForm key={spec.command} title={spec.title} spec={spec} values={values} setValues={setValues} busy={busy} disabled={!company || !organization} onSubmit={submit} />)}
@@ -99,7 +100,8 @@ export function AccountingMasterPage(props: AccountingMasterPageProps): React.JS
       <div className="flex items-center justify-between border-b border-default-200 px-4 py-3"><h2 className="font-semibold">{props.title}</h2><BaseButton.Root size="sm" variant="secondary" onPress={() => void load()} loading={busy}>Actualizar</BaseButton.Root></div>
       <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead><tr className="bg-default-50">{props.columns.map((column) => <th key={column.key} className="px-4 py-3 font-medium">{column.label}</th>)}{props.rowActions?.length ? <th className="px-4 py-3 font-medium">Acciones</th> : null}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)} className="border-t border-default-100">{props.columns.map((column) => <td key={column.key} className="px-4 py-3">{displayValue(row[column.key])}</td>)}{props.rowActions?.length ? <td className="flex flex-wrap gap-2 px-4 py-3">{props.rowActions.map((action) => <BaseButton.Root key={action.label} size="sm" variant="secondary" disabled={busy} onPress={() => void runRowAction(action, row)}>{action.label}</BaseButton.Root>)}</td> : null}</tr>)}{!busy && rows.length === 0 && <tr><td colSpan={props.columns.length + (props.rowActions?.length ? 1 : 0)} className="px-4 py-8 text-center text-default-500">No hay registros para esta empresa.</td></tr>}</tbody></table></div>
     </section>
-  </main>;
+    </div>
+  </div>;
 }
 
 function CommandForm(props: {

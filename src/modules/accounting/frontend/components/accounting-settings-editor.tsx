@@ -75,8 +75,9 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
     finally { setBusy(false); }
   }
   const profileSection = props.section === "profile";
-  return <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6">
+  return <div className="flex min-h-full flex-col">
     <PageHeader title={profileSection ? "Perfil contable de la empresa" : "Monedas contables"} subtitle={profileSection ? "Datos del contador, registro mercantil e inicio del ejercicio." : "La moneda funcional del libro es VES; configura monedas adicionales de reporte."} />
+    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-8 py-8">
     {!company && <p className="rounded-xl bg-warning-50 p-4 text-sm text-warning-800">Selecciona una empresa para consultar su configuración contable.</p>}
     <form onSubmit={(event) => void save(event)} className="grid gap-4 rounded-2xl border border-default-200 bg-content1 p-5 sm:grid-cols-2">
       <p className="text-sm text-default-500 sm:col-span-2">Revisión {snapshot?.version ?? 0} · Moneda funcional VES</p>
@@ -92,7 +93,8 @@ export function AccountingSettingsEditor(props: { readonly section: "profile" | 
       </>}
       <div className="sm:col-span-2"><BaseButton.Root type="submit" loading={busy} disabled={!company || !organization || !snapshot}>Guardar configuración</BaseButton.Root></div>
     </form>
-  </main>;
+    </div>
+  </div>;
 }
 
 /** Toasts a Spanish, operation-specific failure; the backend's diagnostic text travels only as incident metadata. */
