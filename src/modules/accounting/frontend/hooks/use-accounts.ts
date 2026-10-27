@@ -18,8 +18,8 @@ export function useAccounts(companyId: string | null) {
             const json = await res.json() as { data?: Account[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar cuentas'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar cuentas');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar cuentas', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

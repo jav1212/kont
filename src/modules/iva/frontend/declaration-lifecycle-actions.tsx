@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type DeclarationState = "draft" | "prepared" | "submitted" | "paid" | "void";
 interface Money { readonly minorAmount: string; readonly currency: { readonly code: string; readonly minorUnit: number } }
@@ -44,7 +45,7 @@ export function DeclarationLifecycleActions({ declaration, companyId, current, o
     try {
       const response = await fetch(`/api/fiscal/iva/declarations/${encodeURIComponent(declaration.id)}/lifecycle`, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": command.key }, body: command.body });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(errorMessage(body));
+      if (!response.ok) throw new ApiRequestFailure(response, errorMessage(body), body);
       pending.current = null; setAction(null); onSaved();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo guardar la evidencia."); }
     finally { setSaving(false); }

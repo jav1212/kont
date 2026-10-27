@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface BranchOption { readonly id: string; readonly code: string; readonly name: string; }
 interface BranchSelection { readonly branchId: string | null; readonly version: number; }
@@ -34,13 +35,13 @@ export function CompanyBranchSelector({ companyId, canRead, canSelect, canCreate
     try {
       const response = await apiFetch(`/api/companies/branches?companyId=${encodeURIComponent(companyId)}`, { signal });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "No fue posible consultar las sucursales.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible consultar las sucursales.", payload);
       if (signal?.aborted) return;
       setBranches(payload.data.branches);
       setSelection(payload.data.selection);
       setValue(payload.data.selection.branchId ?? "");
     } catch (cause) {
-      if (!signal?.aborted) notify.error(cause instanceof Error ? cause.message : "No fue posible consultar las sucursales.");
+      if (!signal?.aborted) notify.failure(cause, "No fue posible consultar las sucursales.");
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -62,12 +63,12 @@ export function CompanyBranchSelector({ companyId, canRead, canSelect, canCreate
         body: JSON.stringify({ companyId, branchId: value || null, expectedVersion: selection.version }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar la sucursal.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar la sucursal.", payload);
       setSelection(payload.data);
       setValue(payload.data.branchId ?? "");
       notify.success(payload.data.branchId ? "Sucursal de trabajo actualizada." : "Selección de sucursal retirada.");
     } catch (cause) {
-      notify.error(cause instanceof Error ? cause.message : "No fue posible guardar la sucursal.");
+      notify.failure(cause, "No fue posible guardar la sucursal.");
       await reload();
     } finally {
       setSaving(false);
@@ -84,13 +85,13 @@ export function CompanyBranchSelector({ companyId, canRead, canSelect, canCreate
         body: JSON.stringify({ companyId, code: newCode.trim(), name: newName.trim(), idempotencyKey: crypto.randomUUID() }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "No fue posible crear la sucursal.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible crear la sucursal.", payload);
       setNewCode("");
       setNewName("");
       notify.success("Sucursal registrada.");
       await reload();
     } catch (cause) {
-      notify.error(cause instanceof Error ? cause.message : "No fue posible crear la sucursal.");
+      notify.failure(cause, "No fue posible crear la sucursal.");
     } finally {
       setCreating(false);
     }

@@ -66,7 +66,7 @@ function useOrganizationResource<T>(path: string, schema: z.ZodType<T>, allowed:
             (error: unknown) => {
                 if (controller.signal.aborted) return;
                 setResult({ key, data: null, failed: true });
-                notify.error(error instanceof Error ? error.message : "No se pudo cargar la organización.");
+                notify.failure(error, "No se pudo cargar la organización.");
             },
         );
         return () => controller.abort();
@@ -296,7 +296,7 @@ function OrganizationIdentity({ organization, refresh }: {
             notify.success("Organización actualizada.");
             await refresh();
         } catch (error) {
-            if (!controller.signal.aborted) notify.error(error instanceof Error ? error.message : "No se pudo actualizar la organización.");
+            if (!controller.signal.aborted) notify.failure(error, "No se pudo actualizar la organización.");
         } finally {
             busy.current = false;
             if (!controller.signal.aborted) setSaving(false);

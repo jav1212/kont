@@ -8,6 +8,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseSelect } from "@/src/shared/frontend/components/base-select";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface SerializedMoney { readonly minorAmount: string; readonly currency: { readonly code: string; readonly minorUnit: number }; }
 interface DeclarationRecord {
@@ -52,7 +53,7 @@ export default function IvaDeclarationsPage(): React.JSX.Element {
       if (cursor) query.set("cursor", JSON.stringify(cursor));
       const response = await fetch(`/api/fiscal/iva/declarations?${query}`, { cache: "no-store" });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(errorMessage(body));
+      if (!response.ok) throw new ApiRequestFailure(response, errorMessage(body), body);
       const data = record(body).data as HistoryPage;
       setHistory((current) => append && current ? { ...data, items: [...current.items, ...data.items] } : data);
     } catch (cause) {
@@ -95,7 +96,7 @@ export default function IvaDeclarationsPage(): React.JSX.Element {
         body: submission.body,
       });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(errorMessage(body));
+      if (!response.ok) throw new ApiRequestFailure(response, errorMessage(body), body);
       const data = record(body).data as { readonly declaration: DeclarationRecord; readonly replayed: boolean };
       pending.current = null;
       setLatest(data.declaration);

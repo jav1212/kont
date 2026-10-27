@@ -78,7 +78,7 @@ export default function ImportBookPage() {
         try {
             setParsed(await parsePurchaseBookExcel(file));
         } catch (error) {
-            notify.error(error instanceof Error ? error.message : "No se pudo leer el XLSX");
+            notify.failure(error, "No se pudo leer el XLSX");
             setParsed(null);
         } finally {
             setLoading(false);

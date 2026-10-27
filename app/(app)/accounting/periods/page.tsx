@@ -152,8 +152,8 @@ export default function PeriodsPage() {
             setForm(EMPTY_FORM);
             notify.success('Período creado.');
             await reload();
-        } catch {
-            notify.error('No se pudo crear el período. Inténtalo de nuevo.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo crear el período. Inténtalo de nuevo.', { useFallbackMessage: true });
         } finally {
             setSaving(false);
         }
@@ -172,8 +172,8 @@ export default function PeriodsPage() {
             setCloseTarget(null);
             notify.success('Período cerrado.');
             await reload();
-        } catch {
-            notify.error('No se pudo cerrar el período.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo cerrar el período.', { useFallbackMessage: true });
         } finally {
             setClosing(false);
         }

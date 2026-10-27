@@ -191,11 +191,7 @@ function SecurityConsolePanel(): React.JSX.Element {
       const nextUsers = await request<User[]>("/api/security/users");
       setUsers(nextUsers);
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudieron cargar los usuarios.",
-      );
+      notify.failure(error, "No se pudieron cargar los usuarios.");
     } finally {
       setLoading(false);
     }
@@ -210,22 +206,14 @@ function SecurityConsolePanel(): React.JSX.Element {
           ),
         );
       } catch (error) {
-        notify.error(
-          error instanceof Error
-            ? error.message
-            : "No se pudieron cargar las personas de la organización.",
-        );
+        notify.failure(error, "No se pudieron cargar las personas de la organización.");
       }
     }
     try {
       if (can("roles.manage"))
         setPolicy(await request<Policy>("/api/security/policy"));
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo cargar la política de credenciales.",
-      );
+      notify.failure(error, "No se pudo cargar la política de credenciales.");
     }
   }, [organization, can]);
   useEffect(() => {
@@ -262,11 +250,7 @@ function SecurityConsolePanel(): React.JSX.Element {
       await load();
       notify.success("Usuario de seguridad guardado.");
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar el usuario.",
-      );
+      notify.failure(error, "No se pudo guardar el usuario.");
     } finally {
       setSaving(false);
     }
@@ -285,11 +269,7 @@ function SecurityConsolePanel(): React.JSX.Element {
       setPolicy(next);
       notify.success("Política de seguridad actualizada.");
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar la política.",
-      );
+      notify.failure(error, "No se pudo guardar la política.");
     }
   };
   const grantAction = async (method: "POST" | "DELETE" | "HAS") => {
@@ -334,11 +314,7 @@ function SecurityConsolePanel(): React.JSX.Element {
         );
       }
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo actualizar el permiso.",
-      );
+      notify.failure(error, "No se pudo actualizar el permiso.");
     }
   };
   if (state !== "allowed")
@@ -516,11 +492,7 @@ function SecurityConsolePanel(): React.JSX.Element {
                               );
                               notify.success("Cuenta desbloqueada.");
                             } catch (error) {
-                              notify.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "No se pudo desbloquear.",
-                              );
+                              notify.failure(error, "No se pudo desbloquear.");
                             }
                           }}
                           isDisabled={!can("members.update")}
@@ -555,11 +527,7 @@ function SecurityConsolePanel(): React.JSX.Element {
                               await load();
                               notify.success("Usuario revocado.");
                             } catch (error) {
-                              notify.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "No se pudo revocar.",
-                              );
+                              notify.failure(error, "No se pudo revocar.");
                             }
                           }}
                           isDisabled={!can("members.update")}
@@ -963,11 +931,7 @@ function PaymentOrdersConsolePanel(): React.JSX.Element {
       );
       if (activeCompany.current === companyId) setOrders(next);
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudieron cargar las órdenes.",
-      );
+      notify.failure(error, "No se pudieron cargar las órdenes.");
     } finally {
       if (activeCompany.current === companyId) setBusy(false);
     }
@@ -1033,9 +997,7 @@ function PaymentOrdersConsolePanel(): React.JSX.Element {
             : "Orden actualizada.",
       );
     } catch (error) {
-      notify.error(
-        error instanceof Error ? error.message : "No se pudo guardar la orden.",
-      );
+      notify.failure(error, "No se pudo guardar la orden.");
     } finally {
       setBusy(false);
     }

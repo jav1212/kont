@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./provider";
 import { Toaster } from "sonner";
 import { AnalyticsConsent } from "@/src/shared/frontend/components/analytics-consent";
+import { UnhandledFailureListener } from "@/src/shared/frontend/feedback/unhandled-failure-listener";
 
 const darkerGrotesque = Darker_Grotesque({
   variable: "--font-darker-grotesque",
@@ -186,6 +187,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <AnalyticsConsent />
+          <UnhandledFailureListener />
           <Toaster
             position="bottom-right"
             toastOptions={{

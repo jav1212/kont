@@ -6,6 +6,7 @@ import { notify } from "@/src/shared/frontend/notify";
 
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { useOrganizationModuleAccess } from "@/src/modules/organizations/frontend/use-organization-module-access";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type Customer = { id: string; nombre?: string; name?: string };
 type Limit = { limitVes: string; version: number } | null;
@@ -61,11 +62,7 @@ function CommercialSecurityPanel() {
         }
       } catch (error) {
         if (current)
-          notify.error(
-            error instanceof Error
-              ? error.message
-              : "No se pudieron cargar los datos.",
-          );
+          notify.failure(error, "No se pudieron cargar los datos.");
       }
     })();
     return () => {
@@ -82,7 +79,7 @@ function CommercialSecurityPanel() {
         );
         const body = await response.json();
         if (!response.ok)
-          throw new Error(body.error ?? "No se pudo consultar el límite.");
+          throw new ApiRequestFailure(response, body.error ?? "No se pudo consultar el límite.", body);
         if (current) {
           setLimit(body.data);
           setAmount(body.data?.limitVes ?? "0");
@@ -90,11 +87,7 @@ function CommercialSecurityPanel() {
         }
       } catch (error) {
         if (current)
-          notify.error(
-            error instanceof Error
-              ? error.message
-              : "No se pudo consultar el límite.",
-          );
+          notify.failure(error, "No se pudo consultar el límite.");
       }
     })();
     return () => {
@@ -118,15 +111,11 @@ function CommercialSecurityPanel() {
         },
       );
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error);
+      if (!response.ok) throw new ApiRequestFailure(response, body.error, body);
       setLimit(body.data);
       notify.success("Límite de crédito guardado.");
     } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar el límite.",
-      );
+      notify.failure(error, "No se pudo guardar el límite.");
     } finally {
       setBusy(false);
     }
@@ -154,7 +143,7 @@ function CommercialSecurityPanel() {
         },
       );
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error);
+      if (!response.ok) throw new ApiRequestFailure(response, body.error, body);
       notify.success(
         body.data.replayed ? "Reversión ya registrada." : "Pago revertido.",
       );
@@ -165,9 +154,7 @@ function CommercialSecurityPanel() {
       );
       setReason("");
     } catch (error) {
-      notify.error(
-        error instanceof Error ? error.message : "No se pudo revertir el pago.",
-      );
+      notify.failure(error, "No se pudo revertir el pago.");
     } finally {
       setBusy(false);
     }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { BellRing, Bell, X, Settings } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import { Modal, ModalContent, ModalBody } from "@heroui/react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -88,14 +88,14 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
             const json = await res.json() as { data?: unknown; error?: string };
 
             if (!res.ok) {
-                toast.error(json.error ?? "Error al activar recordatorios.");
+                notify.error(json.error ?? "Error al activar recordatorios.");
                 return;
             }
 
-            toast.success("Recordatorios activados. Le avisaremos al cliente 3 días antes por los canales configurados.");
+            notify.success("Recordatorios activados. Le avisaremos al cliente 3 días antes por los canales configurados.");
             setOpen(false);
-        } catch {
-            toast.error("Error de red. Intenta de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "Error de red. Intenta de nuevo.", { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

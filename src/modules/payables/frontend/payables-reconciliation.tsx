@@ -23,7 +23,7 @@ export function PayablesReconciliation(): React.JSX.Element {
   async function act(row: Row): Promise<void> {
     if (!scope) return;
     try { await executePayablesCommand(scope, { kind: row.status === "posted" ? "post_payment_accounting" : "reverse_payment_accounting", paymentId: row.paymentId }); notify.success("Asiento registrado."); setRevision((value) => value + 1); }
-    catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo contabilizar."); }
+    catch (cause: unknown) { notify.failure(cause, "No se pudo contabilizar."); }
   }
   if (report.data && !report.data.rulesActive) return <main className="mx-auto max-w-3xl space-y-3 p-6"><h1 className="text-3xl font-semibold">Conciliación contable</h1><p className="text-[var(--text-secondary)]">Disponible cuando Contabilidad active las reglas de integración de pagos a proveedores (pago, retenciones y diferencial cambiario).</p></main>;
   return <main className="mx-auto max-w-7xl space-y-6 p-6">

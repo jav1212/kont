@@ -5,7 +5,7 @@
 // ============================================================================
 
 import React, { useMemo, useState, useCallback, useRef } from "react";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import { CheckCircle2, ChevronDown, FileDown, FileText, Scissors } from "lucide-react";
 import { PortalMenu }    from "@/src/shared/frontend/components/portal-menu";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
@@ -1293,7 +1293,7 @@ export const PayrollEmployeeTable = ({
         const { runId } = await onSaveDraft(results);
         if (runId) {
             setDraftSavedAt(new Date());
-            toast.success("Recibo exportado y nómina guardada como borrador");
+            notify.success("Recibo exportado y nómina guardada como borrador");
         }
     }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed, exchangeCurrencyCode]);
 

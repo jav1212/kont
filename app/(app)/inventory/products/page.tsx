@@ -55,6 +55,7 @@ import {
     CheckCircle2,
     BadgeDollarSign,
 } from "lucide-react";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -390,7 +391,7 @@ export default function ProductosPage() {
                     }),
                 ]);
                 const catalogPayload = await catalogResponse.json().catch(() => null);
-                if (!catalogResponse.ok) throw new Error(catalogPayload?.error ?? "No fue posible cargar el catálogo tipado.");
+                if (!catalogResponse.ok) throw new ApiRequestFailure(catalogResponse, catalogPayload?.error ?? "No fue posible cargar el catálogo tipado.", catalogPayload);
                 const valuesPayload = valuesResponse ? await valuesResponse.json().catch(() => null) : { data: {} };
                 if (valuesResponse && !valuesResponse.ok) throw new Error(valuesPayload?.error ?? "No fue posible cargar valores tipados.");
                 if (current) {
@@ -398,7 +399,7 @@ export default function ProductosPage() {
                     setTypedValues(valuesPayload.data as Readonly<Record<string, { values: ProductCustomFieldValues; version: number }>>);
                 }
             } catch (error) {
-                if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los campos tipados.");
+                if (current) notify.failure(error, "No fue posible cargar los campos tipados.");
             }
         };
         void loadTypedFields();
@@ -410,10 +411,10 @@ export default function ProductosPage() {
         let current = true;
         void apiFetch("/api/preferences/inventory-products-columns").then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las columnas visibles.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar las columnas visibles.", payload);
             if (current) setViewPreferences(payload.data as UserViewPreferences);
         }).catch((error: unknown) => {
-            if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las columnas visibles.");
+            if (current) notify.failure(error, "No fue posible cargar las columnas visibles.");
         });
         return () => { current = false; };
     }, []);
@@ -422,9 +423,9 @@ export default function ProductosPage() {
         let current = true;
         void apiFetch("/api/preferences/inventory-product-field-labels").then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar los nombres de campos.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar los nombres de campos.", payload);
             if (current) { setFieldLabels(payload.data.labels); setFieldLabelsVersion(payload.data.version); }
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los nombres de campos."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar los nombres de campos."); });
         return () => { current = false; };
     }, []);
 
@@ -432,9 +433,9 @@ export default function ProductosPage() {
         let current = true;
         void apiFetch("/api/preferences/inventory-product-system-labels").then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las etiquetas del producto.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar las etiquetas del producto.", payload);
             if (current) { setSystemLabels(payload.data.labels); setSystemLabelsVersion(payload.data.version); }
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las etiquetas del producto."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar las etiquetas del producto."); });
         return () => { current = false; };
     }, []);
 
@@ -449,10 +450,10 @@ export default function ProductosPage() {
         try {
             const response = await apiFetch("/api/preferences/inventory-product-field-labels", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: fieldLabelsVersion, labels }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(response.status === 409 ? "Los nombres cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar los nombres.");
+            if (!response.ok) throw new ApiRequestFailure(response, response.status === 409 ? "Los nombres cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar los nombres.", payload);
             setFieldLabels(payload.data.labels); setFieldLabelsVersion(payload.data.version);
             notify.success("Nombres de campos guardados para tu usuario.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar los nombres."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar los nombres."); }
         finally { setSavingFieldLabels(false); }
     }
 
@@ -466,10 +467,10 @@ export default function ProductosPage() {
         try {
             const response = await apiFetch("/api/preferences/inventory-product-system-labels", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: systemLabelsVersion, labels }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(response.status === 409 ? "Las etiquetas cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar las etiquetas.");
+            if (!response.ok) throw new ApiRequestFailure(response, response.status === 409 ? "Las etiquetas cambiaron en otra sesión; vuelve a cargar la página." : payload?.error ?? "No fue posible guardar las etiquetas.", payload);
             setSystemLabels(payload.data.labels); setSystemLabelsVersion(payload.data.version);
             notify.success("Etiquetas guardadas para tu usuario.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las etiquetas."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar las etiquetas."); }
         finally { setSavingSystemLabels(false); }
     }
 
@@ -501,10 +502,10 @@ export default function ProductosPage() {
                 body: JSON.stringify({ expectedVersion: viewPreferences.version, [kind === "field" ? "hiddenFieldIds" : "hiddenColumnIds"]: hiddenIdsNext }),
             });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las preferencias.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar las preferencias.", payload);
             setViewPreferences(payload.data as UserViewPreferences);
         } catch (error) {
-            notify.error(error instanceof Error ? error.message : "No fue posible guardar las preferencias.");
+            notify.failure(error, "No fue posible guardar las preferencias.");
             const response = await apiFetch("/api/preferences/inventory-products-columns");
             const payload = await response.json().catch(() => null);
             if (response.ok) setViewPreferences(payload.data as UserViewPreferences);

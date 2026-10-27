@@ -63,7 +63,7 @@ export default function ProfilePage() {
         try {
             publicUrl = await uploadWebImage(file, "avatar");
         } catch (error) {
-            notify.error(error instanceof Error ? error.message : "No se pudo subir la imagen.");
+            notify.failure(error, "No se pudo subir la imagen.");
             setUploading(false);
             return;
         }

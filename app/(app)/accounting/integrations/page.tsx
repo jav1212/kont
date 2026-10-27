@@ -170,8 +170,8 @@ export default function IntegrationsPage() {
             if (!res.ok) { notify.error(json.error ?? 'No se pudo guardar la regla. Inténtalo de nuevo.'); return; }
             cancelEdit();
             await reloadRules();
-        } catch {
-            notify.error('No se pudo guardar la regla. Inténtalo de nuevo.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo guardar la regla. Inténtalo de nuevo.', { useFallbackMessage: true });
         } finally {
             setSaving(false);
         }
@@ -189,8 +189,8 @@ export default function IntegrationsPage() {
             }
             setDeleteTarget(null);
             await reloadRules();
-        } catch {
-            notify.error('No se pudo eliminar la regla.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo eliminar la regla.', { useFallbackMessage: true });
         } finally {
             setDeleting(false);
         }

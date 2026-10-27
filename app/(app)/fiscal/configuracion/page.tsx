@@ -11,6 +11,7 @@ import { BaseSelect } from "@/src/shared/frontend/components/base-select";
 import { ContextLink } from "@/src/shared/frontend/components/context-link";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type Treatment = "taxed" | "zero_rated" | "exempt" | "exonerated" | "not_subject";
 type Category = "general" | "reduced" | "zero_rated" | "luxury_surcharge" | "payment_surcharge" | "other";
@@ -97,7 +98,7 @@ export default function IvaConfigurationPage(): React.JSX.Element {
       if (revision !== undefined) params.set("version", String(revision));
       const response = await apiFetch(`/api/fiscal/iva/configuration?${params}`, { cache: "no-store" });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible cargar el catálogo fiscal."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible cargar el catálogo fiscal."));
       const next = object(object(payload).data) as unknown as Catalog;
       setCatalog(next); setRules([...next.rules]);
       if (revision === undefined) { setHistoricalVersion(""); setCurrentVersion(next.version); }
@@ -113,7 +114,7 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     try {
       const response = await apiFetch(`/api/fiscal/iva/periodicity?${new URLSearchParams({ companyId })}`, { cache: "no-store" });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible consultar la periodicidad IVA."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible consultar la periodicidad IVA."));
       const next = object(object(payload).data) as unknown as PeriodicitySetting;
       setPeriodicity(next); setPeriodicityCompany(companyId); setPeriodicityTarget(next.periodicity ?? ""); setPeriodicityReason("");
     } catch (cause) {
@@ -132,7 +133,7 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     void apiFetch(`/api/fiscal/iva/product-tax-assignments?${new URLSearchParams({ companyId })}`, { cache: "no-store" })
       .then(async (response) => {
         const payload: unknown = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(message(payload, "No fue posible consultar las alícuotas por producto."));
+        if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible consultar las alícuotas por producto."));
         if (active) { setAssignments(object(object(payload).data) as unknown as ProductAssignmentSummary); setAssignmentsCompany(companyId); }
       })
       .catch((cause: unknown) => { if (active) { setAssignments(null); setAssignmentsCompany(null); setAssignmentsError(cause instanceof Error ? cause.message : "No fue posible consultar las alícuotas por producto."); } });
@@ -146,7 +147,7 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     void Promise.all(["/api/purchases/suppliers", "/api/sales/customers"].map(async (endpoint) => {
       const response = await apiFetch(`${endpoint}?companyId=${encodeURIComponent(companyId)}`, { cache: "no-store" });
       const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(message(payload, "No fue posible cargar las contrapartes."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible cargar las contrapartes."));
       const rows = object(payload).data;
       if (!Array.isArray(rows)) return [];
       return rows.flatMap((row): CounterpartyOption[] => {
@@ -190,13 +191,13 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     try {
       const response = await apiFetch("/api/fiscal/iva/configuration", { method: "PUT", headers: { "Content-Type": "application/json", "Idempotency-Key": pending.current.key }, body });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible guardar las reglas."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible guardar las reglas."));
       pending.current = null;
       notify.success("Nueva versión del catálogo IVA guardada.");
       await load();
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "No fue posible guardar el catálogo IVA.";
-      setError(text); notify.error(text);
+      setError(text); notify.failure(cause, "No fue posible guardar el catálogo IVA.");
     } finally { setSaving(false); }
   }
 
@@ -212,7 +213,7 @@ export default function IvaConfigurationPage(): React.JSX.Element {
       const params = new URLSearchParams({ companyId, counterpartyId: counterpartyId.trim(), effectiveDate: profileDate });
       const response = await apiFetch(`/api/fiscal/iva/counterparty-profile?${params}`, { cache: "no-store" });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible consultar el perfil fiscal."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible consultar el perfil fiscal."));
       const value = object(payload).data as CounterpartyProfile | null;
       setProfile(value);
       setProfileQueryKey(`${companyId}::${counterpartyId.trim()}::${profileDate}`);
@@ -238,13 +239,13 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     try {
       const response = await apiFetch("/api/fiscal/iva/counterparty-profile", { method: "PUT", headers: { "Content-Type": "application/json", "Idempotency-Key": profilePending.current.key }, body });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible guardar el perfil fiscal."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible guardar el perfil fiscal."));
       profilePending.current = null;
       setProfile(object(object(payload).data) as unknown as CounterpartyProfile);
       notify.success("Perfil fiscal de contraparte guardado.");
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "No fue posible guardar el perfil fiscal.";
-      setProfileError(text); notify.error(text);
+      setProfileError(text); notify.failure(cause, "No fue posible guardar el perfil fiscal.");
     } finally { setProfileSaving(false); }
   }
 
@@ -257,13 +258,13 @@ export default function IvaConfigurationPage(): React.JSX.Element {
     try {
       const response = await apiFetch("/api/fiscal/iva/periodicity", { method: "PUT", headers: { "Content-Type": "application/json", "Idempotency-Key": periodicityPending.current.key }, body });
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "No fue posible guardar la periodicidad IVA."));
+      if (!response.ok) throw new ApiRequestFailure(response, message(payload, "No fue posible guardar la periodicidad IVA."));
       periodicityPending.current = null;
       notify.success("Periodicidad IVA guardada.");
       await loadPeriodicity();
     } catch (cause) {
       const text = cause instanceof Error ? cause.message : "No fue posible guardar la periodicidad IVA.";
-      setPeriodicityError(text); notify.error(text);
+      setPeriodicityError(text); notify.failure(cause, "No fue posible guardar la periodicidad IVA.");
     } finally { setPeriodicitySaving(false); }
   }
 

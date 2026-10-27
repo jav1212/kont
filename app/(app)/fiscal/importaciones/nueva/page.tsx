@@ -8,6 +8,7 @@ import { BaseCheckbox } from "@/src/shared/frontend/components/base-checkbox";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseSelect } from "@/src/shared/frontend/components/base-select";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type ImportKind = "goods" | "foreign_service";
 type ImportCategory = "taxable" | "zero_rated" | "exempt" | "exonerated" | "non_subject" | "unknown";
@@ -132,7 +133,7 @@ export default function IvaImportsPage(): React.JSX.Element {
         body: submission.body,
       });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(errorMessage(body));
+      if (!response.ok) throw new ApiRequestFailure(response, errorMessage(body), body);
       pendingSubmission.current = null;
       setSaved(true);
       formElement.reset();

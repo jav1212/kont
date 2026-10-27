@@ -50,6 +50,9 @@ importers:
       '@kontave/client-contracts':
         specifier: workspace:*
         version: link:packages/kernel/contracts
+      '@kontave/client-feedback':
+        specifier: workspace:*
+        version: link:packages/experience/feedback
       '@kontave/client-interaction':
         specifier: workspace:*
         version: link:packages/experience/interaction
@@ -83,18 +86,21 @@ importers:
       '@kontave/monetary':
         specifier: workspace:*
         version: link:packages/monetary
+      '@kontave/observability':
+        specifier: workspace:*
+        version: link:packages/platform/observability
       '@kontave/operation-context':
         specifier: workspace:*
         version: link:packages/operation-context
       '@kontave/organizations':
         specifier: workspace:*
         version: link:packages/capabilities/organizations
-      '@kontave/payment-orders':
-        specifier: workspace:*
-        version: link:packages/business/payment-orders
       '@kontave/payables':
         specifier: workspace:*
         version: link:packages/business/payables
+      '@kontave/payment-orders':
+        specifier: workspace:*
+        version: link:packages/business/payment-orders
       '@kontave/payments':
         specifier: workspace:*
         version: link:packages/business/payments
@@ -699,7 +705,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/business/payment-orders:
+  packages/business/payables:
+    dependencies:
+      '@kontave/monetary':
+        specifier: workspace:*
+        version: link:../../monetary
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -708,11 +718,7 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/business/payables:
-    dependencies:
-      '@kontave/monetary':
-        specifier: workspace:*
-        version: link:../../monetary
+  packages/business/payment-orders:
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -1126,6 +1132,9 @@ importers:
 
   packages/experience/feedback:
     devDependencies:
+      sonner:
+        specifier: ^1.7.4
+        version: 1.7.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tsx:
         specifier: ^4.23.12
         version: 4.23.12

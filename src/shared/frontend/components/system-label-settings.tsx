@@ -5,6 +5,7 @@ import type { SystemLabelDefinition } from "@kontave/preferences/application";
 import { Loader2, RotateCcw, Tags } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 /** Configuration needed to edit one server-registered user label catalog. */
 export interface SystemLabelSettingsProps {
@@ -43,7 +44,7 @@ export function SystemLabelSettings({ catalog, endpoint, title, description, onL
     void fetch(endpoint, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las etiquetas.");
+        if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar las etiquetas.", payload);
         if (!current) return;
         const resolved = payload.data.labels as Record<string, string>;
         setLabels(resolved);
@@ -72,7 +73,7 @@ export function SystemLabelSettings({ catalog, endpoint, title, description, onL
         body: JSON.stringify({ expectedVersion: version, labels: overrides }),
       });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las etiquetas.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar las etiquetas.", payload);
       const resolved = payload.data.labels as Record<string, string>;
       setLabels(resolved);
       setDraft(resolved);
@@ -82,7 +83,7 @@ export function SystemLabelSettings({ catalog, endpoint, title, description, onL
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "No fue posible guardar las etiquetas.";
       setError(message);
-      notify.error(message);
+      notify.failure(cause, "No fue posible guardar las etiquetas.");
     } finally {
       setSaving(false);
     }

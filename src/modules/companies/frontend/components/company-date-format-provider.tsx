@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { formatCompanyDate, type CompanyDateOrder } from "@kontave/companies/domain";
 import { useCompany } from "../hooks/use-companies";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface CompanyDateFormatContextValue {
   readonly dateOrder: CompanyDateOrder | null;
@@ -33,7 +34,7 @@ export function CompanyDateFormatProvider({ children }: { readonly children: Rea
     try {
       const response = await apiFetch(`/api/companies/date-format?companyId=${encodeURIComponent(companyId)}`);
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error ?? "No fue posible consultar el formato de fecha.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible consultar el formato de fecha.", payload);
       if (requestRevision.current === requestId) setDateOrder((payload.data?.dateOrder as CompanyDateOrder | undefined) ?? null);
     } finally { if (requestRevision.current === requestId) setLoading(false); }
   }, [companyId]);

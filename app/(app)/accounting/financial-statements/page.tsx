@@ -72,7 +72,7 @@ export default function FinancialStatementsPage() {
             });
             notify.success("Balance General descargado.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar PDF");
+            notify.failure(e, "Error al generar PDF");
         } finally {
             setPdfBalance(false);
         }
@@ -95,7 +95,7 @@ export default function FinancialStatementsPage() {
             });
             notify.success("Estado de Resultados descargado.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar PDF");
+            notify.failure(e, "Error al generar PDF");
         } finally {
             setPdfIncome(false);
         }

@@ -49,7 +49,7 @@ export function PayablesDocumentCreate({ scope, isOpen, onClose, onCreated }: {
       onCreated();
       onClose();
     } catch (cause: unknown) {
-      notify.error(cause instanceof Error ? cause.message : "No se pudo registrar el documento.");
+      notify.failure(cause, "No se pudo registrar el documento.");
     } finally { setSaving(false); }
   }
 

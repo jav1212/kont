@@ -120,16 +120,9 @@ function CommandForm(props: {
   </form>;
 }
 
-/** Toasts a Spanish, operation-specific failure; the backend's diagnostic text travels only as incident metadata. */
+/** Toasts a Spanish, operation-specific failure; the backend's diagnostic text travels only as incident data. */
 function notifyAccountingFailure(message: string, cause: unknown, deduplicationKey?: string): void {
-  notify.error(message, {
-    deduplicationKey,
-    errorMetadata: {
-      cause: cause instanceof Error ? cause.message : String(cause),
-      ...(cause && typeof cause === "object" && "code" in cause ? { code: String(cause.code) } : {}),
-      ...(cause && typeof cause === "object" && "requestId" in cause ? { requestId: String(cause.requestId) } : {}),
-    },
-  });
+  notify.failure(cause, message, { deduplicationKey, eventName: "web.accounting.master_failed", useFallbackMessage: true });
 }
 
 function displayValue(value: unknown): string {

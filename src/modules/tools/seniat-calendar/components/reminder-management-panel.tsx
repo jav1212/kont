@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Bell, BellOff, Trash2, Loader2, RefreshCw, Mail, MessageCircle, Send } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import { Modal, ModalContent, ModalBody } from "@heroui/react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { ReminderSubscription } from "@/src/modules/tools/seniat-reminders/backend/domain/reminder-subscription";
@@ -23,12 +23,12 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
             const res  = await fetch("/api/seniat-reminders/list");
             const json = await res.json() as { data?: ReminderSubscription[]; error?: string };
             if (!res.ok) {
-                toast.error(json.error ?? "Error al cargar recordatorios.");
+                notify.error(json.error ?? "Error al cargar recordatorios.");
                 return;
             }
             setSubs(json.data ?? []);
-        } catch {
-            toast.error("Error de red al cargar recordatorios.");
+        } catch (caught) {
+            notify.failure(caught, "Error de red al cargar recordatorios.", { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }
@@ -48,15 +48,15 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
             });
             const json = await res.json() as { data?: ReminderSubscription; error?: string };
             if (!res.ok) {
-                toast.error(json.error ?? "Error al actualizar.");
+                notify.error(json.error ?? "Error al actualizar.");
                 return;
             }
             setSubs((prev) =>
                 prev.map((s) => s.id === sub.id ? { ...s, enabled: !s.enabled } : s)
             );
-            toast.success(sub.enabled ? "Recordatorio pausado." : "Recordatorio activado.");
-        } catch {
-            toast.error("Error de red.");
+            notify.success(sub.enabled ? "Recordatorio pausado." : "Recordatorio activado.");
+        } catch (caught) {
+            notify.failure(caught, "Error de red.", { useFallbackMessage: true });
         } finally {
             setActing(null);
         }
@@ -83,7 +83,7 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
                 error?: string;
             };
             if (!res.ok || !json.data) {
-                toast.error(json.error ?? "Error al enviar la prueba.");
+                notify.error(json.error ?? "Error al enviar la prueba.");
                 return;
             }
 
@@ -92,14 +92,14 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
             const failCh   = channels.filter((c) => !c.ok) as Array<{ channel: string; error: string }>;
 
             if (okCh.length === channels.length) {
-                toast.success(`Prueba enviada por ${okCh.join(" y ")}.`);
+                notify.success(`Prueba enviada por ${okCh.join(" y ")}.`);
             } else if (okCh.length > 0) {
-                toast.warning(`Enviado por ${okCh.join(", ")}. Falló ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
+                notify.warning(`Enviado por ${okCh.join(", ")}. Falló ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
             } else {
-                toast.error(`No se pudo enviar: ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
+                notify.error(`No se pudo enviar: ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
             }
-        } catch {
-            toast.error("Error de red.");
+        } catch (caught) {
+            notify.failure(caught, "Error de red.", { useFallbackMessage: true });
         } finally {
             setActing(null);
         }
@@ -115,13 +115,13 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
             });
             const json = await res.json() as { error?: string };
             if (!res.ok) {
-                toast.error(json.error ?? "Error al eliminar.");
+                notify.error(json.error ?? "Error al eliminar.");
                 return;
             }
             setSubs((prev) => prev.filter((s) => s.id !== id));
-            toast.success("Recordatorio eliminado.");
-        } catch {
-            toast.error("Error de red.");
+            notify.success("Recordatorio eliminado.");
+        } catch (caught) {
+            notify.failure(caught, "Error de red.", { useFallbackMessage: true });
         } finally {
             setActing(null);
         }

@@ -20,8 +20,8 @@ export function useJournalEntries(companyId: string | null, periodId?: string | 
             const json = await res.json() as { data?: JournalEntry[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar asientos'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar asientos');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar asientos', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

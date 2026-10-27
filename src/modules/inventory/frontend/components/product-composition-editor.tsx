@@ -41,7 +41,7 @@ export function ProductCompositionEditor({ companyId, product, products, onSaved
         setLoading(true);
         void callApi<CompositionResponse>(`/api/inventory/products/${encodeURIComponent(product.id)}/components?companyId=${encodeURIComponent(companyId)}`)
             .then((data) => { if (!cancelled && data) setComponents(data.components); })
-            .catch(() => { if (!cancelled) notify.error("No se pudo cargar la composición."); })
+            .catch((caught: unknown) => { if (!cancelled) notify.failure(caught, "No se pudo cargar la composición.", { useFallbackMessage: true }); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [companyId, product.id]);
@@ -84,8 +84,8 @@ export function ProductCompositionEditor({ companyId, product, products, onSaved
             setComponents(saved.components);
             notify.success("Composición guardada");
             await onSaved();
-        } catch {
-            notify.error("No se pudo guardar la composición.");
+        } catch (caught) {
+            notify.failure(caught, "No se pudo guardar la composición.", { useFallbackMessage: true });
         } finally {
             setSaving(false);
         }

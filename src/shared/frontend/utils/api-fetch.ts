@@ -1,4 +1,5 @@
 import { notify } from '@/src/shared/frontend/notify';
+import { ApiRequestFailure } from '@/src/shared/frontend/feedback/api-request-failure';
 
 const ACTIVE_TENANT_KEY = 'kont-active-tenant-id';
 
@@ -15,18 +16,19 @@ export interface ApiJsonResult {
 /**
  * Fetch JSON from a tenant-aware API route.
  * Wraps apiFetch and handles JSON parsing safely.
- * Returns { ok, json } — the same destructuring pattern used across remote data hooks.
+ * Returns { ok, json } — the same destructuring pattern used across remote data hooks —
+ * plus the raw `response` so callers can build an ApiRequestFailure.
  */
 export async function fetchJson(
     path: string,
     options?: RequestInit,
-): Promise<{ ok: boolean; json: ApiJsonResult }> {
+): Promise<{ ok: boolean; json: ApiJsonResult; response: Response }> {
     const res  = await apiFetch(path, options);
     const text = await res.text();
     let json: ApiJsonResult;
     try   { json = JSON.parse(text) as ApiJsonResult; }
     catch { json = { error: `Error del servidor (${res.status})`, errorCode: undefined }; }
-    return { ok: res.ok, json };
+    return { ok: res.ok, json, response: res };
 }
 
 /**
@@ -48,9 +50,10 @@ export async function apiFetch(url: string, options?: RequestInit): Promise<Resp
 }
 
 /**
- * Helper para hooks: hace fetchJson y dispara notify.error si la respuesta
- * falla. Devuelve el `data` del shape estándar `{ data, error }`, o `null`
- * si hubo error (en cuyo caso ya se mostró el toast).
+ * Helper para hooks: hace fetchJson y presenta el fallo con `notify.failure`
+ * (rechazos 4xx como esperados, 5xx con su código de incidente, fallos de red
+ * como sin conexión). Devuelve el `data` del shape estándar `{ data, error }`,
+ * o `null` si hubo error (en cuyo caso ya se mostró el toast).
  *
  * Uso:
  *   const items = await callApi<Producto[]>(`/api/inventory/products?…`);
@@ -60,10 +63,16 @@ export async function callApi<T>(
     path: string,
     options?: RequestInit & { fallbackError?: string },
 ): Promise<T | null> {
-    const { ok, json } = await fetchJson(path, options);
-    if (!ok) {
-        notify.error(json.error ?? options?.fallbackError ?? 'Ocurrió un error inesperado.', { errorCode: json.errorCode });
+    const fallback = options?.fallbackError ?? 'Ocurrió un error inesperado.';
+    try {
+        const { ok, json, response } = await fetchJson(path, options);
+        if (!ok) {
+            notify.failure(new ApiRequestFailure(response, json.error ?? fallback, json), fallback, { eventName: 'web.api.request_failed', attributes: { path: path.split('?')[0] } });
+            return null;
+        }
+        return (json.data ?? null) as T | null;
+    } catch (error) {
+        notify.failure(error, fallback, { eventName: 'web.api.request_failed', attributes: { path: path.split('?')[0] } });
         return null;
     }
-    return (json.data ?? null) as T | null;
 }

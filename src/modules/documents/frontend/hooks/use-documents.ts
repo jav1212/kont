@@ -6,6 +6,7 @@ import { notify } from '@/src/shared/frontend/notify';
 import type { DocumentFolder } from '../../backend/domain/document-folder';
 import type { Document } from '../../backend/domain/document';
 import { getSupabaseBrowser } from '@/src/shared/frontend/utils/supabase-browser';
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 export function useDocuments(companyId?: string | null, organizationId?: string | null) {
     const [folders,          setFolders]          = useState<DocumentFolder[]>([]);
@@ -22,10 +23,10 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             if (companyId) params.set('companyId', companyId);
             const res  = await apiFetch(`/api/documents/folders?${params}`);
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? 'Error al cargar carpetas');
+            if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al cargar carpetas', json);
             setFolders(json.data);
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : 'Error al cargar carpetas');
+            notify.failure(e, 'Error al cargar carpetas');
         } finally {
             setLoading(false);
         }
@@ -40,10 +41,10 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             if (companyId) params.set('companyId', companyId);
             const res  = await apiFetch(`/api/documents?${params}`);
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? 'Error al cargar documentos');
+            if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al cargar documentos', json);
             setDocuments(json.data);
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : 'Error al cargar documentos');
+            notify.failure(e, 'Error al cargar documentos');
         } finally {
             setLoading(false);
         }
@@ -65,7 +66,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             body: JSON.stringify({ name, parentId, companyId: companyId ?? null }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'Error al crear carpeta');
+        if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al crear carpeta', json);
         await loadFolders(parentId);
         return json.data as DocumentFolder;
     }, [companyId, loadFolders]);
@@ -82,7 +83,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             body:    JSON.stringify({ name, expectedVersion: folder.version }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error?.message ?? json.error ?? 'Error al renombrar carpeta');
+        if (!res.ok) throw new ApiRequestFailure(res, json.error?.message ?? json.error ?? 'Error al renombrar carpeta', json);
         setFolders((prev) => prev.map((f) => f.id === id ? { ...f, name: json.data.name, version: json.data.version, updatedAt: json.data.updatedAt } : f));
         return json.data as DocumentFolder;
     }, [folders, organizationId]);
@@ -112,7 +113,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
         });
         const urlJson = await urlRes.json();
-        if (!urlRes.ok) throw new Error(urlJson.error ?? 'Error al obtener URL de subida');
+        if (!urlRes.ok) throw new ApiRequestFailure(urlRes, urlJson.error ?? 'Error al obtener URL de subida', urlJson);
 
         const { uploadUrl, storagePath } = urlJson.data;
 
@@ -145,7 +146,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             }),
         });
         const regJson = await regRes.json();
-        if (!regRes.ok) throw new Error(regJson.error ?? 'Error al registrar documento');
+        if (!regRes.ok) throw new ApiRequestFailure(regRes, regJson.error ?? 'Error al registrar documento', regJson);
 
         setDocuments((prev) => [regJson.data, ...prev]);
         return regJson.data as Document;
@@ -167,7 +168,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             body:    JSON.stringify({ folderId }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'Error al mover documento');
+        if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al mover documento', json);
 
         const moved = json.data as Document;
 
@@ -189,7 +190,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
     const getDownloadUrl = useCallback(async (id: string): Promise<string> => {
         const res  = await apiFetch(`/api/documents/${id}/download-url`);
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'Error al obtener URL de descarga');
+        if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al obtener URL de descarga', json);
         return json.data as string;
     }, []);
 
@@ -200,7 +201,7 @@ export function useDocuments(companyId?: string | null, organizationId?: string 
             body:    JSON.stringify({ tenantIds, folderIds }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'Error al replicar plantilla');
+        if (!res.ok) throw new ApiRequestFailure(res, json.error ?? 'Error al replicar plantilla', json);
         return json.data.results;
     }, []);
 

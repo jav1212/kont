@@ -17,6 +17,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { formatIvaMoney } from "@/src/modules/iva/frontend/money-format";
 import { ivaLabelOrPending } from "@/src/modules/iva/frontend/labels";
 import { ivaRequest } from "@/src/modules/iva/frontend/iva-client";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type LedgerDirection = "purchase" | "sale";
 type LedgerMode = "facts" | "sources";
@@ -134,7 +135,7 @@ export function IvaLedgerView({ direction, title, initialMode = "facts" }: { rea
         if (cursor) params.set("cursor", JSON.stringify(cursor));
         const response = await fetch(`${endpoint}?${params}`, { cache: "no-store" });
         const body: unknown = await response.json();
-        if (!response.ok) throw new Error(responseError(body));
+        if (!response.ok) throw new ApiRequestFailure(response, responseError(body), body);
         const page = (body as { data: LedgerPayload }).data;
         exportFacts.push(...page.facts);
         cursor = page.nextCursor;
@@ -310,7 +311,7 @@ function LegacySources({ sources, direction, companyId, from, to, period, onNext
     try {
       const response = await fetch("/api/fiscal/iva/legacy-sources/batch", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": batchSubmission.current.key }, body: batchSubmission.current.body });
       const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(responseError(payload));
+      if (!response.ok) throw new ApiRequestFailure(response, responseError(payload), payload);
       const results = (payload as { data: { items: readonly { readonly sourceId: string; readonly status: string; readonly reason?: string }[] } }).data.items;
       const incorporated = results.filter((item) => item.status === "incorporated");
       setReviewedIds((current) => new Set([...current, ...incorporated.map((item) => item.sourceId)]));

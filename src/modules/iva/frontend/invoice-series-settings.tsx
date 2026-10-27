@@ -7,6 +7,7 @@ import { SettingsSection } from "@/src/shared/frontend/components/settings-secti
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface InvoiceSeries { readonly id: string; readonly code: string; readonly prefix: string | null; readonly nextNumber: number; readonly maximumNumber: number }
 
@@ -27,7 +28,7 @@ export function InvoiceSeriesSettings(): React.JSX.Element {
     try {
       const response = await apiFetch(`/api/companies/document-series?companyId=${encodeURIComponent(companyId)}`, { cache: "no-store" });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(apiError(body, "No fue posible cargar las series."));
+      if (!response.ok) throw new ApiRequestFailure(response, apiError(body, "No fue posible cargar las series."));
       const data = object(body).data;
       setSeries(Array.isArray(data) ? data as InvoiceSeries[] : []);
       setError(null);
@@ -46,7 +47,7 @@ export function InvoiceSeriesSettings(): React.JSX.Element {
         body: JSON.stringify({ operation: "create", companyId, documentType: "sales_invoice", code: draft.code.trim(), prefix: draft.prefix.trim() || null, nextNumber: Number(draft.nextNumber), maximumNumber: Number(draft.maximumNumber) }),
       });
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(apiError(body, "No fue posible crear la serie."));
+      if (!response.ok) throw new ApiRequestFailure(response, apiError(body, "No fue posible crear la serie."));
       setDraft({ code: "", prefix: "", nextNumber: "1", maximumNumber: "99999999" });
       await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No fue posible crear la serie."); }

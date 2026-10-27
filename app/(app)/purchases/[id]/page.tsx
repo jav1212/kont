@@ -520,7 +520,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             });
             notify.success("Comprobante de retención ISLR generado.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar el comprobante ISLR.");
+            notify.failure(e, "Error al generar el comprobante ISLR.");
         }
     }
 
@@ -592,7 +592,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             });
             notify.success("Comprobante de retención IVA generado.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar el comprobante.");
+            notify.failure(e, "Error al generar el comprobante.");
         }
     }
 

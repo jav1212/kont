@@ -50,8 +50,8 @@ export default function AdminForgotPasswordPage() {
                 return false;
             }
             return true;
-        } catch {
-            notify.error("No pudimos enviar el código. Revisa tu conexión e inténtalo de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "No pudimos enviar el código. Revisa tu conexión e inténtalo de nuevo.", { useFallbackMessage: true });
             return false;
         }
     }
@@ -109,8 +109,8 @@ export default function AdminForgotPasswordPage() {
             setPassword("");
             setConfirm("");
             setStage("password");
-        } catch {
-            notify.error("No pudimos verificar el código. Inténtalo de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "No pudimos verificar el código. Inténtalo de nuevo.", { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }
@@ -157,8 +157,8 @@ export default function AdminForgotPasswordPage() {
                 setLoading(false);
                 return;
             }
-        } catch {
-            notify.error("No pudimos actualizar la contraseña. Inténtalo de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "No pudimos actualizar la contraseña. Inténtalo de nuevo.", { useFallbackMessage: true });
             setLoading(false);
             return;
         }
@@ -188,8 +188,8 @@ export default function AdminForgotPasswordPage() {
             } else {
                 notify.error("No pudimos cerrar la sesión. Inténtalo de nuevo.");
             }
-        } catch {
-            notify.error("No pudimos cerrar la sesión. Inténtalo de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "No pudimos cerrar la sesión. Inténtalo de nuevo.", { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

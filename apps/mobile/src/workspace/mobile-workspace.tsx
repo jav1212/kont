@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { clientFeedback } from "@kontave/client-feedback/application";
 import type { ModuleCode } from "@kontave/modules/domain";
 import type { CurrentUserDto } from "@kontave/client-contracts";
 import { RemoteProfilePort } from "@kontave/client-remote";
@@ -31,13 +32,12 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
   useEffect(() => coordinator.subscribe(setState), [coordinator]);
   useEffect(() => {
     if (state.status !== "failed") return;
-    feedback.execute({
+    feedback.execute(clientFeedback({
       intent: "error",
       message: state.error.message,
-      description: `Código: ${state.error.code}`,
       referenceCode: state.error.code,
       deduplicationKey: `workspace-context-${state.error.code}`,
-    });
+    }));
   }, [feedback, state]);
   useEffect(() => {
     let active = true;
@@ -50,7 +50,7 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
     try {
       const result = await coordinator.selectWorkspace(organizationId(id));
       const selected = result.status === "ready" && result.snapshot.activeWorkspace?.organizationId === id;
-      if (selected) feedback.execute({ intent: "success", message: "Workspace actualizado", description: null, referenceCode: null, deduplicationKey: "workspace-selected" });
+      if (selected) feedback.execute(clientFeedback({ intent: "success", message: "Workspace actualizado", description: null, referenceCode: null, deduplicationKey: "workspace-selected" }));
       return selected;
     } finally { lease.release(); }
   }, [coordinator, feedback, interaction]);
@@ -59,7 +59,7 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
     try {
       const result = await coordinator.selectCompany(companyId(id));
       const selected = result.status === "ready" && result.snapshot.activeCompany?.id === id;
-      if (selected) feedback.execute({ intent: "success", message: "Empresa actualizada", description: null, referenceCode: null, deduplicationKey: "company-selected" });
+      if (selected) feedback.execute(clientFeedback({ intent: "success", message: "Empresa actualizada", description: null, referenceCode: null, deduplicationKey: "company-selected" }));
       return selected;
     } finally { lease.release(); }
   }, [coordinator, feedback, interaction]);
@@ -68,7 +68,7 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
     try {
       const result = await coordinator.selectModule(code);
       const selected = result.status === "ready" && result.snapshot.activeModule?.code === code;
-      if (selected) feedback.execute({ intent: "success", message: "Módulo actualizado", description: null, referenceCode: null, deduplicationKey: "module-selected" });
+      if (selected) feedback.execute(clientFeedback({ intent: "success", message: "Módulo actualizado", description: null, referenceCode: null, deduplicationKey: "module-selected" }));
       return selected;
     } finally { lease.release(); }
   }, [coordinator, feedback, interaction]);

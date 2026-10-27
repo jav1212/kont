@@ -1,4 +1,5 @@
 ﻿"use client";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -31,7 +32,7 @@ export default function FiscalImportsPage(): React.JSX.Element {
     const query = new URLSearchParams({ companyId, period, limit: "100" });
     void fetch(`/api/fiscal/iva/purchase-ledger?${query}`, { cache: "no-store" }).then(async (response) => {
       const body = await response.json() as { data?: Page; error?: string };
-      if (!response.ok) throw new Error(body.error ?? "No fue posible consultar las importaciones.");
+      if (!response.ok) throw new ApiRequestFailure(response, body.error ?? "No fue posible consultar las importaciones.", body);
       return body.data?.facts.filter((fact) => fact.direction === "import") ?? [];
     }).then((items) => { if (active) setResult({ key: requestKey, rows: items, error: null }); }).catch((cause: unknown) => { if (active) setResult({ key: requestKey, rows: [], error: cause instanceof Error ? cause.message : "No fue posible consultar las importaciones." }); });
     return () => { active = false; };

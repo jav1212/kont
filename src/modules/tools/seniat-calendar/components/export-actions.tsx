@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Download, FileText, CalendarPlus, Link2, ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { CalendarEntry, TaxpayerType } from "../data/types";
 import { exportAsIcs } from "../utils/ics-exporter";
@@ -34,9 +34,9 @@ export function ExportActions({
         setOpen(false);
         try {
             await exportAsPdf({ entries, companyName: displayName, rif, taxpayerType, year });
-            toast.success("PDF descargado");
-        } catch {
-            toast.error("Error al generar el PDF");
+            notify.success("PDF descargado");
+        } catch (caught) {
+            notify.failure(caught, "Error al generar el PDF", { useFallbackMessage: true });
         }
     }
 
@@ -44,9 +44,9 @@ export function ExportActions({
         setOpen(false);
         try {
             exportAsIcs(entries, { rif, taxpayerType, companyName, year });
-            toast.success("Archivo iCal descargado");
-        } catch {
-            toast.error("Error al generar el archivo ICS");
+            notify.success("Archivo iCal descargado");
+        } catch (caught) {
+            notify.failure(caught, "Error al generar el archivo ICS", { useFallbackMessage: true });
         }
     }
 
@@ -55,8 +55,8 @@ export function ExportActions({
         if (typeof window === "undefined") return;
         navigator.clipboard
             .writeText(window.location.href)
-            .then(() => toast.success("Enlace copiado"))
-            .catch(() => toast.error("No se pudo copiar el enlace"));
+            .then(() => notify.success("Enlace copiado"))
+            .catch(() => notify.error("No se pudo copiar el enlace"));
     }
 
     return (

@@ -22,7 +22,7 @@ export function PayablesPolicyPanel(): React.JSX.Element {
         await executePayablesCommand(scope, { kind: "configure_policy", expectedVersion: policy.version, ...next });
         notify.success("Política actualizada.");
         setRevision((value) => value + 1);
-      } catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo guardar la política."); }
+      } catch (cause: unknown) { notify.failure(cause, "No se pudo guardar la política."); }
     }} />}
   </section>;
 }

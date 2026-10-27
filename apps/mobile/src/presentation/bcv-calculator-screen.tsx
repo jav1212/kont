@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { clientFeedback } from "@kontave/client-feedback/application";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Heading, Text, reactNativeTheme as nativeTheme } from "@kontave/ui";
@@ -46,7 +47,7 @@ export function BcvCalculatorScreen(): React.JSX.Element {
       setCode((current) => snapshot.rates.some((rate) => rate.code === current) ? current : snapshot.rates[0]?.code ?? "USD");
     } catch (cause: unknown) {
       const failure = cause instanceof RemoteExchangeRatesFailure ? cause : new RemoteExchangeRatesFailure("RATE_UNAVAILABLE", "No se pudo consultar el BCV.");
-      feedback.execute({ intent: "error", message: failure.message, description: `Código: ${failure.code}`, referenceCode: failure.code, deduplicationKey: "mobile-bcv-error" });
+      feedback.execute(clientFeedback({ intent: "error", message: failure.message, referenceCode: failure.code, deduplicationKey: "mobile-bcv-error" }));
     } finally { setLoading(false); }
   }, [feedback, source, workspace.state.snapshot.activeCompany?.id, workspace.state.snapshot.activeWorkspace?.organizationId]);
 
@@ -86,7 +87,7 @@ export function BcvCalculatorScreen(): React.JSX.Element {
 
     <View accessibilityLabel="Teclado numérico" style={styles.keypad}>{KEYPAD.map((key) => <Pressable key={key} accessibilityLabel={key === "backspace" ? "Borrar último dígito" : key === "," ? "Separador decimal" : key} onPress={() => enterAmount(key)} style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}>{key === "backspace" ? <Ionicons name="backspace-outline" size={24} color={nativeTheme.color.text} /> : <Text style={styles.keyText}>{key}</Text>}</Pressable>)}</View>
 
-    <View style={styles.actions}><Pressable accessibilityLabel="Cambiar dirección de conversión" onPress={() => setDirection((current) => current === "to-ves" ? "from-ves" : "to-ves")} style={({ pressed }) => [styles.directionButton, pressed && styles.pressed]}><Ionicons name="swap-horizontal" size={18} color="#343B4D" /><Text style={styles.directionText}>Cambiar {originCode} ↔ {targetCode}</Text></Pressable><Pressable accessibilityLabel="Confirmar cálculo" onPress={() => feedback.execute({ intent: "success", message: "Cálculo listo", description: null, referenceCode: null, deduplicationKey: "bcv-calculation-ready" })} style={({ pressed }) => [styles.confirm, pressed && styles.confirmPressed]}><Ionicons name="checkmark" size={22} color="#FFFFFF" /></Pressable></View>
+    <View style={styles.actions}><Pressable accessibilityLabel="Cambiar dirección de conversión" onPress={() => setDirection((current) => current === "to-ves" ? "from-ves" : "to-ves")} style={({ pressed }) => [styles.directionButton, pressed && styles.pressed]}><Ionicons name="swap-horizontal" size={18} color="#343B4D" /><Text style={styles.directionText}>Cambiar {originCode} ↔ {targetCode}</Text></Pressable><Pressable accessibilityLabel="Confirmar cálculo" onPress={() => feedback.execute(clientFeedback({ intent: "success", message: "Cálculo listo", description: null, referenceCode: null, deduplicationKey: "bcv-calculation-ready" }))} style={({ pressed }) => [styles.confirm, pressed && styles.confirmPressed]}><Ionicons name="checkmark" size={22} color="#FFFFFF" /></Pressable></View>
     <Text style={styles.disclaimer}>Cálculo referencial basado en la tasa oficial BCV.</Text>
   </ScrollView>;
 }

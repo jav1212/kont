@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ResolutionStatus, SystemErrorPage, SystemErrorRecord } from "@/src/modules/system-errors/backend/domain/system-error";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 const PAGE_SIZE = 25;
 
@@ -134,7 +135,7 @@ export function SystemErrorsPanel(): React.ReactNode {
                 body: JSON.stringify({ status }),
             });
             const payload = await response.json() as ApiResponse<SystemErrorRecord>;
-            if (!response.ok) throw new Error(payload.error ?? "No se pudo actualizar el error.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No se pudo actualizar el error.", payload);
             await load(page, filter, code);
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : "No se pudo actualizar el error.");

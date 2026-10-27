@@ -18,8 +18,8 @@ export function useAccountingPeriods(companyId: string | null) {
             const json = await res.json() as { data?: AccountingPeriod[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar períodos'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar períodos');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar períodos', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

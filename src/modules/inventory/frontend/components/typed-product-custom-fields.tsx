@@ -6,6 +6,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type Catalog = { definitions: readonly ProductCustomFieldDefinition[]; version: number; updatedAt: string | null };
 type Values = { values: ProductCustomFieldValues; version: number };
@@ -31,10 +32,10 @@ export function TypedProductCustomFieldsSettings({ companyId, legacyIds, canMana
   const load = useCallback(async () => {
     const response = await apiFetch(`/api/inventory/product-custom-fields?companyId=${encodeURIComponent(companyId)}`);
     const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar el catálogo.");
+    if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar el catálogo.", payload);
     setCatalog(payload.data as Catalog);
   }, [companyId]);
-  useEffect(() => { void load().catch((error: unknown) => notify.error(error instanceof Error ? error.message : "No fue posible cargar el catálogo.")); }, [load]);
+  useEffect(() => { void load().catch((error: unknown) => notify.failure(error, "No fue posible cargar el catálogo.")); }, [load]);
   const add = () => {
     const normalized = id.trim();
     if (!label.trim() || !normalized) return notify.error("Indica una etiqueta y una clave estable.");
@@ -54,9 +55,9 @@ export function TypedProductCustomFieldsSettings({ companyId, legacyIds, canMana
     try {
       const response = await apiFetch("/api/inventory/product-custom-fields", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, expectedVersion: catalog.version, definitions: catalog.definitions }) });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar el catálogo.");
+      if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar el catálogo.", payload);
       setCatalog(payload.data as Catalog); notify.success("Catálogo tipado guardado.");
-    } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el catálogo."); await load(); }
+    } catch (error) { notify.failure(error, "No fue posible guardar el catálogo."); await load(); }
     finally { setSaving(false); }
   };
   if (!catalog) return <p className="font-sans text-[13px] text-[var(--text-tertiary)]">Cargando catálogo tipado…</p>;
@@ -84,8 +85,8 @@ export function TypedProductCustomFieldValues({ companyId, productId, fieldLabel
     if (!catalogResponse.ok || !valuesResponse.ok) throw new Error(catalogPayload.error ?? valuesPayload.error ?? "No fue posible cargar los campos.");
     setCatalog(catalogPayload.data as Catalog); setSnapshot(valuesPayload.data as Values); setValues(valuesPayload.data.values ?? {});
   }, [companyId, productId]);
-  useEffect(() => { void load().catch((error: unknown) => notify.error(error instanceof Error ? error.message : "No fue posible cargar los campos.")); }, [load]);
-  const save = async () => { if (!snapshot) return; setSaving(true); try { const response = await apiFetch(`/api/inventory/products/${encodeURIComponent(productId)}/custom-fields`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, expectedVersion: snapshot.version, values }) }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar los campos."); setSnapshot(payload.data as Values); setValues(payload.data.values); notify.success("Campos tipados guardados."); } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar los campos."); await load(); } finally { setSaving(false); } };
+  useEffect(() => { void load().catch((error: unknown) => notify.failure(error, "No fue posible cargar los campos.")); }, [load]);
+  const save = async () => { if (!snapshot) return; setSaving(true); try { const response = await apiFetch(`/api/inventory/products/${encodeURIComponent(productId)}/custom-fields`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, expectedVersion: snapshot.version, values }) }); const payload = await response.json(); if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar los campos.", payload); setSnapshot(payload.data as Values); setValues(payload.data.values); notify.success("Campos tipados guardados."); } catch (error) { notify.failure(error, "No fue posible guardar los campos."); await load(); } finally { setSaving(false); } };
   if (!catalog || !snapshot || catalog.definitions.length === 0) return null;
   const hidden = new Set(hiddenFieldIds);
   const visibleDefinitions = catalog.definitions.filter((field) => !hidden.has(`typed-custom-${field.id}`));

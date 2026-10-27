@@ -67,5 +67,5 @@ export function treasuryErrorMessage(cause: unknown, fallback: string): string {
  */
 export function notifyTreasuryFailure(cause: unknown, fallback: string, key: string): void {
   const requestId = cause instanceof KontaveRemoteFailure ? cause.requestId : null;
-  notify.error(treasuryErrorMessage(cause, fallback), { deduplicationKey: key, ...(requestId ? { errorCode: requestId } : {}) });
+  notify.failure(cause, fallback, { deduplicationKey: key, eventName: "web.treasury.operation_failed", ...(requestId ? { attributes: { requestId } } : {}) });
 }

@@ -7,6 +7,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { DeclarationLifecycleActions } from "@/src/modules/iva/frontend/declaration-lifecycle-actions";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface Money { readonly minorAmount: string; readonly currency: { readonly code: string; readonly minorUnit: number } }
 interface Declaration { readonly id: string; readonly period: string; readonly revision: number; readonly status: "draft" | "prepared" | "submitted" | "paid" | "void"; readonly createdAt: string; readonly payments: readonly { readonly reference: string; readonly amount: Money; readonly paidAt: string }[]; readonly summary: { readonly debitTax: Money; readonly deductibleCredit: Money; readonly withheldTax: Money; readonly carryForwardIn: Money; readonly adjustments: Money; readonly payable: Money } }
@@ -27,7 +28,7 @@ export default function VatDeclarationPeriodPage(): React.JSX.Element {
     const query = new URLSearchParams({ companyId, fromPeriod: period, toPeriod: period, limit: "50" });
     void fetch(`/api/fiscal/iva/declarations?${query}`, { cache: "no-store" }).then(async (response) => {
       const body: unknown = await response.json();
-      if (!response.ok) throw new Error(readError(body));
+      if (!response.ok) throw new ApiRequestFailure(response, readError(body), body);
       setItems((body as { data: { items: readonly Declaration[] } }).data.items);
     }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "No fue posible cargar las declaraciones."));
   }, [companyId, period, reloadVersion]);

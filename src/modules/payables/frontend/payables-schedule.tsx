@@ -30,7 +30,7 @@ export function PayablesSchedule(): React.JSX.Element {
   async function run(command: Readonly<Record<string, unknown>> & { readonly kind: string }, message: string): Promise<void> {
     if (!scope) return;
     try { await executePayablesCommand(scope, command); notify.success(message); refresh(); }
-    catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo completar la operación."); }
+    catch (cause: unknown) { notify.failure(cause, "No se pudo completar la operación."); }
   }
   return <main className="mx-auto max-w-7xl space-y-6 p-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div className="space-y-2"><p className="text-sm text-[var(--text-secondary)]">Cuentas por pagar</p><h1 className="text-3xl font-semibold">Programación de pagos</h1><p className="text-[var(--text-secondary)]">Un lote reserva saldos por proveedor y moneda; autorizarlo no mueve dinero.</p></div>
@@ -96,6 +96,6 @@ function Reject({ onClose, onSubmit }: { readonly onClose: () => void; readonly 
 function Panel({ title, onClose, onSubmit, children }: { readonly title: string; readonly onClose: () => void; readonly onSubmit: () => Promise<void>; readonly children: React.ReactNode }): React.JSX.Element {
   const [saving, setSaving] = useState(false);
   return <ResponsiveDrawer isOpen onClose={onClose} title={title} footer={<div className="flex justify-end gap-2 p-4"><button type="button" className="rounded-lg border border-border-light px-3 py-2 text-sm" onClick={onClose}>Cancelar</button><button form="payables-schedule-panel" type="submit" disabled={saving} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? "Guardando…" : "Confirmar"}</button></div>}>
-    <form id="payables-schedule-panel" className="grid gap-4 p-5 text-sm" onSubmit={(event) => { event.preventDefault(); setSaving(true); void onSubmit().catch((cause: unknown) => notify.error(cause instanceof Error ? cause.message : "No se pudo completar.")).finally(() => setSaving(false)); }}>{children}</form>
+    <form id="payables-schedule-panel" className="grid gap-4 p-5 text-sm" onSubmit={(event) => { event.preventDefault(); setSaving(true); void onSubmit().catch((cause: unknown) => notify.failure(cause, "No se pudo completar.")).finally(() => setSaving(false)); }}>{children}</form>
   </ResponsiveDrawer>;
 }

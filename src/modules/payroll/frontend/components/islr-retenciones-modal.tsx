@@ -144,7 +144,7 @@ export function IslrRetencionesModal({
             notify.success(`Reporte generado con ${n} empleado${n !== 1 ? "s" : ""}.`);
             onClose();
         } catch (err) {
-            notify.error(err instanceof Error ? err.message : "Error al generar el PDF.");
+            notify.failure(err, "Error al generar el PDF.");
         } finally {
             setDownloading(false);
         }

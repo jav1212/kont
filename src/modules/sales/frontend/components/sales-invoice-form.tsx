@@ -38,6 +38,7 @@ import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-mana
 import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 import { ServiceTaxClassificationEditor } from "./service-tax-classification-editor";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -564,8 +565,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             ]);
             const candidatePayload = await candidateResponse.json().catch(() => null);
             const seriesPayload = await seriesResponse.json().catch(() => null);
-            if (!candidateResponse.ok) throw new Error(candidatePayload?.error ?? "No fue posible preparar la revisión tributaria.");
-            if (!seriesResponse.ok) throw new Error(seriesPayload?.error ?? "No fue posible consultar las series de facturación.");
+            if (!candidateResponse.ok) throw new ApiRequestFailure(candidateResponse, candidatePayload?.error ?? "No fue posible preparar la revisión tributaria.", candidatePayload);
+            if (!seriesResponse.ok) throw new ApiRequestFailure(seriesResponse, seriesPayload?.error ?? "No fue posible consultar las series de facturación.", seriesPayload);
             const data = candidatePayload?.data;
             if (!data?.document?.id || typeof data.sourceUpdatedAt !== "string") throw new Error("La revisión tributaria no contiene una versión verificable de la factura.");
             const choices = Array.isArray(seriesPayload?.data) ? (seriesPayload.data as FiscalSeriesOption[]).filter((item) => item.active && item.nextNumber <= item.maximumNumber) : [];
@@ -580,7 +581,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             if (!choices.length) setFiscalReviewError("No hay series activas con numeración disponible. Configura una serie en Ajustes → IVA.");
         } catch (cause) {
             const text = cause instanceof Error ? cause.message : "No fue posible preparar la revisión tributaria.";
-            setFiscalReviewError(text); notify.error(text);
+            setFiscalReviewError(text); notify.failure(cause, "No fue posible preparar la revisión tributaria.");
         } finally { setPreparingFiscalDraft(false); }
     }
 
@@ -664,7 +665,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             });
             notify.success(isDeliveryNote ? "Nota de entrega PDF generada." : "Factura PDF generada.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar PDF");
+            notify.failure(e, "Error al generar PDF");
         } finally {
             setGeneratingPdf(false);
         }

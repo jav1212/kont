@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 export interface BcvRate {
     code: string;
@@ -65,9 +66,10 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
                 if (res.status === 404) {
                     notify.warning(`${body.error ?? "Sin tasa BCV para esa fecha"} Puedes ingresarla manualmente.`, { id: ERROR_TOAST_ID });
                 } else {
-                    notify.error(body.error ?? "Error al consultar BCV.", {
-                        id: ERROR_TOAST_ID,
-                        errorMetadata: { endpoint: url, requestedDate: date ?? "today", statusCode: res.status, resolution },
+                    notify.failure(new ApiRequestFailure(res, body.error ?? "Error al consultar BCV.", body), "Error al consultar BCV.", {
+                        deduplicationKey: ERROR_TOAST_ID,
+                        eventName: "web.bcv.rate_failed",
+                        attributes: { endpoint: "/api/bcv/rates", requestedDate: date ?? "today", resolution },
                     });
                 }
                 setLoading(false);
@@ -75,10 +77,11 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
             }
             cache.set(key, { at: Date.now(), payload: body });
             setState(body);
-        } catch {
-            notify.error("No se pudo conectar con el BCV.", {
-                id: ERROR_TOAST_ID,
-                errorMetadata: { endpoint: date ? `/api/bcv/rates?date=${date}` : "/api/bcv/rates", requestedDate: date ?? "today", statusCode: 0, resolution: "network-error" },
+        } catch (error) {
+            notify.failure(error, "No se pudo conectar con el BCV.", {
+                deduplicationKey: ERROR_TOAST_ID,
+                eventName: "web.bcv.rate_failed",
+                attributes: { endpoint: "/api/bcv/rates", requestedDate: date ?? "today" },
             });
         } finally {
             setLoading(false);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import type { FiscalDocumentDto, FiscalDocumentListItem, FiscalEventDto } from "./fiscal-document-types";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 interface Cursor {
   readonly createdAt: string;
@@ -52,7 +53,7 @@ export function useFiscalDocuments(companyId: string | null) {
       }
       const response = await apiFetch("/api/fiscal/documents?" + query, { signal: controller.signal });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error ?? "No se pudo consultar la bandeja fiscal.");
+      if (!response.ok) throw new ApiRequestFailure(response, json.error ?? "No se pudo consultar la bandeja fiscal.", json);
       if (controller.signal.aborted) return;
       setItems((previous) => cursor ? [...previous, ...(json.data ?? [])] : (json.data ?? []));
       setNextCursor(json.nextCursor ?? null);
@@ -116,7 +117,7 @@ export function useFiscalDocument(companyId: string | null, documentId: string) 
       }
       const response = await apiFetch("/api/fiscal/documents/" + encodeURIComponent(documentId) + "/events?" + query, { signal: controller.signal });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error ?? "No se pudo consultar el historial.");
+      if (!response.ok) throw new ApiRequestFailure(response, json.error ?? "No se pudo consultar el historial.", json);
       if (controller.signal.aborted) return;
       setEvents((previous) => cursor ? [...previous, ...(json.data ?? [])] : (json.data ?? []));
       setNextEventCursor(json.nextCursor ?? null);
@@ -149,7 +150,7 @@ export function useFiscalDocument(companyId: string | null, documentId: string) 
       const query = new URLSearchParams({ companyId });
       const response = await apiFetch("/api/fiscal/documents/" + encodeURIComponent(documentId) + "?" + query, { signal: controller.signal });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error ?? "No se pudo consultar el documento.");
+      if (!response.ok) throw new ApiRequestFailure(response, json.error ?? "No se pudo consultar el documento.", json);
       if (controller.signal.aborted) return;
       setDocument(json.data);
       setMetadata(json.metadata);

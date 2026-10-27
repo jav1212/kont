@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
 import { isValidBadgeBarcode } from "@/src/shared/frontend/devices/barcode-access-policy";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
@@ -70,7 +70,7 @@ export function WorkspaceBarcodeSessionSwitcher({
       releaseBlock.current?.();
       releaseBlock.current = null;
       inFlight.current = false;
-      toast.error(error);
+      notify.error(error);
     },
     [controller, signInWithBarcode],
   );

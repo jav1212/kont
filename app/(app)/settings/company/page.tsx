@@ -13,6 +13,7 @@ import { useOrganizationModuleAccess } from "@/src/modules/organizations/fronten
 import { useOrganization } from "@/src/modules/organizations/frontend/context/organization-context";
 import { CompanyBranchSelector } from "@/src/modules/companies/frontend/components/company-branch-selector";
 import { InvoiceSeriesSettings } from "@/src/modules/iva/frontend/invoice-series-settings";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 export default function CompanySettingsPage() {
     const { company, update, reload } = useCompany();
@@ -72,7 +73,7 @@ export default function CompanySettingsPage() {
                 setSecondaryIdentifiers(identifiersPayload.data as readonly SecondaryIdentifier[]);
             }
         };
-        void loadCompanyTaxData().catch((error: unknown) => notify.error(error instanceof Error ? error.message : "No fue posible cargar la identidad fiscal."));
+        void loadCompanyTaxData().catch((error: unknown) => notify.failure(error, "No fue posible cargar la identidad fiscal."));
         return () => { current = false; };
     }, [company?.id]);
 
@@ -82,7 +83,7 @@ export default function CompanySettingsPage() {
         if (!company?.id || !canManageDocumentNumbering) return;
         let current = true;
         void loadDocumentNumbering(company.id, () => current).catch((error: unknown) => {
-            if (current) notify.error(error instanceof Error ? error.message : "No fue posible consultar los correlativos.");
+            if (current) notify.failure(error, "No fue posible consultar los correlativos.");
         });
         return () => { current = false; };
     }, [company?.id, canManageDocumentNumbering]);
@@ -94,13 +95,13 @@ export default function CompanySettingsPage() {
         void apiFetch(`/api/companies/date-format?companyId=${encodeURIComponent(company.id)}`)
             .then(async (response) => {
                 const payload = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(payload?.error ?? "No fue posible consultar el formato de fecha.");
+                if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible consultar el formato de fecha.", payload);
                 if (current && payload.data) {
                     setDateOrder(payload.data.dateOrder as CompanyDateOrder);
                     setDateFormatVersion(payload.data.version as number);
                 }
             })
-            .catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible consultar el formato de fecha."); });
+            .catch((error: unknown) => { if (current) notify.failure(error, "No fue posible consultar el formato de fecha."); });
         return () => { current = false; };
     }, [company?.id]);
 
@@ -111,14 +112,14 @@ export default function CompanySettingsPage() {
         void apiFetch(`/api/companies/monetary-policy?companyId=${encodeURIComponent(company.id)}`)
             .then(async (response) => {
                 const payload = await response.json().catch(() => null);
-                if (!response.ok) throw new Error(payload?.error ?? "No fue posible consultar la política monetaria.");
+                if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible consultar la política monetaria.", payload);
                 if (current) {
                     const policy = payload.data as MonetaryPolicy | null;
                     setMonetaryPolicy(policy);
                     if (policy) setPolicyCurrencies([...policy.referenceCurrencyCodes]);
                 }
             })
-            .catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible consultar la política monetaria."); });
+            .catch((error: unknown) => { if (current) notify.failure(error, "No fue posible consultar la política monetaria."); });
         return () => { current = false; };
     }, [company?.id]);
 
@@ -132,10 +133,10 @@ export default function CompanySettingsPage() {
                     idempotencyKey: crypto.randomUUID(), reason: policyReason.trim(), referenceCurrencyCodes: policyCurrencies }),
             });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar la política monetaria.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar la política monetaria.", payload);
             setMonetaryPolicy(payload.data as MonetaryPolicy); setPolicyReason("");
             notify.success("Política monetaria empresarial actualizada.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar la política monetaria."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar la política monetaria."); }
         finally { setPolicySaving(false); }
     }
 
@@ -149,7 +150,7 @@ export default function CompanySettingsPage() {
     async function loadDocumentNumbering(companyId: string, isCurrent: () => boolean = () => true) {
         const response = await apiFetch(`/api/companies/document-numbering?companyId=${encodeURIComponent(companyId)}`);
         const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(payload?.error ?? "No fue posible consultar los correlativos.");
+        if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible consultar los correlativos.", payload);
         if (!isCurrent()) return;
         const data = payload.data as DocumentNumbering;
         setDocumentNumbering(data);
@@ -187,7 +188,7 @@ export default function CompanySettingsPage() {
             setCompanyVersion(data.companyVersion);
             notify.success("Correlativos actualizados.");
         } catch (error) {
-            notify.error(error instanceof Error ? error.message : "No fue posible actualizar los correlativos.");
+            notify.failure(error, "No fue posible actualizar los correlativos.");
             if (typeof error === "object" && error !== null && "status" in error && error.status === 409) {
                 await loadDocumentNumbering(company.id).catch(() => undefined);
             }
@@ -206,13 +207,13 @@ export default function CompanySettingsPage() {
                 }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar el formato de fecha.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar el formato de fecha.", payload);
             setDateOrder(payload.data.dateOrder as CompanyDateOrder);
             setDateFormatVersion(payload.data.version as number);
             setDateFormatReason("");
             await reloadCompanyDateFormat();
             notify.success("Formato de fecha empresarial actualizado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el formato de fecha."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar el formato de fecha."); }
         finally { setDateFormatSaving(false); }
     }
 
@@ -223,14 +224,14 @@ export default function CompanySettingsPage() {
             const err = await update(company.id, { showLogoInPdf: !showLogoInPdf });
             if (err) notify.error(err);
             else await refreshCompanyVersion(company.id);
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible actualizar la empresa."); }
+        } catch (error) { notify.failure(error, "No fue posible actualizar la empresa."); }
         finally { setSaving(false); }
     }
 
     async function refreshCompanyVersion(companyId: string) {
         const response = await apiFetch(`/api/companies/logo?companyId=${encodeURIComponent(companyId)}`);
         const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(payload?.error ?? "No fue posible actualizar la revisión de la empresa.");
+        if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible actualizar la revisión de la empresa.", payload);
         setCompanyVersion(payload.data.version as number);
         setDocumentNumbering((current) => current ? { ...current, companyVersion: payload.data.version as number } : current);
     }
@@ -245,14 +246,14 @@ export default function CompanySettingsPage() {
             body.set("file", logoFile);
             const response = await apiFetch("/api/companies/logo", { method: "PUT", body });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar el logotipo.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar el logotipo.", payload);
             setCompanyVersion(payload.data.version as number);
             setDocumentNumbering((current) => current ? { ...current, companyVersion: payload.data.version as number } : current);
             setLogoFile(null);
             if (logoInput.current) logoInput.current.value = "";
             await reload();
             notify.success("Logotipo de empresa actualizado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el logotipo."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar el logotipo."); }
         finally { setSaving(false); }
     }
 
@@ -265,12 +266,12 @@ export default function CompanySettingsPage() {
                 body: JSON.stringify({ companyId: company.id, expectedVersion: companyVersion }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible retirar el logotipo.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible retirar el logotipo.", payload);
             setCompanyVersion(payload.data.version as number);
             setDocumentNumbering((current) => current ? { ...current, companyVersion: payload.data.version as number } : current);
             await reload();
             notify.success("Logotipo de empresa retirado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible retirar el logotipo."); }
+        } catch (error) { notify.failure(error, "No fue posible retirar el logotipo."); }
         finally { setSaving(false); }
     }
 
@@ -281,7 +282,7 @@ export default function CompanySettingsPage() {
             const err = await update(company.id, { operatingProfile: value });
             if (err) notify.error(err);
             else await refreshCompanyVersion(company.id);
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible actualizar la empresa."); }
+        } catch (error) { notify.failure(error, "No fue posible actualizar la empresa."); }
         finally { setSaving(false); }
     }
 
@@ -294,11 +295,11 @@ export default function CompanySettingsPage() {
                 body: JSON.stringify({ companyId: company.id, personNature: value }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar la clasificación.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar la clasificación.", payload);
             setPersonNature(payload.data.personNature); setCompanyVersion(payload.data.version);
             setDocumentNumbering((current) => current ? { ...current, companyVersion: payload.data.version as number } : current);
             notify.success("Naturaleza jurídica actualizada.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar la clasificación."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar la clasificación."); }
         finally { setSaving(false); }
     }
 
@@ -311,11 +312,11 @@ export default function CompanySettingsPage() {
                 body: JSON.stringify({ companyId: company.id, jurisdiction, scheme, value: identifierValue, expectedVersion: identifierSlot === `${jurisdiction}:${scheme}` ? identifierVersion : 0 }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar el identificador.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible guardar el identificador.", payload);
             setSecondaryIdentifiers((current) => [...current.filter((item) => item.id !== payload.data.id && `${item.jurisdiction}:${item.scheme}` !== `${payload.data.jurisdiction}:${payload.data.scheme}`), payload.data]);
             setIdentifierVersion(0); setIdentifierSlot(null); setScheme(""); setIdentifierValue("");
             notify.success("Identificador secundario guardado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el identificador."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar el identificador."); }
         finally { setSaving(false); }
     }
 
@@ -328,11 +329,11 @@ export default function CompanySettingsPage() {
                 body: JSON.stringify({ companyId: company.id, jurisdiction: item.jurisdiction, scheme: item.scheme, expectedVersion: item.version }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error ?? "No fue posible retirar el identificador.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload.error ?? "No fue posible retirar el identificador.", payload);
             setSecondaryIdentifiers((current) => current.filter((row) => row.id !== item.id));
             if (scheme === item.scheme && jurisdiction === item.jurisdiction) { setScheme(""); setIdentifierValue(""); setIdentifierVersion(0); setIdentifierSlot(null); }
             notify.success("Identificador retirado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible retirar el identificador."); }
+        } catch (error) { notify.failure(error, "No fue posible retirar el identificador."); }
         finally { setSaving(false); }
     }
 

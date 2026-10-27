@@ -37,6 +37,7 @@ import {
     accordionItemProps,
 } from "@/src/shared/frontend/components/base-accordion";
 import { WEB_HELP_TOPIC_CATALOG } from "@/src/modules/help/application/help-topic-catalog";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 // ── Datos estáticos ──────────────────────────────────────────────────────────
 //
@@ -285,7 +286,7 @@ export default function HelpPage() {
         let active = true;
         void fetch("/api/preferences/help-texts", { cache: "no-store" }).then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar la ayuda personalizada.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar la ayuda personalizada.", payload);
             if (active) { setHelpTextVersion(payload.data.version); setHelpTexts(payload.data.texts); setHelpTextDraft(payload.data.texts); }
         }).catch((error: unknown) => { if (active) setHelpTextStatus(error instanceof Error ? error.message : "No fue posible cargar la ayuda."); });
         return () => { active = false; };
@@ -298,7 +299,7 @@ export default function HelpPage() {
         try {
             const response = await fetch("/api/preferences/help-texts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: helpTextVersion, texts }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(response.status === 409 ? "La ayuda cambió en otra sesión. Recarga para continuar." : payload?.error ?? "No fue posible guardar los textos.");
+            if (!response.ok) throw new ApiRequestFailure(response, response.status === 409 ? "La ayuda cambió en otra sesión. Recarga para continuar." : payload?.error ?? "No fue posible guardar los textos.", payload);
             setHelpTextVersion(payload.data.version); setHelpTexts(payload.data.texts); setHelpTextDraft(payload.data.texts); setHelpTextStatus("Descripciones guardadas para tu cuenta.");
         } catch (error) { setHelpTextStatus(error instanceof Error ? error.message : "No fue posible guardar los textos."); }
         finally { setSavingHelpTexts(false); }

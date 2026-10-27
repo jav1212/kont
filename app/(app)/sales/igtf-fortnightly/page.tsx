@@ -66,7 +66,7 @@ export default function IgtfFortnightlyPage() {
             });
             notify.success("PDF de IGTF quincenal generado.");
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar PDF");
+            notify.failure(e, "Error al generar PDF");
         } finally {
             setGenerating(false);
         }

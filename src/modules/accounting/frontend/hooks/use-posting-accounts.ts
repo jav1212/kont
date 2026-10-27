@@ -32,9 +32,9 @@ export function usePostingAccounts(
       if (!activeChart || typeof activeChart.id !== "string") { setData([]); return; }
       const accounts = await client.query(organizationId, companyId, { kind: "find_accounts", chartId: activeChart.id });
       setData(records(accounts).filter((account) => account.kind === "detail" && account.isActive === true) as unknown as LedgerAccountReadModel[]);
-    } catch {
+    } catch (caught) {
       setData([]);
-      notify.error("No se pudieron cargar las cuentas activas del plan de cuentas.");
+      notify.failure(caught, "No se pudieron cargar las cuentas activas del plan de cuentas.", { useFallbackMessage: true });
     } finally {
       setLoading(false);
     }

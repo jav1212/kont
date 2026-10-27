@@ -307,7 +307,7 @@ export default function ContractsPage() {
             notify.success("PDF generado correctamente");
         } catch (err) {
             console.error(err);
-            notify.error("Error al generar el PDF");
+            notify.failure(err, "Error al generar el PDF", { useFallbackMessage: true });
         } finally {
             setGenerating(false);
         }

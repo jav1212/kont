@@ -120,8 +120,8 @@ export default function NewJournalEntryPage() {
             }
 
             router.push('/accounting/journal');
-        } catch {
-            notify.error('No se pudo guardar el asiento. Inténtalo de nuevo.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo guardar el asiento. Inténtalo de nuevo.', { useFallbackMessage: true });
         } finally {
             setSaving(false);
         }

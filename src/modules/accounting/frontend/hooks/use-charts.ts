@@ -18,8 +18,8 @@ export function useCharts(companyId: string | null) {
             const json = await res.json() as { data?: AccountChart[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar planes de cuentas'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar planes de cuentas');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar planes de cuentas', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

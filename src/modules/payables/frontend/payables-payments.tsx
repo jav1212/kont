@@ -54,7 +54,7 @@ export function PayablesPayments(): React.JSX.Element {
   async function account(payment: Payment, kind: "post_payment_accounting" | "reverse_payment_accounting"): Promise<void> {
     if (!scope) return;
     try { await executePayablesCommand(scope, { kind, paymentId: payment.id }); notify.success(kind === "post_payment_accounting" ? "Pago contabilizado." : "Asiento compensatorio registrado."); setRevision((value) => value + 1); }
-    catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo contabilizar."); }
+    catch (cause: unknown) { notify.failure(cause, "No se pudo contabilizar."); }
   }
   return <main className="mx-auto max-w-7xl space-y-6 p-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div className="space-y-2"><p className="text-sm text-[var(--text-secondary)]">Cuentas por pagar</p><h1 className="text-3xl font-semibold">Pagos a proveedores</h1><p className="text-[var(--text-secondary)]">Cada pago debita Tesorería en la misma operación y aplica sus retenciones.</p></div>
@@ -107,7 +107,7 @@ function ClosePayment({ payment, mode, onClose, onSubmit }: { readonly payment: 
   const [date, setDate] = useState(payablesToday());
   const [saving, setSaving] = useState(false);
   return <ResponsiveDrawer isOpen onClose={onClose} title={mode === "void" ? "Anular pago" : "Reversar pago"} footer={<div className="flex justify-end gap-2 p-4"><button type="button" className="rounded-lg border border-border-light px-3 py-2 text-sm" onClick={onClose}>Cancelar</button><button form="payables-close" type="submit" disabled={saving} className="rounded-lg bg-danger px-3 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? "Procesando…" : "Confirmar"}</button></div>}>
-    <form id="payables-close" className="grid gap-4 p-5 text-sm" onSubmit={(event) => { event.preventDefault(); setSaving(true); void onSubmit(reason.trim(), date).catch((cause: unknown) => notify.error(cause instanceof Error ? cause.message : "No se pudo completar.")).finally(() => setSaving(false)); }}>
+    <form id="payables-close" className="grid gap-4 p-5 text-sm" onSubmit={(event) => { event.preventDefault(); setSaving(true); void onSubmit(reason.trim(), date).catch((cause: unknown) => notify.failure(cause, "No se pudo completar.")).finally(() => setSaving(false)); }}>
       <p className="text-[var(--text-secondary)]">{mode === "void" ? `Deja sin efecto el pago del ${payment.occurredAt} con su misma fecha. Solo en período abierto, sin conciliar y con retenciones sin declarar. Libera los saldos y Tesorería repone el desembolso.` : "Registra un hecho compensatorio con fecha propia (por ejemplo, un cheque devuelto). Reabre los saldos y Tesorería registra el crédito; el número de cheque no se reutiliza."}</p>
       {mode === "reverse" && <label className="grid gap-1">Fecha del reverso<input required type="date" min={payment.occurredAt} value={date} onChange={(event) => setDate(event.target.value)} className={CONTROL} /></label>}
       <label className="grid gap-1">Motivo<textarea required value={reason} onChange={(event) => setReason(event.target.value)} className={CONTROL} /></label>

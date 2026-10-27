@@ -256,7 +256,7 @@ export function IslrXmlModal({
             notify.success(`XML generado con ${n} empleado${n !== 1 ? "s" : ""}.`);
             onClose();
         } catch (err) {
-            notify.error(err instanceof Error ? err.message : "Error al generar el XML.");
+            notify.failure(err, "Error al generar el XML.");
         }
     }, [previewState, companyRif, periodMeta, invalidRows, companyName, onClose]);
 

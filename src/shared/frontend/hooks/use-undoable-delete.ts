@@ -40,7 +40,7 @@ interface UseUndoableDeleteOptions<T extends string | number> {
 interface PendingBatch<T> {
     ids:     T[];
     timer:   ReturnType<typeof setTimeout>;
-    toastId: string | number;
+    toastId: string;
     /** Set when `commit` runs to short-circuit duplicate commits. */
     committed: boolean;
 }

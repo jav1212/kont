@@ -9,6 +9,7 @@ import { useTreasuryCatalogs } from "../hooks/use-treasury-catalogs";
 import { useTreasuryCommand } from "../hooks/use-treasury-command";
 import { TreasuryInput, TreasurySelect, notifyTreasuryFailure, treasuryAccountLabel, treasuryToday } from "./treasury-form-controls";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 type PaymentOrder = { readonly id: string; readonly beneficiary: string; readonly concept: string; readonly amount: string; readonly currency: string; readonly dueDate: string | null; readonly status: "draft" | "cancelled"; readonly version: number };
 type PaymentMethod = "cash" | "bank_debit" | "check";
@@ -48,7 +49,7 @@ export function PaymentOrderExecution({ from, to, canPay }: { readonly from: str
     setLoading(true);
     try {
       const response = await fetch(`/api/security/payment-orders?companyId=${encodeURIComponent(companyId)}&offset=0&limit=${ORDER_LIMIT}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("No se pudieron consultar las órdenes de pago.");
+      if (!response.ok) throw new ApiRequestFailure(response, "No se pudieron consultar las órdenes de pago.");
       const payload = await response.json() as { data?: { entries?: readonly PaymentOrder[] } };
       const drafts = (payload.data?.entries ?? []).filter((order) => order.status === "draft");
       const settled = await Promise.all(drafts.map(async (order) => {

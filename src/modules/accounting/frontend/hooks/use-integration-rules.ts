@@ -18,8 +18,8 @@ export function useIntegrationRules(companyId: string | null) {
             const json = await res.json() as { data?: IntegrationRule[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar reglas de integración'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar reglas de integración');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar reglas de integración', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

@@ -31,7 +31,8 @@
     "test:company:monetary-policy:sql": "node scripts/test-company-monetary-policy-sql.mjs",
     "test:company:monetary-policy:web": "node --experimental-test-module-mocks --import tsx --test test/company-monetary-policy-route.test.ts",
     "test:fiscal:persistence:sql": "node scripts/test-fiscal-persistence-sql.mjs",
-    "test:barcode:web": "node scripts/test-barcode-web.mjs"
+    "test:barcode:web": "node scripts/test-barcode-web.mjs",
+    "test:feedback:web": "node --import tsx --test test/web-feedback.test.ts"
   },
   "dependencies": {
     "@heroui/accordion": "^2.2.29",
@@ -48,6 +49,7 @@
     "@kontave/billing": "workspace:*",
     "@kontave/client-connectivity": "workspace:*",
     "@kontave/client-contracts": "workspace:*",
+    "@kontave/client-feedback": "workspace:*",
     "@kontave/client-interaction": "workspace:*",
     "@kontave/client-remote": "workspace:*",
     "@kontave/client-runtime": "workspace:*",
@@ -60,6 +62,7 @@
     "@kontave/modules": "workspace:*",
     "@kontave/payables": "workspace:*",
     "@kontave/monetary": "workspace:*",
+    "@kontave/observability": "workspace:*",
     "@kontave/operation-context": "workspace:*",
     "@kontave/organizations": "workspace:*",
     "@kontave/payment-orders": "workspace:*",

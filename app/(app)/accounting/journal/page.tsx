@@ -90,8 +90,8 @@ export default function JournalPage() {
             }
             setPostTarget(null);
             await reload();
-        } catch {
-            notify.error('No se pudo publicar el asiento.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo publicar el asiento.', { useFallbackMessage: true });
         } finally {
             setPosting(false);
         }

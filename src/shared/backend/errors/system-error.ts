@@ -23,14 +23,32 @@ export interface ClientErrorPayload extends SystemErrorContext {
     stack?: string;
 }
 
-const SECRET_KEY = /(authorization|cookie|password|token|secret|api[_-]?key|service[_-]?role)/i;
+const SECRET_KEY = /(authorization|cookie|password|token|secret|api[_-]?key|service[_-]?role|cedula|national[_-]?id|email|phone)/i;
 const MAX_TEXT = 8_000;
+
+// Personal data can arrive inside free text (server messages, client error
+// messages, metadata values), not only under sensitive keys. Company RIFs
+// (J/G) are kept because they identify the tenant being debugged.
+const PERSONAL_DATA: ReadonlyArray<readonly [RegExp, string]> = [
+    [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]"],
+    [/\b[VE]-?\d{6,9}(?:-?\d)?\b/gi, "[cedula]"],
+    [/(?:\+?58[\s-]?)?\b0?4(?:12|14|16|24|26)[\s-]?\d{3}[\s-]?\d{4}\b/g, "[telefono]"],
+];
+
+/**
+ * Replaces personal identifiers (emails, cédulas, Venezuelan mobile numbers) in free text before it is persisted.
+ * @param value - Text that may contain user-supplied data.
+ * @returns The text with each identifier replaced by a neutral placeholder.
+ */
+export function redactPersonalData(value: string): string {
+    return PERSONAL_DATA.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
+}
 
 function safeMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
     if (!metadata) return {};
     return Object.fromEntries(Object.entries(metadata)
         .filter(([key]) => !SECRET_KEY.test(key))
-        .map(([key, value]) => [key, typeof value === "string" ? value.slice(0, 1_000) : value])
+        .map(([key, value]) => [key, typeof value === "string" ? redactPersonalData(value.slice(0, 1_000)) : value])
         .slice(0, 40));
 }
 
@@ -62,8 +80,8 @@ export async function logSystemError(
 
     const { error: insertError } = await client.from("system_error_logs").insert({
         error_code: code,
-        message: normalized.message || "Ocurrió un error inesperado.",
-        technical_message: (normalized.message || "").slice(0, MAX_TEXT) || null,
+        message: redactPersonalData(normalized.message || "Ocurrió un error inesperado."),
+        technical_message: redactPersonalData((normalized.message || "").slice(0, MAX_TEXT)) || null,
         stack_trace: normalized.stack?.slice(0, MAX_TEXT) ?? null,
         source: context.source ?? "unknown",
         route: context.route ?? null,

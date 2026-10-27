@@ -38,6 +38,7 @@ import {
     Folders,
     Columns3,
 } from "lucide-react";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -217,12 +218,12 @@ export default function DepartamentosPage() {
         let current = true;
         void fetch("/api/preferences/view-visibility?viewId=inventory.departments", { cache: "no-store" }).then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las preferencias de columnas.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar las preferencias de columnas.", payload);
             if (current) {
                 setHiddenColumnIds(payload.data.hiddenColumnIds ?? []);
                 setViewPreferencesVersion(payload.data.version);
             }
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de columnas."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar las preferencias de columnas."); });
         return () => { current = false; };
     }, []);
 
@@ -233,10 +234,10 @@ export default function DepartamentosPage() {
         try {
             const response = await fetch("/api/preferences/view-visibility", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewId: "inventory.departments", expectedVersion: viewPreferencesVersion, hiddenColumnIds: next }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las columnas visibles.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar las columnas visibles.", payload);
             setHiddenColumnIds(payload.data.hiddenColumnIds ?? []);
             setViewPreferencesVersion(payload.data.version);
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las columnas visibles."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar las columnas visibles."); }
         finally { setSavingVisibility(false); }
     }
 

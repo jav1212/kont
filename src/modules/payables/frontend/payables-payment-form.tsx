@@ -79,7 +79,7 @@ export function PayablesPaymentForm({ scope, supplierId: initialSupplier, batch,
       if (warnings.some((warning) => warning.code === "LATE_WITHHOLDING")) notify.error("Retención extemporánea: el documento ya estaba registrado sin retención. Quedó auditada.");
       onDone();
     } catch (cause: unknown) {
-      notify.error(cause instanceof Error ? cause.message : "No se pudo registrar el pago.");
+      notify.failure(cause, "No se pudo registrar el pago.");
     } finally { setSaving(false); }
   }
 

@@ -209,7 +209,7 @@ export default function AriPage() {
             });
         } catch (err) {
             console.error(err);
-            notify.error("Error al generar el PDF: " + (err instanceof Error ? err.message : String(err)));
+            notify.failure(err, "Error al generar el PDF.", { useFallbackMessage: true });
         } finally {
             setExporting(false);
         }

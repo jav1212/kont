@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import type { Company, TaxpayerType } from "@/src/modules/companies/backend/domain/company";
 import { validateRif } from "../utils/rif";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 export interface CompanyLite {
     id: string;
@@ -35,7 +36,7 @@ async function fetchCompanies(userId: string): Promise<Company[]> {
         credentials: "include",
     })
         .then((res) => {
-            if (!res.ok) throw new Error("Failed to fetch companies");
+            if (!res.ok) throw new ApiRequestFailure(res, "Failed to fetch companies");
             return res.json();
         })
         .then((json) => {

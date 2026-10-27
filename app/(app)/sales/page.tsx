@@ -20,6 +20,7 @@ import type { SalesInvoiceStatus } from "@/src/modules/sales/backend/domain/sale
 import type { SalesPerformanceReportDto, SalesPerformanceDimensionDto } from "@kontave/client-contracts";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { generateSalesPerformanceReportPdf } from "@/src/modules/sales/frontend/utils/sales-performance-report-pdf";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -131,7 +132,7 @@ export default function SalesDashboardPage() {
         })()
             .then(async (response) => {
                 const payload = await response.json() as { data?: SalesPerformanceReportDto; error?: { message?: string } };
-                if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo cargar el reporte.");
+                if (!response.ok) throw new ApiRequestFailure(response, payload.error?.message ?? "No se pudo cargar el reporte.", payload);
                 if (!cancelled) setPerformanceReportState({ key: requestKey, report: payload.data ?? null });
             })
             .catch((error: unknown) => {

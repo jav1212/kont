@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 import { APP_MODULES, MODULE_SUBNAV, WEB_SETTINGS_MODULE, navigationDestinationFor } from "@/src/shared/frontend/navigation";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 const MODULES = [
     ["payroll", "Nómina"], ["purchases", "Compras"], ["sales", "Ventas"],
@@ -38,7 +39,7 @@ export function NavigationLabelSettings() {
     useEffect(() => {
         let current = true;
         void fetch("/api/preferences/navigation-labels", { cache: "no-store" }).then(async (response) => {
-            if (!response.ok) throw new Error("No se pudieron cargar las etiquetas del menú.");
+            if (!response.ok) throw new ApiRequestFailure(response, "No se pudieron cargar las etiquetas del menú.");
             return response.json();
         }).then((payload) => {
             if (!current) return;
@@ -57,7 +58,7 @@ export function NavigationLabelSettings() {
                 body: JSON.stringify({ expectedVersion: version, labels: Object.fromEntries(Object.entries(labels).filter(([, value]) => value.trim())) }),
             });
             const payload = await response.json();
-            if (!response.ok) throw new Error(response.status === 409 ? "El menú cambió en otra sesión. Recarga para continuar." : payload.error);
+            if (!response.ok) throw new ApiRequestFailure(response, response.status === 409 ? "El menú cambió en otra sesión. Recarga para continuar." : payload.error, payload);
             setVersion(payload.data.version); setLabels(payload.data.labels); setStatus("Cambios guardados.");
             window.dispatchEvent(new Event("kontave:navigation-labels-updated"));
         } catch (error) { setStatus(error instanceof Error ? error.message : "No se pudieron guardar los cambios."); }
@@ -104,7 +105,7 @@ export function NavigationIconSettings() {
     useEffect(() => {
         let current = true;
         void fetch("/api/preferences/navigation-icons", { cache: "no-store" }).then(async (response) => {
-            if (!response.ok) throw new Error("No se pudieron cargar los iconos.");
+            if (!response.ok) throw new ApiRequestFailure(response, "No se pudieron cargar los iconos.");
             return response.json();
         }).then((payload) => { if (current) { setVersion(payload.data.version); setIcons(payload.data.icons); setStatus(""); } })
             .catch(() => { if (current) setStatus("No se pudieron cargar las preferencias de iconos."); });
@@ -115,7 +116,7 @@ export function NavigationIconSettings() {
         try {
             const response = await fetch("/api/preferences/navigation-icons", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: version, icons }) });
             const payload = await response.json();
-            if (!response.ok) throw new Error(response.status === 409 ? "Los iconos cambiaron en otra sesión. Recarga para continuar." : payload.error);
+            if (!response.ok) throw new ApiRequestFailure(response, response.status === 409 ? "Los iconos cambiaron en otra sesión. Recarga para continuar." : payload.error, payload);
             setVersion(payload.data.version); setIcons(payload.data.icons); setStatus("Iconos guardados.");
             window.dispatchEvent(new Event("kontave:navigation-icons-updated"));
         } catch (error) { setStatus(error instanceof Error ? error.message : "No se pudieron guardar los iconos."); }

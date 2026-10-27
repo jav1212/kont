@@ -10,6 +10,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useSales, type Customer } from "@/src/modules/sales/frontend/hooks/use-sales";
 import { notify } from "@/src/shared/frontend/notify";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 function emptyCustomer(companyId: string): Customer {
     return {
@@ -41,9 +42,9 @@ export default function CustomersPage() {
         let current = true;
         void fetch("/api/preferences/view-visibility?viewId=sales.customers", { cache: "no-store" }).then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar las preferencias de columnas.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar las preferencias de columnas.", payload);
             if (current) setViewPreferences({ hiddenColumnIds: payload.data.hiddenColumnIds ?? [], version: payload.data.version });
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de columnas."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar las preferencias de columnas."); });
         return () => { current = false; };
     }, []);
 
@@ -56,9 +57,9 @@ export default function CustomersPage() {
         try {
             const response = await fetch("/api/preferences/view-visibility", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewId: "sales.customers", expectedVersion: viewPreferences.version, hiddenColumnIds }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar las columnas visibles.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar las columnas visibles.", payload);
             setViewPreferences({ hiddenColumnIds: payload.data.hiddenColumnIds ?? [], version: payload.data.version });
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar las columnas visibles."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar las columnas visibles."); }
         finally { setSavingVisibility(false); }
     }
 

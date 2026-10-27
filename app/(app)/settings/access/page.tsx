@@ -75,7 +75,7 @@ export default function AccessSettingsPage() {
             const listed = membersResponse.ok ? (memberBody.data ?? []).filter((item) => !item.pending) : [];
             if (activeTenantRole === "owner" && userId && !listed.some((item) => (item.memberId ?? item.id) === userId)) listed.unshift({ id: userId, memberId: userId, email: userEmail ?? userId, pending: false });
             setMembers(listed);
-        } catch { if (isCurrent()) notify.error("No se pudo conectar con el servidor."); }
+        } catch (caught) { if (isCurrent()) notify.failure(caught, "No se pudo conectar con el servidor.", { useFallbackMessage: true }); }
         finally { if (isCurrent()) setLoading(false); }
     }, [activeTenantId, activeTenantRole, permitted, scope, userEmail, userId]);
 
@@ -96,7 +96,7 @@ export default function AccessSettingsPage() {
             const body = await response.json() as { data?: IssuedBadge; error?: string };
             if (!response.ok || !body.data) { notify.error(body.error ?? "No se pudo emitir el carnet."); return; }
             setIssued(body.data); await reload();
-        } catch { notify.error("No se pudo conectar con el servidor. El carnet anterior podría haber sido invalidado; verifica el listado antes de intentar nuevamente."); }
+        } catch (caught) { notify.failure(caught, "No se pudo conectar con el servidor. El carnet anterior podría haber sido invalidado; verifica el listado antes de intentar nuevamente.", { useFallbackMessage: true }); }
         finally { mutationInFlight.current = false; setWorking(null); }
     }
 
@@ -119,7 +119,7 @@ export default function AccessSettingsPage() {
             if (completed) notify.success(`${completed} carnet${completed === 1 ? "" : "s"} emitido${completed === 1 ? "" : "s"}.`);
             if (failures) notify.error(`No se emitieron ${failures} carnets; revisa que los miembros sigan siendo elegibles.`);
             await reload();
-        } catch { notify.error("No se pudo conectar con el servidor."); }
+        } catch (caught) { notify.failure(caught, "No se pudo conectar con el servidor.", { useFallbackMessage: true }); }
         finally { mutationInFlight.current = false; setWorking(null); }
     }
 
@@ -131,7 +131,7 @@ export default function AccessSettingsPage() {
             const body = await response.json() as { data?: IssuedBadge; error?: string };
             if (!response.ok || !body.data) { notify.error(body.error ?? "No se pudo reimprimir el carnet."); return; }
             setIssued(body.data);
-        } catch { notify.error("No se pudo conectar con el servidor."); }
+        } catch (caught) { notify.failure(caught, "No se pudo conectar con el servidor.", { useFallbackMessage: true }); }
         finally { mutationInFlight.current = false; setWorking(null); }
     }
 
@@ -146,7 +146,7 @@ export default function AccessSettingsPage() {
             const { createAccessBadgesPdf } = await import("@/src/modules/auth/frontend/access-badge-pdf");
             createAccessBadgesPdf(printable.map(({ badge, barcode }) => ({ email: badge.email, barcode }))).save("carnets-acceso.pdf");
             notify.success("Carnets exportados a PDF.");
-        } catch { notify.error("No se pudo generar el PDF de los carnets."); }
+        } catch (caught) { notify.failure(caught, "No se pudo generar el PDF de los carnets.", { useFallbackMessage: true }); }
         finally { mutationInFlight.current = false; setWorking(null); }
     }
 

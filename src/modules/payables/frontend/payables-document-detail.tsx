@@ -71,8 +71,8 @@ export function PayablesDocumentDetail({ documentId }: { readonly documentId: st
     </section>
     <p className="text-sm text-[var(--text-secondary)]">Emitido el {document.issuedAt}. Tasa {document.rate} VES ({document.rateSource}).{compareDecimal(exactDecimal(detail.reserved), exactDecimal("0")) > 0 && ` Reservado en lotes de pago: ${formatPayablesAmount(detail.reserved)}.`}{document.reason && ` Motivo: ${document.reason}.`}{document.evidence && ` Evidencia: ${document.evidence}.`}{document.parentDocumentId && <> Origen: <Link className="text-primary underline" href={`/payables/documents/${encodeURIComponent(document.parentDocumentId)}`}>ver documento</Link>.</>}</p>
     {document.approvalStatus === "pending" && <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-warning bg-warning/10 p-4 text-sm"><span>Este ajuste supera el umbral de la empresa y necesita la aprobación de otro usuario.</span>
-      {can("payables.authorize") && <><button type="button" className="rounded-lg bg-primary px-3 py-1.5 text-white" onClick={() => void executePayablesCommand(scope, { kind: "decide_adjustment", documentId: document.id, decision: "approved" }).then(() => done("Ajuste aprobado.")).catch((cause: unknown) => notify.error(cause instanceof Error ? cause.message : "No se pudo aprobar."))}>Aprobar</button>
-        <button type="button" className="rounded-lg border border-danger px-3 py-1.5 text-danger" onClick={() => void executePayablesCommand(scope, { kind: "decide_adjustment", documentId: document.id, decision: "rejected" }).then(() => done("Ajuste rechazado y anulado.")).catch((cause: unknown) => notify.error(cause instanceof Error ? cause.message : "No se pudo rechazar."))}>Rechazar</button></>}</div>}
+      {can("payables.authorize") && <><button type="button" className="rounded-lg bg-primary px-3 py-1.5 text-white" onClick={() => void executePayablesCommand(scope, { kind: "decide_adjustment", documentId: document.id, decision: "approved" }).then(() => done("Ajuste aprobado.")).catch((cause: unknown) => notify.failure(cause, "No se pudo aprobar."))}>Aprobar</button>
+        <button type="button" className="rounded-lg border border-danger px-3 py-1.5 text-danger" onClick={() => void executePayablesCommand(scope, { kind: "decide_adjustment", documentId: document.id, decision: "rejected" }).then(() => done("Ajuste rechazado y anulado.")).catch((cause: unknown) => notify.failure(cause, "No se pudo rechazar."))}>Rechazar</button></>}</div>}
     {open && document.side === "debit" && can("payables.post") && <Link href={`/payables/payments?supplierId=${encodeURIComponent(document.supplierId)}`} className="inline-block rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white">Pagar</Link>}
     {adjust && open && <nav aria-label="Operaciones" className="flex flex-wrap gap-2">
       {document.side === "debit" && <Action onClick={() => setPanel({ kind: "due" })}>Cambiar vencimiento</Action>}
@@ -186,7 +186,7 @@ function FormPanel({ title, onClose, onSubmit, disabled, children }: { readonly 
     event.preventDefault();
     setSaving(true);
     try { await onSubmit(); }
-    catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo registrar la operación."); }
+    catch (cause: unknown) { notify.failure(cause, "No se pudo registrar la operación."); }
     finally { setSaving(false); }
   }
   return <ResponsiveDrawer isOpen onClose={onClose} title={title} footer={<div className="flex justify-end gap-2 p-4"><button type="button" className="rounded-lg border border-border-light px-3 py-2 text-sm" onClick={onClose}>Cancelar</button><button form="payables-panel" type="submit" disabled={saving || disabled} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? "Guardando…" : "Confirmar"}</button></div>}>

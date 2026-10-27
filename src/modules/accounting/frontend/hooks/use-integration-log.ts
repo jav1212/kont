@@ -18,8 +18,8 @@ export function useIntegrationLog(companyId: string | null, limit = 50) {
             const json = await res.json() as { data?: IntegrationLogEntry[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar registro de integraciones'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar registro de integraciones');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar registro de integraciones', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

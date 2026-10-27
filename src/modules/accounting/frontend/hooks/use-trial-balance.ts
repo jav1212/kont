@@ -20,8 +20,8 @@ export function useTrialBalance(companyId: string | null, periodId: string | nul
             const json = await res.json() as { data?: TrialBalanceLine[]; error?: string };
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar balance'); return; }
             setData(json.data ?? []);
-        } catch {
-            notify.error('Error al cargar balance');
+        } catch (caught) {
+            notify.failure(caught, 'Error al cargar balance', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

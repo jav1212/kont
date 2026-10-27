@@ -62,7 +62,7 @@ export function SalesReceivablesScreen() {
             notify.success("Abono registrado");
             setReceivedAmount(""); setReference("");
             await refresh();
-        } catch (error) { notify.error(error instanceof Error ? error.message : "Error de red al registrar el abono"); }
+        } catch (error) { notify.failure(error, "Error de red al registrar el abono"); }
         finally { setLoading(false); }
     }
 

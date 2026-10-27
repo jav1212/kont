@@ -426,8 +426,8 @@ function CreateMemberModal({
             setPassword("");
             notify.success("Miembro creado. Ya puede iniciar sesión.");
             onSuccess();
-        } catch {
-            notify.error("No pudimos conectar con el servidor. Intenta nuevamente.");
+        } catch (caught) {
+            notify.failure(caught, "No pudimos conectar con el servidor. Intenta nuevamente.", { useFallbackMessage: true });
         } finally {
             submitPendingRef.current = false;
             setLoading(false);

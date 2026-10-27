@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Image as ImageIcon } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/src/shared/frontend/notify";
 import type { CalendarEntry } from "../data/types";
 import { ObligationCard } from "./obligation-card";
 import { MONTHS_ES_FULL } from "../utils/date-helpers";
@@ -56,9 +56,9 @@ function MonthCard({ month, monthEntries, nextDueDate, year }: MonthCardProps) {
                 `calendario-seniat-${year}-${monthSlug}`,
                 { pixelRatio: 2, backgroundColor: "#FFFFFF" }
             );
-            toast.success(`Imagen de ${MONTHS_ES_FULL[month - 1]} descargada`);
-        } catch {
-            toast.error("Error al generar la imagen");
+            notify.success(`Imagen de ${MONTHS_ES_FULL[month - 1]} descargada`);
+        } catch (caught) {
+            notify.failure(caught, "Error al generar la imagen", { useFallbackMessage: true });
         } finally {
             setExportingPng(false);
         }

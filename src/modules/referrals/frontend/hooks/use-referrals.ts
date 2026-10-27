@@ -43,9 +43,9 @@ export function useReferrals() {
                         setState({ data: json.data as ReferralInfo, loading: false });
                     }
                 })
-                .catch(() => {
+                .catch((caught: unknown) => {
                     if (cancelled) return;
-                    notify.error("Error de red al cargar referidos");
+                    notify.failure(caught, "Error de red al cargar referidos", { useFallbackMessage: true });
                     setState({ data: null, loading: false });
                 });
         };

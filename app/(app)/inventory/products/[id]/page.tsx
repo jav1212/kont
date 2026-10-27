@@ -16,6 +16,7 @@ import { ProductHistoryChart } from "@/src/modules/inventory/frontend/components
 import { ProductCompositionEditor } from "@/src/modules/inventory/frontend/components/product-composition-editor";
 import { TypedProductCustomFieldValues } from "@/src/modules/inventory/frontend/components/typed-product-custom-fields";
 import type { ProductCustomFieldDefinition } from "@kontave/products/domain";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 const fieldCls = "h-10 w-full rounded-lg border border-border-default bg-surface-1 px-3 font-mono text-[14px] text-foreground outline-none transition-colors hover:border-border-medium focus:border-primary-500";
 const labelCls = "mb-1.5 block font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]";
@@ -71,9 +72,9 @@ export default function ProductDetailPage() {
         let current = true;
         void fetch("/api/preferences/inventory-product-field-labels", { cache: "no-store" }).then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar los nombres de campos.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar los nombres de campos.", payload);
             if (current) setFieldLabels(payload.data.labels);
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar los nombres de campos."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar los nombres de campos."); });
         return () => { current = false; };
     }, []);
 
@@ -91,7 +92,7 @@ export default function ProductDetailPage() {
                 setViewPreferencesVersion(preferencesPayload.data.version);
                 setTypedFieldDefinitions(catalogPayload.data.definitions ?? []);
             }
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar las preferencias de campos."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar las preferencias de campos."); });
         return () => { current = false; };
     }, [companyId]);
 
@@ -102,10 +103,10 @@ export default function ProductDetailPage() {
         try {
             const response = await fetch("/api/preferences/inventory-products-columns", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: viewPreferencesVersion, hiddenFieldIds: next }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar la visibilidad de campos.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar la visibilidad de campos.", payload);
             setHiddenFieldIds(payload.data.hiddenFieldIds ?? []);
             setViewPreferencesVersion(payload.data.version);
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar la visibilidad de campos."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar la visibilidad de campos."); }
         finally { setSavingVisibility(false); }
     }
 

@@ -168,8 +168,8 @@ function CompanyEditModalBody({ company, initialOperatingProfile, canManageOpera
         setLogoUploadOk(false);
         try {
             setLogoUrl(await uploadWebImage(file, "logo"));
-        } catch {
-            notify.error("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
+        } catch (caught) {
+            notify.failure(caught, "No se pudo subir el logo. Verifica el archivo e intenta de nuevo.", { useFallbackMessage: true });
             setLogoUploading(false);
             if (logoInputRef.current) logoInputRef.current.value = "";
             return;

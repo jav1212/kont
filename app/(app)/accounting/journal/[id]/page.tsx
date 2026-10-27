@@ -87,8 +87,8 @@ export default function JournalEntryDetailPage() {
             const json = await res.json() as { data?: EntryWithLines; error?: string };
             if (!res.ok || json.error) { notify.error(json.error ?? 'No se pudo cargar el asiento.'); return; }
             setData(json.data ?? null);
-        } catch {
-            notify.error('No se pudo cargar el asiento.');
+        } catch (caught) {
+            notify.failure(caught, 'No se pudo cargar el asiento.', { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }

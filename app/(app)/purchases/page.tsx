@@ -228,7 +228,7 @@ export default function EntradasPage() {
                 notify.success(`TXT con ${payload.rows.length} ${payload.rows.length === 1 ? "fila" : "filas"} generado.`);
             }
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar TXT");
+            notify.failure(e, "Error al generar TXT");
         } finally {
             setExportingTxt(false);
         }
@@ -249,7 +249,7 @@ export default function EntradasPage() {
             downloadXmlFile(xml, filename);
             notify.success(`XML con ${payload.rows.length} ${payload.rows.length === 1 ? "retención" : "retenciones"} generado.`);
         } catch (e) {
-            notify.error(e instanceof Error ? e.message : "Error al generar XML");
+            notify.failure(e, "Error al generar XML");
         } finally {
             setExportingXml(false);
         }

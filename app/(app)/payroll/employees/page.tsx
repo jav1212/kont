@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PAYROLL_REFERENCE_CURRENCIES } from "@/src/modules/payroll/shared/reference-currency";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -904,14 +905,14 @@ export default function EmployeesPage() {
         let current = true;
         void fetch("/api/preferences/process-defaults", { cache: "no-store" }).then(async (response) => {
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible cargar tu filtro predeterminado.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible cargar tu filtro predeterminado.", payload);
             if (!current) return;
             const value = payload.data.values?.employeeStatusFilter;
             const filter: EstadoFilter = value === "activo" || value === "vacacion" || value === "inactivo" ? value : "todos";
             setProcessDefaultsVersion(payload.data.version);
             setSavedDefaultStatus(value === "activo" || value === "vacacion" || value === "inactivo" ? value : value === "todos" ? "todos" : null);
             setEstadoFilter(filter);
-        }).catch((error: unknown) => { if (current) notify.error(error instanceof Error ? error.message : "No fue posible cargar tu filtro predeterminado."); });
+        }).catch((error: unknown) => { if (current) notify.failure(error, "No fue posible cargar tu filtro predeterminado."); });
         return () => { current = false; };
     }, []);
 
@@ -922,12 +923,12 @@ export default function EmployeesPage() {
             const values = status === null ? {} : { employeeStatusFilter: status };
             const response = await fetch("/api/preferences/process-defaults", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: processDefaultsVersion, values }) });
             const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? "No fue posible guardar el filtro predeterminado.");
+            if (!response.ok) throw new ApiRequestFailure(response, payload?.error ?? "No fue posible guardar el filtro predeterminado.", payload);
             setProcessDefaultsVersion(payload.data.version);
             setSavedDefaultStatus(status);
             if (status === null) setEstadoFilter("todos");
             notify.success(status === null ? "Filtro predeterminado restaurado." : "Filtro predeterminado guardado.");
-        } catch (error) { notify.error(error instanceof Error ? error.message : "No fue posible guardar el filtro predeterminado."); }
+        } catch (error) { notify.failure(error, "No fue posible guardar el filtro predeterminado."); }
         finally { setSavingProcessDefault(false); }
     }
 

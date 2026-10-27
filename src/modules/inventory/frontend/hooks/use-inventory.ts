@@ -67,7 +67,7 @@ export type {
 };
 
 function reportError(fallback: string, e: unknown): void {
-    notify.error(e instanceof Error ? e.message : fallback);
+    notify.failure(e, fallback);
 }
 
 // Pages under /inventory mount independent useInventory() instances. Keep a

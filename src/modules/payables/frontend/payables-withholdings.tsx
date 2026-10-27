@@ -54,12 +54,12 @@ export function PayablesWithholdings(): React.JSX.Element {
       } else {
         await generateComprobanteIslrPdf({ ...common, retention: { conceptCode: voucher.conceptCode ?? "", operationAmount: Number(voucher.taxableBaseVes), percentage: Number(voucher.rate), sustraendo: Number(voucher.subtrahendVes), withheldAmount: Number(voucher.amountVes), ...(voucher.taxUnitValue ? { unidadTributaria: Number(voucher.taxUnitValue) } : {}) } });
       }
-    } catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo generar el comprobante."); }
+    } catch (cause: unknown) { notify.failure(cause, "No se pudo generar el comprobante."); }
   }
   async function declare(): Promise<void> {
     if (!scope) return;
     try { await executePayablesCommand(scope, { kind: "mark_withholdings_declared", withholdingKind: filters.withholdingKind, fiscalPeriod: period }); notify.success("Retenciones del período marcadas como declaradas."); setRevision((value) => value + 1); }
-    catch (cause: unknown) { notify.error(cause instanceof Error ? cause.message : "No se pudo marcar el período."); }
+    catch (cause: unknown) { notify.failure(cause, "No se pudo marcar el período."); }
   }
   return <main className="mx-auto max-w-7xl space-y-6 p-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div className="space-y-2"><p className="text-sm text-[var(--text-secondary)]">Cuentas por pagar</p><h1 className="text-3xl font-semibold">Retenciones</h1><p className="text-[var(--text-secondary)]">Retenciones registradas con la compra y emitidas al pagar, con su comprobante.</p></div>

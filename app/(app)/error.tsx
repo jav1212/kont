@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
+import { IncidentReference } from "@/src/shared/frontend/feedback/incident-reference";
+import { useBoundaryIncident } from "@/src/shared/frontend/feedback/use-boundary-incident";
 
 export default function AppError({
     error,
@@ -10,9 +11,7 @@ export default function AppError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
-    useEffect(() => {
-        console.error("[app-error]", error);
-    }, [error]);
+    const incident = useBoundaryIncident(error, "web.boundary.app");
 
     return (
         <div className="flex-1 flex items-center justify-center p-8">
@@ -29,11 +28,7 @@ export default function AppError({
                 <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                     No se pudo cargar esta sección. Puedes reintentar o navegar a otra parte del sistema.
                 </p>
-                {error.digest && (
-                    <p className="font-mono text-[9px] text-[var(--text-disabled)] tracking-widest">
-                        REF: {error.digest}
-                    </p>
-                )}
+                <IncidentReference incident={incident} />
                 <div className="flex items-center gap-3">
                     <button
                         onClick={reset}

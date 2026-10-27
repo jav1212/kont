@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Fragment } from "react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
 import { SystemErrorsPanel } from "@/src/modules/system-errors/frontend/components/system-errors-panel";
+import { ApiRequestFailure } from "@/src/shared/frontend/feedback/api-request-failure";
 
 // ============================================================================
 // TYPES
@@ -217,7 +218,7 @@ export default function AdminPage() {
         try {
             const res  = await fetch(`/api/admin/tenants/${tenantId}/send-test-email`, { method: "POST" });
             const json = await res.json();
-            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            if (!res.ok) throw new ApiRequestFailure(res, json?.error ?? `HTTP ${res.status}`, json);
             setTestEmailState((s) => ({ ...s, [tenantId]: "ok" }));
             setTestEmailMsg((m) => ({ ...m, [tenantId]: `Enviado a ${json?.data?.sentTo ?? "destinatario"}` }));
             setTimeout(() => {
@@ -293,8 +294,8 @@ export default function AdminPage() {
             const [s, t] = await Promise.all([sumRes.json(), tenRes.json()]);
             if (s.data) setSummary(s.data);
             if (t.data) setTenants(t.data);
-        } catch {
-            notify.error("Error al cargar datos.");
+        } catch (caught) {
+            notify.failure(caught, "Error al cargar datos.", { useFallbackMessage: true });
         } finally {
             setLoading(false);
         }
@@ -492,13 +493,13 @@ export default function AdminPage() {
         try {
             const res  = await fetch("/api/admin/inbox");
             const json = await res.json();
-            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            if (!res.ok) throw new ApiRequestFailure(res, json?.error ?? `HTTP ${res.status}`, json);
             setInboxEmails(Array.isArray(json.data) ? json.data : []);
             setInboxLoaded(true);
         } catch (e) {
             const msg = e instanceof Error ? e.message : "Error al cargar bandeja.";
             setInboxError(msg);
-            notify.error(msg);
+            notify.failure(e, "Error al cargar bandeja.");
         } finally {
             setInboxLoading(false);
         }
@@ -521,7 +522,7 @@ export default function AdminPage() {
         try {
             const res  = await fetch(`/api/admin/inbox/${id}`);
             const json = await res.json();
-            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            if (!res.ok) throw new ApiRequestFailure(res, json?.error ?? `HTTP ${res.status}`, json);
             setInboxDetail(json.data as InboxDetail);
             // Default to whichever exists; prefer html.
             setInboxView((json.data?.email?.html ? "html" : "text"));
