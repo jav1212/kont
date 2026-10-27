@@ -4,6 +4,7 @@ import { flushSync } from "react-dom";
 import { createIncidentCode } from "@/src/core/errors/incident-code";
 import { reportClientError } from "@/src/shared/frontend/utils/report-client-error";
 import { ACCESS_CAPTURE_CAPABILITY, DEVICE_PROTOCOL_VERSION, parseDeviceManagerEvent, type BarcodeScannedEvent, type DeviceInfo, type DeviceStatus } from "../../devices/device-contracts";
+import { deviceManagerIncidentSignature, isDeviceManagerIncident } from "./device-incident-policy";
 import { KeyboardWedgeScanner } from "./keyboard-wedge-scanner";
 import { isBadgeBarcode, mayDeliverRawBridgeScan } from "./barcode-access-policy";
 
@@ -190,8 +191,8 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
                 if (event.type === "device.status") { setStatus(event.status); setDevice(event.device); if (event.message) setLastError(event.message); }
                 if (event.type === "manager.error") {
                     setLastError(event.message);
-                    const deduplicationKey = event.eventId ?? `${event.code}:${event.message}:${event.occurredAt ?? ""}`;
-                    if (!reportedErrors.current.has(deduplicationKey)) {
+                    const deduplicationKey = deviceManagerIncidentSignature(event);
+                    if (isDeviceManagerIncident(event) && !reportedErrors.current.has(deduplicationKey)) {
                         reportedErrors.current.add(deduplicationKey);
                         if (reportedErrors.current.size > 200) reportedErrors.current.delete(reportedErrors.current.values().next().value!);
                         reportClientError({

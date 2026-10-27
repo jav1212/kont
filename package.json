@@ -32,7 +32,7 @@
     "test:company:monetary-policy:web": "node --experimental-test-module-mocks --import tsx --test test/company-monetary-policy-route.test.ts",
     "test:fiscal:persistence:sql": "node scripts/test-fiscal-persistence-sql.mjs",
     "test:barcode:web": "node scripts/test-barcode-web.mjs",
-    "test:feedback:web": "node --import tsx --test test/web-feedback.test.ts"
+    "test:feedback:web": "node --import tsx --test test/web-feedback.test.ts test/device-incident-policy.test.ts"
   },
   "dependencies": {
     "@heroui/accordion": "^2.2.29",
