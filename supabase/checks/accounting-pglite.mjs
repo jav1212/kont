@@ -17,6 +17,9 @@ try {
   await db.exec(await readFile(new URL("../migrations/20261026135757_accounting_settings.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../migrations/20261027122933_accounting_assign_account_to_chart.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../migrations/20261027130610_accounting_retire_legacy_writers.sql", import.meta.url), "utf8"));
+  await db.exec(await readFile(new URL("../migrations/20261027160000_accounting_query_read_write_transaction.sql", import.meta.url), "utf8"));
+  // PostgREST runs non-volatile RPCs read-only, where the authorization FOR SHARE locks fail with 405.
+  assert.equal((await db.query("select provolatile from pg_proc where oid='public.shared_accounting_query(jsonb,jsonb)'::regprocedure")).rows[0].provolatile,"v");
   const scope = { tenantId:"00000000-0000-4000-8000-000000000001", organizationId:"00000000-0000-4000-8000-000000000002", companyId:"J-00000000-0", actorId:"00000000-0000-4000-8000-000000000003" };
   const execute = async command => (await db.query("select public.shared_accounting_execute_command($1,$2) value",[scope,command])).rows[0].value;
   const query = async request => (await db.query("select public.shared_accounting_query($1,$2) value",[scope,request])).rows[0].value;

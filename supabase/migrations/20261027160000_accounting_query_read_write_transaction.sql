@@ -1,0 +1,12 @@
+-- shared_accounting_query authorizes through accounting_require_scope ->
+-- assert_user_security_access, which takes FOR SHARE locks so a concurrent
+-- permission revocation cannot interleave with the authorized read. PostgREST
+-- runs STABLE/IMMUTABLE functions in a read-only transaction, where those locks
+-- fail with SQLSTATE 25006 and surface to clients as HTTP 405 (every
+-- /accounting query returned "service unavailable"). Marking only the RPC entry
+-- point VOLATILE makes PostgREST open a read-write transaction; the routed
+-- query functions keep their declared volatility and bodies.
+--
+-- Any later CREATE OR REPLACE of shared_accounting_query must declare it
+-- VOLATILE (or omit STABLE) to preserve this behavior.
+alter function public.shared_accounting_query(jsonb, jsonb) volatile;
