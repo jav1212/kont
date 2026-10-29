@@ -49,6 +49,7 @@ export interface FractionalProfitSharingPdfData {
     fiscalStart:       string;
     periodStart:       string;
     monthsWorked:      number;
+    daysWorked:        number;
     profitSharingDays: number;
     fractionalDays:    number;
     salaryVES:         number;
@@ -225,8 +226,8 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
         W,
         y,
         data.employee,
-        "Meses Trabajados",
-        `${data.monthsWorked} mes${data.monthsWorked !== 1 ? "es" : ""}`,
+        "Tiempo Trabajado",
+        `${data.daysWorked} días (${data.monthsWorked} mes${data.monthsWorked !== 1 ? "es" : ""})`,
         `${fmtDateEs(data.periodStart)} -> ${fmtDateEs(data.cutoffDate)}`,
     );
 
@@ -239,7 +240,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
     renderLabel(doc, "Formula", ML, y + 3.5, "left", COLORS.muted, 7);
     renderMono(
         doc,
-        `(${data.profitSharingDays} d / 12 m) x ${data.monthsWorked} meses = ${data.fractionalDays} d`,
+        `(${data.profitSharingDays} d / 360 d) x ${data.daysWorked} dias = ${data.fractionalDays} d`,
         ML,
         y + 9,
         9.5,
@@ -268,7 +269,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
         y,
         `La presente constancia certifica el pago de utilidades fraccionadas correspondientes al periodo trabajado en el ano fiscal ${data.fiscalYear}, ` +
             "de conformidad con el Art. 175 de la Ley Organica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
-            "El calculo es proporcional a los meses completos laborados desde el inicio del ano fiscal o de la relacion laboral (lo que ocurra despues).",
+            "El calculo es proporcional a los dias laborados desde el inicio del ano fiscal o de la relacion laboral (lo que ocurra despues), usando el ano laboral de 360 dias.",
     );
 
     drawSignatures(doc, ML, W, y);

@@ -94,6 +94,7 @@ interface FractionalProfitSharing {
     fiscalStart:       string;
     periodStart:       string;
     monthsWorked:      number;
+    daysWorked:        number;
     fractionalDays:    number;
     amount:            number;
 }
@@ -112,16 +113,22 @@ function calculateFractional(
 
     if (cutoffDate <= periodStart) return null;
 
-    const monthsWorked = getCompleteMonths(periodStart, cutoffDate);
-    if (monthsWorked <= 0) return null;
+    // Prorate the annual entitlement over the actual days in the employment period.
+    // The 360-day denominator matches the LOTTT payroll convention and also
+    // covers employees who have not completed their first calendar month.
+    const start = new Date(`${periodStart}T00:00:00`);
+    const cutoff = new Date(`${cutoffDate}T00:00:00`);
+    const daysWorked = Math.floor((cutoff.getTime() - start.getTime()) / 86_400_000) + 1;
+    if (daysWorked <= 0) return null;
 
-    const fractionalDays = Math.ceil((profitSharingDays / 12) * monthsWorked);
+    const monthsWorked = getCompleteMonths(periodStart, cutoffDate);
+    const fractionalDays = Math.ceil((profitSharingDays / 360) * daysWorked);
     const dailySalary    = salaryVES / 30;
     const amount         = fractionalDays * dailySalary;
 
     return {
         salaryVES, dailySalary, profitSharingDays, fiscalYear,
-        fiscalStart, periodStart, monthsWorked, fractionalDays, amount,
+        fiscalStart, periodStart, monthsWorked, daysWorked, fractionalDays, amount,
     };
 }
 
@@ -240,7 +247,7 @@ function FractionalConstancy({
             <div className="space-y-1">
                 <CalcRow
                     label="Utilidades Fraccionadas"
-                    formula={`Art. 175 LOTTT · ⌈ ${calc.profitSharingDays}d / 12 × ${calc.monthsWorked} meses ⌉`}
+                    formula={`Art. 175 LOTTT · ⌈ ${calc.profitSharingDays}d / 360 × ${calc.daysWorked} días ⌉`}
                     value={formatCurrency(calc.amount)}
                 />
             </div>
@@ -387,6 +394,7 @@ export default function UtilidadesPage() {
                         fiscalStart:       c.fiscalStart,
                         periodStart:       c.periodStart,
                         monthsWorked:      c.monthsWorked,
+                        daysWorked:        c.daysWorked,
                         profitSharingDays: c.profitSharingDays,
                         fractionalDays:    c.fractionalDays,
                         salaryVES:         c.salaryVES,
@@ -602,14 +610,14 @@ export default function UtilidadesPage() {
                                 {fractionalCalculation ? (
                                     <div className="space-y-0.5">
                                         <CalcRow
-                                            label="Meses trabajados"
+                                            label="Tiempo trabajado"
                                             formula={`Desde ${formatDateLong(fractionalCalculation.periodStart)}`}
-                                            value={`${fractionalCalculation.monthsWorked} meses`}
+                                            value={`${fractionalCalculation.daysWorked} días${fractionalCalculation.monthsWorked < 6 ? " · menos de 6 meses" : ""}`}
                                             dim
                                         />
                                         <CalcRow
                                             label="Días proporcionales"
-                                            formula={`⌈ ${fractionalCalculation.profitSharingDays}d / 12m × ${fractionalCalculation.monthsWorked}m ⌉`}
+                                            formula={`⌈ ${fractionalCalculation.profitSharingDays}d / 360 × ${fractionalCalculation.daysWorked}d ⌉`}
                                             value={`${fractionalCalculation.fractionalDays} días`}
                                             dim
                                         />
