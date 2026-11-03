@@ -333,6 +333,16 @@ function SignUpPageInner() {
                             </p>
                         </div>
 
+                        <div className="p-3.5 border border-border-light rounded-xl bg-surface-1 shadow-sm">
+                            <p className="font-sans text-[12px] text-text-tertiary leading-relaxed">
+                                ¿No recibiste ningún código? Si ya tienes una cuenta con este correo, no se envía uno nuevo al registrarte.{" "}
+                                <Link href="/forgot-password" className="text-primary-500 font-semibold hover:underline">
+                                    Recupera tu contraseña
+                                </Link>{" "}
+                                para entrar.
+                            </p>
+                        </div>
+
                         <div className="pt-2 flex items-center justify-between">
                             <button
                                 type="button"
