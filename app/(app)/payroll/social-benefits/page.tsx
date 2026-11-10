@@ -61,9 +61,7 @@ interface SocialBenefitsCalculation {
     extraDays:                   number;
     totalSeniorityDays:          number;
     accumulatedBalance:          number;
-    seniorityIndemnityGuarantee: number;
     finalAmount:                 number;
-    isGuaranteeApplied:          boolean;
     socialBenefitsAdvance:       number;
     accumulatedInterests:        number;
     immediatePayment:            number;
@@ -105,7 +103,7 @@ function SocialBenefitsConstancy({
             companyLogoUrl={companyLogoUrl}
             showLogo={showLogoInPdf}
             title="Prestaciones Sociales"
-            legalNote="Art. 142 LOTTT — Garantía y Acumulados"
+            legalNote="Art. 142 LOTTT — Saldo acumulado"
             headerRight={
                 <>
                     <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1">Corte al</p>
@@ -135,11 +133,6 @@ function SocialBenefitsConstancy({
                     formula={`${calc.totalSeniorityDays}d totales acumulados`}
                     value={formatCurrency(calc.accumulatedBalance)}
                 />
-                <CalcRow
-                    label="Garantía Art. 142.c"
-                    formula={`30 d/año × ${calc.yearsOfService} años`}
-                    value={formatCurrency(calc.seniorityIndemnityGuarantee)}
-                />
             </div>
             <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-border-light">
                 <div>
@@ -147,7 +140,7 @@ function SocialBenefitsConstancy({
                         Monto total prestaciones
                     </span>
                     <span className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1 block">
-                        Saldo acumulado + Garantía
+                        Art. 142.a y 142.b
                     </span>
                 </div>
                 <span className="font-mono text-[20px] font-black tabular-nums text-foreground">
@@ -281,10 +274,10 @@ export default function PrestacionesPage() {
             const dailyNormalSalary = vesAmount / 30;
             const psQuota           = dailyNormalSalary * psDays / 360;
             const vbQuota           = dailyNormalSalary * vbDays / 360;
-            const guaranteeAmount   = 30 * res.integratedDailySalary * res.yearsOfService;
             const seniorityBalance  = res.seniorityIndemnityBalance;
-            const isGuaranteeApplied = guaranteeAmount > seniorityBalance;
-            const finalAmount       = Math.max(seniorityBalance, guaranteeAmount);
+            // The Art. 142.c guarantee (30 days per year) is only compared at termination;
+            // an Art. 144 advance is drawn from the accumulated balance alone.
+            const finalAmount       = seniorityBalance;
             const advancePctValue   = Math.min(100, Math.max(0, parseFloat(advancePercentage) || 75));
             const advanceValue      = seniorityBalance * (advancePctValue / 100);
             const rateValue         = Math.max(0, parseFloat(interestRate) || 0);
@@ -303,9 +296,7 @@ export default function PrestacionesPage() {
                 extraDays:                  res.extraDays,
                 totalSeniorityDays:         res.totalSeniorityDays,
                 accumulatedBalance:         seniorityBalance,
-                seniorityIndemnityGuarantee: guaranteeAmount,
                 finalAmount,
-                isGuaranteeApplied,
                 socialBenefitsAdvance:      advanceValue,
                 accumulatedInterests:       interestValue,
                 immediatePayment:           advanceValue + interestValue,
@@ -349,9 +340,7 @@ export default function PrestacionesPage() {
                     extraDays:                  result.calculation.extraDays,
                     totalSeniorityDays:         result.calculation.totalSeniorityDays,
                     accumulatedBalance:         result.calculation.accumulatedBalance,
-                    seniorityIndemnityGuarantee: result.calculation.seniorityIndemnityGuarantee,
                     finalAmount:                result.calculation.finalAmount,
-                    isGuaranteeApplied:         result.calculation.isGuaranteeApplied,
                     socialBenefitsAdvance:      result.calculation.socialBenefitsAdvance,
                     accumulatedInterests:       result.calculation.accumulatedInterests,
                     immediatePayment:           result.calculation.immediatePayment,
@@ -539,10 +528,6 @@ export default function PrestacionesPage() {
                                         <div className="flex justify-between items-baseline">
                                             <span className="font-mono text-[11px] text-[var(--text-secondary)]">Saldo acumulado</span>
                                             <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{formatCurrency(individualCalculation.accumulatedBalance)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-baseline">
-                                            <span className="font-mono text-[11px] text-[var(--text-tertiary)]">Garantía 142.c</span>
-                                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{formatCurrency(individualCalculation.seniorityIndemnityGuarantee)}</span>
                                         </div>
                                     </div>
                                     <div className="px-4 py-3.5 flex justify-between items-center bg-surface-1">

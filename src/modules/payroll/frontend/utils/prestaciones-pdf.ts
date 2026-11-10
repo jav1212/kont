@@ -41,9 +41,7 @@ export interface SocialBenefitsPdfData {
     extraDays:                   number;
     totalSeniorityDays:          number;
     accumulatedBalance:          number;
-    seniorityIndemnityGuarantee: number;
     finalAmount:                 number;
-    isGuaranteeApplied:          boolean;
     socialBenefitsAdvance:       number;
     accumulatedInterests:        number;
     immediatePayment:            number;
@@ -179,7 +177,6 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     y = renderDetailRow(doc, ML, W, y, "Días trimestrales", "5 días/mes × meses completos", `${data.quarterlyDays} días`, COLORS.ink, false);
     y = renderDetailRow(doc, ML, W, y, "Días adicionales", "Art. 142.b (desde año 2)", `${data.extraDays} días`, COLORS.ink, true);
     y = renderDetailRow(doc, ML, W, y, "Saldo acumulado", `${data.totalSeniorityDays} días × ${formatPayrollAmount(data.integratedDailySalary)}`, formatPayrollAmount(data.accumulatedBalance), COLORS.ink, false);
-    y = renderDetailRow(doc, ML, W, y, "Garantía Art. 142.c", `30 d × Sal. Integral × ${data.yearsOfService} año(s)`, formatPayrollAmount(data.seniorityIndemnityGuarantee), COLORS.ink, true);
 
     fill(doc, ML, y, W, 0.5, COLORS.orange);
     y += 1.2;
@@ -214,8 +211,8 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     const legal =
         "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 " +
         "de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
-        "El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 " +
-        "días de salario integral por año de servicio (Art. 142.c).";
+        "El monto corresponde al saldo acumulado (Art. 142.a y 142.b). La garantía de 30 días de salario " +
+        "integral por año de servicio (Art. 142.c) solo se compara al término de la relación laboral.";
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.8);
@@ -279,7 +276,7 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     y += 12 + 6;
 
     y = drawSectionLabel(doc, ML, W, y, "Cuenta de Garantía");
-    y = renderDetailRow(doc, ML, W, y, "Monto Prestaciones Acumuladas", data.isGuaranteeApplied ? "Garantía Art. 142.c" : "Días acumulados", formatPayrollAmount(data.finalAmount), COLORS.ink, false);
+    y = renderDetailRow(doc, ML, W, y, "Monto Prestaciones Acumuladas", "Días acumulados", formatPayrollAmount(data.finalAmount), COLORS.ink, false);
     y = renderDetailRow(doc, ML, W, y, "Total Deducción", "Anticipos + Intereses ya entregados", `- ${formatPayrollAmount(data.immediatePayment)}`, COLORS.inkMed, true);
 
     fill(doc, ML, y, W, 0.5, COLORS.orange);
