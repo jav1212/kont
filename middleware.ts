@@ -17,8 +17,8 @@ import { DEFAULT_POST_AUTHENTICATION_DESTINATION } from '@/src/modules/auth/post
 //     de /herramientas/calendario-seniat/embed (allow frame-ancestors *).
 //   - X-Frame-Options: DENY (mismo efecto que frame-ancestors 'none',
 //     cobertura extra para browsers viejos que no entienden CSP level 2).
-// Headers globales sin excepciones viven en vercel.json (HSTS, nosniff,
-// Referrer-Policy, Permissions-Policy).
+// Headers globales sin excepciones viven en next.config.ts (HSTS, nosniff,
+// Referrer-Policy, Permissions-Policy, COOP).
 // ============================================================================
 
 // CSP estricto para la app: permite recursos propios + Supabase (auth/realtime/storage)
@@ -96,6 +96,10 @@ function applyNativeApiCors(response: NextResponse, origin: string): NextRespons
  */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    // El healthcheck corre cada pocos segundos: sin sesión, cookies ni Supabase.
+    if (pathname === '/api/health') return NextResponse.next();
+
     const isAdminSession = request.cookies.get('kont-admin')?.value === '1';
 
     if (isNativeApi(pathname)) {

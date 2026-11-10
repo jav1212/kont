@@ -1,0 +1,24 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.git
+.worktrees
+.incident-worktree
+.incident-wbundle
+tmp
+backups
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+*.pem
+*.log
+.vercel
+.netlify
+# Native clients: the root Web app imports nothing from them (package.json only
+# references device-bridge from test scripts, which do not run in the image).
+apps/desktop
+apps/mobile
+apps/device-bridge
