@@ -1,5 +1,5 @@
 // Shared helpers for BCV proxy routes (/api/bcv/*).
-// Upstream API: https://api-monitor-bcv.vercel.app
+// Upstream API: https://bcv.kontave.com (override with BCV_API_URL)
 //
 // Verified response shape (2026-04-22):
 //   - buy / sell  → number (e.g. 481.5517035)
@@ -9,7 +9,7 @@
 // parseVeNumber is defensive: tolerates "42,10" string form in case the upstream
 // ever returns numbers as Venezuelan-formatted strings.
 
-export const BCV_BASE = process.env.BCV_API_URL ?? "https://api-monitor-bcv.vercel.app";
+export const BCV_BASE = process.env.BCV_API_URL ?? "https://bcv.kontave.com";
 
 export interface BcvEntry {
     code: string;

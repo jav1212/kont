@@ -151,10 +151,18 @@ function parseProviderDate(value: string): string {
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 function subtractDays(value: string, days: number): string { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() - days); return date.toISOString().slice(0, 10); }
+const DEFAULT_MONITOR_BCV_BASE_URL = "https://bcv.kontave.com";
 /**
  * Creates the production-safe default provider policy.
  *
+ * The endpoint honors `BCV_API_URL` when a server runtime exposes it. The lookup
+ * goes through `globalThis` so runtimes without `process` (Desktop renderer,
+ * Mobile) fall back to the default instead of throwing.
+ *
  * @returns Default endpoint, timeout, retry and historical lookback settings.
  */
-export function defaultMonitorBcvConfiguration(): MonitorBcvConfiguration { return { baseUrl: "https://api-monitor-bcv.vercel.app", timeoutMilliseconds: 5_000, retryAttempts: 1, historicalLookbackDays: 7 }; }
+export function defaultMonitorBcvConfiguration(): MonitorBcvConfiguration {
+  const environment = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  return { baseUrl: environment?.BCV_API_URL ?? DEFAULT_MONITOR_BCV_BASE_URL, timeoutMilliseconds: 5_000, retryAttempts: 1, historicalLookbackDays: 7 };
+}
 const systemClock: Clock = { now: () => new Date(), today: () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Caracas", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) };

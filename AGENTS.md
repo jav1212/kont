@@ -142,11 +142,11 @@ netUSD = net / bcvRate
 - **Employees**: `cedula, nombre, cargo, salario_mensual_ves, estado`
 - **Companies**: `rif, nombre`
 
-Numbers use `.` as decimal separator in CSV. Venezuelan locale (`es-VE`) uses `,` — be careful when parsing API responses from `api-monitor-bcv.vercel.app` which returns rates as `"42,10"`.
+Numbers use `.` as decimal separator in CSV. Venezuelan locale (`es-VE`) uses `,` — be careful when parsing API responses from the BCV API (`bcv.kontave.com`), which returns rates as `"42,10"`.
 
 ### External API
 
-- `GET /api/bcv/rate?date=YYYY-MM-DD` — proxy to `https://api-monitor-bcv.vercel.app`
+- `GET /api/bcv/rate?date=YYYY-MM-DD` — proxy to `BCV_API_URL` (default `https://bcv.kontave.com`)
   - Today → `/exchange-rate/main`, filters `code === "USD"`, uses `sell` price
   - Past date → `/exchange-rate/list?start=DATE&end=DATE`
 

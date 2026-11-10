@@ -38,7 +38,7 @@ historial de la imagen.
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limiting. El acceso por carnet responde 503 en producción sin ellas. |
 | `WHATSAPP_API_KEY`, `WHATSAPP_PHONE_NUMBER_ID` | Recordatorios por WhatsApp. |
 | `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_TEMPLATE_LANG` | Opcionales; plantilla de WhatsApp. |
-| `BCV_API_URL` | Opcional; proxy de tasas BCV. |
+| `BCV_API_URL` | Opcional; API de tasas BCV. Por defecto `https://bcv.kontave.com`. |
 | `KONTAVE_BARCODE_ACCESS_ENABLED`, `KONTAVE_BARCODE_BADGE_ENCRYPTION_KEY` | Acceso por carnet. |
 | `KONTAVE_NATIVE_API_ALLOWED_ORIGINS` | Orígenes CORS de la API nativa, separados por comas. |
 | `KONTAVE_PUBLIC_ORIGIN` | Origen de los enlaces en invitaciones a organizaciones. Recomendada: `https://kontave.com`. |
@@ -63,9 +63,8 @@ falta migrarla.
   - **Redirección www → apex:** Direction = *Redirect to non-www* en Coolify.
 - CSP de `middleware.ts`: permite `vercel.live`, `va.vercel-scripts.com` y
   `vercel.com`. Sin efecto fuera de Vercel; se pueden quitar tras la migración.
-- `api-monitor-bcv.vercel.app` (API de tasas BCV) sigue alojada en Vercel. Mientras
-  esté caída, `/api/bcv/*` responde 502. Se migrará después de Kontave; al cambiar
-  de dominio hay que actualizar:
+- La API de tasas BCV vive en `https://bcv.kontave.com`. Si no responde,
+  `/api/bcv/*` devuelve 502. Si cambia de dominio, hay que actualizar:
   - `BCV_API_URL` en Coolify.
   - `connect-src` de la CSP en `middleware.ts`.
   - El valor por defecto en `app/api/bcv/_lib.ts` y en
