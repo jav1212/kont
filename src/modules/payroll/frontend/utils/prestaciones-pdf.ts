@@ -42,8 +42,6 @@ export interface SocialBenefitsPdfData {
     totalSeniorityDays:          number;
     accumulatedBalance:          number;
     finalAmount:                 number;
-    /** Advances already delivered in previous years, deducted from the balance. */
-    priorAdvances?:              number;
     socialBenefitsAdvance:       number;
     accumulatedInterests:        number;
     immediatePayment:            number;
@@ -189,28 +187,22 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     y += 13 + 6;
 
     // ── Pago inmediato ────────────────────────────────────────────────────────
-    const priorAdvances = data.priorAdvances ?? 0;
-    if (priorAdvances > 0 || data.socialBenefitsAdvance > 0 || data.accumulatedInterests > 0) {
+    if (data.socialBenefitsAdvance > 0 || data.accumulatedInterests > 0) {
         const pct = data.advancePercentage ?? 75;
         y = drawSectionLabel(doc, ML, W, y, "Pago Inmediato");
-        if (priorAdvances > 0) {
-            y = renderDetailRow(doc, ML, W, y, "Anticipos de años anteriores", "Ya entregados", `- ${formatPayrollAmount(priorAdvances)}`, COLORS.inkMed, true);
-        }
         if (data.socialBenefitsAdvance > 0) {
             y = renderDetailRow(doc, ML, W, y, `Anticipo de Prestaciones (${pct}%)`, "Art. 144 LOTTT", formatPayrollAmount(data.socialBenefitsAdvance), COLORS.ink, false);
         }
         if (data.accumulatedInterests > 0) {
             y = renderDetailRow(doc, ML, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", formatPayrollAmount(data.accumulatedInterests), COLORS.ink, true);
         }
-        // Interests are paid alongside the advance but do not reduce the balance.
-        y = renderDetailRow(doc, ML, W, y, "Total pago inmediato", "Anticipo + intereses", formatPayrollAmount(data.immediatePayment), COLORS.inkMed, false);
+        y = renderDetailRow(doc, ML, W, y, "Total anticipos entregados", "Anticipos + intereses", `- ${formatPayrollAmount(data.immediatePayment)}`, COLORS.inkMed, false);
 
         fill(doc, ML, y, W, 0.5, COLORS.orange);
         y += 1.2;
         fill(doc, ML, y, W, 13, COLORS.bandHead);
         rect(doc, ML, y, W, 13, COLORS.border, 0.2);
         renderLabel(doc, "Saldo a Favor", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
-        renderText(doc, "Total prestaciones - anticipos anteriores - anticipo actual", ML + 40, y + 8.5, 7.5, false, COLORS.muted, "left", W * 0.5, "helvetica");
         renderMono(doc, formatPayrollAmount(data.balanceInFavor), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
         y += 13 + 6;
     }

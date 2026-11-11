@@ -62,7 +62,6 @@ interface SocialBenefitsCalculation {
     totalSeniorityDays:          number;
     accumulatedBalance:          number;
     finalAmount:                 number;
-    priorAdvances:               number;
     socialBenefitsAdvance:       number;
     accumulatedInterests:        number;
     immediatePayment:            number;
@@ -96,7 +95,7 @@ function SocialBenefitsConstancy({
         `${calc.yearsOfService} año${calc.yearsOfService !== 1 ? "s" : ""}` +
         (monthsRemainder > 0 ? ` ${monthsRemainder} mes${monthsRemainder !== 1 ? "es" : ""}` : "");
     const documentId = makeDocumentId(companyName, employeeIdNumber, hireDate, cutoffDate);
-    const hasAdvance = calc.priorAdvances > 0 || calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0;
+    const hasAdvance = calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0;
 
     return (
         <ConstanciaShell
@@ -154,14 +153,6 @@ function SocialBenefitsConstancy({
                 <div className="mt-6 pt-6 border-t border-border-light/60">
                     <SectionHeader label="Pago inmediato (Art. 143 / 144 LOTTT)" tone="amber" />
                     <div className="space-y-1">
-                        {calc.priorAdvances > 0 && (
-                            <CalcRow
-                                label="Anticipos de años anteriores"
-                                formula="Ya entregados — se descuentan del saldo"
-                                value={`− ${formatCurrency(calc.priorAdvances)}`}
-                                accent="amber"
-                            />
-                        )}
                         <CalcRow
                             label="Adelanto de Prestaciones"
                             formula={`Art. 144 — ${advancePercentageString}%`}
@@ -190,15 +181,9 @@ function SocialBenefitsConstancy({
                             <span className="font-mono text-[12px] text-[var(--text-secondary)]">Monto total prestaciones</span>
                             <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{formatCurrency(calc.finalAmount)}</span>
                         </div>
-                        {calc.priorAdvances > 0 && (
-                            <div className="flex justify-between items-baseline text-amber-500/80">
-                                <span className="font-mono text-[12px]">− Anticipos años anteriores</span>
-                                <span className="font-mono text-[12px] tabular-nums">− {formatCurrency(calc.priorAdvances)}</span>
-                            </div>
-                        )}
                         <div className="flex justify-between items-baseline text-amber-500/80">
-                            <span className="font-mono text-[12px]">− Anticipo actual</span>
-                            <span className="font-mono text-[12px] tabular-nums">− {formatCurrency(calc.socialBenefitsAdvance)}</span>
+                            <span className="font-mono text-[12px]">− Anticipo + Intereses</span>
+                            <span className="font-mono text-[12px] tabular-nums">− {formatCurrency(calc.immediatePayment)}</span>
                         </div>
                     </div>
                 </div>
@@ -238,8 +223,6 @@ export default function PrestacionesPage() {
     const [vacationBonusDays,  setVacationBonusDays]  = useState("15");
     const [interestRate,       setInterestRate]       = useState("3");
     const [advancePercentage,  setAdvancePercentage]  = useState("75");
-    // Keyed by cédula so each employee keeps their own prior advances in batch runs.
-    const [priorAdvancesByEmployee, setPriorAdvancesByEmployee] = useState<Record<string, string>>({});
 
     // ── Batch processing ────────────────────────────────────────────────────
     const filteredEmployees = useMemo(() => {
@@ -295,11 +278,8 @@ export default function PrestacionesPage() {
             // The Art. 142.c guarantee (30 days per year) is only compared at termination;
             // an Art. 144 advance is drawn from the accumulated balance alone.
             const finalAmount       = seniorityBalance;
-            const priorAdvances     = Math.min(seniorityBalance, Math.max(0, parseFloat(priorAdvancesByEmployee[emp.cedula] ?? "") || 0));
             const advancePctValue   = Math.min(100, Math.max(0, parseFloat(advancePercentage) || 75));
-            // Prior-year advances are deducted on their own line; the current advance can
-            // only draw from what remains of the balance after them.
-            const advanceValue      = Math.min(seniorityBalance * (advancePctValue / 100), seniorityBalance - priorAdvances);
+            const advanceValue      = seniorityBalance * (advancePctValue / 100);
             const rateValue         = Math.max(0, parseFloat(interestRate) || 0);
             const interestValue     = seniorityBalance * (rateValue / 100) * (res.completeMonths / 12);
 
@@ -317,17 +297,15 @@ export default function PrestacionesPage() {
                 totalSeniorityDays:         res.totalSeniorityDays,
                 accumulatedBalance:         seniorityBalance,
                 finalAmount,
-                priorAdvances,
                 socialBenefitsAdvance:      advanceValue,
                 accumulatedInterests:       interestValue,
                 immediatePayment:           advanceValue + interestValue,
-                // Interests (Art. 143) are paid on top of the balance, so they never reduce it.
-                balanceInFavor:             finalAmount - priorAdvances - advanceValue,
+                balanceInFavor:             finalAmount - advanceValue - interestValue,
             };
 
             return { employee: emp, calculation };
         });
-    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, priorAdvancesByEmployee]);
+    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate]);
 
     const grandTotal = useMemo(
         () => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0),
@@ -363,8 +341,7 @@ export default function PrestacionesPage() {
                     totalSeniorityDays:         result.calculation.totalSeniorityDays,
                     accumulatedBalance:         result.calculation.accumulatedBalance,
                     finalAmount:                result.calculation.finalAmount,
-                    priorAdvances:              result.calculation.priorAdvances,
-                    socialBenefitsAdvance:     result.calculation.socialBenefitsAdvance,
+                    socialBenefitsAdvance:      result.calculation.socialBenefitsAdvance,
                     accumulatedInterests:       result.calculation.accumulatedInterests,
                     immediatePayment:           result.calculation.immediatePayment,
                     balanceInFavor:             result.calculation.balanceInFavor,
@@ -523,23 +500,6 @@ export default function PrestacionesPage() {
                                     inputClassName="text-right"
                                 />
                             </div>
-                            {selectedIdNumber ? (
-                                <BaseInput.Field
-                                    label="Anticipos de años anteriores (Bs.)"
-                                    type="number"
-                                    step={0.01}
-                                    min={0}
-                                    value={priorAdvancesByEmployee[selectedIdNumber] ?? ""}
-                                    onValueChange={(value) => setPriorAdvancesByEmployee(prev => ({ ...prev, [selectedIdNumber]: value }))}
-                                    placeholder="0.00"
-                                    prefix="Bs."
-                                    inputClassName="text-right"
-                                />
-                            ) : (
-                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
-                                    Selecciona un empleado para registrar sus anticipos de años anteriores.
-                                </p>
-                            )}
                         </div>
 
                         {/* ── Resumen de cálculo (single emp only) ───────── */}
