@@ -168,21 +168,25 @@ function SocialBenefitsConstancy({
                             value={formatCurrency(calc.socialBenefitsAdvance)}
                             accent="amber"
                         />
-                        <CalcRow
-                            label="Intereses Acumulados"
-                            formula={`Art. 143 — Tasa ${interestRateString}%`}
-                            value={formatCurrency(calc.accumulatedInterests)}
-                            accent="green"
-                        />
+                        {calc.accumulatedInterests > 0 && (
+                            <CalcRow
+                                label="Intereses Acumulados"
+                                formula={`Art. 143 — Tasa ${interestRateString}%`}
+                                value={formatCurrency(calc.accumulatedInterests)}
+                                accent="green"
+                            />
+                        )}
                     </div>
-                    <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-border-light">
-                        <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                            Total pago inmediato
-                        </span>
-                        <span className="font-mono text-[18px] font-black tabular-nums text-amber-500">
-                            {formatCurrency(calc.immediatePayment)}
-                        </span>
-                    </div>
+                    {calc.accumulatedInterests > 0 && (
+                        <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-border-light">
+                            <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+                                Total pago inmediato
+                            </span>
+                            <span className="font-mono text-[18px] font-black tabular-nums text-amber-500">
+                                {formatCurrency(calc.immediatePayment)}
+                            </span>
+                        </div>
+                    )}
 
                     {/* Subtotal breakdown that leads into the saldo a favor */}
                     <div className="mt-4 space-y-1">
