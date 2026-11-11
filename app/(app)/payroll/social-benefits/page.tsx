@@ -9,7 +9,8 @@ import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companie
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
-import { calculateSocialBenefits } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
+import { calculateSocialBenefits, calculateAnnualSeniorityAdvance } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
+import type { AnnualSeniorityAdvance } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
 import { generateSocialBenefitsPdf } from "@/src/modules/payroll/frontend/utils/prestaciones-pdf";
 
 import {
@@ -48,6 +49,15 @@ function getErrorMessage(err: unknown): string {
 // CALC RESULT TYPE
 // ============================================================================
 
+// "accumulated" keeps the running Art. 142 balance since hire (with Art. 143
+// interest); "annual" settles only the cutoff year with a fixed number of days.
+type CalculationMode = "accumulated" | "annual";
+
+const CALCULATION_MODES: { value: CalculationMode; label: string }[] = [
+    { value: "accumulated", label: "Saldo acumulado" },
+    { value: "annual",      label: "Anticipo anual" },
+];
+
 interface SocialBenefitsCalculation {
     salaryVES:                   number;
     dailySalary:                 number;
@@ -66,6 +76,7 @@ interface SocialBenefitsCalculation {
     accumulatedInterests:        number;
     immediatePayment:            number;
     balanceInFavor:              number;
+    annual?:                     AnnualSeniorityAdvance;
 }
 
 // ============================================================================
@@ -96,6 +107,7 @@ function SocialBenefitsConstancy({
         (monthsRemainder > 0 ? ` ${monthsRemainder} mes${monthsRemainder !== 1 ? "es" : ""}` : "");
     const documentId = makeDocumentId(companyName, employeeIdNumber, hireDate, cutoffDate);
     const hasAdvance = calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0;
+    const annual     = calc.annual;
 
     return (
         <ConstanciaShell
@@ -103,7 +115,7 @@ function SocialBenefitsConstancy({
             companyLogoUrl={companyLogoUrl}
             showLogo={showLogoInPdf}
             title="Prestaciones Sociales"
-            legalNote="Art. 142 LOTTT — Saldo acumulado"
+            legalNote={annual ? "Art. 142 / 144 LOTTT — Anticipo anual" : "Art. 142 LOTTT — Saldo acumulado"}
             headerRight={
                 <>
                     <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1">Corte al</p>
@@ -125,6 +137,28 @@ function SocialBenefitsConstancy({
             ]}
             documentId={documentId}
         >
+            {annual ? (
+                <>
+                    <SectionHeader label={`Anticipo anual — ${formatDateLong(annual.periodStart)} al ${formatDateLong(cutoffDate)}`} />
+                    <div className="space-y-1">
+                        <CalcRow
+                            label="Anticipo prestación de antigüedad"
+                            formula={
+                                `${formatNumber(annual.seniorityDays)}d × ${formatNumber(calc.integratedDailySalary)}` +
+                                (annual.periodMonths < 12 ? ` (${annual.configuredDays}d × ${annual.periodMonths}/12 meses)` : "")
+                            }
+                            value={formatCurrency(annual.seniorityAmount)}
+                        />
+                        <CalcRow
+                            label="Días adicionales (Art. 142.b)"
+                            formula={`${annual.extraDays}d × ${formatNumber(calc.integratedDailySalary)}`}
+                            value={formatCurrency(annual.extraAmount)}
+                        />
+                    </div>
+                    <LiquidoTotal label="Total a pagar" valueBs={annual.totalAmount} />
+                </>
+            ) : (
+            <>
             {/* ── Prestaciones acumuladas ────────────────────────────────── */}
             <SectionHeader label="Prestaciones acumuladas (Art. 142)" />
             <div className="space-y-1">
@@ -193,6 +227,8 @@ function SocialBenefitsConstancy({
                 label={hasAdvance ? "Saldo a Favor" : "Monto total prestaciones"}
                 valueBs={calc.balanceInFavor}
             />
+            </>
+            )}
         </ConstanciaShell>
     );
 }
@@ -223,6 +259,8 @@ export default function PrestacionesPage() {
     const [vacationBonusDays,  setVacationBonusDays]  = useState("15");
     const [interestRate,       setInterestRate]       = useState("3");
     const [advancePercentage,  setAdvancePercentage]  = useState("75");
+    const [calculationMode,    setCalculationMode]    = useState<CalculationMode>("accumulated");
+    const [annualDays,         setAnnualDays]         = useState("45");
 
     // ── Batch processing ────────────────────────────────────────────────────
     const filteredEmployees = useMemo(() => {
@@ -283,6 +321,37 @@ export default function PrestacionesPage() {
             const rateValue         = Math.max(0, parseFloat(interestRate) || 0);
             const interestValue     = seniorityBalance * (rateValue / 100) * (res.completeMonths / 12);
 
+            if (calculationMode === "annual") {
+                const annual = calculateAnnualSeniorityAdvance({
+                    hireDate:              hire,
+                    cutoffDate,
+                    yearsOfService:        res.yearsOfService,
+                    integratedDailySalary: res.integratedDailySalary,
+                    annualDays:            Math.max(0, parseFloat(annualDays) || 0),
+                });
+                const annualCalculation: SocialBenefitsCalculation = {
+                    salaryVES:                  vesAmount,
+                    dailySalary:                dailyNormalSalary,
+                    profitSharingQuota:         psQuota,
+                    vacationBonusQuota:         vbQuota,
+                    integratedDailySalary:      res.integratedDailySalary,
+                    yearsOfService:             res.yearsOfService,
+                    completeMonths:             res.completeMonths,
+                    totalDays:                  res.totalDays,
+                    quarterlyDays:              annual.seniorityDays,
+                    extraDays:                  annual.extraDays,
+                    totalSeniorityDays:         annual.totalDays,
+                    accumulatedBalance:         annual.totalAmount,
+                    finalAmount:                annual.totalAmount,
+                    socialBenefitsAdvance:      0,
+                    accumulatedInterests:       0,
+                    immediatePayment:           annual.totalAmount,
+                    balanceInFavor:             annual.totalAmount,
+                    annual,
+                };
+                return { employee: emp, calculation: annualCalculation };
+            }
+
             const calculation: SocialBenefitsCalculation = {
                 salaryVES:                  vesAmount,
                 dailySalary:                dailyNormalSalary,
@@ -305,7 +374,7 @@ export default function PrestacionesPage() {
 
             return { employee: emp, calculation };
         });
-    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate]);
+    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays]);
 
     const grandTotal = useMemo(
         () => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0),
@@ -345,6 +414,7 @@ export default function PrestacionesPage() {
                     accumulatedInterests:       result.calculation.accumulatedInterests,
                     immediatePayment:           result.calculation.immediatePayment,
                     balanceInFavor:             result.calculation.balanceInFavor,
+                    annual:                     result.calculation.annual,
                     advancePercentage:          advPct,
                     interestRate:               rate,
                     logoUrl:                    company?.logoUrl,
@@ -476,6 +546,44 @@ export default function PrestacionesPage() {
                         {/* ── Ajustes de Ley ────────────────────────────── */}
                         <div className="px-5 py-5 space-y-4 bg-surface-2/[0.03]">
                             <SectionHeader label="Ajustes de Ley" />
+                            <div role="radiogroup" aria-label="Modalidad de cálculo" className="grid grid-cols-2 gap-1 p-1 rounded-lg border border-border-light bg-surface-2/40">
+                                {CALCULATION_MODES.map(mode => (
+                                    <button
+                                        key={mode.value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={calculationMode === mode.value}
+                                        onClick={() => setCalculationMode(mode.value)}
+                                        className={[
+                                            "h-8 rounded-md font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                                            calculationMode === mode.value
+                                                ? "bg-surface-1 text-foreground font-bold shadow-sm border border-border-light"
+                                                : "text-[var(--text-tertiary)] hover:text-foreground",
+                                        ].join(" ")}
+                                    >
+                                        {mode.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {calculationMode === "annual" ? (
+                                <div className="space-y-2">
+                                    <BaseInput.Field
+                                        label="Días a pagar por año"
+                                        type="number"
+                                        step={0.5}
+                                        min={0}
+                                        max={60}
+                                        value={annualDays}
+                                        onValueChange={setAnnualDays}
+                                        suffix="días"
+                                        inputClassName="text-right"
+                                    />
+                                    <p className="font-mono text-[10px] leading-relaxed text-[var(--text-tertiary)]">
+                                        Año de la fecha de corte, al salario integral actual y sin intereses.
+                                        Se suman los días adicionales del Art. 142.b; si ingresó durante el año se prorratea por meses.
+                                    </p>
+                                </div>
+                            ) : (
                             <div className="grid grid-cols-2 gap-3">
                                 <BaseInput.Field
                                     label="Tasa Int."
@@ -500,6 +608,7 @@ export default function PrestacionesPage() {
                                     inputClassName="text-right"
                                 />
                             </div>
+                            )}
                         </div>
 
                         {/* ── Resumen de cálculo (single emp only) ───────── */}
@@ -526,12 +635,16 @@ export default function PrestacionesPage() {
                                     </div>
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <div className="flex justify-between items-baseline">
-                                            <span className="font-mono text-[11px] text-[var(--text-secondary)]">Saldo acumulado</span>
-                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{formatCurrency(individualCalculation.accumulatedBalance)}</span>
+                                            <span className="font-mono text-[11px] text-[var(--text-secondary)]">{individualCalculation.annual ? "Días a pagar" : "Saldo acumulado"}</span>
+                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">
+                                                {individualCalculation.annual
+                                                    ? `${formatNumber(individualCalculation.annual.totalDays)} días`
+                                                    : formatCurrency(individualCalculation.accumulatedBalance)}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="px-4 py-3.5 flex justify-between items-center bg-surface-1">
-                                        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">Saldo a favor</span>
+                                        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">{individualCalculation.annual ? "Total a pagar" : "Saldo a favor"}</span>
                                         <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{formatCurrency(individualCalculation.balanceInFavor)}</span>
                                     </div>
                                 </div>

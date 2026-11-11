@@ -110,6 +110,77 @@ export function calculateSocialBenefits(options: SocialBenefitsOptions): SocialB
     };
 }
 
+// ── Annual advance (Art. 142.a/142.b + Art. 144 LOTTT) ──────────────────────
+// Many employers settle seniority once a year instead of keeping a running
+// guarantee balance: they pay a fixed number of days (commonly 45 = 75% of the
+// 60 days of Art. 142.a) plus that year's Art. 142.b additional days, all at
+// the current integrated salary and without trust interest. Prior years are
+// already settled, so only the calendar year of the cutoff date is computed.
+
+export interface AnnualSeniorityAdvance {
+    periodStart:           string;   // YYYY-MM-DD, Jan 1 or the hire date
+    periodMonths:          number;   // complete months worked in the period (0-12)
+    configuredDays:        number;   // days for a full year, as entered
+    seniorityDays:         number;   // configuredDays prorated by periodMonths
+    extraDays:             number;   // Art. 142.b days earned at the last anniversary
+    totalDays:             number;
+    seniorityAmount:       number;
+    extraAmount:           number;
+    totalAmount:           number;
+}
+
+interface AnnualSeniorityAdvanceOptions {
+    hireDate:              string;   // YYYY-MM-DD
+    cutoffDate:            string;   // YYYY-MM-DD
+    yearsOfService:        number;   // completed years at the cutoff date
+    integratedDailySalary: number;
+    annualDays:            number;   // e.g. 45
+}
+
+function toIsoDate(date: Date): string {
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${date.getFullYear()}-${m}-${d}`;
+}
+
+export function calculateAnnualSeniorityAdvance(options: AnnualSeniorityAdvanceOptions): AnnualSeniorityAdvance {
+    const { hireDate, cutoffDate, yearsOfService, integratedDailySalary, annualDays } = options;
+
+    const hire      = new Date(hireDate + "T00:00:00");
+    const cut       = new Date(cutoffDate + "T00:00:00");
+    const yearStart = new Date(cut.getFullYear(), 0, 1);
+    const start     = hire > yearStart ? hire : yearStart;
+
+    // Calendar months between the period start and the day after the cutoff, so
+    // Jan 1 → Dec 31 counts as exactly 12 months.
+    const end = new Date(cut.getFullYear(), cut.getMonth(), cut.getDate() + 1);
+    const rawMonths = (end.getFullYear() - start.getFullYear()) * 12
+        + (end.getMonth() - start.getMonth())
+        - (end.getDate() < start.getDate() ? 1 : 0);
+    const periodMonths = Math.min(12, Math.max(0, rawMonths));
+
+    const seniorityDays = annualDays * periodMonths / 12;
+    // Same progression as the accumulated calculation: year N of service earns
+    // 2 × (N − 1) additional days, capped at 30.
+    const extraDays     = Math.min(30, 2 * Math.max(0, yearsOfService - 1));
+    const totalDays     = seniorityDays + extraDays;
+
+    const seniorityAmount = seniorityDays * integratedDailySalary;
+    const extraAmount     = extraDays * integratedDailySalary;
+
+    return {
+        periodStart: toIsoDate(start),
+        periodMonths,
+        configuredDays: annualDays,
+        seniorityDays,
+        extraDays,
+        totalDays,
+        seniorityAmount,
+        extraAmount,
+        totalAmount: seniorityAmount + extraAmount,
+    };
+}
+
 // ── CSV Export ────────────────────────────────────────────────────────────────
 
 interface SocialBenefitsExportRow {

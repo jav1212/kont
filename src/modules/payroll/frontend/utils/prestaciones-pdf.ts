@@ -4,6 +4,7 @@
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import type { AnnualSeniorityAdvance } from "./prestaciones-calculator";
 import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
@@ -48,6 +49,8 @@ export interface SocialBenefitsPdfData {
     balanceInFavor:              number;
     advancePercentage?:          number;
     interestRate?:               number;
+    // Present when the employer settles seniority yearly instead of accumulating it.
+    annual?:                     AnnualSeniorityAdvance;
     logoUrl?:                    string;
     showLogoInPdf?:              boolean;
 }
@@ -171,6 +174,39 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     renderLabel(doc, "Salario Integral Diario", ML + 3, y + 7, "left", COLORS.inkMed, 8);
     renderMono(doc, formatPayrollAmount(data.integratedDailySalary), ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
     y += 11 + 6;
+
+    if (data.annual) {
+        const a = data.annual;
+        const sal = formatPayrollAmount(data.integratedDailySalary);
+        y = drawSectionLabel(doc, ML, W, y, `Anticipo Anual (${fmtDateEs(a.periodStart)} al ${fmtDateEs(data.cutoffDate)})`);
+        const proration = a.periodMonths < 12 ? ` — ${a.configuredDays} días × ${a.periodMonths}/12 meses` : "";
+        y = renderDetailRow(doc, ML, W, y, "Anticipo prestación de antigüedad", `Art. 142.a / 144 LOTTT${proration}`, formatPayrollAmount(a.seniorityAmount), COLORS.ink, false, `${formatPayrollAmount(a.seniorityDays)} d × ${sal}`);
+        y = renderDetailRow(doc, ML, W, y, "Días adicionales", "Art. 142.b LOTTT", formatPayrollAmount(a.extraAmount), COLORS.ink, true, `${a.extraDays} d × ${sal}`);
+
+        fill(doc, ML, y, W, 0.5, COLORS.orange);
+        y += 1.2;
+        fill(doc, ML, y, W, 13, COLORS.bandHead);
+        rect(doc, ML, y, W, 13, COLORS.border, 0.2);
+        renderLabel(doc, "Total a Pagar", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+        renderMono(doc, formatPayrollAmount(a.totalAmount), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+        y += 13 + 6;
+
+        const annualLegal =
+            "La prestación de antigüedad (Art. 142 LOTTT) del período indicado se cancela como anticipo con " +
+            "salario integral, de conformidad con los Arts. 122 y 144 de la Ley Orgánica del Trabajo, los " +
+            "Trabajadores y las Trabajadoras (LOTTT).";
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.8);
+        doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+        const annualLines = doc.splitTextToSize(annualLegal, W) as string[];
+        annualLines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+        y += annualLines.length * 3.5 + 6;
+
+        drawSignatures(doc, ML, W, y);
+        drawFooter(doc, kontaLogo);
+        doc.save(`anticipo-prestaciones-${safeFilename(data.employee.idNumber)}-${data.cutoffDate.replaceAll("-", "")}.pdf`);
+        return;
+    }
 
     // ── Prestaciones acumuladas ───────────────────────────────────────────────
     y = drawSectionLabel(doc, ML, W, y, "Prestaciones Acumuladas");
