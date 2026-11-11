@@ -179,9 +179,9 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
         const a = data.annual;
         const sal = formatPayrollAmount(data.integratedDailySalary);
         y = drawSectionLabel(doc, ML, W, y, `Anticipo Anual (${fmtDateEs(a.periodStart)} al ${fmtDateEs(data.cutoffDate)})`);
-        const proration = a.periodMonths < 12 ? ` — ${a.configuredDays} días × ${a.periodMonths}/12 meses` : "";
+        const proration = !a.seniorityDaysManual && a.periodMonths < 12 ? ` — ${a.configuredDays} días × ${a.periodMonths}/12 meses` : "";
         y = renderDetailRow(doc, ML, W, y, "Anticipo prestación de antigüedad", `Art. 142.a / 144 LOTTT${proration}`, formatPayrollAmount(a.seniorityAmount), COLORS.ink, false, `${formatPayrollAmount(a.seniorityDays)} d × ${sal}`);
-        y = renderDetailRow(doc, ML, W, y, "Días adicionales", "Art. 142.b LOTTT", formatPayrollAmount(a.extraAmount), COLORS.ink, true, `${a.extraDays} d × ${sal}`);
+        y = renderDetailRow(doc, ML, W, y, "Días adicionales", "Art. 142.b LOTTT", formatPayrollAmount(a.extraAmount), COLORS.ink, true, `${formatPayrollAmount(a.extraDays)} d × ${sal}`);
 
         fill(doc, ML, y, W, 0.5, COLORS.orange);
         y += 1.2;

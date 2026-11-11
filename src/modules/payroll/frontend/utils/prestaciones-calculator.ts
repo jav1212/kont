@@ -123,6 +123,8 @@ export interface AnnualSeniorityAdvance {
     configuredDays:        number;   // days for a full year, as entered
     seniorityDays:         number;   // configuredDays prorated by periodMonths
     extraDays:             number;   // Art. 142.b days earned at the last anniversary
+    seniorityDaysManual:   boolean;  // seniorityDays was typed by the user
+    extraDaysManual:       boolean;  // extraDays was typed by the user
     totalDays:             number;
     seniorityAmount:       number;
     extraAmount:           number;
@@ -135,6 +137,10 @@ interface AnnualSeniorityAdvanceOptions {
     yearsOfService:        number;   // completed years at the cutoff date
     integratedDailySalary: number;
     annualDays:            number;   // e.g. 45
+    // Days the employer decided to pay for this employee; they replace the
+    // computed values verbatim (no proration, no 142.b progression).
+    seniorityDaysOverride?: number;
+    extraDaysOverride?:     number;
 }
 
 function toIsoDate(date: Date): string {
@@ -144,7 +150,10 @@ function toIsoDate(date: Date): string {
 }
 
 export function calculateAnnualSeniorityAdvance(options: AnnualSeniorityAdvanceOptions): AnnualSeniorityAdvance {
-    const { hireDate, cutoffDate, yearsOfService, integratedDailySalary, annualDays } = options;
+    const {
+        hireDate, cutoffDate, yearsOfService, integratedDailySalary, annualDays,
+        seniorityDaysOverride, extraDaysOverride,
+    } = options;
 
     const hire      = new Date(hireDate + "T00:00:00");
     const cut       = new Date(cutoffDate + "T00:00:00");
@@ -159,10 +168,12 @@ export function calculateAnnualSeniorityAdvance(options: AnnualSeniorityAdvanceO
         - (end.getDate() < start.getDate() ? 1 : 0);
     const periodMonths = Math.min(12, Math.max(0, rawMonths));
 
-    const seniorityDays = annualDays * periodMonths / 12;
+    const seniorityDaysManual = seniorityDaysOverride !== undefined;
+    const extraDaysManual     = extraDaysOverride !== undefined;
+    const seniorityDays = seniorityDaysOverride ?? annualDays * periodMonths / 12;
     // Same progression as the accumulated calculation: year N of service earns
     // 2 × (N − 1) additional days, capped at 30.
-    const extraDays     = Math.min(30, 2 * Math.max(0, yearsOfService - 1));
+    const extraDays     = extraDaysOverride ?? Math.min(30, 2 * Math.max(0, yearsOfService - 1));
     const totalDays     = seniorityDays + extraDays;
 
     const seniorityAmount = seniorityDays * integratedDailySalary;
@@ -174,6 +185,8 @@ export function calculateAnnualSeniorityAdvance(options: AnnualSeniorityAdvanceO
         configuredDays: annualDays,
         seniorityDays,
         extraDays,
+        seniorityDaysManual,
+        extraDaysManual,
         totalDays,
         seniorityAmount,
         extraAmount,

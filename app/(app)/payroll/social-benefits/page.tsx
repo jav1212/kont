@@ -53,6 +53,19 @@ function getErrorMessage(err: unknown): string {
 // interest); "annual" settles only the cutoff year with a fixed number of days.
 type CalculationMode = "accumulated" | "annual";
 
+interface AnnualDaysOverride {
+    seniorityDays?: string;
+    extraDays?:     string;
+}
+
+function parseDaysOverride(value: string | undefined): number | undefined {
+    return value === undefined ? undefined : Math.max(0, parseFloat(value) || 0);
+}
+
+function formatDaysInput(days: number): string {
+    return String(Math.round(days * 100) / 100);
+}
+
 const CALCULATION_MODES: { value: CalculationMode; label: string }[] = [
     { value: "accumulated", label: "Saldo acumulado" },
     { value: "annual",      label: "Anticipo anual" },
@@ -145,13 +158,14 @@ function SocialBenefitsConstancy({
                             label="Anticipo prestación de antigüedad"
                             formula={
                                 `${formatNumber(annual.seniorityDays)}d × ${formatNumber(calc.integratedDailySalary)}` +
-                                (annual.periodMonths < 12 ? ` (${annual.configuredDays}d × ${annual.periodMonths}/12 meses)` : "")
+                                (annual.seniorityDaysManual ? " (manual)"
+                                    : annual.periodMonths < 12 ? ` (${annual.configuredDays}d × ${annual.periodMonths}/12 meses)` : "")
                             }
                             value={formatCurrency(annual.seniorityAmount)}
                         />
                         <CalcRow
                             label="Días adicionales (Art. 142.b)"
-                            formula={`${annual.extraDays}d × ${formatNumber(calc.integratedDailySalary)}`}
+                            formula={`${formatNumber(annual.extraDays)}d × ${formatNumber(calc.integratedDailySalary)}${annual.extraDaysManual ? " (manual)" : ""}`}
                             value={formatCurrency(annual.extraAmount)}
                         />
                     </div>
@@ -261,6 +275,9 @@ export default function PrestacionesPage() {
     const [advancePercentage,  setAdvancePercentage]  = useState("75");
     const [calculationMode,    setCalculationMode]    = useState<CalculationMode>("accumulated");
     const [annualDays,         setAnnualDays]         = useState("45");
+    // Per-employee days typed by the user in annual mode, keyed by cédula. A
+    // present key (even "") replaces the computed value; absent means automatic.
+    const [annualOverrides,    setAnnualOverrides]    = useState<Record<string, AnnualDaysOverride>>({});
 
     // ── Batch processing ────────────────────────────────────────────────────
     const filteredEmployees = useMemo(() => {
@@ -328,6 +345,8 @@ export default function PrestacionesPage() {
                     yearsOfService:        res.yearsOfService,
                     integratedDailySalary: res.integratedDailySalary,
                     annualDays:            Math.max(0, parseFloat(annualDays) || 0),
+                    seniorityDaysOverride: parseDaysOverride(annualOverrides[emp.cedula]?.seniorityDays),
+                    extraDaysOverride:     parseDaysOverride(annualOverrides[emp.cedula]?.extraDays),
                 });
                 const annualCalculation: SocialBenefitsCalculation = {
                     salaryVES:                  vesAmount,
@@ -374,7 +393,7 @@ export default function PrestacionesPage() {
 
             return { employee: emp, calculation };
         });
-    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays]);
+    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays, annualOverrides]);
 
     const grandTotal = useMemo(
         () => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0),
@@ -383,6 +402,22 @@ export default function PrestacionesPage() {
 
     const vesSalary             = parseFloat(salaryOverride) || 0;
     const individualCalculation = benefitResults.length === 1 ? benefitResults[0].calculation : null;
+    const individualAnnual      = selectedIdNumber ? individualCalculation?.annual : undefined;
+    const individualOverride    = annualOverrides[selectedIdNumber];
+
+    const setAnnualOverride = (field: keyof AnnualDaysOverride, value: string) => {
+        setAnnualOverrides(prev => ({
+            ...prev,
+            [selectedIdNumber]: { ...prev[selectedIdNumber], [field]: value },
+        }));
+    };
+    const resetAnnualOverride = () => {
+        setAnnualOverrides(prev => {
+            const next = { ...prev };
+            delete next[selectedIdNumber];
+            return next;
+        });
+    };
 
     const [isExportingBatch, setIsExportingBatch] = useState(false);
     const handleBatchExport = async () => {
@@ -582,6 +617,43 @@ export default function PrestacionesPage() {
                                         Año de la fecha de corte, al salario integral actual y sin intereses.
                                         Se suman los días adicionales del Art. 142.b; si ingresó durante el año se prorratea por meses.
                                     </p>
+                                    {individualAnnual ? (
+                                        <div className="pt-2 space-y-2">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <BaseInput.Field
+                                                    label="Días antigüedad"
+                                                    type="number"
+                                                    step={0.5}
+                                                    min={0}
+                                                    value={individualOverride?.seniorityDays ?? formatDaysInput(individualAnnual.seniorityDays)}
+                                                    onValueChange={value => setAnnualOverride("seniorityDays", value)}
+                                                    inputClassName="text-right"
+                                                />
+                                                <BaseInput.Field
+                                                    label="Días adic."
+                                                    type="number"
+                                                    step={0.5}
+                                                    min={0}
+                                                    value={individualOverride?.extraDays ?? formatDaysInput(individualAnnual.extraDays)}
+                                                    onValueChange={value => setAnnualOverride("extraDays", value)}
+                                                    inputClassName="text-right"
+                                                />
+                                            </div>
+                                            {individualOverride && (
+                                                <button
+                                                    type="button"
+                                                    onClick={resetAnnualOverride}
+                                                    className="font-mono text-[10px] uppercase tracking-[0.12em] text-primary-500 hover:underline"
+                                                >
+                                                    Usar cálculo automático
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="font-mono text-[10px] leading-relaxed text-[var(--text-tertiary)]">
+                                            Selecciona un empleado para colocar manualmente sus días a pagar.
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                             <div className="grid grid-cols-2 gap-3">
