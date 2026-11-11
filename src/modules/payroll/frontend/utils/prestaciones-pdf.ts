@@ -199,12 +199,11 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
         if (data.socialBenefitsAdvance > 0) {
             y = renderDetailRow(doc, ML, W, y, `Anticipo de Prestaciones (${pct}%)`, "Art. 144 LOTTT", formatPayrollAmount(data.socialBenefitsAdvance), COLORS.ink, false);
         }
-        // Interests are paid alongside the advance but do not reduce the balance.
-        // Without interests the total would merely repeat the advance, so both rows are omitted.
         if (data.accumulatedInterests > 0) {
             y = renderDetailRow(doc, ML, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", formatPayrollAmount(data.accumulatedInterests), COLORS.ink, true);
-            y = renderDetailRow(doc, ML, W, y, "Total pago inmediato", "Anticipo + intereses", formatPayrollAmount(data.immediatePayment), COLORS.inkMed, false);
         }
+        // Interests are paid alongside the advance but do not reduce the balance.
+        y = renderDetailRow(doc, ML, W, y, "Total pago inmediato", "Anticipo + intereses", formatPayrollAmount(data.immediatePayment), COLORS.inkMed, false);
 
         fill(doc, ML, y, W, 0.5, COLORS.orange);
         y += 1.2;
