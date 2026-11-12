@@ -132,12 +132,47 @@ function calculateFractional(
     };
 }
 
+// ── INCES retention (Ley del INCES, Art. 14) ─────────────────────────────────
+// Workers contribute 0.5% of the profit sharing they receive. It only applies to
+// employees registered with the social security/INCES, so the employer picks
+// who it applies to instead of the calculator deducting it from everyone.
+
+const INCES_RETENTION_RATE = 0.005;
+
+interface IncesRetention {
+    incesRetention: number;
+    netAmount:      number;
+}
+
+function applyIncesRetention(amount: number, apply: boolean): IncesRetention {
+    const incesRetention = apply ? amount * INCES_RETENTION_RATE : 0;
+    return { incesRetention, netAmount: amount - incesRetention };
+}
+
+function IncesDeductionRows({ amount, retention }: { amount: number; retention: IncesRetention }) {
+    if (retention.incesRetention <= 0) return null;
+    return (
+        <>
+            <SectionHeader label="Deducciones" tone="amber" />
+            <div className="space-y-1">
+                <CalcRow
+                    label="Retención INCES"
+                    formula={`0,5% × ${formatNumber(amount)}`}
+                    value={`− ${formatCurrency(retention.incesRetention)}`}
+                    accent="amber"
+                />
+            </div>
+        </>
+    );
+}
+
 // ============================================================================
 // CONSTANCIA — Completas
 // ============================================================================
 
 interface FullConstancyProps {
     calc:             FullProfitSharing;
+    retention:        IncesRetention;
     employeeName:     string;
     employeeIdNumber: string;
     employeeRole?:    string;
@@ -147,7 +182,7 @@ interface FullConstancyProps {
 }
 
 function FullConstancy({
-    calc, employeeName, employeeIdNumber, employeeRole,
+    calc, retention, employeeName, employeeIdNumber, employeeRole,
     companyName, companyLogoUrl, showLogoInPdf,
 }: FullConstancyProps) {
     const documentId = makeDocumentId(`${employeeIdNumber}|${calc.fiscalYear}|completas`);
@@ -187,7 +222,8 @@ function FullConstancy({
                     value={formatCurrency(calc.amount)}
                 />
             </div>
-            <LiquidoTotal valueBs={calc.amount} />
+            <IncesDeductionRows amount={calc.amount} retention={retention} />
+            <LiquidoTotal valueBs={retention.netAmount} />
         </ConstanciaShell>
     );
 }
@@ -198,6 +234,7 @@ function FullConstancy({
 
 interface FractionalConstancyProps {
     calc:             FractionalProfitSharing;
+    retention:        IncesRetention;
     employeeName:     string;
     employeeIdNumber: string;
     employeeRole?:    string;
@@ -209,7 +246,7 @@ interface FractionalConstancyProps {
 }
 
 function FractionalConstancy({
-    calc, employeeName, employeeIdNumber, employeeRole,
+    calc, retention, employeeName, employeeIdNumber, employeeRole,
     companyName, companyLogoUrl, showLogoInPdf,
     cutoffDate,
 }: FractionalConstancyProps) {
@@ -251,7 +288,8 @@ function FractionalConstancy({
                     value={formatCurrency(calc.amount)}
                 />
             </div>
-            <LiquidoTotal valueBs={calc.amount} />
+            <IncesDeductionRows amount={calc.amount} retention={retention} />
+            <LiquidoTotal valueBs={retention.netAmount} />
         </ConstanciaShell>
     );
 }
@@ -307,6 +345,21 @@ export default function UtilidadesPage() {
     const [profitSharingDays, setProfitSharingDays] = useState("15");
     const [cutoffDate,        setCutoffDate]        = useState(getTodayIsoDate());
 
+    // ── INCES retention ─────────────────────────────────────────────────────
+    // Enabled for everyone once switched on; employees not registered with the
+    // INCES are excluded one by one (kept in memory only, keyed by cédula).
+    const [incesEnabled,  setIncesEnabled]  = useState(false);
+    const [incesExcluded, setIncesExcluded] = useState<ReadonlySet<string>>(new Set());
+    const appliesInces = (cedula: string) => incesEnabled && !incesExcluded.has(cedula);
+    const setEmployeeInces = (cedula: string, apply: boolean) => {
+        setIncesExcluded(prev => {
+            const next = new Set(prev);
+            if (apply) next.delete(cedula); else next.add(cedula);
+            return next;
+        });
+    };
+    const selectedAppliesInces = selectedIdNumber ? appliesInces(selectedIdNumber) : incesEnabled;
+
     // ── Single-employee preview calcs (resumen panel) ───────────────────────
     const fullCalculation = useMemo(
         () => calculateFull(salaryVES, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear),
@@ -326,9 +379,10 @@ export default function UtilidadesPage() {
 
     // ── Batch processing ────────────────────────────────────────────────────
     interface CalculationResult {
-        emp:  Employee;
-        calc: FullProfitSharing | FractionalProfitSharing | null;
-        msg?: string;
+        emp:       Employee;
+        calc:      FullProfitSharing | FractionalProfitSharing | null;
+        retention: IncesRetention;
+        msg?:      string;
     }
 
     const filteredEmployees = useMemo(() => {
@@ -339,7 +393,12 @@ export default function UtilidadesPage() {
 
     const calculationResults = useMemo<CalculationResult[]>(() => {
         return filteredEmployees.map(emp => {
-            const ves = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            // The salary field is only shown for a single selected employee; it
+            // replaces that employee's stored salary when it holds a positive value.
+            const typedSalary = emp.cedula === selectedIdNumber ? salaryVES : 0;
+            const ves = typedSalary > 0
+                ? typedSalary
+                : emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
             const ing = emp.fechaIngreso ?? "";
 
             let calc: FullProfitSharing | FractionalProfitSharing | null = null;
@@ -353,14 +412,18 @@ export default function UtilidadesPage() {
                 if (!calc) msg = "Verificar fechas/parámetros";
             }
 
-            return { emp, calc, msg };
+            const retention = applyIncesRetention(calc?.amount ?? 0, incesEnabled && !incesExcluded.has(emp.cedula));
+            return { emp, calc, retention, msg };
         });
-    }, [filteredEmployees, mode, profitSharingDays, fiscalYear, currentYear, cutoffDate, bcvRate]);
+    }, [filteredEmployees, selectedIdNumber, salaryVES, mode, profitSharingDays, fiscalYear, currentYear, cutoffDate, bcvRate, incesEnabled, incesExcluded]);
 
     const totalAmount = useMemo(
-        () => calculationResults.reduce((acc, r) => acc + (r.calc?.amount ?? 0), 0),
+        () => calculationResults.reduce((acc, r) => acc + r.retention.netAmount, 0),
         [calculationResults],
     );
+
+    const fullRetention       = applyIncesRetention(fullCalculation?.amount ?? 0, selectedAppliesInces);
+    const fractionalRetention = applyIncesRetention(fractionalCalculation?.amount ?? 0, selectedAppliesInces);
 
     const observationsCount = calculationResults.filter(r => r.msg).length;
 
@@ -380,6 +443,8 @@ export default function UtilidadesPage() {
                         dailySalary:       c.dailySalary,
                         profitSharingDays: c.profitSharingDays,
                         amount:            c.amount,
+                        incesRetention:    r.retention.incesRetention,
+                        netAmount:         r.retention.netAmount,
                         logoUrl:           company?.logoUrl,
                         showLogoInPdf:     company?.showLogoInPdf,
                     });
@@ -400,6 +465,8 @@ export default function UtilidadesPage() {
                         salaryVES:         c.salaryVES,
                         dailySalary:       c.dailySalary,
                         amount:            c.amount,
+                        incesRetention:    r.retention.incesRetention,
+                        netAmount:         r.retention.netAmount,
                         logoUrl:           company?.logoUrl,
                         showLogoInPdf:     company?.showLogoInPdf,
                     });
@@ -556,6 +623,30 @@ export default function UtilidadesPage() {
                             </p>
                         </div>
 
+                        {/* ── Retención INCES ───────────────────────────── */}
+                        <div className="px-5 py-4 space-y-2">
+                            <SectionHeader label="Deducciones" />
+                            <OnlyActiveToggle
+                                checked={incesEnabled}
+                                onChange={setIncesEnabled}
+                                label="Retención INCES 0,5%"
+                            />
+                            {incesEnabled && selectedIdNumber && (
+                                <OnlyActiveToggle
+                                    checked={selectedAppliesInces}
+                                    onChange={apply => setEmployeeInces(selectedIdNumber, apply)}
+                                    label="Aplicar a este empleado"
+                                />
+                            )}
+                            {incesEnabled && (
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] leading-relaxed">
+                                    {selectedIdNumber
+                                        ? "Desactívalo si el empleado no está asegurado (IVSS / INCES)."
+                                        : `Se aplica a todos${incesExcluded.size > 0 ? ` excepto ${incesExcluded.size} excluido${incesExcluded.size !== 1 ? "s" : ""}` : ""}. Selecciona un empleado para excluirlo.`}
+                                </p>
+                            )}
+                        </div>
+
                         {/* ── Mode-specific preview ─────────────────────── */}
                         {mode === "completas" && (
                             <div className="px-5 py-4 space-y-0.5">
@@ -582,10 +673,18 @@ export default function UtilidadesPage() {
                                             value={formatCurrency(fullCalculation.amount)}
                                             accent="green"
                                         />
+                                        {fullRetention.incesRetention > 0 && (
+                                            <CalcRow
+                                                label="Retención INCES"
+                                                formula="0,5%"
+                                                value={`− ${formatCurrency(fullRetention.incesRetention)}`}
+                                                accent="amber"
+                                            />
+                                        )}
                                         <div className="border-t border-border-light my-2" />
                                         <div className="flex items-baseline justify-between pt-1">
                                             <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
-                                            <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{formatCurrency(fullCalculation.amount)}</span>
+                                            <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{formatCurrency(fullRetention.netAmount)}</span>
                                         </div>
                                     </>
                                 ) : (
@@ -628,10 +727,18 @@ export default function UtilidadesPage() {
                                             value={formatCurrency(fractionalCalculation.amount)}
                                             accent="amber"
                                         />
+                                        {fractionalRetention.incesRetention > 0 && (
+                                            <CalcRow
+                                                label="Retención INCES"
+                                                formula="0,5%"
+                                                value={`− ${formatCurrency(fractionalRetention.incesRetention)}`}
+                                                accent="amber"
+                                            />
+                                        )}
                                         <div className="border-t border-border-light my-2" />
                                         <div className="flex items-baseline justify-between pt-1">
                                             <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
-                                            <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{formatCurrency(fractionalCalculation.amount)}</span>
+                                            <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{formatCurrency(fractionalRetention.netAmount)}</span>
                                         </div>
                                     </div>
                                 ) : (
@@ -696,6 +803,7 @@ export default function UtilidadesPage() {
                                             {mode === "completas" ? (
                                                 <FullConstancy
                                                     calc={result.calc as FullProfitSharing}
+                                                    retention={result.retention}
                                                     employeeName={result.emp.nombre}
                                                     employeeIdNumber={result.emp.cedula}
                                                     employeeRole={result.emp.cargo}
@@ -706,6 +814,7 @@ export default function UtilidadesPage() {
                                             ) : (
                                                 <FractionalConstancy
                                                     calc={result.calc as FractionalProfitSharing}
+                                                    retention={result.retention}
                                                     employeeName={result.emp.nombre}
                                                     employeeIdNumber={result.emp.cedula}
                                                     employeeRole={result.emp.cargo}

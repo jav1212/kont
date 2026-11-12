@@ -35,6 +35,9 @@ export interface FullProfitSharingPdfData {
     dailySalary:       number;
     profitSharingDays: number;
     amount:            number;
+    // INCES worker retention (0.5%); omitted or 0 when it does not apply.
+    incesRetention?:   number;
+    netAmount?:        number;
     logoUrl?:          string;
     showLogoInPdf?:    boolean;
 }
@@ -55,11 +58,31 @@ export interface FractionalProfitSharingPdfData {
     salaryVES:         number;
     dailySalary:       number;
     amount:            number;
+    incesRetention?:   number;
+    netAmount?:        number;
     logoUrl?:          string;
     showLogoInPdf?:    boolean;
 }
 
 type Doc = jsPDF;
+
+/**
+ * Draws the INCES deduction line and the net total when a retention applies.
+ * @returns The next y position (unchanged when there is no retention).
+ */
+function drawIncesRetention(
+    doc: Doc, x: number, w: number, y: number,
+    grossAmount: number, incesRetention: number | undefined, netAmount: number | undefined,
+): number {
+    if (!incesRetention || incesRetention <= 0) return y;
+    const H = 10;
+    hline(doc, x, y + H, w, COLORS.border, 0.2);
+    renderText(doc, "Retencion INCES (0,5%)", x + 3, y + 6, 9, true, COLORS.ink, "left", w * 0.5, "helvetica");
+    renderMono(doc, `0,5% x ${formatPayrollAmount(grossAmount)}`, x + w * 0.5, y + 6, 7.8, false, COLORS.muted, "left");
+    renderMono(doc, `- ${formatPayrollAmount(incesRetention)}`, x + w - 3, y + 6, 9.5, true, COLORS.inkMed, "right");
+    y += H + 2;
+    return drawTotalCard(doc, x, w, y, "Total a recibir", formatPayrollAmount(netAmount ?? grossAmount - incesRetention));
+}
 
 function drawSignatures(doc: Doc, x: number, w: number, y: number): number {
     const SIG_W = (w - 16) / 2;
@@ -176,7 +199,9 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
     );
     y += 14;
 
-    y = drawTotalCard(doc, ML, W, y, "Monto a pagar (utilidades netas)", formatPayrollAmount(data.amount));
+    const fullLabel = data.incesRetention ? "Utilidades" : "Monto a pagar (utilidades netas)";
+    y = drawTotalCard(doc, ML, W, y, fullLabel, formatPayrollAmount(data.amount));
+    y = drawIncesRetention(doc, ML, W, y, data.amount, data.incesRetention, data.netAmount);
 
     y = drawLegal(
         doc,
@@ -261,6 +286,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
     y += 20;
 
     y = drawTotalCard(doc, ML, W, y, "Monto fraccionado", formatPayrollAmount(data.amount));
+    y = drawIncesRetention(doc, ML, W, y, data.amount, data.incesRetention, data.netAmount);
 
     y = drawLegal(
         doc,
