@@ -311,7 +311,12 @@ export default function PrestacionesPage() {
 
     const benefitResults = useMemo<BenefitResult[]>(() => {
         return filteredEmployees.map(emp => {
-            const vesAmount = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            // The salary field is only shown for a single selected employee; it
+            // replaces that employee's stored salary when it holds a positive value.
+            const typedSalary = emp.cedula === selectedIdNumber ? parseFloat(salaryOverride) : NaN;
+            const vesAmount = typedSalary > 0
+                ? typedSalary
+                : emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
             const hire      = emp.fechaIngreso ?? "";
             const psDays    = parseInt(profitSharingDays) || 15;
             const vbDays    = parseInt(vacationBonusDays) || 15;
@@ -393,7 +398,7 @@ export default function PrestacionesPage() {
 
             return { employee: emp, calculation };
         });
-    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays, annualOverrides]);
+    }, [filteredEmployees, selectedIdNumber, salaryOverride, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays, annualOverrides]);
 
     const grandTotal = useMemo(
         () => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0),
