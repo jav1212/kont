@@ -16,6 +16,10 @@ import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee
 import { generateLiquidationPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import type { LiquidationEmployee, LiquidationOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
+import {
+    discountUnjustifiedAbsences,
+    parseAbsenceDays,
+} from "@/src/modules/payroll/frontend/utils/unjustified-absences";
 import type { PayrollReferenceCurrencyCode } from "@/src/modules/payroll/shared/reference-currency";
 
 import {
@@ -56,6 +60,8 @@ interface LiquidationResult {
     socialBenefits:         number;
     daysInCurrentYear:      number;
     daysSinceAnniversary:   number;
+    profitSharingAbsenceDays:   number;
+    profitSharingEffectiveDays: number;
     fractionalProfitSharing: number;
     fractionalVacations:    number;
     fractionalVacationBonus: number;
@@ -78,12 +84,14 @@ function calculateLiquidation(
     usdRate:           number,
     unpaidVacationsAccrued:     boolean,
     unpaidProfitSharingAccrued: boolean,
+    profitSharingAbsenceDays:   number,
 ): LiquidationResult {
     const base: LiquidationResult = {
         employee, salaryVES: 0, integratedDailySalary: 0,
         yearsOfService: 0, totalDays: 0,
         daysSeniority: 0, daysSeniorityQuarterly: 0, daysSeniorityExtra: 0,
         socialBenefits: 0, daysInCurrentYear: 0, daysSinceAnniversary: 0,
+        profitSharingAbsenceDays: 0, profitSharingEffectiveDays: 0,
         fractionalProfitSharing: 0, fractionalVacations: 0, fractionalVacationBonus: 0,
         accruedVacations: 0, accruedVacationBonus: 0, accruedVacationDays: 0,
         accruedProfitSharing: 0, accruedProfitSharingDays: 0,
@@ -126,7 +134,13 @@ function calculateLiquidation(
     const refStartDate      = hireDate > yearStart ? hireDate : yearStart;
     const daysInCurrentYear = Math.floor((termDate.getTime() - refStartDate.getTime()) / msPerDay);
 
-    const fractionalProfitSharing = (salaryVES / 30) * profitSharingDays * (daysInCurrentYear / 365);
+    // Unjustified absences of the current year shrink the fraction (Art. 131 LOTTT);
+    // prior unpaid years below are owed in full.
+    const {
+        appliedAbsenceDays: appliedProfitSharingAbsenceDays,
+        effectiveDays:      profitSharingEffectiveDays,
+    } = discountUnjustifiedAbsences(daysInCurrentYear, profitSharingAbsenceDays);
+    const fractionalProfitSharing = (salaryVES / 30) * profitSharingDays * (profitSharingEffectiveDays / 365);
 
     // ── FRACTIONAL VACATIONS & BONUS ──────────────────────────────────────
     const daysSinceAnniversary = yearsOfService >= 1 ? daysOfLastYear : totalDays;
@@ -164,6 +178,7 @@ function calculateLiquidation(
         yearsOfService, totalDays,
         daysSeniority, daysSeniorityQuarterly, daysSeniorityExtra,
         socialBenefits, daysInCurrentYear, daysSinceAnniversary,
+        profitSharingAbsenceDays: appliedProfitSharingAbsenceDays, profitSharingEffectiveDays,
         fractionalProfitSharing, fractionalVacations, fractionalVacationBonus,
         accruedVacations, accruedVacationBonus, accruedVacationDays,
         accruedProfitSharing, accruedProfitSharingDays,
@@ -583,8 +598,8 @@ function BreakdownPanel({
     const fractionPercent  = result.daysSinceAnniversary > 0
         ? (result.daysSinceAnniversary / 365) * 100
         : 0;
-    const yearProgressPercent = result.daysInCurrentYear > 0
-        ? (result.daysInCurrentYear / 365) * 100
+    const yearProgressPercent = result.profitSharingEffectiveDays > 0
+        ? (result.profitSharingEffectiveDays / 365) * 100
         : 0;
 
     const lines: BreakdownLineData[] = [];
@@ -604,7 +619,9 @@ function BreakdownPanel({
         lines.push({
             icon:     PieChart,
             label:    "Utilidades fraccionadas",
-            sublabel: "Art. 131 LOTTT",
+            sublabel: result.profitSharingAbsenceDays > 0
+                ? `Art. 131 LOTTT · −${result.profitSharingAbsenceDays} d inasistencias`
+                : "Art. 131 LOTTT",
             formula:  `${profitSharingDays} d utilidad × Bs. ${formatNumber(baseDailySalary)} / día`,
             chip:     `${yearProgressPercent.toFixed(1)}% del año`,
             amount:   result.fractionalProfitSharing,
@@ -781,6 +798,11 @@ export default function LiquidacionesPage() {
     const [unpaidVacationsAccrued,     setUnpaidVacationsAccrued]     = useState(false);
     const [unpaidProfitSharingAccrued, setUnpaidProfitSharingAccrued] = useState(false);
 
+    // Unjustified absences of the current year, typed per employee (in memory
+    // only, keyed by cédula); batch runs apply each employee's value.
+    const [absenceDaysByEmployee, setAbsenceDaysByEmployee] = useState<Readonly<Record<string, string>>>({});
+    const employeesWithAbsences = Object.values(absenceDaysByEmployee).filter(v => parseAbsenceDays(v) > 0).length;
+
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedIdNumber),
         [employees, selectedIdNumber],
@@ -808,8 +830,9 @@ export default function LiquidacionesPage() {
             usdRate,
             unpaidVacationsAccrued,
             unpaidProfitSharingAccrued,
+            parseAbsenceDays(absenceDaysByEmployee[emp.cedula]),
         )),
-        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, usdRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued],
+        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, usdRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued, absenceDaysByEmployee],
     );
 
     const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
@@ -869,7 +892,9 @@ export default function LiquidacionesPage() {
                 },
                 {
                     label:   "Utilidades fraccionadas",
-                    formula: `${r.daysInCurrentYear}d en año × ${profitSharingDays}d util / 365`,
+                    formula: r.profitSharingAbsenceDays > 0
+                        ? `(${r.daysInCurrentYear}d − ${r.profitSharingAbsenceDays}d inasist.) × ${profitSharingDays}d util / 365`
+                        : `${r.daysInCurrentYear}d en año × ${profitSharingDays}d util / 365`,
                     amount:  r.fractionalProfitSharing,
                 },
                 {
@@ -1006,6 +1031,29 @@ export default function LiquidacionesPage() {
                                 onValueChange={setTerminationDate}
                                 startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
                             />
+                            {selectedIdNumber ? (
+                                <div className="space-y-1.5">
+                                    <BaseInput.Field
+                                        label="Inasistencias injustificadas (año en curso)"
+                                        type="number"
+                                        min={0}
+                                        max={366}
+                                        step={1}
+                                        value={absenceDaysByEmployee[selectedIdNumber] ?? ""}
+                                        onValueChange={value => setAbsenceDaysByEmployee(prev => ({ ...prev, [selectedIdNumber]: value }))}
+                                        placeholder="0"
+                                        suffix="d"
+                                        inputClassName="text-right"
+                                    />
+                                    <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                                        Reducen las utilidades fraccionadas (Art. 131 LOTTT). Reposos, permisos y licencias no se cuentan.
+                                    </p>
+                                </div>
+                            ) : employeesWithAbsences > 0 && (
+                                <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                                    {`${employeesWithAbsences} empleado${employeesWithAbsences !== 1 ? "s" : ""} con inasistencias injustificadas. Selecciona uno para editarlas.`}
+                                </p>
+                            )}
                             <OnlyActiveToggle checked={onlyActive} onChange={setOnlyActive} />
                         </div>
 

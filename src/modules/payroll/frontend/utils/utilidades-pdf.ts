@@ -34,6 +34,10 @@ export interface FullProfitSharingPdfData {
     salaryVES:         number;
     dailySalary:       number;
     profitSharingDays: number;
+    // Unjustified absences (Art. 131 LOTTT) and the days left to pay after
+    // prorating them; omitted when the employee had none.
+    absenceDays?:      number;
+    payableDays?:      number;
     amount:            number;
     // INCES worker retention (0.5%); omitted or 0 when it does not apply.
     incesRetention?:   number;
@@ -53,6 +57,9 @@ export interface FractionalProfitSharingPdfData {
     periodStart:       string;
     monthsWorked:      number;
     daysWorked:        number;
+    // Unjustified absences discounted from daysWorked; omitted when none.
+    absenceDays?:      number;
+    effectiveDays?:    number;
     profitSharingDays: number;
     fractionalDays:    number;
     salaryVES:         number;
@@ -186,10 +193,26 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
     renderMono(doc, `${data.profitSharingDays} dias`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
     y += 11 + 4;
 
+    const absenceDays = data.absenceDays ?? 0;
+    const payableDays = data.payableDays ?? data.profitSharingDays;
+
     renderLabel(doc, "Formula", ML, y + 3.5, "left", COLORS.muted, 7);
+    if (absenceDays > 0) {
+        renderMono(
+            doc,
+            `Inasistencias injustificadas: ${absenceDays} d -> (${data.profitSharingDays} d / 360 d) x ${360 - absenceDays} dias = ${payableDays} d`,
+            ML,
+            y + 9,
+            9.5,
+            true,
+            COLORS.inkMed,
+            "left",
+        );
+        y += 5.5;
+    }
     renderMono(
         doc,
-        `${data.profitSharingDays} dias x ${formatPayrollAmount(data.dailySalary)} / dia = ${formatPayrollAmount(data.amount)}`,
+        `${payableDays} dias x ${formatPayrollAmount(data.dailySalary)} / dia = ${formatPayrollAmount(data.amount)}`,
         ML,
         y + 9,
         9.5,
@@ -262,10 +285,26 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
     renderMono(doc, `${data.fractionalDays} dias`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
     y += 11 + 4;
 
+    const absenceDays   = data.absenceDays ?? 0;
+    const effectiveDays = data.effectiveDays ?? data.daysWorked;
+
     renderLabel(doc, "Formula", ML, y + 3.5, "left", COLORS.muted, 7);
+    if (absenceDays > 0) {
+        renderMono(
+            doc,
+            `Inasistencias injustificadas: ${data.daysWorked} dias - ${absenceDays} d = ${effectiveDays} dias efectivos`,
+            ML,
+            y + 9,
+            9.5,
+            true,
+            COLORS.inkMed,
+            "left",
+        );
+        y += 5.5;
+    }
     renderMono(
         doc,
-        `(${data.profitSharingDays} d / 360 d) x ${data.daysWorked} dias = ${data.fractionalDays} d`,
+        `(${data.profitSharingDays} d / 360 d) x ${effectiveDays} dias = ${data.fractionalDays} d`,
         ML,
         y + 9,
         9.5,

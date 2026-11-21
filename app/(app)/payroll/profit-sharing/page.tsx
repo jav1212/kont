@@ -15,6 +15,10 @@ import {
     generateFullProfitSharingPdf,
     generateFractionalProfitSharingPdf,
 } from "@/src/modules/payroll/frontend/utils/utilidades-pdf";
+import {
+    discountUnjustifiedAbsences,
+    parseAbsenceDays,
+} from "@/src/modules/payroll/frontend/utils/unjustified-absences";
 
 import {
     formatCurrency,
@@ -71,6 +75,8 @@ interface FullProfitSharing {
     salaryVES:         number;
     dailySalary:       number;
     profitSharingDays: number;
+    absenceDays:       number;
+    payableDays:       number;
     amount:            number;
     fiscalYear:        number;
 }
@@ -79,11 +85,21 @@ function calculateFull(
     salaryVES: number,
     profitSharingDays: number,
     fiscalYear: number,
+    absenceDays: number,
 ): FullProfitSharing | null {
     if (salaryVES <= 0 || profitSharingDays <= 0) return null;
+    // Unjustified absences prorate the annual days over the 360-day labour year,
+    // rounding up like the fractional calculation.
+    const { appliedAbsenceDays, effectiveDays } = discountUnjustifiedAbsences(360, absenceDays);
+    const payableDays = appliedAbsenceDays > 0
+        ? Math.ceil((profitSharingDays / 360) * effectiveDays)
+        : profitSharingDays;
     const dailySalary = salaryVES / 30;
-    const amount      = profitSharingDays * dailySalary;
-    return { salaryVES, dailySalary, profitSharingDays, amount, fiscalYear };
+    const amount      = payableDays * dailySalary;
+    return {
+        salaryVES, dailySalary, profitSharingDays,
+        absenceDays: appliedAbsenceDays, payableDays, amount, fiscalYear,
+    };
 }
 
 interface FractionalProfitSharing {
@@ -95,6 +111,8 @@ interface FractionalProfitSharing {
     periodStart:       string;
     monthsWorked:      number;
     daysWorked:        number;
+    absenceDays:       number;
+    effectiveDays:     number;
     fractionalDays:    number;
     amount:            number;
 }
@@ -105,6 +123,7 @@ function calculateFractional(
     fiscalYear: number,
     hireDate: string,
     cutoffDate: string,
+    absenceDays: number,
 ): FractionalProfitSharing | null {
     if (salaryVES <= 0 || profitSharingDays <= 0 || !hireDate || !cutoffDate) return null;
 
@@ -122,13 +141,15 @@ function calculateFractional(
     if (daysWorked <= 0) return null;
 
     const monthsWorked = getCompleteMonths(periodStart, cutoffDate);
-    const fractionalDays = Math.ceil((profitSharingDays / 360) * daysWorked);
+    const { appliedAbsenceDays, effectiveDays } = discountUnjustifiedAbsences(daysWorked, absenceDays);
+    const fractionalDays = Math.ceil((profitSharingDays / 360) * effectiveDays);
     const dailySalary    = salaryVES / 30;
     const amount         = fractionalDays * dailySalary;
 
     return {
         salaryVES, dailySalary, profitSharingDays, fiscalYear,
-        fiscalStart, periodStart, monthsWorked, daysWorked, fractionalDays, amount,
+        fiscalStart, periodStart, monthsWorked, daysWorked,
+        absenceDays: appliedAbsenceDays, effectiveDays, fractionalDays, amount,
     };
 }
 
@@ -216,9 +237,17 @@ function FullConstancy({
         >
             <SectionHeader label="Conceptos" />
             <div className="space-y-1">
+                {calc.absenceDays > 0 && (
+                    <CalcRow
+                        label="Inasistencias injustificadas"
+                        formula={`Art. 131 LOTTT · ⌈ ${calc.profitSharingDays}d / 360 × ${360 - calc.absenceDays} días ⌉`}
+                        value={`${calc.absenceDays} d → ${calc.payableDays} días`}
+                        accent="amber"
+                    />
+                )}
                 <CalcRow
                     label="Utilidades Anuales"
-                    formula={`Art. 131 + 174 LOTTT · ${calc.profitSharingDays}d × ${formatNumber(calc.dailySalary)}/día`}
+                    formula={`Art. 131 + 174 LOTTT · ${calc.payableDays}d × ${formatNumber(calc.dailySalary)}/día`}
                     value={formatCurrency(calc.amount)}
                 />
             </div>
@@ -282,9 +311,17 @@ function FractionalConstancy({
         >
             <SectionHeader label="Conceptos" />
             <div className="space-y-1">
+                {calc.absenceDays > 0 && (
+                    <CalcRow
+                        label="Inasistencias injustificadas"
+                        formula={`Art. 131 LOTTT · ${calc.daysWorked} días − ${calc.absenceDays} faltas`}
+                        value={`${calc.effectiveDays} días efectivos`}
+                        accent="amber"
+                    />
+                )}
                 <CalcRow
                     label="Utilidades Fraccionadas"
-                    formula={`Art. 175 LOTTT · ⌈ ${calc.profitSharingDays}d / 360 × ${calc.daysWorked} días ⌉`}
+                    formula={`Art. 175 LOTTT · ⌈ ${calc.profitSharingDays}d / 360 × ${calc.effectiveDays} días ⌉`}
                     value={formatCurrency(calc.amount)}
                 />
             </div>
@@ -361,10 +398,21 @@ export default function UtilidadesPage() {
     };
     const selectedAppliesInces = selectedIdNumber ? appliesInces(selectedIdNumber) : incesEnabled;
 
+    // ── Unjustified absences ────────────────────────────────────────────────
+    // Typed per employee (kept in memory only, keyed by cédula) because they are
+    // not recorded anywhere else yet; batch runs apply each employee's value.
+    const [absenceDaysByEmployee, setAbsenceDaysByEmployee] = useState<Readonly<Record<string, string>>>({});
+    const absenceDaysOf = (cedula: string) => parseAbsenceDays(absenceDaysByEmployee[cedula]);
+    const setEmployeeAbsenceDays = (cedula: string, value: string) => {
+        setAbsenceDaysByEmployee(prev => ({ ...prev, [cedula]: value }));
+    };
+    const employeesWithAbsences = Object.values(absenceDaysByEmployee).filter(v => parseAbsenceDays(v) > 0).length;
+    const selectedAbsenceDays   = selectedIdNumber ? absenceDaysOf(selectedIdNumber) : 0;
+
     // ── Single-employee preview calcs (resumen panel) ───────────────────────
     const fullCalculation = useMemo(
-        () => calculateFull(salaryVES, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear),
-        [salaryVES, profitSharingDays, fiscalYear, currentYear],
+        () => calculateFull(salaryVES, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear, selectedAbsenceDays),
+        [salaryVES, profitSharingDays, fiscalYear, currentYear, selectedAbsenceDays],
     );
 
     const fractionalCalculation = useMemo(
@@ -374,8 +422,9 @@ export default function UtilidadesPage() {
             parseInt(fiscalYear) || currentYear,
             hireDate,
             cutoffDate,
+            selectedAbsenceDays,
         ),
-        [salaryVES, profitSharingDays, fiscalYear, hireDate, cutoffDate, currentYear],
+        [salaryVES, profitSharingDays, fiscalYear, hireDate, cutoffDate, currentYear, selectedAbsenceDays],
     );
 
     // ── Batch processing ────────────────────────────────────────────────────
@@ -401,22 +450,23 @@ export default function UtilidadesPage() {
                 ? typedSalary
                 : emp.moneda === "USD" ? emp.salarioMensual * usdRate : emp.salarioMensual;
             const ing = emp.fechaIngreso ?? "";
+            const absences = parseAbsenceDays(absenceDaysByEmployee[emp.cedula]);
 
             let calc: FullProfitSharing | FractionalProfitSharing | null = null;
             let msg: string | undefined;
 
             if (mode === "completas") {
-                calc = calculateFull(ves, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear);
+                calc = calculateFull(ves, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear, absences);
                 if (!calc) msg = "Verificar parámetros";
             } else {
-                calc = calculateFractional(ves, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear, ing, cutoffDate);
+                calc = calculateFractional(ves, parseInt(profitSharingDays) || 0, parseInt(fiscalYear) || currentYear, ing, cutoffDate, absences);
                 if (!calc) msg = "Verificar fechas/parámetros";
             }
 
             const retention = applyIncesRetention(calc?.amount ?? 0, incesEnabled && !incesExcluded.has(emp.cedula));
             return { emp, calc, retention, msg };
         });
-    }, [filteredEmployees, selectedIdNumber, salaryVES, mode, profitSharingDays, fiscalYear, currentYear, cutoffDate, usdRate, incesEnabled, incesExcluded]);
+    }, [filteredEmployees, selectedIdNumber, salaryVES, mode, profitSharingDays, fiscalYear, currentYear, cutoffDate, usdRate, incesEnabled, incesExcluded, absenceDaysByEmployee]);
 
     const totalAmount = useMemo(
         () => calculationResults.reduce((acc, r) => acc + r.retention.netAmount, 0),
@@ -443,6 +493,8 @@ export default function UtilidadesPage() {
                         salaryVES:         c.salaryVES,
                         dailySalary:       c.dailySalary,
                         profitSharingDays: c.profitSharingDays,
+                        absenceDays:       c.absenceDays,
+                        payableDays:       c.payableDays,
                         amount:            c.amount,
                         incesRetention:    r.retention.incesRetention,
                         netAmount:         r.retention.netAmount,
@@ -461,6 +513,8 @@ export default function UtilidadesPage() {
                         periodStart:       c.periodStart,
                         monthsWorked:      c.monthsWorked,
                         daysWorked:        c.daysWorked,
+                        absenceDays:       c.absenceDays,
+                        effectiveDays:     c.effectiveDays,
                         profitSharingDays: c.profitSharingDays,
                         fractionalDays:    c.fractionalDays,
                         salaryVES:         c.salaryVES,
@@ -578,6 +632,29 @@ export default function UtilidadesPage() {
                                     startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
                                 />
                             )}
+                            {selectedIdNumber ? (
+                                <div className="space-y-1.5">
+                                    <BaseInput.Field
+                                        label="Inasistencias injustificadas"
+                                        type="number"
+                                        min={0}
+                                        max={360}
+                                        step={1}
+                                        value={absenceDaysByEmployee[selectedIdNumber] ?? ""}
+                                        onValueChange={value => setEmployeeAbsenceDays(selectedIdNumber, value)}
+                                        placeholder="0"
+                                        suffix="d"
+                                        inputClassName="text-right"
+                                    />
+                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] leading-relaxed">
+                                        Faltas injustificadas del período: reducen la proporción (Art. 131 LOTTT). Reposos, permisos y licencias no se cuentan.
+                                    </p>
+                                </div>
+                            ) : employeesWithAbsences > 0 && (
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] leading-relaxed">
+                                    {`${employeesWithAbsences} empleado${employeesWithAbsences !== 1 ? "s" : ""} con inasistencias injustificadas. Selecciona uno para editarlas.`}
+                                </p>
+                            )}
                         </div>
 
                         {/* ── Tasa BCV ──────────────────────────────────────── */}
@@ -672,9 +749,17 @@ export default function UtilidadesPage() {
                                             value={`${fullCalculation.profitSharingDays} días`}
                                             dim
                                         />
+                                        {fullCalculation.absenceDays > 0 && (
+                                            <CalcRow
+                                                label="Inasistencias"
+                                                formula={`⌈ ${fullCalculation.profitSharingDays}d / 360 × ${360 - fullCalculation.absenceDays}d ⌉`}
+                                                value={`${fullCalculation.payableDays} días`}
+                                                accent="amber"
+                                            />
+                                        )}
                                         <CalcRow
                                             label="Monto"
-                                            formula={`${fullCalculation.profitSharingDays}d × ${formatNumber(fullCalculation.dailySalary)} Bs./día`}
+                                            formula={`${fullCalculation.payableDays}d × ${formatNumber(fullCalculation.dailySalary)} Bs./día`}
                                             value={formatCurrency(fullCalculation.amount)}
                                             accent="green"
                                         />
@@ -719,9 +804,17 @@ export default function UtilidadesPage() {
                                             value={`${fractionalCalculation.daysWorked} días${fractionalCalculation.monthsWorked < 6 ? " · menos de 6 meses" : ""}`}
                                             dim
                                         />
+                                        {fractionalCalculation.absenceDays > 0 && (
+                                            <CalcRow
+                                                label="Inasistencias"
+                                                formula={`${fractionalCalculation.daysWorked}d − ${fractionalCalculation.absenceDays} faltas`}
+                                                value={`${fractionalCalculation.effectiveDays} días`}
+                                                accent="amber"
+                                            />
+                                        )}
                                         <CalcRow
                                             label="Días proporcionales"
-                                            formula={`⌈ ${fractionalCalculation.profitSharingDays}d / 360 × ${fractionalCalculation.daysWorked}d ⌉`}
+                                            formula={`⌈ ${fractionalCalculation.profitSharingDays}d / 360 × ${fractionalCalculation.effectiveDays}d ⌉`}
                                             value={`${fractionalCalculation.fractionalDays} días`}
                                             dim
                                         />
