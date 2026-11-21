@@ -52,6 +52,11 @@ export interface FinancedSaleCollection {
    * is derived from it.
    */
   readonly vesPerUsd?: ExactDecimal;
+  /**
+   * Part of `receivedVes` the financier withheld as its fee. `receivedVes` is the
+   * gross amount settled; only `receivedVes - commissionVes` reaches the bank.
+   */
+  readonly commissionVes?: ExactDecimal;
 }
 
 /** Direction of an exchange difference from the seller's point of view. */
@@ -60,7 +65,10 @@ export type ExchangeDifferenceDirection = "gain" | "loss" | "none";
 /** Accounting effect of one collection against the financed balance. */
 export interface FinancedSaleCollectionSettlement {
   readonly collectedOn: SalesDate;
+  /** Gross VES settled, before the financier's commission. */
   readonly receivedVes: ExactDecimal;
+  /** Financier fee withheld from `receivedVes`; zero when none. */
+  readonly commissionVes: ExactDecimal;
   /** USD of the financed balance extinguished by this collection. */
   readonly appliedUsd: ExactDecimal;
   /** Historical VES removed from the receivable (sale-date rate). */
@@ -91,7 +99,7 @@ export interface FinancedSaleSettlement {
 }
 
 /** Account roles a financed-sale entry needs; the caller maps them to its chart of accounts. */
-export type FinancedSaleAccountRole = "bank" | "financier_receivable" | "sales" | "exchange_gain" | "exchange_loss";
+export type FinancedSaleAccountRole = "bank" | "financier_receivable" | "sales" | "exchange_gain" | "exchange_loss" | "financier_commission";
 
 /** One balanced debit or credit line in VES. Exactly one side is non-zero. */
 export interface FinancedSaleJournalLine {
@@ -177,7 +185,8 @@ export function financedSaleJournalEntries(settlement: FinancedSaleSettlement): 
   settlement.collections.forEach((collection, index) => {
     const difference = collection.exchangeDifference;
     entries.push(entry(`collection:${terms.reference}:${collection.collectedOn}:${index + 1}`, "collection", collection.collectedOn, `Cobro venta financiada ${terms.reference}`, [
-      debit("bank", collection.receivedVes),
+      debit("bank", subtractDecimal(collection.receivedVes, collection.commissionVes)),
+      debit("financier_commission", collection.commissionVes),
       ...(collection.direction === "loss" ? [debit("exchange_loss", subtractDecimal(ZERO, difference))] : []),
       credit("financier_receivable", collection.carriedVes),
       ...(collection.direction === "gain" ? [credit("exchange_gain", difference)] : []),
@@ -209,7 +218,7 @@ export function summarizeFinancedSaleJournalByMonth(
     }
     groups.set(key, group);
   }
-  const roleOrder: readonly FinancedSaleAccountRole[] = ["bank", "exchange_loss", "financier_receivable", "sales", "exchange_gain"];
+  const roleOrder: readonly FinancedSaleAccountRole[] = ["bank", "financier_commission", "exchange_loss", "financier_receivable", "sales", "exchange_gain"];
   return Object.freeze([...groups.values()]
     .sort((left, right) => left.month.localeCompare(right.month) || (left.kind === right.kind ? 0 : left.kind === "sale" ? -1 : 1))
     .map((group) => entry(`${group.kind}:${group.month}`, group.kind, group.date, describe(group.kind, group.month), roleOrder.flatMap((role) => {
@@ -229,6 +238,10 @@ function applyCollection(
 ): FinancedSaleCollectionSettlement {
   const collectedOn = salesDate(collection.collectedOn);
   const receivedVes = positive(collection.receivedVes, "Collection amount must be positive.", "SALES_FINANCED_COLLECTION_INVALID");
+  const commissionVes = collection.commissionVes === undefined ? ZERO : exactDecimal(collection.commissionVes);
+  if (compareDecimal(commissionVes, ZERO) < 0 || compareDecimal(commissionVes, receivedVes) >= 0) {
+    throw collectionInvalid("Commission must be at least zero and below the collected amount.");
+  }
   if (collectedOn < terms.saleDate) throw collectionInvalid("A collection cannot precede its sale.");
   if (compareDecimal(outstandingUsd, ZERO) <= 0) throw collectionInvalid("The financed balance is already settled.");
 
@@ -252,6 +265,7 @@ function applyCollection(
   return Object.freeze({
     collectedOn,
     receivedVes,
+    commissionVes,
     appliedUsd,
     carriedVes,
     impliedVesPerUsd: quantizeDecimal(divideDecimal(receivedVes, appliedUsd), { scale: RATE_SCALE, mode: "half_up" }),

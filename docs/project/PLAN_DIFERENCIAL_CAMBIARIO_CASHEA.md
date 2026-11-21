@@ -86,15 +86,40 @@ entrada; la tasa implícita se deriva de él.
      `shared_accounting_entries_source_check` (migración aditiva) y publicación
      desde el servidor.
 
-### Fase 2 — Flujo operativo
+### Fase 2 — Libro Cashea persistente (implementado)
 
-1. Registrar a Cashea como cliente financiador; al confirmar una venta Cashea,
-   dividir en contado + CxC en USD (CxC existente).
-2. Calcular y persistir el diferencial realizado en cada cobro
-   (columna aditiva `realized_exchange_difference` en
-   `shared_sales_receivable_payments`).
-3. Regla de `accounting-integration` para ventas/cobros que contabilice
-   automáticamente, como en compras.
+Decisión del usuario (2026-11-21): las ventas Cashea no se facturan en Kontave;
+se cargan a mano (como el Excel) y debe ser fácil y práctico. Cashea liquida a
+la tasa BCV del día del depósito; la comisión aún no se conoce (configurable,
+0% por defecto).
+
+1. Tablas aditivas `shared_financed_sales_settings`, `shared_financed_sales` y
+   `shared_financier_deposits` (migración `20261121160000_financed_sales_ledger.sql`,
+   verificada con `supabase/checks/financed-sales-ledger-pglite.mjs`). Cada fila
+   guarda su tasa (BCV automática o manual).
+2. Los depósitos no se asocian a mano: cada depósito se convierte a USD con la
+   tasa BCV de su fecha (más la comisión, si existe) y se aplica FIFO a las
+   ventas pendientes más antiguas anteriores al depósito
+   (`allocateFinancierDeposits` en `@kontave/sales/domain`). Lo que exceda lo
+   pendiente se informa como depósito sin aplicar.
+3. `FinancedSalesLedger` (`@kontave/sales/application`) registra ventas y
+   depósitos en lote, borra registros, guarda la configuración con control de
+   versión y, tras cada cambio, sincroniza los asientos en borrador en
+   Contabilidad (`AccountingFinancedSalesJournalSink`): crea o actualiza los
+   borradores con `sourceRef = financed-sales:ledger:<granularidad>:<clave>`,
+   borra los borradores huérfanos (acción nueva
+   `deleteDraftEntryBySourceRef`, que nunca borra asientos publicados) y no toca
+   los publicados. Se bloquea si hay asientos de la calculadora o de la otra
+   granularidad, para no contabilizar dos veces.
+4. `GET/POST /api/sales/financed-sales` (permisos `sales.read`/`sales.create`).
+5. Pantalla «Libro Cashea» (pestaña por defecto en Ventas → Diferencial
+   cambiario): registro rápido de venta del día (Enter guarda y avanza al día
+   siguiente), registro de depósitos, pegado de filas desde Excel, importación
+   del Excel de ventas sin duplicar, tablas, resumen mensual, estado de la
+   sincronización contable y configuración de cuentas.
+
+Fuera de alcance por la decisión anterior: dividir facturas emitidas en Kontave
+en contado + CxC Cashea y guardar el diferencial por abono de CxC de facturas.
 
 ### Fase 3 — Opcional
 

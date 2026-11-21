@@ -1,5 +1,5 @@
-import { FinancedSalesExchangeDifferenceScreen } from "@/src/modules/sales/frontend/financed-sales/financed-sales-exchange-difference-screen";
+import { FinancedSalesPage } from "@/src/modules/sales/frontend/financed-sales/financed-sales-page";
 
 export default function SalesExchangeDifferencePage() {
-    return <FinancedSalesExchangeDifferenceScreen />;
+    return <FinancedSalesPage />;
 }

@@ -8,6 +8,7 @@ import { SharedIntegrationRuleRepository }                    from './repository
 import { SharedIntegrationLogRepository }                     from './repository/shared-integration-log.repository';
 import { SaveJournalEntryUseCase }                           from '../application/commands/save-journal-entry.use-case';
 import { PostJournalEntryUseCase }                           from '../application/commands/post-journal-entry.use-case';
+import { DeleteDraftEntryBySourceRefUseCase }               from '../application/commands/delete-draft-entry-by-source-ref.use-case';
 import { SaveAccountingPeriodUseCase }                       from '../application/commands/save-accounting-period.use-case';
 import { CloseAccountingPeriodUseCase }                      from '../application/commands/close-accounting-period.use-case';
 import { SaveIntegrationRuleUseCase }                        from '../application/commands/save-integration-rule.use-case';
@@ -51,6 +52,7 @@ export function getAccountingActions(userId: string) {
         getEntryWithLines: new GetEntryWithLinesUseCase(entryRepo),
         saveEntry:         new SaveJournalEntryUseCase(entryRepo),
         postEntry:         new PostJournalEntryUseCase(entryRepo),
+        deleteDraftEntryBySourceRef: new DeleteDraftEntryBySourceRefUseCase(entryRepo),
 
         // Reports
         getTrialBalance: new GetTrialBalanceUseCase(entryRepo),

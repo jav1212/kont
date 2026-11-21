@@ -8,6 +8,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 export * from "./sales-performance-report";
 export * from "./customer-receivables";
+export * from "./financed-sales-ledger";
 export * from "./secured-sales";
 export * from "./sales-invoice-document-series-issuance";
 export * from "./sales-delivery-note-document-series-issuance";

@@ -4,6 +4,7 @@ export * from "./customer-receivable";
 export * from "./customer";
 export * from "./customer-credit";
 export * from "./financed-sale-exchange-difference";
+export * from "./financier-deposit-allocation";
 export * from "./goods-dispatch";
 export * from "./identifiers";
 export * from "./quantity";

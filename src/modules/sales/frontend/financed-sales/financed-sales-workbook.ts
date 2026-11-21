@@ -262,3 +262,39 @@ export function formatDate(iso: string): string {
     const [year, month, day] = iso.slice(0, 10).split("-");
     return `${day}/${month}/${year}`;
 }
+
+export interface PastedRow {
+    date: string;
+    amount: string;
+}
+
+/**
+ * Parses rows pasted from a spreadsheet: each line holds a date (`dd/mm/yyyy`
+ * or `yyyy-mm-dd`) followed by an amount (`7.455,25` or `7455.25`), separated
+ * by tabs, semicolons or spaces. Lines without both values are reported.
+ * @param text - Clipboard text.
+ * @returns Parsed rows and the 1-based numbers of rejected non-empty lines.
+ */
+export function parsePastedRows(text: string): { rows: PastedRow[]; rejectedLines: number[] } {
+    const rows: PastedRow[] = [];
+    const rejectedLines: number[] = [];
+    text.split(/\r?\n/).forEach((line, index) => {
+        if (!line.trim()) return;
+        const cells = line.split(/\t|;|\s{2,}|\s(?=\S*\d)/).map((cell) => cell.trim()).filter(Boolean);
+        const date = cells.map((cell) => /^\d{4}-\d{2}-\d{2}$/.test(cell) ? cell : cellDate(cell)).find((value): value is string => value !== null);
+        const amount = [...cells].reverse().map((cell) => /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$|^\d{4}-\d{2}-\d{2}$/.test(cell) ? null : cellNumber(cell)).find((value): value is number => value !== null && value > 0);
+        if (!date || amount === undefined) { rejectedLines.push(index + 1); return; }
+        rows.push({ date, amount: amount.toFixed(2) });
+    });
+    return { rows, rejectedLines };
+}
+
+/**
+ * Parses an amount typed by a user, accepting `7.455,25` and `7455.25`.
+ * @param text - Raw input.
+ * @returns Amount text with two decimals, or `null` when it is not a positive number.
+ */
+export function parseAmountInput(text: string): string | null {
+    const value = cellNumber(text);
+    return value !== null && value > 0 ? value.toFixed(2) : null;
+}

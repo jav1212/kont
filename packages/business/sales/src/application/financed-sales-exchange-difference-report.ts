@@ -79,8 +79,10 @@ export interface FinancedSalesMonthTotals {
   readonly saleAmountVes: ExactDecimal;
   readonly upfrontVes: ExactDecimal;
   readonly financedVes: ExactDecimal;
-  /** Bolivars collected during the month. */
+  /** Gross bolivars settled during the month, commission included. */
   readonly collectedVes: ExactDecimal;
+  /** Financier commission withheld from collections of the month. */
+  readonly commissionVes: ExactDecimal;
   /** Exchange difference realized by collections dated in the month. */
   readonly realizedGainVes: ExactDecimal;
   readonly realizedLossVes: ExactDecimal;
@@ -146,8 +148,7 @@ export class BuildFinancedSalesExchangeDifferenceReport {
     const rateOn = await this.loadRates(lines, policy.estimatedSettlementDays, asOf);
     const rows = lines.map((line) => calculateRow(line, policy, asOf, rateOn));
     const settlements = rows.flatMap((row) => row.status === "calculated" ? [row.settlement] : []);
-    const months = monthTotals(settlements);
-    return Object.freeze({ rows: Object.freeze(rows), months, totals: sumTotals(months) });
+    return Object.freeze({ rows: Object.freeze(rows), ...summarizeFinancedSaleSettlements(settlements) });
   }
 
   private async loadRates(lines: readonly FinancedSaleReportLine[], settlementDays: number, asOf: SalesDate): Promise<(date: SalesDate) => ExactDecimal | null> {
@@ -228,6 +229,17 @@ function calculateRow(
   }
 }
 
+/**
+ * Aggregates settlements by calendar month: sales by sale month, collections and
+ * their exchange difference by collection month.
+ * @param settlements - Settled financed sales.
+ * @returns Ascending month totals and their grand total.
+ */
+export function summarizeFinancedSaleSettlements(settlements: readonly FinancedSaleSettlement[]): Pick<FinancedSalesExchangeDifferenceReport, "months" | "totals"> {
+  const months = monthTotals(settlements);
+  return { months, totals: sumTotals(months) };
+}
+
 function monthTotals(settlements: readonly FinancedSaleSettlement[]): readonly FinancedSalesMonthTotals[] {
   const months = new Map<string, Mutable<FinancedSalesMonthTotals>>();
   const month = (key: string) => {
@@ -246,6 +258,7 @@ function monthTotals(settlements: readonly FinancedSaleSettlement[]): readonly F
     for (const collection of settlement.collections) {
       const target = month(collection.collectedOn.slice(0, 7));
       target.collectedVes = addDecimal(target.collectedVes, collection.receivedVes);
+      target.commissionVes = addDecimal(target.commissionVes, collection.commissionVes);
       if (compareDecimal(collection.exchangeDifference, ZERO) > 0) target.realizedGainVes = addDecimal(target.realizedGainVes, collection.exchangeDifference);
       else target.realizedLossVes = addDecimal(target.realizedLossVes, multiplyDecimal(collection.exchangeDifference, exactDecimal("-1")));
     }
@@ -259,6 +272,7 @@ function sumTotals(months: readonly FinancedSalesMonthTotals[]): Omit<FinancedSa
     upfrontVes: addDecimal(total.upfrontVes, item.upfrontVes),
     financedVes: addDecimal(total.financedVes, item.financedVes),
     collectedVes: addDecimal(total.collectedVes, item.collectedVes),
+    commissionVes: addDecimal(total.commissionVes, item.commissionVes),
     realizedGainVes: addDecimal(total.realizedGainVes, item.realizedGainVes),
     realizedLossVes: addDecimal(total.realizedLossVes, item.realizedLossVes),
     outstandingCarriedVes: addDecimal(total.outstandingCarriedVes, item.outstandingCarriedVes),
@@ -266,7 +280,7 @@ function sumTotals(months: readonly FinancedSalesMonthTotals[]): Omit<FinancedSa
 }
 
 function emptyTotals(): Omit<FinancedSalesMonthTotals, "month"> {
-  return { saleAmountVes: ZERO, upfrontVes: ZERO, financedVes: ZERO, collectedVes: ZERO, realizedGainVes: ZERO, realizedLossVes: ZERO, outstandingCarriedVes: ZERO };
+  return { saleAmountVes: ZERO, upfrontVes: ZERO, financedVes: ZERO, collectedVes: ZERO, commissionVes: ZERO, realizedGainVes: ZERO, realizedLossVes: ZERO, outstandingCarriedVes: ZERO };
 }
 
 function addDays(date: SalesDate, days: number): SalesDate {

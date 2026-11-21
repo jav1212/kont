@@ -5,17 +5,19 @@
 // financier deposits; values each sale at the BCV rate of its date and shows
 // the detail, monthly totals and proposed journal entries.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, BookCheck, Download, FileSpreadsheet, Landmark, TrendingUp, Upload } from "lucide-react";
 import { decimalToFixed, exactDecimal, type ExactDecimal } from "@kontave/monetary/domain";
 import { salesDate, type FinancedSaleAccountRole, type FinancedSaleCollection } from "@kontave/sales/domain";
 import {
     BuildFinancedSalesExchangeDifferenceReport,
     buildFinancedSalesJournal,
+    countFinancedSalesPublication,
+    planFinancedSalesJournalPublication,
+    type FinancedSaleRoleAccounts as RoleAccounts,
     type FinancedSaleReportLine,
     type FinancedSalesExchangeDifferenceReport,
 } from "@kontave/sales/application";
-import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
@@ -36,32 +38,16 @@ import {
     type AccountRoleLabels,
     type ImportedFinancedSale,
 } from "./financed-sales-workbook";
-import {
-    loadCompanyJournal,
-    planFinancedSalesJournalPublication,
-    publishFinancedSalesJournal,
-    type RoleAccounts,
-} from "./financed-sales-journal-publication";
+import { loadCompanyJournal, publishFinancedSalesJournal } from "./financed-sales-journal-publication";
+import { Cell, EditableCell, FieldLabel, INPUT_CLS, NumberField, Panel, Table } from "./financed-sales-ui";
+import { DEFAULT_ROLE_LABELS, ROLE_HINTS, describeFinancedSalesMonth as describeMonth, formatVes as fmt, monthLabel } from "@/src/modules/sales/shared/financed-sales-labels";
 
-const DEFAULT_ROLE_LABELS: AccountRoleLabels = {
-    bank: "Banco",
-    financier_receivable: "Cuentas por cobrar Cashea",
-    sales: "Ventas",
-    exchange_gain: "Diferencial cambiario (ingreso)",
-    exchange_loss: "Diferencial cambiario (egreso)",
-};
 const ROLE_ORDER: readonly FinancedSaleAccountRole[] = ["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss"];
 const MODE_LABELS = { actual: "Real", estimated: "Estimado", pending: "Pendiente" } as const;
-const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-const fmt = (value: ExactDecimal | string, digits = 2) =>
-    Number(decimalToFixed(value as ExactDecimal, digits)).toLocaleString("es-VE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1] ?? month} ${month.slice(0, 4)}`;
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
 
 type ManualCollection = { collectedOn: string; receivedVes: string };
-const describeMonth = (kind: "sale" | "collection", month: string) =>
-    kind === "sale" ? `Ventas financiadas ${monthLabel(month)}` : `Cobros financiadora ${monthLabel(month)}`;
 const accountsStorageKey = (companyId: string) => `kont-financed-sales-accounts:${companyId}`;
 
 export function FinancedSalesExchangeDifferenceScreen() {
@@ -225,14 +211,13 @@ export function FinancedSalesExchangeDifferenceScreen() {
     const journal = journalView === "monthly" ? journals.monthly : journals.daily;
 
     const plan = useMemo(
-        () => existingEntries ? planFinancedSalesJournalPublication(journal, journalView, accounts, periods, existingEntries) : null,
+        () => existingEntries ? planFinancedSalesJournalPublication(journal, { channel: "calculator", granularity: journalView }, accounts, periods, existingEntries) : null,
         [journal, journalView, accounts, periods, existingEntries],
     );
-    const planCounts = useMemo(() => {
-        const counts = { create: 0, update: 0, already_posted: 0, no_open_period: 0 };
-        plan?.items.forEach((item) => { counts[item.action.kind] += 1; });
-        return counts;
-    }, [plan]);
+    const planCounts = useMemo(
+        () => plan ? countFinancedSalesPublication(plan) : { create: 0, update: 0, already_posted: 0, no_open_period: 0 },
+        [plan],
+    );
     const monthsWithoutPeriod = useMemo(
         () => [...new Set(plan?.items.filter((item) => item.action.kind === "no_open_period").map((item) => monthLabel(item.entry.date.slice(0, 7))) ?? [])],
         [plan],
@@ -271,16 +256,15 @@ export function FinancedSalesExchangeDifferenceScreen() {
     const failed = report?.rows.filter((row) => row.status === "failed").length ?? 0;
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
-            <PageHeader title="Diferencial cambiario" subtitle="Ventas financiadas (Cashea) · cobro diferido a tasa BCV">
-                {report && (
-                    <BaseButton.Root variant="primary" size="sm" leftIcon={<Download size={14} strokeWidth={2} />} onPress={handleExport}>
-                        Exportar Excel
-                    </BaseButton.Root>
-                )}
-            </PageHeader>
-
+        <div className="font-mono">
             <div className="px-8 py-6 space-y-6">
+                {report && (
+                    <div className="flex justify-end">
+                        <BaseButton.Root variant="primary" size="sm" leftIcon={<Download size={14} strokeWidth={2} />} onPress={handleExport}>
+                            Exportar Excel
+                        </BaseButton.Root>
+                    </div>
+                )}
                 <Panel title="Datos y supuestos">
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
@@ -449,7 +433,7 @@ export function FinancedSalesExchangeDifferenceScreen() {
                                     )}
                                     {plan && plan.conflictingEntries > 0 && (
                                         <p className="text-text-warning">
-                                            Ya hay {plan.conflictingEntries} asientos de este reporte publicados en modo {journalView === "monthly" ? "por día" : "mensual"}. Elimínalos en el libro diario o publica en ese modo para no registrar los hechos dos veces.
+                                            Ya hay {plan.conflictingEntries} asientos de ventas financiadas publicados en otro modo o desde el libro Cashea. Elimínalos en el libro diario o publica en ese modo para no registrar los hechos dos veces.
                                         </p>
                                     )}
                                 </div>
@@ -480,16 +464,6 @@ export function FinancedSalesExchangeDifferenceScreen() {
     );
 }
 
-const ROLE_HINTS: Record<FinancedSaleAccountRole, string> = {
-    bank: "Cuenta banco",
-    financier_receivable: "Cuenta por cobrar financiadora",
-    sales: "Cuenta de ventas",
-    exchange_gain: "Ganancia cambiaria",
-    exchange_loss: "Pérdida cambiaria",
-};
-
-const INPUT_CLS = "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground tabular-nums focus:border-primary-500/60";
-
 function validDecimal(value: string): ExactDecimal | null {
     try { return exactDecimal(value.replace(",", ".")); } catch { return null; }
 }
@@ -503,65 +477,4 @@ function withValue(current: Record<string, string>, key: string, value: string):
 function withoutKey<T>(current: Record<string, T>, key: string): Record<string, T> {
     const { [key]: _removed, ...rest } = current;
     return rest;
-}
-
-function Panel({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
-    return (
-        <section className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-            <div className="px-5 py-3 border-b border-border-light flex items-center justify-between gap-4">
-                <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">{title}</h2>
-                {typeof aside === "string" ? <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{aside}</span> : aside}
-            </div>
-            <div className="p-5">{children}</div>
-        </section>
-    );
-}
-
-function FieldLabel({ children }: { children: ReactNode }) {
-    return <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1">{children}</label>;
-}
-
-function NumberField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => void }) {
-    return (
-        <div>
-            <FieldLabel>{label}</FieldLabel>
-            <EditableCell value={value} onCommit={(next) => { if (next.trim()) onCommit(next.trim().replace(",", ".")); }} />
-        </div>
-    );
-}
-
-/** Text input that commits on blur or Enter, so the report is not recalculated on every keystroke. */
-function EditableCell({ value, placeholder, onCommit }: { value: string; placeholder?: string; onCommit: (value: string) => void }) {
-    // Keyed by the committed value so an external change resets the uncontrolled draft.
-    return (
-        <input key={value} defaultValue={value} placeholder={placeholder} inputMode="decimal"
-            onBlur={(event) => { if (event.target.value !== value) onCommit(event.target.value); }}
-            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-            className={`${INPUT_CLS} h-8 min-w-[96px] text-right`} />
-    );
-}
-
-function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
-    return (
-        <div className="overflow-x-auto -mx-5 -mb-5">
-            <table className="w-full text-[13px]">
-                <thead>
-                    <tr className="border-b border-border-light bg-surface-2/50">
-                        {headers.map((header, index) => (
-                            <th key={header} className={["px-3 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap", index === 0 ? "text-left" : "text-right"].join(" ")}>{header}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>{children}</tbody>
-            </table>
-        </div>
-    );
-}
-
-function Cell({ children, left, tone }: { children: ReactNode; left?: boolean; tone?: "success" | "warning" }) {
-    return (
-        <td className={["px-3 py-1.5 tabular-nums whitespace-nowrap", left ? "text-left" : "text-right", tone === "success" ? "text-text-success" : tone === "warning" ? "text-text-warning" : "text-foreground"].join(" ")}>
-            {children}
-        </td>
-    );
 }
