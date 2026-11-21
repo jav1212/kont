@@ -15,6 +15,11 @@ import {
     generateVacComplletasPdf,
     generateVacFraccionadasPdf,
 } from "@/src/modules/payroll/frontend/utils/vacaciones-pdf";
+import {
+    discountUnjustifiedAbsences,
+    parseAbsenceDays,
+    prorateForUnjustifiedAbsences,
+} from "@/src/modules/payroll/frontend/utils/unjustified-absences";
 
 import {
     formatCurrency,
@@ -145,28 +150,40 @@ function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
 interface VacCalc {
     diasCalendario: number; diasHabiles: number; diasDescanso: number; montoDescanso: number; feriadoList: string[];
     salarioVES: number; salarioDia: number; anios: number;
+    diasAnualesBase: number; diasInasistencia: number;
     diasLegalDisfrute: number; diasDisfrute: number; diasAdicDisfrute: number; montoDisfrute: number;
     diasLegalBono: number; diasBono: number; diasAdicBono: number; montoBono: number;
     total: number;
 }
 
+/** Legal annual vacation days (Arts. 190/192): 15 + 1 per year from the 2nd, capped at +15. */
+function getDiasAnualesBase(anios: number): number {
+    return 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
+}
+
 function computeVac(
     salarioVES: number, fechaIngreso: string, fechaInicio: string, fechaCulminacion: string,
+    diasInasistencia: number,
 ): VacCalc | null {
     if (!fechaInicio || !fechaCulminacion || fechaInicio > fechaCulminacion || salarioVES <= 0) return null;
     const { habiles, descanso, feriadoList } = getPeriodStats(fechaInicio, fechaCulminacion);
     const diasCalendario   = getDiasCalendario(fechaInicio, fechaCulminacion);
     const anios            = calcAniosAt(fechaIngreso, fechaInicio);
     const diasAdicDisfrute = anios >= 2 ? Math.min(anios - 1, 15) : 0;
-    const diasLegalDisfrute = 15 + diasAdicDisfrute;
-    const diasDisfrute     = Math.max(diasLegalDisfrute, habiles);
     const diasAdicBono     = anios >= 2 ? Math.min(anios - 1, 15) : 0;
-    const diasLegalBono    = 15 + diasAdicBono;
+    const diasAnualesBase  = getDiasAnualesBase(anios);
+    // Unjustified absences in the year of service prorate both the enjoyment
+    // and the bonus over the 360-day labour year.
+    const { appliedAbsenceDays, payableDays } = prorateForUnjustifiedAbsences(diasAnualesBase, 360, diasInasistencia);
+    const diasLegalDisfrute = payableDays;
+    const diasDisfrute     = Math.max(diasLegalDisfrute, habiles);
+    const diasLegalBono    = payableDays;
     const diasBono         = diasLegalBono;
     const salarioDia       = salarioVES / 30;
     return {
         diasCalendario, diasHabiles: habiles, diasDescanso: descanso, montoDescanso: descanso * salarioDia, feriadoList,
         salarioVES, salarioDia, anios,
+        diasAnualesBase, diasInasistencia: appliedAbsenceDays,
         diasLegalDisfrute, diasDisfrute, diasAdicDisfrute, montoDisfrute: diasDisfrute * salarioDia,
         diasLegalBono, diasBono, diasAdicBono, montoBono: diasBono * salarioDia,
         total: (diasDisfrute + diasBono + descanso) * salarioDia,
@@ -181,6 +198,8 @@ interface VacFracCalc {
     aniosCompletos:    number;
     ultimoAniversario: string;
     mesesFraccion:     number;
+    diasInasistencia:  number;
+    diasEfectivos:     number;
     diasAdicAnuales:   number;
     diasAnuales:       number;
     fraccionDisfrute:  number;
@@ -192,7 +211,9 @@ interface VacFracCalc {
     total:             number;
 }
 
-function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: string): VacFracCalc | null {
+function computeVacFrac(
+    salarioVES: number, fechaIngreso: string, fechaEgreso: string, diasInasistencia: number,
+): VacFracCalc | null {
     if (!fechaIngreso || !fechaEgreso || salarioVES <= 0) return null;
     if (fechaEgreso <= fechaIngreso) return null;
 
@@ -206,8 +227,15 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
     const diasAdicAnuales = Math.min(aniosCompletos, 15);
     const diasAnuales     = 15 + diasAdicAnuales;
 
-    const fraccionDisfrute = Math.ceil((diasAnuales / 12) * mesesFraccion);
-    const fraccionBono     = Math.ceil((diasAnuales / 12) * mesesFraccion);
+    // Unjustified absences are taken out of the fraction's 30-day months, so the
+    // fraction becomes ⌈ diasAnuales / 360 × (meses × 30 − faltas) ⌉.
+    const { appliedAbsenceDays, effectiveDays } = discountUnjustifiedAbsences(mesesFraccion * 30, diasInasistencia);
+    const diasFraccion = appliedAbsenceDays > 0
+        ? Math.ceil((diasAnuales * effectiveDays) / 360)
+        : Math.ceil((diasAnuales / 12) * mesesFraccion);
+
+    const fraccionDisfrute = diasFraccion;
+    const fraccionBono     = diasFraccion;
 
     const salarioDia    = salarioVES / 30;
     const montoDisfrute = fraccionDisfrute * salarioDia;
@@ -222,7 +250,8 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
 
     return {
         salarioVES, salarioDia, aniosCompletos, ultimoAniversario,
-        mesesFraccion, diasAdicAnuales, diasAnuales,
+        mesesFraccion, diasInasistencia: appliedAbsenceDays, diasEfectivos: effectiveDays,
+        diasAdicAnuales, diasAnuales,
         fraccionDisfrute, fraccionBono, diasDescanso,
         montoDisfrute, montoBono, montoDescanso,
         total: montoDisfrute + montoBono + montoDescanso,
@@ -279,6 +308,14 @@ function ConstanciaCompleta({
         >
             <SectionHeader label="Conceptos" />
             <div className="space-y-1">
+                {calc.diasInasistencia > 0 && (
+                    <CalcRow
+                        label="Inasistencias injustificadas"
+                        formula={`⌈ ${calc.diasAnualesBase}d / 360 × ${360 - calc.diasInasistencia} días ⌉`}
+                        value={`${calc.diasInasistencia} d → ${calc.diasLegalBono} días`}
+                        accent="amber"
+                    />
+                )}
                 <CalcRow
                     label="Disfrute Vacacional"
                     formula={`Art. 190 LOTTT — 15 días base${calc.diasAdicDisfrute > 0 ? ` + ${calc.diasAdicDisfrute} adicional${calc.diasAdicDisfrute !== 1 ? "es" : ""}` : ""}`}
@@ -355,13 +392,23 @@ function ConstanciaFraccionada({
                 <div>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-bold mb-0.5">Fórmula Art. 196</p>
                     <p className="font-mono text-[12px] text-foreground font-medium tabular-nums">
-                        ⌈ {calc.diasAnuales} días / 12 meses × {calc.mesesFraccion} meses ⌉ = {calc.fraccionDisfrute} días
+                        {calc.diasInasistencia > 0
+                            ? `⌈ ${calc.diasAnuales} días / 360 × (${calc.mesesFraccion} meses × 30 − ${calc.diasInasistencia} faltas) ⌉ = ${calc.fraccionDisfrute} días`
+                            : `⌈ ${calc.diasAnuales} días / 12 meses × ${calc.mesesFraccion} meses ⌉ = ${calc.fraccionDisfrute} días`}
                     </p>
                 </div>
             </div>
 
             <SectionHeader label="Conceptos" />
             <div className="space-y-1">
+                {calc.diasInasistencia > 0 && (
+                    <CalcRow
+                        label="Inasistencias injustificadas"
+                        formula={`${calc.mesesFraccion * 30} días − ${calc.diasInasistencia} faltas`}
+                        value={`${calc.diasEfectivos} días efectivos`}
+                        accent="amber"
+                    />
+                )}
                 <CalcRow
                     label="Disfrute Fraccionado"
                     formula={`Art. 190 + 196 LOTTT — ${calc.fraccionDisfrute} d`}
@@ -426,6 +473,12 @@ export default function VacacionesPage() {
     const [disfruteOverride,   setDisfruteOverride]   = useState(false);
     const [diasDisfruteManual, setDiasDisfruteManual] = useState("");
 
+    // ── Inasistencias injustificadas ────────────────────────────────────────
+    // Typed per employee (kept in memory only, keyed by cédula) because they are
+    // not recorded anywhere else yet; batch runs apply each employee's value.
+    const [inasistencias, setInasistencias] = useState<Readonly<Record<string, string>>>({});
+    const empleadosConInasistencias = Object.values(inasistencias).filter(v => parseAbsenceDays(v) > 0).length;
+
     // ── Selected employee + salary sync ─────────────────────────────────────
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedCedula),
@@ -464,23 +517,24 @@ export default function VacacionesPage() {
         return filtered.map(emp => {
             const ves = emp.moneda === "USD" ? emp.salarioMensual * usdRate : emp.salarioMensual;
             const ing = emp.fechaIngreso ?? "";
+            const faltas = parseAbsenceDays(inasistencias[emp.cedula]);
 
             if (mode === "completas") {
                 const anios  = calcAniosAt(ing, fechaInicio);
-                const dL     = 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
+                const dL     = prorateForUnjustifiedAbsences(getDiasAnualesBase(anios), 360, faltas).payableDays;
                 // Manual override wins when "disfrute acumulado" is on; empty/0 falls back to the legal cap.
                 const manual = disfruteOverride ? Math.max(0, parseInt(diasDisfruteManual, 10) || 0) : 0;
                 const dias   = manual > 0 ? manual : dL;
                 const culm   = calculateCulminacion(fechaInicio, dias);
                 const reint  = nextWorkingDay(culm);
-                const c      = computeVac(ves, ing, fechaInicio, culm);
+                const c      = computeVac(ves, ing, fechaInicio, culm, faltas);
                 return { emp, calc: c, dates: { start: fechaInicio, end: culm, rest: reint } };
             } else {
-                const c = computeVacFrac(ves, ing, fechaEgreso);
+                const c = computeVacFrac(ves, ing, fechaEgreso, faltas);
                 return { emp, calc: c };
             }
         });
-    }, [filtered, mode, usdRate, fechaInicio, fechaEgreso, disfruteOverride, diasDisfruteManual]);
+    }, [filtered, mode, usdRate, fechaInicio, fechaEgreso, disfruteOverride, diasDisfruteManual, inasistencias]);
 
     const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.total ?? 0), 0), [results]);
 
@@ -514,6 +568,8 @@ export default function VacacionesPage() {
                         diasDescanso:   (r.calc as VacCalc).diasDescanso,
                         diasDisfrute:   (r.calc as VacCalc).diasDisfrute,
                         diasBono:       (r.calc as VacCalc).diasBono,
+                        diasAnualesBase:  (r.calc as VacCalc).diasAnualesBase,
+                        diasInasistencia: (r.calc as VacCalc).diasInasistencia,
                         montoDisfrute:  r.calc.montoDisfrute,
                         montoDescanso:  (r.calc as VacCalc).montoDescanso,
                         montoBono:      r.calc.montoBono,
@@ -530,6 +586,8 @@ export default function VacacionesPage() {
                         ultimoAniversario: (r.calc as VacFracCalc).ultimoAniversario,
                         aniosCompletos:    (r.calc as VacFracCalc).aniosCompletos,
                         mesesFraccion:     (r.calc as VacFracCalc).mesesFraccion,
+                        diasInasistencia:  (r.calc as VacFracCalc).diasInasistencia,
+                        diasEfectivos:     (r.calc as VacFracCalc).diasEfectivos,
                         diasAnuales:       (r.calc as VacFracCalc).diasAnuales,
                         salarioVES:        r.calc.salarioVES,
                         salarioDia:        r.calc.salarioDia,
@@ -653,6 +711,29 @@ export default function VacacionesPage() {
                                     startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
                                 />
                             )}
+                            {selectedCedula ? (
+                                <div className="space-y-1.5">
+                                    <BaseInput.Field
+                                        label="Inasistencias injustificadas"
+                                        type="number"
+                                        min={0}
+                                        max={360}
+                                        step={1}
+                                        value={inasistencias[selectedCedula] ?? ""}
+                                        onValueChange={value => setInasistencias(prev => ({ ...prev, [selectedCedula]: value }))}
+                                        placeholder="0"
+                                        suffix="d"
+                                        inputClassName="text-right"
+                                    />
+                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] leading-relaxed">
+                                        Faltas injustificadas del año de servicio (o de la fracción): reducen disfrute y bono en proporción. Reposos, permisos y licencias no se cuentan.
+                                    </p>
+                                </div>
+                            ) : empleadosConInasistencias > 0 && (
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] leading-relaxed">
+                                    {`${empleadosConInasistencias} empleado${empleadosConInasistencias !== 1 ? "s" : ""} con inasistencias injustificadas. Selecciona uno para editarlas.`}
+                                </p>
+                            )}
                         </div>
 
                         {/* ── Tasa BCV ──────────────────────────────────────── */}
@@ -752,6 +833,9 @@ export default function VacacionesPage() {
                                         <SummaryRow label="Sal. diario"      value={formatNumber((calcDisplay as VacCalc).salarioDia) + " /día"} dim />
                                     </div>
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
+                                        {(calcDisplay as VacCalc).diasInasistencia > 0 && (
+                                            <SummaryRow label="Inasistencias" value={`${(calcDisplay as VacCalc).diasInasistencia} días`} dim />
+                                        )}
                                         <SummaryRow label="Días disfrute"    value={`${(calcDisplay as VacCalc).diasDisfrute} días`} />
                                         {(calcDisplay as VacCalc).diasDescanso > 0 && (
                                             <SummaryRow label="Días descanso" value={`${(calcDisplay as VacCalc).diasDescanso} días`} dim />
@@ -771,6 +855,9 @@ export default function VacacionesPage() {
                                     </div>
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <SummaryRow label="Meses fracción" value={`${(calcDisplay as VacFracCalc).mesesFraccion} meses`} />
+                                        {(calcDisplay as VacFracCalc).diasInasistencia > 0 && (
+                                            <SummaryRow label="Inasistencias" value={`${(calcDisplay as VacFracCalc).diasInasistencia} días`} dim />
+                                        )}
                                         {(calcDisplay as VacFracCalc).diasDescanso > 0 && (
                                             <SummaryRow label="Días descanso" value={`${(calcDisplay as VacFracCalc).diasDescanso} días`} dim />
                                         )}

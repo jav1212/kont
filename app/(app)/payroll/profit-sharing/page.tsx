@@ -18,6 +18,7 @@ import {
 import {
     discountUnjustifiedAbsences,
     parseAbsenceDays,
+    prorateForUnjustifiedAbsences,
 } from "@/src/modules/payroll/frontend/utils/unjustified-absences";
 
 import {
@@ -90,10 +91,7 @@ function calculateFull(
     if (salaryVES <= 0 || profitSharingDays <= 0) return null;
     // Unjustified absences prorate the annual days over the 360-day labour year,
     // rounding up like the fractional calculation.
-    const { appliedAbsenceDays, effectiveDays } = discountUnjustifiedAbsences(360, absenceDays);
-    const payableDays = appliedAbsenceDays > 0
-        ? Math.ceil((profitSharingDays / 360) * effectiveDays)
-        : profitSharingDays;
+    const { appliedAbsenceDays, payableDays } = prorateForUnjustifiedAbsences(profitSharingDays, 360, absenceDays);
     const dailySalary = salaryVES / 30;
     const amount      = payableDays * dailySalary;
     return {

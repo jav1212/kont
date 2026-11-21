@@ -45,6 +45,10 @@ export interface VacCompletasPdfData {
     diasDescanso:     number;
     diasDisfrute:     number;
     diasBono:         number;
+    // Unjustified absences prorating the legal annual days (Art. 131 LOTTT);
+    // omitted when the employee had none.
+    diasAnualesBase?:  number;
+    diasInasistencia?: number;
     montoDisfrute:    number;
     montoDescanso:    number;
     montoBono:        number;
@@ -63,6 +67,9 @@ export interface VacFraccionadasPdfData {
     ultimoAniversario: string;
     aniosCompletos:    number;
     mesesFraccion:     number;
+    // Unjustified absences taken out of the fraction's 30-day months; omitted when none.
+    diasInasistencia?: number;
+    diasEfectivos?:    number;
     diasAnuales:       number;
     salarioVES:        number;
     salarioDia:        number;
@@ -247,10 +254,15 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
         { label: "Cal · Háb · Desc", value: `${data.diasCalendario} · ${data.diasHabiles} · ${data.diasDescanso}` },
     ]);
 
+    const inasistencia = data.diasInasistencia ?? 0;
+    const prorrateo = inasistencia > 0
+        ? ` · ${data.diasAnualesBase ?? data.diasBono}d/360 × ${360 - inasistencia}d (${inasistencia}d inasistencias)`
+        : "";
+
     const completasRows: ConceptRow[] = [
         {
             label:    "Disfrute Vacacional",
-            subtitle: "Art. 190 LOTTT · 15 días base + adicionales",
+            subtitle: `Art. 190 LOTTT · 15 días base + adicionales${prorrateo}`,
             dias:     data.diasDisfrute,
             monto:    data.montoDisfrute,
         },
@@ -263,7 +275,7 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
     });
     completasRows.push({
         label:    "Bono Vacacional",
-        subtitle: "Art. 192 LOTTT · 15 días base + adicionales",
+        subtitle: `Art. 192 LOTTT · 15 días base + adicionales${prorrateo}`,
         dias:     data.diasBono,
         monto:    data.montoBono,
     });
@@ -329,16 +341,20 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     fill(doc, ML, y, W, formulaH, COLORS.rowAlt);
     rect(doc, ML, y, W, formulaH, COLORS.border, 0.2);
     renderLabel(doc, "Fórmula Art. 196 LOTTT", ML + 3, y + 4.5, "left", COLORS.muted, 7);
-    renderMono(doc,
-        `(${data.diasAnuales} días / 12 meses) × ${data.mesesFraccion} meses = ${data.fraccionDisfrute} días`,
-        ML + 3, y + 9, 9.5, true, COLORS.inkMed, "left",
-    );
+    const inasistencia = data.diasInasistencia ?? 0;
+    const fraccFormula = inasistencia > 0
+        ? `(${data.diasAnuales} días / 360) × (${data.mesesFraccion} meses × 30 − ${inasistencia} inasist.) = ${data.fraccionDisfrute} días`
+        : `(${data.diasAnuales} días / 12 meses) × ${data.mesesFraccion} meses = ${data.fraccionDisfrute} días`;
+    const fraccSubtitle = inasistencia > 0
+        ? `${data.diasAnuales}d/360 × ${data.diasEfectivos ?? data.mesesFraccion * 30 - inasistencia} días efectivos`
+        : `${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`;
+    renderMono(doc, fraccFormula, ML + 3, y + 9, 9.5, true, COLORS.inkMed, "left");
     y += formulaH + 5;
 
     const fraccRows: ConceptRow[] = [
         {
             label:    "Disfrute Fraccionado",
-            subtitle: `Art. 190 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
+            subtitle: `Art. 190 + 196 LOTTT · ${fraccSubtitle}`,
             dias:     data.fraccionDisfrute,
             monto:    data.montoDisfrute,
         },
@@ -351,7 +367,7 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     });
     fraccRows.push({
         label:    "Bono Vacacional Fraccionado",
-        subtitle: `Art. 192 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
+        subtitle: `Art. 192 + 196 LOTTT · ${fraccSubtitle}`,
         dias:     data.fraccionBono,
         monto:    data.montoBono,
     });
