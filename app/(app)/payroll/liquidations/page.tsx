@@ -62,6 +62,8 @@ interface LiquidationResult {
     daysSinceAnniversary:   number;
     profitSharingAbsenceDays:   number;
     profitSharingEffectiveDays: number;
+    vacationAbsenceDays:        number;
+    vacationEffectiveDays:      number;
     fractionalProfitSharing: number;
     fractionalVacations:    number;
     fractionalVacationBonus: number;
@@ -85,6 +87,7 @@ function calculateLiquidation(
     unpaidVacationsAccrued:     boolean,
     unpaidProfitSharingAccrued: boolean,
     profitSharingAbsenceDays:   number,
+    vacationAbsenceDays:        number,
 ): LiquidationResult {
     const base: LiquidationResult = {
         employee, salaryVES: 0, integratedDailySalary: 0,
@@ -92,6 +95,7 @@ function calculateLiquidation(
         daysSeniority: 0, daysSeniorityQuarterly: 0, daysSeniorityExtra: 0,
         socialBenefits: 0, daysInCurrentYear: 0, daysSinceAnniversary: 0,
         profitSharingAbsenceDays: 0, profitSharingEffectiveDays: 0,
+        vacationAbsenceDays: 0, vacationEffectiveDays: 0,
         fractionalProfitSharing: 0, fractionalVacations: 0, fractionalVacationBonus: 0,
         accruedVacations: 0, accruedVacationBonus: 0, accruedVacationDays: 0,
         accruedProfitSharing: 0, accruedProfitSharingDays: 0,
@@ -146,8 +150,14 @@ function calculateLiquidation(
     const daysSinceAnniversary = yearsOfService >= 1 ? daysOfLastYear : totalDays;
     const baseVacationDays     = Math.max(15, 15 + Math.max(0, yearsOfService - 1));
 
-    const fractionalVacations     = (salaryVES / 30) * baseVacationDays * (daysSinceAnniversary / 365);
-    const fractionalVacationBonus = (salaryVES / 30) * vacationBonusDays * (daysSinceAnniversary / 365);
+    // Unjustified absences since the last anniversary shrink both fractions;
+    // prior unpaid years below are owed in full.
+    const {
+        appliedAbsenceDays: appliedVacationAbsenceDays,
+        effectiveDays:      vacationEffectiveDays,
+    } = discountUnjustifiedAbsences(daysSinceAnniversary, vacationAbsenceDays);
+    const fractionalVacations     = (salaryVES / 30) * baseVacationDays * (vacationEffectiveDays / 365);
+    const fractionalVacationBonus = (salaryVES / 30) * vacationBonusDays * (vacationEffectiveDays / 365);
 
     // ── ACCRUED (UNPAID) VACATIONS, BONUS & PROFIT SHARING ────────────────
     // When prior whole periods were never paid, the liquidation owes them in
@@ -179,11 +189,19 @@ function calculateLiquidation(
         daysSeniority, daysSeniorityQuarterly, daysSeniorityExtra,
         socialBenefits, daysInCurrentYear, daysSinceAnniversary,
         profitSharingAbsenceDays: appliedProfitSharingAbsenceDays, profitSharingEffectiveDays,
+        vacationAbsenceDays: appliedVacationAbsenceDays, vacationEffectiveDays,
         fractionalProfitSharing, fractionalVacations, fractionalVacationBonus,
         accruedVacations, accruedVacationBonus, accruedVacationDays,
         accruedProfitSharing, accruedProfitSharingDays,
         terminationIndemnity, total,
     };
+}
+
+/** Days the vacation fractions are prorated over, showing any absence discount. */
+function vacationPeriodLabel(result: LiquidationResult): string {
+    return result.vacationAbsenceDays > 0
+        ? `(${result.daysSinceAnniversary}d − ${result.vacationAbsenceDays}d inasist.)`
+        : `${result.daysSinceAnniversary}d`;
 }
 
 // ============================================================================
@@ -595,9 +613,12 @@ function BreakdownPanel({
 }) {
     const baseDailySalary  = result.salaryVES / 30;
     const baseVacationDays = Math.max(15, 15 + Math.max(0, result.yearsOfService - 1));
-    const fractionPercent  = result.daysSinceAnniversary > 0
-        ? (result.daysSinceAnniversary / 365) * 100
+    const fractionPercent  = result.vacationEffectiveDays > 0
+        ? (result.vacationEffectiveDays / 365) * 100
         : 0;
+    const vacationAbsenceNote = result.vacationAbsenceDays > 0
+        ? ` · −${result.vacationAbsenceDays} d inasistencias`
+        : "";
     const yearProgressPercent = result.profitSharingEffectiveDays > 0
         ? (result.profitSharingEffectiveDays / 365) * 100
         : 0;
@@ -641,7 +662,7 @@ function BreakdownPanel({
         lines.push({
             icon:     Plane,
             label:    "Vacaciones fraccionadas",
-            sublabel: "Art. 196 LOTTT",
+            sublabel: `Art. 196 LOTTT${vacationAbsenceNote}`,
             formula:  `${baseVacationDays} d vacación × Bs. ${formatNumber(baseDailySalary)} / día`,
             chip:     `${fractionPercent.toFixed(1)}% desde aniv.`,
             amount:   result.fractionalVacations,
@@ -661,7 +682,7 @@ function BreakdownPanel({
         lines.push({
             icon:     Gift,
             label:    "Bono vacacional fraccionado",
-            sublabel: "Art. 192 LOTTT",
+            sublabel: `Art. 192 LOTTT${vacationAbsenceNote}`,
             formula:  `${vacationBonusDays} d bono × Bs. ${formatNumber(baseDailySalary)} / día`,
             chip:     `${fractionPercent.toFixed(1)}% desde aniv.`,
             amount:   result.fractionalVacationBonus,
@@ -798,10 +819,16 @@ export default function LiquidacionesPage() {
     const [unpaidVacationsAccrued,     setUnpaidVacationsAccrued]     = useState(false);
     const [unpaidProfitSharingAccrued, setUnpaidProfitSharingAccrued] = useState(false);
 
-    // Unjustified absences of the current year, typed per employee (in memory
-    // only, keyed by cédula); batch runs apply each employee's value.
+    // Unjustified absences typed per employee (in memory only, keyed by cédula);
+    // batch runs apply each employee's values. Profit sharing counts them in the
+    // current calendar year, vacations since the last anniversary.
     const [absenceDaysByEmployee, setAbsenceDaysByEmployee] = useState<Readonly<Record<string, string>>>({});
-    const employeesWithAbsences = Object.values(absenceDaysByEmployee).filter(v => parseAbsenceDays(v) > 0).length;
+    const [vacationAbsenceDaysByEmployee, setVacationAbsenceDaysByEmployee] = useState<Readonly<Record<string, string>>>({});
+    const employeesWithAbsences = new Set(
+        [...Object.entries(absenceDaysByEmployee), ...Object.entries(vacationAbsenceDaysByEmployee)]
+            .filter(([, v]) => parseAbsenceDays(v) > 0)
+            .map(([cedula]) => cedula),
+    ).size;
 
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedIdNumber),
@@ -831,8 +858,9 @@ export default function LiquidacionesPage() {
             unpaidVacationsAccrued,
             unpaidProfitSharingAccrued,
             parseAbsenceDays(absenceDaysByEmployee[emp.cedula]),
+            parseAbsenceDays(vacationAbsenceDaysByEmployee[emp.cedula]),
         )),
-        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, usdRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued, absenceDaysByEmployee],
+        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, usdRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued, absenceDaysByEmployee, vacationAbsenceDaysByEmployee],
     );
 
     const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
@@ -905,7 +933,7 @@ export default function LiquidacionesPage() {
                 },
                 {
                     label:   "Vacaciones fraccionadas",
-                    formula: `${r.daysSinceAnniversary}d / 365 × ${Math.max(15, 15 + Math.max(0, r.yearsOfService - 1))}d vac.`,
+                    formula: `${vacationPeriodLabel(r)} / 365 × ${Math.max(15, 15 + Math.max(0, r.yearsOfService - 1))}d vac.`,
                     salary:  simpleDailySalary,
                     amount:  r.fractionalVacations,
                 },
@@ -917,7 +945,7 @@ export default function LiquidacionesPage() {
                 },
                 {
                     label:   "Bono vacacional fraccionado",
-                    formula: `${r.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`,
+                    formula: `${vacationPeriodLabel(r)} / 365 × ${vacationBonusDays}d bono`,
                     salary:  simpleDailySalary,
                     amount:  r.fractionalVacationBonus,
                 },
@@ -1033,20 +1061,35 @@ export default function LiquidacionesPage() {
                             />
                             {selectedIdNumber ? (
                                 <div className="space-y-1.5">
-                                    <BaseInput.Field
-                                        label="Inasistencias injustificadas (año en curso)"
-                                        type="number"
-                                        min={0}
-                                        max={366}
-                                        step={1}
-                                        value={absenceDaysByEmployee[selectedIdNumber] ?? ""}
-                                        onValueChange={value => setAbsenceDaysByEmployee(prev => ({ ...prev, [selectedIdNumber]: value }))}
-                                        placeholder="0"
-                                        suffix="d"
-                                        inputClassName="text-right"
-                                    />
+                                    <label className={LABEL_CLS}>Inasistencias injustificadas</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <BaseInput.Field
+                                            label="Año en curso"
+                                            type="number"
+                                            min={0}
+                                            max={366}
+                                            step={1}
+                                            value={absenceDaysByEmployee[selectedIdNumber] ?? ""}
+                                            onValueChange={value => setAbsenceDaysByEmployee(prev => ({ ...prev, [selectedIdNumber]: value }))}
+                                            placeholder="0"
+                                            suffix="d"
+                                            inputClassName="text-right"
+                                        />
+                                        <BaseInput.Field
+                                            label="Desde aniversario"
+                                            type="number"
+                                            min={0}
+                                            max={366}
+                                            step={1}
+                                            value={vacationAbsenceDaysByEmployee[selectedIdNumber] ?? ""}
+                                            onValueChange={value => setVacationAbsenceDaysByEmployee(prev => ({ ...prev, [selectedIdNumber]: value }))}
+                                            placeholder="0"
+                                            suffix="d"
+                                            inputClassName="text-right"
+                                        />
+                                    </div>
                                     <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
-                                        Reducen las utilidades fraccionadas (Art. 131 LOTTT). Reposos, permisos y licencias no se cuentan.
+                                        Las del año en curso reducen las utilidades fraccionadas; las desde el último aniversario, las vacaciones y el bono vacacional fraccionados (Art. 131 LOTTT). Reposos, permisos y licencias no se cuentan.
                                     </p>
                                 </div>
                             ) : employeesWithAbsences > 0 && (
