@@ -24,7 +24,7 @@ export const GET = withTenantPermission("sales.read", async (req, { tenantId, us
 /**
  * Applies one ledger command and re-synchronizes its draft journal.
  * Body: `{ companyId, action, ... }` with action `add_sales`, `add_deposits`,
- * `remove`, `save_settings`, `link_bank_entries` or `resync`.
+ * `update_sale`, `update_deposit`, `remove`, `save_settings`, `link_bank_entries` or `resync`.
  */
 export const POST = withTenantPermission("sales.create", async (req, { tenantId, userId }) => {
     try {
@@ -59,6 +59,26 @@ export const POST = withTenantPermission("sales.create", async (req, { tenantId,
                     bankEntryId: typeof link.bankEntryId === "string" && link.bankEntryId ? link.bankEntryId : null,
                 })));
                 return Response.json({ data: { view: serializeView(view), journalSync: null } });
+            }
+            case "update_sale": {
+                const sale = (body.sale ?? {}) as Record<string, unknown>;
+                change = await ledger.updateSale(companyId, text(body.id), {
+                    saleDate: text(sale.saleDate),
+                    amountVes: decimalText(sale.amountVes),
+                    ...(sale.vesPerUsd != null && sale.vesPerUsd !== "" ? { vesPerUsd: decimalText(sale.vesPerUsd) } : {}),
+                    ...(typeof sale.note === "string" ? { note: sale.note } : {}),
+                });
+                break;
+            }
+            case "update_deposit": {
+                const deposit = (body.deposit ?? {}) as Record<string, unknown>;
+                change = await ledger.updateDeposit(companyId, text(body.id), {
+                    depositDate: text(deposit.depositDate),
+                    amountVes: decimalText(deposit.amountVes),
+                    ...(deposit.vesPerUsd != null && deposit.vesPerUsd !== "" ? { vesPerUsd: decimalText(deposit.vesPerUsd) } : {}),
+                    ...(typeof deposit.reference === "string" ? { reference: deposit.reference } : {}),
+                });
+                break;
             }
             case "remove":
                 if ((body.kind !== "sale" && body.kind !== "deposit") || typeof body.id !== "string") return Response.json({ error: "Registro inválido" }, { status: 400 });

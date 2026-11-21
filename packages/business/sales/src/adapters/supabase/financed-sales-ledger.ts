@@ -147,6 +147,35 @@ export class SupabaseFinancedSalesLedgerRepository implements FinancedSalesLedge
     if (error) throw unavailable(error);
   }
 
+  /** {@inheritDoc FinancedSalesLedgerRepository.updateSale} */
+  async updateSale(companyId: string, sale: FinancedSaleRecord): Promise<void> {
+    const { data, error } = await this.client.from("shared_financed_sales").update({
+      sale_date: sale.saleDate,
+      amount_ves: decimalToFixed(sale.amountVes, 2),
+      upfront_percent: sale.upfrontPercent,
+      ves_per_usd: sale.vesPerUsd,
+      rate_source: sale.rateSource,
+      note: sale.note,
+    }).eq("tenant_id", this.tenantId).eq("company_id", companyId).eq("id", sale.id).select("id");
+    if (error) throw unavailable(error);
+    if (!data?.length) throw new SalesFailure("SALES_NOT_FOUND", "Financed sale does not exist.");
+  }
+
+  /** {@inheritDoc FinancedSalesLedgerRepository.updateDeposit} */
+  async updateDeposit(companyId: string, deposit: FinancierDepositRecord): Promise<void> {
+    // The bank link is owned by setBankLinks and deliberately left untouched here.
+    const { data, error } = await this.client.from("shared_financier_deposits").update({
+      deposit_date: deposit.depositDate,
+      amount_ves: decimalToFixed(deposit.amountVes, 2),
+      ves_per_usd: deposit.vesPerUsd,
+      rate_source: deposit.rateSource,
+      commission_percent: deposit.commissionPercent,
+      reference: deposit.reference,
+    }).eq("tenant_id", this.tenantId).eq("company_id", companyId).eq("id", deposit.id).select("id");
+    if (error) throw unavailable(error);
+    if (!data?.length) throw new SalesFailure("SALES_NOT_FOUND", "Financier deposit does not exist.");
+  }
+
   /** {@inheritDoc FinancedSalesLedgerRepository.remove} */
   async remove(companyId: string, kind: "sale" | "deposit", id: string): Promise<void> {
     const table = kind === "sale" ? "shared_financed_sales" : "shared_financier_deposits";

@@ -126,6 +126,22 @@ export interface FinancedSalesLedgerRepository {
    */
   remove(companyId: string, kind: "sale" | "deposit", id: string): Promise<void>;
   /**
+   * Replaces the editable fields of an existing sale.
+   * @param companyId - Company that owns the ledger.
+   * @param sale - Record with its existing identifier.
+   * @returns Completion after the change is durable.
+   * @throws {SalesFailure} `SALES_NOT_FOUND` when the sale does not exist.
+   */
+  updateSale(companyId: string, sale: FinancedSaleRecord): Promise<void>;
+  /**
+   * Replaces the editable fields of an existing deposit, keeping its bank link.
+   * @param companyId - Company that owns the ledger.
+   * @param deposit - Record with its existing identifier.
+   * @returns Completion after the change is durable.
+   * @throws {SalesFailure} `SALES_NOT_FOUND` when the deposit does not exist.
+   */
+  updateDeposit(companyId: string, deposit: FinancierDepositRecord): Promise<void>;
+  /**
    * Sets or clears the bank ledger entry of deposits in one transaction.
    * @param companyId - Company that owns the ledger.
    * @param links - Deposit identifiers with their bank entry, or `null` to unlink.
@@ -300,6 +316,72 @@ export class FinancedSalesLedger {
     });
     this.calculate({ ...state, deposits: [...state.deposits, ...records] });
     await this.repository.addDeposits(companyId, records);
+    return this.afterChange(companyId);
+  }
+
+  /**
+   * Replaces the date, amount, rate and note of a sale and re-synchronizes the journal.
+   * Omitted optional fields keep their stored value; an omitted rate is resolved again
+   * from the official history for the (possibly new) date.
+   * @param companyId - Company that owns the ledger.
+   * @param id - Sale identifier.
+   * @param sale - New values.
+   * @returns The recalculated view and synchronization result.
+   * @throws {SalesFailure} `SALES_NOT_FOUND` for an unknown sale, `SALES_FINANCED_SALE_INVALID`
+   * for invalid values or a date without official rate.
+   */
+  async updateSale(companyId: string, id: string, sale: NewFinancedSale): Promise<FinancedSalesLedgerChange> {
+    const state = await this.repository.load(companyId);
+    const current = state.sales.find((candidate) => candidate.id === id);
+    if (!current) throw new SalesFailure("SALES_NOT_FOUND", "Financed sale does not exist.");
+    const date = salesDate(sale.saleDate);
+    const manualRate = sale.vesPerUsd ? positiveDecimal(sale.vesPerUsd, "SALES_FINANCED_SALE_INVALID") : null;
+    const rate = manualRate ?? (await this.rateResolver([date]))(date);
+    if (!rate) throw new SalesFailure("SALES_FINANCED_SALE_INVALID", `No official rate is available for ${date}.`);
+    const record: FinancedSaleRecord = {
+      id,
+      saleDate: date,
+      amountVes: positiveDecimal(sale.amountVes, "SALES_FINANCED_SALE_INVALID"),
+      upfrontPercent: sale.upfrontPercent ? exactDecimal(sale.upfrontPercent) : current.upfrontPercent,
+      vesPerUsd: rate,
+      rateSource: manualRate ? "manual" : "bcv",
+      note: sale.note === undefined ? current.note : sale.note?.trim() || null,
+    };
+    this.calculate({ ...state, sales: state.sales.map((candidate) => candidate.id === id ? record : candidate) });
+    await this.repository.updateSale(companyId, record);
+    return this.afterChange(companyId);
+  }
+
+  /**
+   * Replaces the date, amount, rate and reference of a deposit and re-synchronizes the
+   * journal. The bank link is kept; unlink it separately if it no longer applies.
+   * @param companyId - Company that owns the ledger.
+   * @param id - Deposit identifier.
+   * @param deposit - New values; `bankEntryId` is ignored.
+   * @returns The recalculated view and synchronization result.
+   * @throws {SalesFailure} `SALES_NOT_FOUND` for an unknown deposit, `SALES_FINANCED_COLLECTION_INVALID`
+   * for invalid values or a date without official rate.
+   */
+  async updateDeposit(companyId: string, id: string, deposit: NewFinancierDeposit): Promise<FinancedSalesLedgerChange> {
+    const state = await this.repository.load(companyId);
+    const current = state.deposits.find((candidate) => candidate.id === id);
+    if (!current) throw new SalesFailure("SALES_NOT_FOUND", "Financier deposit does not exist.");
+    const date = salesDate(deposit.depositDate);
+    const manualRate = deposit.vesPerUsd ? positiveDecimal(deposit.vesPerUsd, "SALES_FINANCED_COLLECTION_INVALID") : null;
+    const rate = manualRate ?? (await this.rateResolver([date]))(date);
+    if (!rate) throw new SalesFailure("SALES_FINANCED_COLLECTION_INVALID", `No official rate is available for ${date}.`);
+    const record: FinancierDepositRecord = {
+      id,
+      depositDate: date,
+      amountVes: positiveDecimal(deposit.amountVes, "SALES_FINANCED_COLLECTION_INVALID"),
+      vesPerUsd: rate,
+      rateSource: manualRate ? "manual" : "bcv",
+      commissionPercent: deposit.commissionPercent ? exactDecimal(deposit.commissionPercent) : current.commissionPercent,
+      reference: deposit.reference === undefined ? current.reference : deposit.reference?.trim() || null,
+      bankEntryId: current.bankEntryId,
+    };
+    this.calculate({ ...state, deposits: state.deposits.map((candidate) => candidate.id === id ? record : candidate) });
+    await this.repository.updateDeposit(companyId, record);
     return this.afterChange(companyId);
   }
 

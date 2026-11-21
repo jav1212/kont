@@ -118,6 +118,10 @@ la tasa BCV del día del depósito; la comisión aún no se conoce (configurable
    del Excel de ventas sin duplicar, tablas, resumen mensual, estado de la
    sincronización contable y configuración de cuentas.
 
+6. Edición de ventas y depósitos en línea (fecha, monto, tasa y referencia;
+   tasa vacía = BCV de la fecha). Editar un depósito conserva su vínculo
+   bancario; el botón «Desvincular» lo quita.
+
 Fuera de alcance por la decisión anterior: dividir facturas emitidas en Kontave
 en contado + CxC Cashea y guardar el diferencial por abono de CxC de facturas.
 

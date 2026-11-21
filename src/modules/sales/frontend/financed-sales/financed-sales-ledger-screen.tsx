@@ -6,7 +6,7 @@
 // re-synchronizes the draft journal in Accounting.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeftRight, BookCheck, ClipboardPaste, Landmark, RefreshCw, Trash2, TrendingUp, Upload, Wallet } from "lucide-react";
+import { ArrowLeftRight, BookCheck, Check, ClipboardPaste, Landmark, Pencil, RefreshCw, Trash2, TrendingUp, Unlink, Upload, Wallet, X } from "lucide-react";
 import type { FinancedSaleAccountRole } from "@kontave/sales/domain";
 import type { FinancedSalesJournalSyncResult } from "@kontave/sales/application";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -47,6 +47,8 @@ type Command =
     | { action: "add_sales"; sales: Array<{ saleDate: string; amountVes: string; vesPerUsd?: string }> }
     | { action: "add_deposits"; deposits: Array<{ depositDate: string; amountVes: string; reference?: string; commissionPercent?: string; vesPerUsd?: string; bankEntryId?: string }> }
     | { action: "link_bank_entries"; links: Array<{ depositId: string; bankEntryId: string | null }> }
+    | { action: "update_sale"; id: string; sale: { saleDate: string; amountVes: string; vesPerUsd?: string } }
+    | { action: "update_deposit"; id: string; deposit: { depositDate: string; amountVes: string; vesPerUsd?: string; reference: string } }
     | { action: "remove"; kind: "sale" | "deposit"; id: string }
     | { action: "save_settings"; settings: Omit<LedgerView["settings"], "version">; expectedVersion: number }
     | { action: "resync" };
@@ -130,6 +132,19 @@ export function FinancedSalesLedgerScreen() {
     const [pasteTarget, setPasteTarget] = useState<"sales" | "deposits" | null>(null);
     const [pasteText, setPasteText] = useState("");
     const [showSettings, setShowSettings] = useState(false);
+    const [editing, setEditing] = useState<{ kind: "sale" | "deposit"; id: string } | null>(null);
+
+    async function saveEdit(values: EditValues) {
+        if (!editing) return;
+        const amount = parseAmountInput(values.amount);
+        if (!amount) { notify.error("Ingresa un monto válido."); return; }
+        const rate = values.rate.trim() ? parseAmountInput(values.rate) : null;
+        if (values.rate.trim() && !rate) { notify.error("Ingresa una tasa válida o déjala vacía para usar la BCV."); return; }
+        const saved = editing.kind === "sale"
+            ? await run({ action: "update_sale", id: editing.id, sale: { saleDate: values.date, amountVes: amount, ...(rate ? { vesPerUsd: rate } : {}) } })
+            : await run({ action: "update_deposit", id: editing.id, deposit: { depositDate: values.date, amountVes: amount, reference: values.reference, ...(rate ? { vesPerUsd: rate } : {}) } });
+        if (saved) { setEditing(null); notify.success("Registro actualizado."); }
+    }
 
     const accountLabel = useCallback((role: FinancedSaleAccountRole) => {
         const account = postingAccounts.find((candidate) => candidate.id === view?.settings.accounts[role]);
@@ -312,7 +327,10 @@ export function FinancedSalesLedgerScreen() {
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                         <Panel title="Ventas" aside={`${view.sales.length} registros`}>
                             <Table headers={["Fecha", "Venta Bs", "Tasa", "Financiado Bs", "Financiado USD", "Cobrado Bs", "Diferencial", "Saldo USD", ""]}>
-                                {salesByNewest.map((sale) => (
+                                {salesByNewest.map((sale) => editing?.kind === "sale" && editing.id === sale.id ? (
+                                    <EditRow key={sale.id} columns={9} busy={busy} onCancel={() => setEditing(null)} onSave={(values) => { void saveEdit(values); }}
+                                        initial={{ date: sale.saleDate, amount: sale.amountVes, rate: sale.rateSource === "manual" ? sale.vesPerUsd : "", reference: "" }} />
+                                ) : (
                                     <tr key={sale.id} className="border-b border-border-light/50 hover:bg-surface-2">
                                         <Cell left>{formatDate(sale.saleDate)}</Cell>
                                         <Cell>{fmt(sale.amountVes)}</Cell>
@@ -322,22 +340,41 @@ export function FinancedSalesLedgerScreen() {
                                         <Cell>{sale.collectedVes && Number(sale.collectedVes) > 0 ? fmt(sale.collectedVes) : "—"}</Cell>
                                         <Cell tone={Number(sale.exchangeDifference) < 0 ? "warning" : Number(sale.exchangeDifference) > 0 ? "success" : undefined}>{Number(sale.collectedVes) > 0 && sale.exchangeDifference ? fmt(sale.exchangeDifference) : "—"}</Cell>
                                         <Cell>{sale.outstandingUsd && Number(sale.outstandingUsd) > 0 ? fmt(sale.outstandingUsd) : "Cobrada"}</Cell>
-                                        <td className="px-2"><RemoveButton disabled={busy} label={`venta del ${formatDate(sale.saleDate)}`} onRemove={() => { void run({ action: "remove", kind: "sale", id: sale.id }); }} /></td>
+                                        <td className="px-2 whitespace-nowrap">
+                                            <IconButton label={`Editar venta del ${formatDate(sale.saleDate)}`} disabled={busy || editing !== null} onPress={() => setEditing({ kind: "sale", id: sale.id })}><Pencil size={14} strokeWidth={2} /></IconButton>
+                                            <RemoveButton disabled={busy} label={`venta del ${formatDate(sale.saleDate)}`} onRemove={() => { void run({ action: "remove", kind: "sale", id: sale.id }); }} />
+                                        </td>
                                     </tr>
                                 ))}
                             </Table>
                         </Panel>
                         <Panel title="Depósitos" aside={`${view.deposits.length} registros`}>
                             <Table headers={["Fecha", "Monto Bs", "Tasa BCV", "USD", "Ref.", "Banco", ""]}>
-                                {depositsByNewest.map((deposit) => (
+                                {depositsByNewest.map((deposit) => editing?.kind === "deposit" && editing.id === deposit.id ? (
+                                    <EditRow key={deposit.id} columns={7} busy={busy} withReference onCancel={() => setEditing(null)} onSave={(values) => { void saveEdit(values); }}
+                                        initial={{ date: deposit.depositDate, amount: deposit.amountVes, rate: deposit.rateSource === "manual" ? deposit.vesPerUsd : "", reference: deposit.reference ?? "" }} />
+                                ) : (
                                     <tr key={deposit.id} className="border-b border-border-light/50 hover:bg-surface-2">
                                         <Cell left>{formatDate(deposit.depositDate)}</Cell>
                                         <Cell>{fmt(deposit.amountVes)}</Cell>
                                         <Cell>{fmt(deposit.vesPerUsd, 4)}{deposit.rateSource === "manual" ? " *" : ""}</Cell>
                                         <Cell>{fmt(String(Number(deposit.amountVes) / (1 - Number(deposit.commissionPercent) / 100) / Number(deposit.vesPerUsd)))}</Cell>
                                         <Cell left>{deposit.reference ?? ""}</Cell>
-                                        <Cell left>{deposit.bankEntryId ? <span className="text-text-success" title="Conciliado con Tesorería">✓</span> : <span className="text-[var(--text-tertiary)]">—</span>}</Cell>
-                                        <td className="px-2"><RemoveButton disabled={busy} label={`depósito del ${formatDate(deposit.depositDate)}`} onRemove={() => { void run({ action: "remove", kind: "deposit", id: deposit.id }); }} /></td>
+                                        <Cell left>
+                                            {deposit.bankEntryId ? (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <span className="text-text-success" title="Conciliado con Tesorería">✓</span>
+                                                    <IconButton label={`Desvincular del banco el depósito del ${formatDate(deposit.depositDate)}`} disabled={busy}
+                                                        onPress={() => { void run({ action: "link_bank_entries", links: [{ depositId: deposit.id, bankEntryId: null }] }).then((ok) => { if (ok) notify.success("Depósito desvinculado del movimiento bancario."); }); }}>
+                                                        <Unlink size={13} strokeWidth={2} />
+                                                    </IconButton>
+                                                </span>
+                                            ) : <span className="text-[var(--text-tertiary)]">—</span>}
+                                        </Cell>
+                                        <td className="px-2 whitespace-nowrap">
+                                            <IconButton label={`Editar depósito del ${formatDate(deposit.depositDate)}`} disabled={busy || editing !== null} onPress={() => setEditing({ kind: "deposit", id: deposit.id })}><Pencil size={14} strokeWidth={2} /></IconButton>
+                                            <RemoveButton disabled={busy} label={`depósito del ${formatDate(deposit.depositDate)}`} onRemove={() => { void run({ action: "remove", kind: "deposit", id: deposit.id }); }} />
+                                        </td>
                                     </tr>
                                 ))}
                             </Table>
@@ -436,6 +473,45 @@ function SettingField({ label, value, onCommit }: { label: string; value: string
                 onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
                 className={INPUT_CLS} />
         </div>
+    );
+}
+
+interface EditValues { date: string; amount: string; rate: string; reference: string }
+
+/** Inline editor for a sale or deposit row; an empty rate means the BCV rate of the date. */
+function EditRow({ initial, columns, busy, withReference = false, onSave, onCancel }: {
+    initial: EditValues;
+    columns: number;
+    busy: boolean;
+    withReference?: boolean;
+    onSave: (values: EditValues) => void;
+    onCancel: () => void;
+}) {
+    const [values, setValues] = useState(initial);
+    const set = (field: keyof EditValues) => (event: React.ChangeEvent<HTMLInputElement>) => setValues((current) => ({ ...current, [field]: event.target.value }));
+    return (
+        <tr className="border-b border-border-light/50 bg-primary-500/[0.04]">
+            <td colSpan={columns} className="px-3 py-2">
+                <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); onSave(values); }}
+                    onKeyDown={(event) => { if (event.key === "Escape") onCancel(); }}>
+                    <div><FieldLabel>Fecha</FieldLabel><input type="date" required value={values.date} onChange={set("date")} className={`${INPUT_CLS} w-[150px]`} /></div>
+                    <div><FieldLabel>Monto Bs</FieldLabel><input autoFocus inputMode="decimal" required value={values.amount} onChange={set("amount")} className={`${INPUT_CLS} w-[140px] text-right`} /></div>
+                    <div><FieldLabel>Tasa (vacía = BCV)</FieldLabel><input inputMode="decimal" placeholder="BCV" value={values.rate} onChange={set("rate")} className={`${INPUT_CLS} w-[120px] text-right`} /></div>
+                    {withReference && <div><FieldLabel>Referencia</FieldLabel><input value={values.reference} onChange={set("reference")} className={`${INPUT_CLS} w-[160px]`} /></div>}
+                    <BaseButton.Root type="submit" variant="primary" size="sm" loading={busy} leftIcon={<Check size={14} strokeWidth={2} />}>Guardar</BaseButton.Root>
+                    <BaseButton.Root variant="ghost" size="sm" leftIcon={<X size={14} strokeWidth={2} />} onPress={onCancel}>Cancelar</BaseButton.Root>
+                </form>
+            </td>
+        </tr>
+    );
+}
+
+function IconButton({ label, disabled, onPress, children }: { label: string; disabled: boolean; onPress: () => void; children: React.ReactNode }) {
+    return (
+        <button type="button" disabled={disabled} aria-label={label} title={label} onClick={onPress}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors disabled:opacity-40">
+            {children}
+        </button>
     );
 }
 

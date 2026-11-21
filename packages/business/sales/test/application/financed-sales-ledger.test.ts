@@ -28,6 +28,14 @@ class MemoryRepository implements FinancedSalesLedgerRepository {
     const byId = new Map(links.map((link) => [link.depositId, link.bankEntryId]));
     this.state = { ...this.state, deposits: this.state.deposits.map((deposit) => byId.has(deposit.id) ? { ...deposit, bankEntryId: byId.get(deposit.id)! } : deposit) };
   }
+  async updateSale(_companyId: string, sale: FinancedSalesLedgerState["sales"][number]) {
+    if (!this.state.sales.some((candidate) => candidate.id === sale.id)) throw new SalesFailure("SALES_NOT_FOUND", "missing");
+    this.state = { ...this.state, sales: this.state.sales.map((candidate) => candidate.id === sale.id ? sale : candidate) };
+  }
+  async updateDeposit(_companyId: string, deposit: FinancedSalesLedgerState["deposits"][number]) {
+    if (!this.state.deposits.some((candidate) => candidate.id === deposit.id)) throw new SalesFailure("SALES_NOT_FOUND", "missing");
+    this.state = { ...this.state, deposits: this.state.deposits.map((candidate) => candidate.id === deposit.id ? deposit : candidate) };
+  }
   async remove(_companyId: string, kind: "sale" | "deposit", id: string) {
     this.state = kind === "sale" ? { ...this.state, sales: this.state.sales.filter((sale) => sale.id !== id) } : { ...this.state, deposits: this.state.deposits.filter((deposit) => deposit.id !== id) };
   }
@@ -111,4 +119,29 @@ test("links deposits to bank movements and rejects repeated entries", async () =
   assert.deepEqual(view.deposits.map((deposit) => deposit.bankEntryId), ["bank-1", "bank-2"]);
   await assert.rejects(ledger.linkBankEntries("J-1", [{ depositId: first!.id, bankEntryId: "x" }, { depositId: second!.id, bankEntryId: "x" }]), SalesFailure);
   await assert.rejects(ledger.linkBankEntries("J-1", [{ depositId: "missing", bankEntryId: "y" }]), SalesFailure);
+});
+
+test("edits a sale and a deposit, re-resolving rates and keeping the bank link", async () => {
+  const { ledger, repository, synced } = setup();
+  await ledger.saveSettings("J-1", { ...DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, accounts }, 0);
+  await ledger.addSales("J-1", [{ saleDate: "2025-10-01", amountVes: "1000", vesPerUsd: "100", note: "nota" }]);
+  await ledger.addDeposits("J-1", [{ depositDate: "2025-11-20", amountVes: "500", bankEntryId: "bank-1", reference: "ref" }]);
+  const sale = repository.state.sales[0]!;
+  const deposit = repository.state.deposits[0]!;
+
+  const changed = await ledger.updateSale("J-1", sale.id, { saleDate: "2025-10-01", amountVes: "7455.25" });
+  assert.equal(repository.state.sales[0]?.amountVes, "7455.25");
+  assert.equal(repository.state.sales[0]?.vesPerUsd, "179.43", "an omitted rate is resolved again from BCV");
+  assert.equal(repository.state.sales[0]?.rateSource, "bcv");
+  assert.equal(repository.state.sales[0]?.note, "nota", "an omitted note is kept");
+  assert.equal(changed.journalSync.status, "synced");
+
+  await ledger.updateDeposit("J-1", deposit.id, { depositDate: "2025-11-20", amountVes: "3992.47" });
+  assert.equal(repository.state.deposits[0]?.bankEntryId, "bank-1");
+  assert.equal(repository.state.deposits[0]?.reference, "ref");
+  assert.equal((await ledger.view("J-1")).totals.realizedGainVes, "1010.37");
+  assert.ok(synced.length >= 3);
+
+  await assert.rejects(ledger.updateSale("J-1", "missing", { saleDate: "2025-10-01", amountVes: "1" }), (error) => error instanceof SalesFailure && error.code === "SALES_NOT_FOUND");
+  await assert.rejects(ledger.updateDeposit("J-1", deposit.id, { depositDate: "2025-11-20", amountVes: "0" }), (error) => error instanceof SalesFailure && error.code === "SALES_FINANCED_COLLECTION_INVALID");
 });
