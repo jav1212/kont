@@ -98,8 +98,21 @@ export interface FinancedSaleSettlement {
   readonly exchangeDifference: ExactDecimal;
 }
 
+/** Every account role in display order. */
+export const FINANCED_SALE_ACCOUNT_ROLES = [
+  "bank",
+  "financier_receivable",
+  "sales",
+  "exchange_gain",
+  "exchange_loss",
+  "financier_commission",
+  // Month-end revaluations stay apart from realized differences so they can be reported separately.
+  "unrealized_exchange_gain",
+  "unrealized_exchange_loss",
+] as const;
+
 /** Account roles a financed-sale entry needs; the caller maps them to its chart of accounts. */
-export type FinancedSaleAccountRole = "bank" | "financier_receivable" | "sales" | "exchange_gain" | "exchange_loss" | "financier_commission";
+export type FinancedSaleAccountRole = typeof FINANCED_SALE_ACCOUNT_ROLES[number];
 
 /** One balanced debit or credit line in VES. Exactly one side is non-zero. */
 export interface FinancedSaleJournalLine {
@@ -234,7 +247,7 @@ export function summarizeFinancedSaleJournalByMonth(
     }
     groups.set(key, group);
   }
-  const roleOrder: readonly FinancedSaleAccountRole[] = ["bank", "financier_commission", "exchange_loss", "financier_receivable", "sales", "exchange_gain"];
+  const roleOrder: readonly FinancedSaleAccountRole[] = ["bank", "financier_commission", "exchange_loss", "unrealized_exchange_loss", "financier_receivable", "sales", "exchange_gain", "unrealized_exchange_gain"];
   return Object.freeze([...groups.values()]
     .sort((left, right) => left.month.localeCompare(right.month) || KIND_ORDER[left.kind] - KIND_ORDER[right.kind])
     .map((group) => entry(`${group.kind}:${group.month}`, group.kind, group.date, describe(group.kind, group.month), roleOrder.flatMap((role) => {

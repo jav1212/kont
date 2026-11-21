@@ -133,6 +133,9 @@ en contado + CxC Cashea y guardar el diferencial por abono de CxC de facturas.
    (`revalueFinancedSalesAtMonthEnds`). El ajuste se registra al cierre
    (D CxC / H ganancia, o D pérdida / H CxC) y se reversa el día 1 del mes
    siguiente, así el diferencial realizado del depósito no se cuenta dos veces.
+   Usa cuentas propias (`unrealized_exchange_gain` y `unrealized_exchange_loss`,
+   «Ganancia/Pérdida no realizada»), separadas de las del diferencial
+   realizado; se exigen solo cuando existen asientos de revaluación.
    Los asientos usan las claves `revaluation:<mes>` y
    `revaluation_reversal:<mes>` y se sincronizan como los demás borradores.
 2. Conciliación con Tesorería: desde el libro se eligen la cuenta bancaria en

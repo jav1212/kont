@@ -110,8 +110,8 @@ export function financedSaleRevaluationJournalEntries(
     if (revaluation.direction === "none") return [];
     const amount = revaluation.direction === "gain" ? revaluation.difference : subtractDecimal(ZERO, revaluation.difference);
     const adjustment: readonly FinancedSaleJournalLine[] = revaluation.direction === "gain"
-      ? [line("financier_receivable", amount, ZERO), line("exchange_gain", ZERO, amount)]
-      : [line("exchange_loss", amount, ZERO), line("financier_receivable", ZERO, amount)];
+      ? [line("financier_receivable", amount, ZERO), line("unrealized_exchange_gain", ZERO, amount)]
+      : [line("unrealized_exchange_loss", amount, ZERO), line("financier_receivable", ZERO, amount)];
     const reversal = adjustment.map((item) => line(item.role, item.credit, item.debit));
     const nextMonthStart = firstDayOfNextMonth(revaluation.date);
     const entries: FinancedSaleJournalEntry[] = [Object.freeze({

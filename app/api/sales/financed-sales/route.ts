@@ -4,11 +4,10 @@ import {
     type FinancedSalesLedgerChange,
     type FinancedSalesLedgerView,
 } from "@kontave/sales/application";
-import { SalesFailure, type FinancedSaleAccountRole } from "@kontave/sales/domain";
+import { FINANCED_SALE_ACCOUNT_ROLES, SalesFailure } from "@kontave/sales/domain";
 import { withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
 import { getFinancedSalesLedger } from "@/src/modules/sales/backend/infra/financed-sales/financed-sales-ledger-factory";
 
-const ROLES: readonly FinancedSaleAccountRole[] = ["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss", "financier_commission"];
 
 /** Returns the calculated financed-sales ledger of a company. */
 export const GET = withTenantPermission("sales.read", async (req, { tenantId, userId }) => {
@@ -88,7 +87,7 @@ export const POST = withTenantPermission("sales.create", async (req, { tenantId,
                 const settings = (body.settings ?? {}) as Record<string, unknown>;
                 const accounts: FinancedSaleRoleAccounts = {};
                 const rawAccounts = (settings.accounts ?? {}) as Record<string, unknown>;
-                for (const role of ROLES) if (typeof rawAccounts[role] === "string" && rawAccounts[role]) accounts[role] = rawAccounts[role] as string;
+                for (const role of FINANCED_SALE_ACCOUNT_ROLES) if (typeof rawAccounts[role] === "string" && rawAccounts[role]) accounts[role] = rawAccounts[role] as string;
                 change = await ledger.saveSettings(companyId, {
                     financierName: text(settings.financierName),
                     upfrontPercent: decimalText(settings.upfrontPercent) as ExactDecimal,

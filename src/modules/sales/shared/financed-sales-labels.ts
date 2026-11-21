@@ -11,6 +11,8 @@ export const DEFAULT_ROLE_LABELS: Record<FinancedSaleAccountRole, string> = {
     exchange_gain: "Diferencial cambiario (ingreso)",
     exchange_loss: "Diferencial cambiario (egreso)",
     financier_commission: "Comisión financiadora",
+    unrealized_exchange_gain: "Diferencial cambiario no realizado (ingreso)",
+    unrealized_exchange_loss: "Diferencial cambiario no realizado (egreso)",
 };
 
 /** Field labels of the account selectors. */
@@ -21,6 +23,8 @@ export const ROLE_HINTS: Record<FinancedSaleAccountRole, string> = {
     exchange_gain: "Ganancia cambiaria",
     exchange_loss: "Pérdida cambiaria",
     financier_commission: "Gasto por comisión",
+    unrealized_exchange_gain: "Ganancia no realizada",
+    unrealized_exchange_loss: "Pérdida no realizada",
 };
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];

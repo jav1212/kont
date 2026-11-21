@@ -38,8 +38,8 @@ test("books the month-end adjustment and reverses it on the first day of the nex
   const revaluations = revalueFinancedSalesAtMonthEnds([settlement], [{ month: "2025-10", date: salesDate("2025-10-31"), vesPerUsd: d("220") }]);
   const entries = financedSaleRevaluationJournalEntries(revaluations, salesDate("2025-11-01"), describe);
   assert.deepEqual(entries.map((entry) => [entry.key, entry.date, entry.lines.map((line) => [line.role, line.debit, line.credit])]), [
-    ["revaluation:2025-10", "2025-10-31", [["financier_receivable", "674.27", "0"], ["exchange_gain", "0", "674.27"]]],
-    ["revaluation_reversal:2025-10", "2025-11-01", [["financier_receivable", "0", "674.27"], ["exchange_gain", "674.27", "0"]]],
+    ["revaluation:2025-10", "2025-10-31", [["financier_receivable", "674.27", "0"], ["unrealized_exchange_gain", "0", "674.27"]]],
+    ["revaluation_reversal:2025-10", "2025-11-01", [["financier_receivable", "0", "674.27"], ["unrealized_exchange_gain", "674.27", "0"]]],
   ]);
   assert.equal(financedSaleRevaluationJournalEntries(revaluations, salesDate("2025-10-31"), describe).length, 1, "no reversal before the next month starts");
 });
@@ -48,7 +48,7 @@ test("books a loss when the rate fell below the historical one", () => {
   const [revaluation] = revalueFinancedSalesAtMonthEnds([settlement], [{ month: "2025-10", date: salesDate("2025-10-31"), vesPerUsd: d("170") }]);
   assert.equal(revaluation?.direction, "loss");
   const [entry] = financedSaleRevaluationJournalEntries([revaluation!], salesDate("2025-10-31"), describe);
-  assert.deepEqual(entry?.lines.map((line) => line.role), ["exchange_loss", "financier_receivable"]);
+  assert.deepEqual(entry?.lines.map((line) => line.role), ["unrealized_exchange_loss", "financier_receivable"]);
 });
 
 test("lists every completed month end up to the cut-off", () => {

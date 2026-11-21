@@ -452,8 +452,9 @@ export class FinancedSalesLedger {
 
   private async afterChange(companyId: string): Promise<FinancedSalesLedgerChange> {
     const view = await this.view(companyId);
-    const missing = REQUIRED_ROLES.some((role) => !view.settings.accounts[role])
-      || (compareDecimal(view.totals.commissionVes, exactDecimal("0")) > 0 && !view.settings.accounts.financier_commission);
+    // Commission and unrealized roles become required only once an entry uses them.
+    const usedRoles = new Set(view.journal.flatMap((entry) => entry.lines.map((line) => line.role)));
+    const missing = [...REQUIRED_ROLES, ...usedRoles].some((role) => !view.settings.accounts[role]);
     const journalSync = missing
       ? { status: "skipped_missing_accounts" as const, created: 0, updated: 0, removed: 0, alreadyPosted: 0, monthsWithoutPeriod: [] }
       : await this.journal.sync(companyId, view.journal, view.settings.journalGranularity, view.settings.accounts);

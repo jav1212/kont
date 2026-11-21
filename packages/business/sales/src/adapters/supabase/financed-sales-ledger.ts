@@ -9,11 +9,12 @@ import {
   type FinancedSalesLedgerState,
   type FinancierDepositRecord,
 } from "../../application";
+import { FINANCED_SALE_ACCOUNT_ROLES } from "../../domain/financed-sale-exchange-difference";
 import { SalesFailure } from "../../domain/sales-failure";
 import { salesDate } from "../../domain/temporal";
 
 const decimal = z.union([z.string(), z.number()]).transform((value) => exactDecimal(String(value)));
-const accountRoles = z.enum(["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss", "financier_commission"]);
+const accountRoles = z.enum(FINANCED_SALE_ACCOUNT_ROLES);
 const settingsRow = z.object({
   financier_name: z.string(),
   upfront_percent: decimal,

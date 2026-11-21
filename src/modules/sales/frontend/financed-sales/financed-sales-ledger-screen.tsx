@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeftRight, BookCheck, Check, ClipboardPaste, Landmark, Pencil, RefreshCw, Trash2, TrendingUp, Unlink, Upload, Wallet, X } from "lucide-react";
-import type { FinancedSaleAccountRole } from "@kontave/sales/domain";
+import { FINANCED_SALE_ACCOUNT_ROLES as ROLES, type FinancedSaleAccountRole } from "@kontave/sales/domain";
 import type { FinancedSalesJournalSyncResult } from "@kontave/sales/application";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
@@ -53,7 +53,13 @@ type Command =
     | { action: "save_settings"; settings: Omit<LedgerView["settings"], "version">; expectedVersion: number }
     | { action: "resync" };
 
-const ROLES: readonly FinancedSaleAccountRole[] = ["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss", "financier_commission"];
+const BASE_ROLES: readonly FinancedSaleAccountRole[] = ["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss"];
+const UNREALIZED_ROLES: readonly FinancedSaleAccountRole[] = ["unrealized_exchange_gain", "unrealized_exchange_loss"];
+const ROLE_NOTES: Partial<Record<FinancedSaleAccountRole, string>> = {
+    financier_commission: " (si hay comisión)",
+    unrealized_exchange_gain: " (cierre de mes)",
+    unrealized_exchange_loss: " (cierre de mes)",
+};
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
 const nextDay = (date: string) => {
     const value = new Date(`${date}T00:00:00Z`);
@@ -214,7 +220,8 @@ export function FinancedSalesLedgerScreen() {
     }
 
     const net = view ? Number(view.totals.realizedGainVes) - Number(view.totals.realizedLossVes) : 0;
-    const missingAccounts = view ? ROLES.filter((role) => role !== "financier_commission" && !view.settings.accounts[role]) : [];
+    const requiredRoles = view ? [...BASE_ROLES, ...(view.settings.revalueMonthEnd ? UNREALIZED_ROLES : []), ...(Number(view.totals.commissionVes) > 0 ? ["financier_commission" as const] : [])] : [];
+    const missingAccounts = view ? requiredRoles.filter((role) => !view.settings.accounts[role]) : [];
 
     return (
         <div className="px-8 py-6 space-y-6">
@@ -405,7 +412,7 @@ export function FinancedSalesLedgerScreen() {
                                 <div className="grid gap-3 md:grid-cols-3">
                                     {ROLES.map((role) => (
                                         <div key={role}>
-                                            <FieldLabel>{ROLE_HINTS[role]}{role === "financier_commission" ? " (si hay comisión)" : ""}</FieldLabel>
+                                            <FieldLabel>{ROLE_HINTS[role]}{ROLE_NOTES[role] ?? ""}</FieldLabel>
                                             <select value={view.settings.accounts[role] ?? ""} onChange={(event) => { void saveSettings({ accounts: { ...view.settings.accounts, [role]: event.target.value || undefined } }); }} className={INPUT_CLS}>
                                                 <option value="">— Cuenta —</option>
                                                 {postingAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}

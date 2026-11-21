@@ -103,10 +103,15 @@ test("rejects stale settings", async () => {
 test("adds month-end revaluation and its reversal to the journal when enabled", async () => {
   const { ledger, synced } = setup();
   await ledger.saveSettings("J-1", { ...DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, accounts, revalueMonthEnd: true }, 0);
-  const change = await ledger.addSales("J-1", [{ saleDate: "2025-10-01", amountVes: "7455.25" }]);
-  assert.equal(change.view.revaluations[0]?.difference, "674.27");
-  assert.equal(change.view.revaluationError, null);
+  const pending = await ledger.addSales("J-1", [{ saleDate: "2025-10-01", amountVes: "7455.25" }]);
+  assert.equal(pending.view.revaluations[0]?.difference, "674.27");
+  assert.equal(pending.view.revaluationError, null);
+  assert.equal(pending.journalSync.status, "skipped_missing_accounts", "unrealized accounts are required once revaluation entries exist");
+
+  const change = await ledger.saveSettings("J-1", { ...DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, accounts: { ...accounts, unrealized_exchange_gain: "fx-u", unrealized_exchange_loss: "fx-u" }, revalueMonthEnd: true }, 1);
+  assert.equal(change.journalSync.status, "synced");
   assert.deepEqual(synced.at(-1)?.map((entry) => entry.key), ["sale:2025-10", "revaluation:2025-10", "revaluation_reversal:2025-10"]);
+  assert.deepEqual(synced.at(-1)?.[1]?.lines.map((line) => line.role), ["financier_receivable", "unrealized_exchange_gain"]);
 });
 
 test("links deposits to bank movements and rejects repeated entries", async () => {
