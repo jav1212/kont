@@ -24,7 +24,7 @@ export const GET = withTenantPermission("sales.read", async (req, { tenantId, us
 /**
  * Applies one ledger command and re-synchronizes its draft journal.
  * Body: `{ companyId, action, ... }` with action `add_sales`, `add_deposits`,
- * `remove`, `save_settings` or `resync`.
+ * `remove`, `save_settings`, `link_bank_entries` or `resync`.
  */
 export const POST = withTenantPermission("sales.create", async (req, { tenantId, userId }) => {
     try {
@@ -50,8 +50,16 @@ export const POST = withTenantPermission("sales.create", async (req, { tenantId,
                     ...(deposit.commissionPercent != null && deposit.commissionPercent !== "" ? { commissionPercent: decimalText(deposit.commissionPercent) } : {}),
                     ...(deposit.vesPerUsd != null && deposit.vesPerUsd !== "" ? { vesPerUsd: decimalText(deposit.vesPerUsd) } : {}),
                     reference: typeof deposit.reference === "string" ? deposit.reference : null,
+                    bankEntryId: typeof deposit.bankEntryId === "string" ? deposit.bankEntryId : null,
                 })));
                 break;
+            case "link_bank_entries": {
+                const view = await ledger.linkBankEntries(companyId, records(body.links).map((link) => ({
+                    depositId: text(link.depositId),
+                    bankEntryId: typeof link.bankEntryId === "string" && link.bankEntryId ? link.bankEntryId : null,
+                })));
+                return Response.json({ data: { view: serializeView(view), journalSync: null } });
+            }
             case "remove":
                 if ((body.kind !== "sale" && body.kind !== "deposit") || typeof body.id !== "string") return Response.json({ error: "Registro inválido" }, { status: 400 });
                 change = await ledger.remove(companyId, body.kind, body.id);
@@ -66,6 +74,7 @@ export const POST = withTenantPermission("sales.create", async (req, { tenantId,
                     upfrontPercent: decimalText(settings.upfrontPercent) as ExactDecimal,
                     commissionPercent: decimalText(settings.commissionPercent) as ExactDecimal,
                     journalGranularity: settings.journalGranularity === "daily" ? "daily" : "monthly",
+                    revalueMonthEnd: settings.revalueMonthEnd === true,
                     accounts,
                     version: 0,
                 }, Number(body.expectedVersion ?? 0));
@@ -127,8 +136,19 @@ function serializeView(view: FinancedSalesLedgerView) {
             rateSource: deposit.rateSource,
             commissionPercent: deposit.commissionPercent,
             reference: deposit.reference,
+            bankEntryId: deposit.bankEntryId,
         })),
         unapplied: view.unapplied.map((item) => ({ depositId: item.deposit.reference, unappliedUsd: fixed(item.unappliedUsd, 4), unappliedVes: fixed(item.unappliedVes) })),
+        revaluations: view.revaluations.map((item) => ({
+            month: item.month,
+            date: item.date,
+            vesPerUsd: fixed(item.vesPerUsd, 4),
+            outstandingUsd: fixed(item.outstandingUsd, 4),
+            carriedVes: fixed(item.carriedVes),
+            revaluedVes: fixed(item.revaluedVes),
+            difference: fixed(item.difference),
+        })),
+        revaluationError: view.revaluationError,
         months: view.months.map((month) => ({ month: month.month, ...totals(month) })),
         totals: totals(view.totals),
         journal: view.journal.map((entry) => ({ ...entry, lines: entry.lines.map((line) => ({ role: line.role, debit: fixed(line.debit), credit: fixed(line.credit) })) })),

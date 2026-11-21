@@ -8,6 +8,7 @@ import {
 } from "@kontave/monetary/domain";
 import {
   SalesFailure,
+  compareFinancedSaleJournalEntries,
   financedSaleJournalEntries,
   salesDate,
   settleFinancedSale,
@@ -191,7 +192,7 @@ export function buildFinancedSalesJournal(
     if (row.status !== "calculated") return [];
     const entries = financedSaleJournalEntries(row.settlement);
     return row.collectionMode === "estimated" && !options.includeEstimated ? entries.filter((entry) => entry.kind === "sale") : entries;
-  }).sort((left, right) => left.date.localeCompare(right.date) || (left.kind === right.kind ? 0 : left.kind === "sale" ? -1 : 1));
+  }).sort(compareFinancedSaleJournalEntries);
   return options.granularity === "daily" ? Object.freeze(daily) : summarizeFinancedSaleJournalByMonth(daily, options.describeMonth);
 }
 

@@ -20,6 +20,7 @@ import { notify } from "@/src/shared/frontend/notify";
 import { DEFAULT_ROLE_LABELS, ROLE_HINTS, formatVes as fmt, monthLabel } from "@/src/modules/sales/shared/financed-sales-labels";
 import { formatDate, parseAmountInput, parsePastedRows, readFinancedSalesWorkbook } from "./financed-sales-workbook";
 import { Cell, FieldLabel, INPUT_CLS, Panel, Table } from "./financed-sales-ui";
+import { FinancedSalesTreasuryReconciliation } from "./financed-sales-treasury-reconciliation";
 
 type Totals = {
     saleAmountVes: string; upfrontVes: string; financedVes: string; collectedVes: string; commissionVes: string;
@@ -27,7 +28,7 @@ type Totals = {
 };
 type LedgerView = {
     settings: {
-        financierName: string; upfrontPercent: string; commissionPercent: string; journalGranularity: "daily" | "monthly";
+        financierName: string; upfrontPercent: string; commissionPercent: string; journalGranularity: "daily" | "monthly"; revalueMonthEnd: boolean;
         accounts: Partial<Record<FinancedSaleAccountRole, string>>; version: number;
     };
     sales: Array<{
@@ -35,14 +36,17 @@ type LedgerView = {
         upfrontVes: string | null; financedVes: string | null; financedUsd: string | null; collectedVes: string | null;
         exchangeDifference: string | null; outstandingUsd: string | null; outstandingCarriedVes: string | null; lastCollectedOn: string | null;
     }>;
-    deposits: Array<{ id: string; depositDate: string; amountVes: string; vesPerUsd: string; rateSource: "bcv" | "manual"; commissionPercent: string; reference: string | null }>;
+    deposits: Array<{ id: string; depositDate: string; amountVes: string; vesPerUsd: string; rateSource: "bcv" | "manual"; commissionPercent: string; reference: string | null; bankEntryId: string | null }>;
+    revaluations: Array<{ month: string; date: string; vesPerUsd: string; outstandingUsd: string; carriedVes: string; revaluedVes: string; difference: string }>;
+    revaluationError: string | null;
     unapplied: Array<{ depositId: string; unappliedUsd: string; unappliedVes: string }>;
     months: Array<Totals & { month: string }>;
     totals: Totals;
 };
 type Command =
     | { action: "add_sales"; sales: Array<{ saleDate: string; amountVes: string; vesPerUsd?: string }> }
-    | { action: "add_deposits"; deposits: Array<{ depositDate: string; amountVes: string; reference?: string; commissionPercent?: string; vesPerUsd?: string }> }
+    | { action: "add_deposits"; deposits: Array<{ depositDate: string; amountVes: string; reference?: string; commissionPercent?: string; vesPerUsd?: string; bankEntryId?: string }> }
+    | { action: "link_bank_entries"; links: Array<{ depositId: string; bankEntryId: string | null }> }
     | { action: "remove"; kind: "sale" | "deposit"; id: string }
     | { action: "save_settings"; settings: Omit<LedgerView["settings"], "version">; expectedVersion: number }
     | { action: "resync" };
@@ -94,8 +98,9 @@ function useFinancedSalesLedger(companyId: string | null) {
                 if ((json as { code?: string }).code === "SALES_CONCURRENCY_CONFLICT") await reload();
                 return false;
             }
-            const data = json.data as { view: LedgerView; journalSync: FinancedSalesJournalSyncResult };
+            const data = json.data as { view: LedgerView; journalSync: FinancedSalesJournalSyncResult | null };
             setView(data.view);
+            if (!data.journalSync) return true;
             setJournalSync(data.journalSync);
             if (data.journalSync.status === "failed" || data.journalSync.status === "blocked_conflict") notify.warning(`Contabilidad: ${data.journalSync.message ?? "no se pudo sincronizar."}`);
             return true;
@@ -273,6 +278,37 @@ export function FinancedSalesLedgerScreen() {
                         </Table>
                     </Panel>
 
+                    {view.settings.revalueMonthEnd && (
+                        <Panel title="Diferencial no realizado al cierre de mes" aside="Se reversa el día 1 del mes siguiente">
+                            {view.revaluationError ? (
+                                <p className="font-sans text-[12px] text-text-warning">No se pudo calcular: {view.revaluationError}</p>
+                            ) : view.revaluations.length === 0 ? (
+                                <p className="font-sans text-[12px] text-[var(--text-tertiary)]">No hay saldos pendientes al cierre de los meses ya terminados.</p>
+                            ) : (
+                                <Table headers={["Mes", "Tasa al cierre", "Pendiente USD", "Bs históricos", "Bs al cierre", "Diferencial"]}>
+                                    {view.revaluations.map((item) => (
+                                        <tr key={item.month} className="border-b border-border-light/50 hover:bg-surface-2">
+                                            <Cell left>{monthLabel(item.month)}</Cell>
+                                            <Cell>{fmt(item.vesPerUsd, 4)}</Cell>
+                                            <Cell>{fmt(item.outstandingUsd)}</Cell>
+                                            <Cell>{fmt(item.carriedVes)}</Cell>
+                                            <Cell>{fmt(item.revaluedVes)}</Cell>
+                                            <Cell tone={Number(item.difference) < 0 ? "warning" : "success"}>{fmt(item.difference)}</Cell>
+                                        </tr>
+                                    ))}
+                                </Table>
+                            )}
+                        </Panel>
+                    )}
+
+                    <FinancedSalesTreasuryReconciliation
+                        deposits={view.deposits}
+                        financierName={view.settings.financierName}
+                        busy={busy}
+                        onLink={(links) => run({ action: "link_bank_entries", links })}
+                        onAddDeposits={(deposits) => run({ action: "add_deposits", deposits })}
+                    />
+
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                         <Panel title="Ventas" aside={`${view.sales.length} registros`}>
                             <Table headers={["Fecha", "Venta Bs", "Tasa", "Financiado Bs", "Financiado USD", "Cobrado Bs", "Diferencial", "Saldo USD", ""]}>
@@ -292,7 +328,7 @@ export function FinancedSalesLedgerScreen() {
                             </Table>
                         </Panel>
                         <Panel title="Depósitos" aside={`${view.deposits.length} registros`}>
-                            <Table headers={["Fecha", "Monto Bs", "Tasa BCV", "USD", "Ref.", ""]}>
+                            <Table headers={["Fecha", "Monto Bs", "Tasa BCV", "USD", "Ref.", "Banco", ""]}>
                                 {depositsByNewest.map((deposit) => (
                                     <tr key={deposit.id} className="border-b border-border-light/50 hover:bg-surface-2">
                                         <Cell left>{formatDate(deposit.depositDate)}</Cell>
@@ -300,6 +336,7 @@ export function FinancedSalesLedgerScreen() {
                                         <Cell>{fmt(deposit.vesPerUsd, 4)}{deposit.rateSource === "manual" ? " *" : ""}</Cell>
                                         <Cell>{fmt(String(Number(deposit.amountVes) / (1 - Number(deposit.commissionPercent) / 100) / Number(deposit.vesPerUsd)))}</Cell>
                                         <Cell left>{deposit.reference ?? ""}</Cell>
+                                        <Cell left>{deposit.bankEntryId ? <span className="text-text-success" title="Conciliado con Tesorería">✓</span> : <span className="text-[var(--text-tertiary)]">—</span>}</Cell>
                                         <td className="px-2"><RemoveButton disabled={busy} label={`depósito del ${formatDate(deposit.depositDate)}`} onRemove={() => { void run({ action: "remove", kind: "deposit", id: deposit.id }); }} /></td>
                                     </tr>
                                 ))}
@@ -324,6 +361,10 @@ export function FinancedSalesLedgerScreen() {
                                         </select>
                                     </div>
                                 </div>
+                                <label className="flex items-center gap-2 font-sans text-[12px] text-[var(--text-secondary)] cursor-pointer">
+                                    <input type="checkbox" checked={view.settings.revalueMonthEnd} onChange={(event) => { void saveSettings({ revalueMonthEnd: event.target.checked }); }} />
+                                    Registrar diferencial no realizado al cierre de cada mes (saldo pendiente en USD revaluado a la tasa BCV del último día, con reverso el día 1)
+                                </label>
                                 <div className="grid gap-3 md:grid-cols-3">
                                     {ROLES.map((role) => (
                                         <div key={role}>
@@ -341,7 +382,7 @@ export function FinancedSalesLedgerScreen() {
                             </div>
                         ) : (
                             <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
-                                {view.settings.financierName} · {fmt(view.settings.upfrontPercent)}% contado · {fmt(view.settings.commissionPercent)}% comisión · asientos {view.settings.journalGranularity === "monthly" ? "mensuales" : "diarios"} · {ROLES.filter((role) => view.settings.accounts[role]).map(accountLabel).join(" · ") || "sin cuentas asignadas"}
+                                {view.settings.financierName} · {fmt(view.settings.upfrontPercent)}% contado · {fmt(view.settings.commissionPercent)}% comisión · asientos {view.settings.journalGranularity === "monthly" ? "mensuales" : "diarios"}{view.settings.revalueMonthEnd ? " · con diferencial no realizado" : ""} · {ROLES.filter((role) => view.settings.accounts[role]).map(accountLabel).join(" · ") || "sin cuentas asignadas"}
                             </p>
                         )}
                     </Panel>

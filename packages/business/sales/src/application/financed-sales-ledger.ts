@@ -2,7 +2,13 @@ import { compareDecimal, exactDecimal, type ExactDecimal } from "@kontave/moneta
 import {
   SalesFailure,
   allocateFinancierDeposits,
+  compareFinancedSaleJournalEntries,
+  completedMonthEnds,
+  financedSaleRevaluationJournalEntries,
+  revalueFinancedSalesAtMonthEnds,
   salesDate,
+  type FinancedSaleRevaluation,
+  type MonthEndRate,
   type FinancedSaleAccountRole,
   type FinancedSaleJournalEntry,
   type FinancedSaleTerms,
@@ -29,6 +35,8 @@ export interface FinancedSalesLedgerSettings {
   /** Default commission percentage for new deposits. */
   readonly commissionPercent: ExactDecimal;
   readonly journalGranularity: "daily" | "monthly";
+  /** Whether open balances are revalued at each month end (unrealized difference). */
+  readonly revalueMonthEnd: boolean;
   readonly accounts: FinancedSaleRoleAccounts;
   /** Optimistic concurrency version; 0 when never saved. */
   readonly version: number;
@@ -40,6 +48,7 @@ export const DEFAULT_FINANCED_SALES_LEDGER_SETTINGS: FinancedSalesLedgerSettings
   upfrontPercent: exactDecimal("60"),
   commissionPercent: exactDecimal("0"),
   journalGranularity: "monthly",
+  revalueMonthEnd: false,
   accounts: Object.freeze({}),
   version: 0,
 });
@@ -65,6 +74,8 @@ export interface FinancierDepositRecord {
   readonly rateSource: LedgerRateSource;
   readonly commissionPercent: ExactDecimal;
   readonly reference: string | null;
+  /** Treasury bank ledger entry this deposit was reconciled with, or `null`. */
+  readonly bankEntryId: string | null;
 }
 
 /** Complete stored state of one company ledger. */
@@ -114,6 +125,14 @@ export interface FinancedSalesLedgerRepository {
    * @returns Completion after deletion.
    */
   remove(companyId: string, kind: "sale" | "deposit", id: string): Promise<void>;
+  /**
+   * Sets or clears the bank ledger entry of deposits in one transaction.
+   * @param companyId - Company that owns the ledger.
+   * @param links - Deposit identifiers with their bank entry, or `null` to unlink.
+   * @returns Completion after every link is durable.
+   * @throws {SalesFailure} `SALES_CONCURRENCY_CONFLICT` when a bank entry is already linked to another deposit.
+   */
+  setBankLinks(companyId: string, links: readonly { readonly depositId: string; readonly bankEntryId: string | null }[]): Promise<void>;
 }
 
 /** Outcome of synchronizing the ledger journal with Accounting. */
@@ -148,6 +167,10 @@ export interface FinancedSalesLedgerView extends Pick<FinancedSalesExchangeDiffe
   readonly sales: readonly { readonly record: FinancedSaleRecord; readonly row: FinancedSaleReportRow; readonly depositIds: readonly string[] }[];
   readonly deposits: readonly FinancierDepositRecord[];
   readonly unapplied: readonly UnappliedFinancierDeposit[];
+  /** Month-end revaluations when enabled in the settings. */
+  readonly revaluations: readonly FinancedSaleRevaluation[];
+  /** Why revaluations could not be calculated, when enabled. */
+  readonly revaluationError: string | null;
   readonly journal: readonly FinancedSaleJournalEntry[];
 }
 
@@ -167,6 +190,8 @@ export interface NewFinancierDeposit {
   readonly commissionPercent?: string;
   readonly vesPerUsd?: string;
   readonly reference?: string | null;
+  /** Treasury bank ledger entry the deposit comes from, when created from the bank. */
+  readonly bankEntryId?: string | null;
 }
 
 /** Result of a ledger change: the recalculated view and the accounting synchronization. */
@@ -190,7 +215,8 @@ export class FinancedSalesLedger {
    * @param rates - Official USD rate history used when a rate is omitted.
    * @param journal - Accounting draft synchronization.
    * @param newId - Identifier generator for new records.
-   * @param describeMonth - Description of monthly summary entries.
+   * @param describeMonth - Description of monthly summary and revaluation entries.
+   * @param today - Current business date; month ends after it are not revalued.
    */
   constructor(
     private readonly repository: FinancedSalesLedgerRepository,
@@ -198,6 +224,7 @@ export class FinancedSalesLedger {
     private readonly journal: FinancedSalesJournalSink,
     private readonly newId: () => string,
     private readonly describeMonth: (kind: FinancedSaleJournalEntry["kind"], month: string) => string,
+    private readonly today: () => SalesDate,
   ) {}
 
   /**
@@ -207,7 +234,7 @@ export class FinancedSalesLedger {
    * @throws {SalesFailure} When storage fails or stored data is inconsistent.
    */
   async view(companyId: string): Promise<FinancedSalesLedgerView> {
-    return this.calculate(await this.repository.load(companyId));
+    return this.withRevaluation(this.calculate(await this.repository.load(companyId)));
   }
 
   /**
@@ -268,6 +295,7 @@ export class FinancedSalesLedger {
         rateSource: manualRate ? "manual" : "bcv",
         commissionPercent: deposit.commissionPercent ? exactDecimal(deposit.commissionPercent) : state.settings.commissionPercent,
         reference: deposit.reference?.trim() || null,
+        bankEntryId: deposit.bankEntryId?.trim() || null,
       };
     });
     this.calculate({ ...state, deposits: [...state.deposits, ...records] });
@@ -307,6 +335,27 @@ export class FinancedSalesLedger {
     if (!settings.financierName.trim() || settings.financierName.trim().length > 80) throw new SalesFailure("SALES_FINANCED_SALE_INVALID", "Financier name is invalid.");
     await this.repository.saveSettings(companyId, { ...settings, financierName: settings.financierName.trim() }, expectedVersion);
     return this.afterChange(companyId);
+  }
+
+  /**
+   * Links deposits to Treasury bank movements, or unlinks them with `null`.
+   * Links do not change amounts, so the journal is not re-synchronized.
+   * @param companyId - Company that owns the ledger.
+   * @param links - Up to 1000 deposit links.
+   * @returns The recalculated view.
+   * @throws {SalesFailure} `SALES_FINANCED_COLLECTION_INVALID` for unknown deposits or
+   * repeated bank entries, or `SALES_CONCURRENCY_CONFLICT` when an entry is linked elsewhere.
+   */
+  async linkBankEntries(companyId: string, links: readonly { readonly depositId: string; readonly bankEntryId: string | null }[]): Promise<FinancedSalesLedgerView> {
+    if (!links.length || links.length > MAX_BATCH) throw new SalesFailure("SALES_FINANCED_COLLECTION_INVALID", `Between 1 and ${MAX_BATCH} links are required.`);
+    const state = await this.repository.load(companyId);
+    const known = new Set(state.deposits.map((deposit) => deposit.id));
+    const entries = links.flatMap((link) => link.bankEntryId ? [link.bankEntryId] : []);
+    if (links.some((link) => !known.has(link.depositId)) || new Set(entries).size !== entries.length) {
+      throw new SalesFailure("SALES_FINANCED_COLLECTION_INVALID", "Deposit links reference unknown deposits or repeat a bank entry.");
+    }
+    await this.repository.setBankLinks(companyId, links);
+    return this.view(companyId);
   }
 
   /**
@@ -361,8 +410,34 @@ export class FinancedSalesLedger {
       deposits: state.deposits,
       unapplied: allocation.unapplied,
       journal: buildFinancedSalesJournal(sales.map((sale) => sale.row), { granularity: state.settings.journalGranularity, includeEstimated: false, describeMonth: this.describeMonth }),
+      revaluations: [],
+      revaluationError: null,
       ...summarizeFinancedSaleSettlements(allocation.sales.map((sale) => sale.settlement)),
     };
+  }
+
+  // Revaluation needs month-end rates, so it runs only for views returned to callers.
+  private async withRevaluation(view: FinancedSalesLedgerView): Promise<FinancedSalesLedgerView> {
+    const first = view.sales.map((sale) => sale.record.saleDate).sort()[0];
+    if (!view.settings.revalueMonthEnd || !first) return view;
+    const asOf = this.today();
+    const monthEnds = completedMonthEnds(first, asOf);
+    if (!monthEnds.length) return view;
+    let rates: MonthEndRate[];
+    try {
+      const rateOn = await this.rateResolver(monthEnds.map((item) => item.date));
+      rates = monthEnds.map((item) => {
+        const rate = rateOn(item.date);
+        if (!rate) throw new SalesFailure("SALES_FINANCED_SALE_INVALID", `No official rate is available for ${item.date}.`);
+        return { ...item, vesPerUsd: rate };
+      });
+    } catch (error) {
+      return { ...view, revaluationError: error instanceof Error ? error.message : "Official exchange rates are unavailable." };
+    }
+    const settlements = view.sales.flatMap((sale) => sale.row.status === "calculated" ? [sale.row.settlement] : []);
+    const revaluations = revalueFinancedSalesAtMonthEnds(settlements, rates);
+    const revaluationEntries = financedSaleRevaluationJournalEntries(revaluations, asOf, (kind, month) => this.describeMonth(kind, month));
+    return { ...view, revaluations, journal: [...view.journal, ...revaluationEntries].sort(compareFinancedSaleJournalEntries) };
   }
 
   private async rateResolver(dates: readonly SalesDate[]): Promise<(date: SalesDate) => ExactDecimal | null> {

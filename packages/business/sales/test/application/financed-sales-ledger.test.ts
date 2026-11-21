@@ -24,6 +24,10 @@ class MemoryRepository implements FinancedSalesLedgerRepository {
   }
   async addSales(_companyId: string, sales: FinancedSalesLedgerState["sales"]) { this.state = { ...this.state, sales: [...this.state.sales, ...sales] }; }
   async addDeposits(_companyId: string, deposits: FinancedSalesLedgerState["deposits"]) { this.state = { ...this.state, deposits: [...this.state.deposits, ...deposits] }; }
+  async setBankLinks(_companyId: string, links: readonly { depositId: string; bankEntryId: string | null }[]) {
+    const byId = new Map(links.map((link) => [link.depositId, link.bankEntryId]));
+    this.state = { ...this.state, deposits: this.state.deposits.map((deposit) => byId.has(deposit.id) ? { ...deposit, bankEntryId: byId.get(deposit.id)! } : deposit) };
+  }
   async remove(_companyId: string, kind: "sale" | "deposit", id: string) {
     this.state = kind === "sale" ? { ...this.state, sales: this.state.sales.filter((sale) => sale.id !== id) } : { ...this.state, deposits: this.state.deposits.filter((deposit) => deposit.id !== id) };
   }
@@ -31,7 +35,7 @@ class MemoryRepository implements FinancedSalesLedgerRepository {
 
 const rates: UsdVesRateHistory = {
   async ratesBetween() {
-    return [["2025-09-30", "177.6143"], ["2025-10-01", "179.43"], ["2025-11-20", "240.22296107"]].map(([date, rate]) => ({ effectiveDate: salesDate(date!), vesPerUsd: exactDecimal(rate!) }));
+    return [["2025-09-30", "177.6143"], ["2025-10-01", "179.43"], ["2025-10-31", "220"], ["2025-11-20", "240.22296107"]].map(([date, rate]) => ({ effectiveDate: salesDate(date!), vesPerUsd: exactDecimal(rate!) }));
   },
 };
 
@@ -45,7 +49,7 @@ function setup() {
     },
   };
   let next = 0;
-  const ledger = new FinancedSalesLedger(repository, rates, sink, () => `id-${String(++next).padStart(8, "0")}`, (kind, month) => `${kind} ${month}`);
+  const ledger = new FinancedSalesLedger(repository, rates, sink, () => `id-${String(++next).padStart(8, "0")}`, (kind, month) => `${kind} ${month}`, () => salesDate("2025-11-25"));
   return { ledger, repository, synced };
 }
 
@@ -86,4 +90,25 @@ test("rejects stale settings", async () => {
   const { ledger } = setup();
   await ledger.saveSettings("J-1", DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, 0);
   await assert.rejects(ledger.saveSettings("J-1", DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, 0), (error) => error instanceof SalesFailure && error.code === "SALES_CONCURRENCY_CONFLICT");
+});
+
+test("adds month-end revaluation and its reversal to the journal when enabled", async () => {
+  const { ledger, synced } = setup();
+  await ledger.saveSettings("J-1", { ...DEFAULT_FINANCED_SALES_LEDGER_SETTINGS, accounts, revalueMonthEnd: true }, 0);
+  const change = await ledger.addSales("J-1", [{ saleDate: "2025-10-01", amountVes: "7455.25" }]);
+  assert.equal(change.view.revaluations[0]?.difference, "674.27");
+  assert.equal(change.view.revaluationError, null);
+  assert.deepEqual(synced.at(-1)?.map((entry) => entry.key), ["sale:2025-10", "revaluation:2025-10", "revaluation_reversal:2025-10"]);
+});
+
+test("links deposits to bank movements and rejects repeated entries", async () => {
+  const { ledger, repository } = setup();
+  await ledger.addSales("J-1", [{ saleDate: "2025-10-01", amountVes: "7455.25" }]);
+  await ledger.addDeposits("J-1", [{ depositDate: "2025-11-20", amountVes: "1000" }, { depositDate: "2025-11-20", amountVes: "2992.47", bankEntryId: "bank-2" }]);
+  const [first, second] = repository.state.deposits;
+  assert.equal(second?.bankEntryId, "bank-2");
+  const view = await ledger.linkBankEntries("J-1", [{ depositId: first!.id, bankEntryId: "bank-1" }]);
+  assert.deepEqual(view.deposits.map((deposit) => deposit.bankEntryId), ["bank-1", "bank-2"]);
+  await assert.rejects(ledger.linkBankEntries("J-1", [{ depositId: first!.id, bankEntryId: "x" }, { depositId: second!.id, bankEntryId: "x" }]), SalesFailure);
+  await assert.rejects(ledger.linkBankEntries("J-1", [{ depositId: "missing", bankEntryId: "y" }]), SalesFailure);
 });

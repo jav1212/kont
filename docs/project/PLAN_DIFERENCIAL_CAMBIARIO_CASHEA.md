@@ -121,10 +121,23 @@ la tasa BCV del día del depósito; la comisión aún no se conoce (configurable
 Fuera de alcance por la decisión anterior: dividir facturas emitidas en Kontave
 en contado + CxC Cashea y guardar el diferencial por abono de CxC de facturas.
 
-### Fase 3 — Opcional
+### Fase 3 — Revaluación y conciliación (implementado)
 
-- Conciliación de depósitos Cashea en Tesorería.
-- Diferencial no realizado al cierre de mes sobre CxC Cashea abiertas.
+1. Diferencial no realizado al cierre de mes (opcional, apagado por defecto en
+   la configuración del libro): el saldo pendiente en USD al último día de cada
+   mes terminado se revalúa a la tasa BCV de ese día
+   (`revalueFinancedSalesAtMonthEnds`). El ajuste se registra al cierre
+   (D CxC / H ganancia, o D pérdida / H CxC) y se reversa el día 1 del mes
+   siguiente, así el diferencial realizado del depósito no se cuenta dos veces.
+   Los asientos usan las claves `revaluation:<mes>` y
+   `revaluation_reversal:<mes>` y se sincronizan como los demás borradores.
+2. Conciliación con Tesorería: desde el libro se eligen la cuenta bancaria en
+   bolívares y el período; se leen los créditos publicados de Tesorería
+   (`list_ledger_entries`), se sugieren vínculos por monto exacto y fecha a ±3
+   días (`suggestFinancierDepositMatches`), se vinculan en lote y los créditos
+   bancarios no registrados se pueden dar de alta como depósitos ya vinculados.
+   Un movimiento bancario solo puede respaldar un depósito (índice único
+   parcial). Migración aditiva `20261121170000_financed_sales_reconciliation.sql`.
 
 ## Decisiones pendientes con el usuario
 

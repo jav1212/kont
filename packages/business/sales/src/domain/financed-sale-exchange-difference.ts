@@ -108,7 +108,23 @@ export interface FinancedSaleJournalLine {
   readonly credit: ExactDecimal;
 }
 
-/** Proposed journal entry for a sale or a collection. */
+/** What a journal entry records; month-end revaluations are reversed on the first day of the next month. */
+export type FinancedSaleJournalKind = "sale" | "collection" | "revaluation" | "revaluation_reversal";
+
+const KIND_ORDER: Readonly<Record<FinancedSaleJournalKind, number>> = { sale: 0, collection: 1, revaluation: 2, revaluation_reversal: 3 };
+
+/**
+ * Orders entries chronologically; on the same date sales come first, then
+ * collections, revaluations and reversals.
+ * @param left - First entry.
+ * @param right - Second entry.
+ * @returns Negative, zero or positive like any sort comparator.
+ */
+export function compareFinancedSaleJournalEntries(left: Pick<FinancedSaleJournalEntry, "date" | "kind">, right: Pick<FinancedSaleJournalEntry, "date" | "kind">): number {
+  return left.date.localeCompare(right.date) || KIND_ORDER[left.kind] - KIND_ORDER[right.kind];
+}
+
+/** Proposed journal entry for a sale, a collection or a month-end revaluation. */
 export interface FinancedSaleJournalEntry {
   /**
    * Stable identity of the entry within its granularity: `sale:<reference>` and
@@ -116,7 +132,7 @@ export interface FinancedSaleJournalEntry {
    * summaries. Lets integrations update a previously exported entry instead of duplicating it.
    */
   readonly key: string;
-  readonly kind: "sale" | "collection";
+  readonly kind: FinancedSaleJournalKind;
   readonly date: SalesDate;
   readonly description: string;
   readonly lines: readonly FinancedSaleJournalLine[];
@@ -220,7 +236,7 @@ export function summarizeFinancedSaleJournalByMonth(
   }
   const roleOrder: readonly FinancedSaleAccountRole[] = ["bank", "financier_commission", "exchange_loss", "financier_receivable", "sales", "exchange_gain"];
   return Object.freeze([...groups.values()]
-    .sort((left, right) => left.month.localeCompare(right.month) || (left.kind === right.kind ? 0 : left.kind === "sale" ? -1 : 1))
+    .sort((left, right) => left.month.localeCompare(right.month) || KIND_ORDER[left.kind] - KIND_ORDER[right.kind])
     .map((group) => entry(`${group.kind}:${group.month}`, group.kind, group.date, describe(group.kind, group.month), roleOrder.flatMap((role) => {
       const total = group.totals.get(role);
       if (!total) return [];

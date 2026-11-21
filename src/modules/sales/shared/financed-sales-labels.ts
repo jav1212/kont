@@ -1,7 +1,7 @@
 // Spanish labels shared by the financed-sales calculator and ledger screens.
 
 import { decimalToFixed, type ExactDecimal } from "@kontave/monetary/domain";
-import type { FinancedSaleAccountRole } from "@kontave/sales/domain";
+import type { FinancedSaleAccountRole, FinancedSaleJournalKind } from "@kontave/sales/domain";
 
 /** Default account names shown for each journal role before accounts are chosen. */
 export const DEFAULT_ROLE_LABELS: Record<FinancedSaleAccountRole, string> = {
@@ -36,12 +36,18 @@ export function monthLabel(month: string): string {
 
 /**
  * Description of a monthly summary entry.
- * @param kind - Sales or collections summary.
- * @param month - `YYYY-MM` month.
+ * @param kind - Kind of the summarized entries.
+ * @param month - `YYYY-MM` month the entries belong to.
  * @returns Entry description.
  */
-export function describeFinancedSalesMonth(kind: "sale" | "collection", month: string): string {
-    return kind === "sale" ? `Ventas financiadas ${monthLabel(month)}` : `Cobros financiadora ${monthLabel(month)}`;
+export function describeFinancedSalesMonth(kind: FinancedSaleJournalKind, month: string): string {
+    const descriptions: Record<FinancedSaleJournalKind, string> = {
+        sale: "Ventas financiadas",
+        collection: "Cobros financiadora",
+        revaluation: "Diferencial cambiario no realizado",
+        revaluation_reversal: "Reverso diferencial no realizado",
+    };
+    return `${descriptions[kind]} ${monthLabel(month)}`;
 }
 
 /**

@@ -36,6 +36,18 @@ try {
   await assert.rejects(() => db.query("insert into public.shared_financed_sales(tenant_id,id,company_id,sale_date,amount_ves,upfront_percent,ves_per_usd,rate_source) values($1,'s-2',$2,'2025-10-01',0,60,1,'bcv')", [tenantId, companyId]), /check constraint/);
   await assert.rejects(() => db.query("insert into public.shared_financier_deposits(tenant_id,id,company_id,deposit_date,amount_ves,ves_per_usd,rate_source) values($1,'d-2',$2,'2025-11-20',1,1,'parallel')", [tenantId, companyId]), /check constraint/);
   await assert.rejects(() => db.query("insert into public.shared_financed_sales(tenant_id,id,company_id,sale_date,amount_ves,upfront_percent,ves_per_usd,rate_source) values($1,'s-3','J-missing','2025-10-01',1,60,1,'bcv')", [tenantId]), /foreign key/);
+  await db.exec(await readFile(new URL("../migrations/20261121170000_financed_sales_reconciliation.sql", import.meta.url), "utf8"));
+  const third = await save(2, { ...settings, revalue_month_end: true });
+  assert.equal(third.revalue_month_end, true);
+  assert.equal(third.version, 3);
+  await db.query("insert into public.shared_financier_deposits(tenant_id,id,company_id,deposit_date,amount_ves,ves_per_usd,rate_source) values($1,'d-2',$2,'2025-11-21',10,240,'bcv')", [tenantId, companyId]);
+  const link = async (links) => (await db.query("select public.shared_financier_deposits_set_bank_links($1,$2,$3) value", [tenantId, companyId, JSON.stringify(links)])).rows[0].value;
+  assert.equal(await link([{ deposit_id: "d-1", bank_entry_id: "bank-1" }]), 1);
+  await assert.rejects(() => link([{ deposit_id: "d-2", bank_entry_id: "bank-1" }]), /SALES_CONCURRENCY_CONFLICT/);
+  // Moving a link between deposits in one call succeeds because clearing runs first.
+  assert.equal(await link([{ deposit_id: "d-1", bank_entry_id: null }, { deposit_id: "d-2", bank_entry_id: "bank-1" }]), 2);
+  assert.deepEqual((await db.query("select id, bank_entry_id from public.shared_financier_deposits order by id")).rows, [{ id: "d-1", bank_entry_id: null }, { id: "d-2", bank_entry_id: "bank-1" }]);
+  await assert.rejects(() => link([{ deposit_id: "missing", bank_entry_id: "bank-9" }]), /SALES_FINANCED_COLLECTION_INVALID/);
   const rowSecurity = (await db.query("select relname, relrowsecurity from pg_class where relname in ('shared_financed_sales','shared_financier_deposits','shared_financed_sales_settings') order by relname")).rows;
   assert.ok(rowSecurity.every((row) => row.relrowsecurity), "row level security is enabled on every ledger table");
   console.log("financed sales ledger pglite check passed");
