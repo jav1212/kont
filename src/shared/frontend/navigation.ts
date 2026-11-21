@@ -72,6 +72,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/sales/archive",          label: "Archivo de facturas", group: "Operaciones" },
         { href: "/sales/fiscal",           label: "Documentos fiscales", group: "Operaciones" },
         { href: "/sales/igtf-fortnightly", label: "IGTF Quincenal",      group: "Reportes"    },
+        { href: "/sales/exchange-difference", label: "Diferencial cambiario", group: "Reportes" },
         { href: "/sales/iva-ledger",       label: "Libro IVA",           group: "Reportes"    },
     ],
     inventory: [

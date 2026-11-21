@@ -32,6 +32,7 @@ export const NAVIGATION_DESTINATIONS = [
   { id: "sales.iva-ledger", label: "Libro IVA", parentId: "sales", webPath: "/sales/iva-ledger" },
   { id: "sales.archive", label: "Archivo de facturas", parentId: "sales", webPath: "/sales/archive" },
   { id: "sales.igtf", label: "IGTF Quincenal", parentId: "sales", webPath: "/sales/igtf-fortnightly" },
+  { id: "sales.exchange-difference", label: "Diferencial cambiario", parentId: "sales", webPath: "/sales/exchange-difference" },
   { id: "sales.detail", label: "Factura", parentId: "sales.archive", webPath: "/sales/[saleId]" },
   { id: "sales.fiscal-detail", label: "Documento fiscal", parentId: "sales", webPath: "/sales/fiscal/[fiscalId]" },
 
