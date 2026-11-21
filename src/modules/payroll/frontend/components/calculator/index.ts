@@ -7,6 +7,7 @@ export {
     formatCurrency,
     formatNumber,
     formatUsd,
+    formatReferenceAmount,
     formatBcvRate,
     formatDateLong,
     formatDateUpper,

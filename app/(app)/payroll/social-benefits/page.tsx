@@ -265,6 +265,7 @@ export default function PrestacionesPage() {
     const {
         exchangeRate, setExchangeRate,
         bcvRate, bcvLoading, bcvFetchError, fetchBcvRate,
+        currencyCode, setCurrencyCode, rateDate, setRateDate, usdRate,
     } = useCalculatorBcv();
 
     // ── Params ──────────────────────────────────────────────────────────────
@@ -290,12 +291,12 @@ export default function PrestacionesPage() {
 
     // Salary field auto-populated from employee data, overridable by user.
     const [salarySourceKey, setSalarySourceKey] = useState("");
-    const currentSalaryKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    const currentSalaryKey = `${selectedEmp?.cedula ?? ""}|${usdRate}`;
     if (salarySourceKey !== currentSalaryKey) {
         setSalarySourceKey(currentSalaryKey);
         if (selectedEmp) {
             const vesAmount = selectedEmp.moneda === "USD"
-                ? selectedEmp.salarioMensual * bcvRate
+                ? selectedEmp.salarioMensual * usdRate
                 : selectedEmp.salarioMensual;
             setSalaryOverride(vesAmount.toFixed(2));
         } else {
@@ -316,7 +317,7 @@ export default function PrestacionesPage() {
             const typedSalary = emp.cedula === selectedIdNumber ? parseFloat(salaryOverride) : NaN;
             const vesAmount = typedSalary > 0
                 ? typedSalary
-                : emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+                : emp.moneda === "USD" ? emp.salarioMensual * usdRate : emp.salarioMensual;
             const hire      = emp.fechaIngreso ?? "";
             const psDays    = parseInt(profitSharingDays) || 15;
             const vbDays    = parseInt(vacationBonusDays) || 15;
@@ -398,7 +399,7 @@ export default function PrestacionesPage() {
 
             return { employee: emp, calculation };
         });
-    }, [filteredEmployees, selectedIdNumber, salaryOverride, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays, annualOverrides]);
+    }, [filteredEmployees, selectedIdNumber, salaryOverride, usdRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate, calculationMode, annualDays, annualOverrides]);
 
     const grandTotal = useMemo(
         () => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0),
@@ -481,7 +482,7 @@ export default function PrestacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : formatBcvRate(bcvRate)}
+                        {bcvLoading ? "..." : `${formatBcvRate(bcvRate)} / ${currencyCode}`}
                     </span>
                     {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>
@@ -542,6 +543,10 @@ export default function PrestacionesPage() {
                                 value={exchangeRate}
                                 onChange={setExchangeRate}
                                 onRefresh={fetchBcvRate}
+                                currencyCode={currencyCode}
+                                onCurrencyChange={setCurrencyCode}
+                                date={rateDate}
+                                onDateChange={setRateDate}
                                 loading={bcvLoading}
                                 error={bcvFetchError}
                             />
@@ -743,7 +748,7 @@ export default function PrestacionesPage() {
                         {benefitResults.length > 0 && (
                             <>
                                 <FooterStat label="Empleados" value={String(benefitResults.length)} />
-                                <FooterTotal label="Total Gral. (Neto)" valueBs={grandTotal} bcvRate={bcvRate} tone="success" />
+                                <FooterTotal label="Total Gral. (Neto)" valueBs={grandTotal} bcvRate={bcvRate} currencyCode={currencyCode} tone="success" />
                             </>
                         )}
                     </CalculatorFooter>

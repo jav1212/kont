@@ -3,6 +3,11 @@
 // profit-sharing, liquidations) so currency, dates, and document IDs
 // render identically across the module.
 
+import {
+    referenceCurrencySymbol,
+    type PayrollReferenceCurrencyCode,
+} from "../../../shared/reference-currency";
+
 const ES_VE_OPTS: Intl.NumberFormatOptions = {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -31,6 +36,20 @@ export function formatNumber(n: number): string {
 /** $166,29 USD */
 export function formatUsd(n: number): string {
     return "$" + n.toLocaleString("es-VE", ES_VE_OPTS) + " USD";
+}
+
+/**
+ * Formats an equivalent amount in a BCV reference currency.
+ *
+ * @param n - Amount in `code` units.
+ * @param code - Reference currency; USD keeps the historic `$166,29 USD` form.
+ * @returns e.g. `$166,29 USD`, `€152,10 EUR`.
+ */
+export function formatReferenceAmount(n: number, code: PayrollReferenceCurrencyCode): string {
+    if (code === "USD") return formatUsd(n);
+    const symbol = referenceCurrencySymbol(code);
+    const prefix = symbol === code ? "" : symbol;
+    return prefix + n.toLocaleString("es-VE", ES_VE_OPTS) + " " + code;
 }
 
 /** 79,5912 — tasa BCV, siempre 4 decimales (coincide con el input del paso 1). */

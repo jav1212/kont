@@ -31,3 +31,18 @@ export function referenceCurrencyLabel(code: PayrollReferenceCurrencyCode): stri
 export function referenceCurrencySymbol(code: PayrollReferenceCurrencyCode): string {
     return currencyMeta(code).symbol || code;
 }
+
+const EXCHANGE_RATE_DECIMALS = 4;
+
+/**
+ * Normalizes a Bs.-per-unit exchange rate to the fixed precision shown in
+ * every rate input (4 decimals, matching BCV publications).
+ *
+ * @param raw - Rate typed by the user or returned by `/api/bcv/rate`.
+ * @returns The rate formatted with 4 decimals, or `""` when it is not a positive finite number.
+ */
+export function normalizeExchangeRateInput(raw: string | number): string {
+    const parsed = typeof raw === "number" ? raw : parseFloat(raw);
+    if (!isFinite(parsed) || parsed <= 0) return "";
+    return parsed.toFixed(EXCHANGE_RATE_DECIMALS);
+}

@@ -2,7 +2,8 @@
 
 import { Download, RefreshCw } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { formatCurrency, formatUsd } from "./formatters";
+import type { PayrollReferenceCurrencyCode } from "../../../shared/reference-currency";
+import { formatCurrency, formatReferenceAmount } from "./formatters";
 
 // Bottom of the left calculator panel: per-batch summary chip + the
 // primary "Generar PDF" / "Exportar Lote" CTA. Used by every sister
@@ -40,14 +41,17 @@ export function FooterStat({ label, value, tone = "default" }: FooterStatProps) 
 export interface FooterTotalProps {
     label:     string;
     valueBs:   number;
+    /** Bs. per `currencyCode`; when set, the equivalent renders below the total. */
     bcvRate?:  number;
+    /** Currency of the equivalent (defaults to USD). */
+    currencyCode?: PayrollReferenceCurrencyCode;
     /** Color of the big number (defaults to primary). */
     tone?:     "primary" | "success";
 }
 
-export function FooterTotal({ label, valueBs, bcvRate, tone = "primary" }: FooterTotalProps) {
+export function FooterTotal({ label, valueBs, bcvRate, currencyCode = "USD", tone = "primary" }: FooterTotalProps) {
     const numberCls = tone === "success" ? "text-emerald-500" : "text-primary-500";
-    const usd       = bcvRate && bcvRate > 0 ? valueBs / bcvRate : null;
+    const equivalent = bcvRate && bcvRate > 0 ? valueBs / bcvRate : null;
     return (
         <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
             <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">
@@ -57,9 +61,9 @@ export function FooterTotal({ label, valueBs, bcvRate, tone = "primary" }: Foote
                 <span className={`font-mono text-[15px] font-black ${numberCls} tabular-nums block leading-none`}>
                     {formatCurrency(valueBs)}
                 </span>
-                {usd != null && (
+                {equivalent != null && (
                     <span className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)] mt-1 block">
-                        {formatUsd(usd)}
+                        {formatReferenceAmount(equivalent, currencyCode)}
                     </span>
                 )}
             </div>

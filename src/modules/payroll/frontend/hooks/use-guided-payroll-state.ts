@@ -50,18 +50,11 @@ import { notify } from "@/src/shared/frontend/notify";
 import type { PayrollInputCurrency, PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 import {
     DEFAULT_REFERENCE_CURRENCY,
+    normalizeExchangeRateInput as normalizeBcvRateInput,
     normalizePayrollInputCurrency,
 } from "../../shared/reference-currency";
 
 export type SaveMsg = { ok: boolean; text: string } | null;
-
-const BCV_RATE_DECIMALS = 4;
-
-function normalizeBcvRateInput(raw: string | number): string {
-    const parsed = typeof raw === "number" ? raw : parseFloat(raw);
-    if (!isFinite(parsed) || parsed <= 0) return "";
-    return parsed.toFixed(BCV_RATE_DECIMALS);
-}
 
 export function useGuidedPayrollState() {
     const { companyId, company } = useCompany();

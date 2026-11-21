@@ -16,11 +16,12 @@ import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee
 import { generateLiquidationPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import type { LiquidationEmployee, LiquidationOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
+import type { PayrollReferenceCurrencyCode } from "@/src/modules/payroll/shared/reference-currency";
 
 import {
     formatCurrency,
     formatNumber,
-    formatUsd,
+    formatReferenceAmount,
     formatBcvRate,
     LABEL_CLS,
     useCalculatorBcv,
@@ -74,7 +75,7 @@ function calculateLiquidation(
     reason:            LiquidationReason,
     profitSharingDays: number,
     vacationBonusDays: number,
-    bcvRate:           number,
+    usdRate:           number,
     unpaidVacationsAccrued:     boolean,
     unpaidProfitSharingAccrued: boolean,
 ): LiquidationResult {
@@ -94,7 +95,7 @@ function calculateLiquidation(
     const termDate = new Date(terminationDate + "T00:00:00");
     if (termDate <= hireDate) return { ...base, warning: "Egreso anterior a ingreso" };
 
-    const salaryVES = employee.moneda === "USD" ? employee.salarioMensual * bcvRate : employee.salarioMensual;
+    const salaryVES = employee.moneda === "USD" ? employee.salarioMensual * usdRate : employee.salarioMensual;
     if (salaryVES <= 0) return { ...base, salaryVES, warning: "Salario cero" };
 
     const msPerDay   = 86400000;
@@ -241,9 +242,10 @@ interface KpiTileProps {
     /** Currency value when not in count mode. */
     valueBs?:   number;
     bcvRate?:   number;
+    currencyCode?: PayrollReferenceCurrencyCode;
 }
 
-function KpiTile({ label, icon: Icon, tone = "default", countValue, valueBs, bcvRate }: KpiTileProps) {
+function KpiTile({ label, icon: Icon, tone = "default", countValue, valueBs, bcvRate, currencyCode = "USD" }: KpiTileProps) {
     const valueCls =
         tone === "primary" ? "text-primary-500" :
         tone === "rose"    ? "text-rose-600"    :
@@ -278,7 +280,7 @@ function KpiTile({ label, icon: Icon, tone = "default", countValue, valueBs, bcv
                         </p>
                         {bcvRate && bcvRate > 0 && valueBs && valueBs > 0 && (
                             <p className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)] mt-1.5">
-                                ≈ {formatUsd(valueBs / bcvRate)}
+                                ≈ {formatReferenceAmount(valueBs / bcvRate, currencyCode)}
                             </p>
                         )}
                     </>
@@ -292,7 +294,7 @@ function KpiTile({ label, icon: Icon, tone = "default", countValue, valueBs, bcv
 // KPI TOTAL TILE — primary highlight tile for the grand total
 // ============================================================================
 
-function KpiTotalTile({ valueBs, bcvRate }: { valueBs: number; bcvRate: number }) {
+function KpiTotalTile({ valueBs, bcvRate, currencyCode }: { valueBs: number; bcvRate: number; currencyCode: PayrollReferenceCurrencyCode }) {
     return (
         <div className="rounded-xl border border-primary-500/30 bg-primary-500/[0.04] shadow-sm p-4 flex flex-col justify-between gap-3 min-h-[104px] relative overflow-hidden">
             <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-primary-500/15 blur-2xl pointer-events-none" />
@@ -311,7 +313,7 @@ function KpiTotalTile({ valueBs, bcvRate }: { valueBs: number; bcvRate: number }
                 </p>
                 {bcvRate > 0 && valueBs > 0 && (
                     <p className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)] mt-1.5 font-medium">
-                        ≈ {formatUsd(valueBs / bcvRate)}
+                        ≈ {formatReferenceAmount(valueBs / bcvRate, currencyCode)}
                         <span className="text-[var(--text-tertiary)] ml-1.5">· BCV {formatBcvRate(bcvRate)}</span>
                     </p>
                 )}
@@ -379,12 +381,13 @@ function DistributionStrip({ segments }: { segments: DistributionSegment[] }) {
 interface LiquidationsTableProps {
     results:           LiquidationResult[];
     bcvRate:           number;
+    currencyCode:      PayrollReferenceCurrencyCode;
     showIndem:         boolean;
     profitSharingDays: string;
     vacationBonusDays: string;
 }
 
-function LiquidationsTable({ results, bcvRate, showIndem, profitSharingDays, vacationBonusDays }: LiquidationsTableProps) {
+function LiquidationsTable({ results, bcvRate, currencyCode, showIndem, profitSharingDays, vacationBonusDays }: LiquidationsTableProps) {
     const cols = showIndem
         ? "grid-cols-[minmax(180px,1.6fr)_88px_minmax(110px,0.9fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(140px,1.2fr)_28px]"
         : "grid-cols-[minmax(180px,1.6fr)_88px_minmax(110px,0.9fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(140px,1.2fr)_28px]";
@@ -409,6 +412,7 @@ function LiquidationsTable({ results, bcvRate, showIndem, profitSharingDays, vac
                         key={result.employee.cedula}
                         result={result}
                         bcvRate={bcvRate}
+                        currencyCode={currencyCode}
                         showIndem={showIndem}
                         cols={cols}
                         profitSharingDays={profitSharingDays}
@@ -423,6 +427,7 @@ function LiquidationsTable({ results, bcvRate, showIndem, profitSharingDays, vac
 interface LiquidationsTableRowProps {
     result:            LiquidationResult;
     bcvRate:           number;
+    currencyCode:      PayrollReferenceCurrencyCode;
     showIndem:         boolean;
     cols:              string;
     profitSharingDays: string;
@@ -430,7 +435,7 @@ interface LiquidationsTableRowProps {
 }
 
 function LiquidationsTableRow({
-    result, bcvRate, showIndem, cols, profitSharingDays, vacationBonusDays,
+    result, bcvRate, currencyCode, showIndem, cols, profitSharingDays, vacationBonusDays,
 }: LiquidationsTableRowProps) {
     const [expanded, setExpanded] = useState(false);
     const fracciones = result.fractionalProfitSharing + result.fractionalVacations + result.fractionalVacationBonus
@@ -485,15 +490,15 @@ function LiquidationsTableRow({
                     <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mt-1">/ día</p>
                 </div>
                 {/* Prestaciones */}
-                <NumberCell amount={result.socialBenefits} bcvRate={bcvRate} />
+                <NumberCell amount={result.socialBenefits} bcvRate={bcvRate} currencyCode={currencyCode} />
                 {/* Fracciones */}
-                <NumberCell amount={fracciones} bcvRate={bcvRate} />
+                <NumberCell amount={fracciones} bcvRate={bcvRate} currencyCode={currencyCode} />
                 {/* Indemnización (condicional) */}
                 {showIndem && (
-                    <NumberCell amount={result.terminationIndemnity} bcvRate={bcvRate} tone="rose" />
+                    <NumberCell amount={result.terminationIndemnity} bcvRate={bcvRate} currencyCode={currencyCode} tone="rose" />
                 )}
                 {/* Total */}
-                <NumberCell amount={result.total} bcvRate={bcvRate} bold />
+                <NumberCell amount={result.total} bcvRate={bcvRate} currencyCode={currencyCode} bold />
                 {/* Caret */}
                 <ChevronRight
                     size={14}
@@ -512,6 +517,7 @@ function LiquidationsTableRow({
                         <BreakdownPanel
                             result={result}
                             bcvRate={bcvRate}
+                            currencyCode={currencyCode}
                             profitSharingDays={profitSharingDays}
                             vacationBonusDays={vacationBonusDays}
                         />
@@ -526,9 +532,10 @@ function LiquidationsTableRow({
 // NUMBER CELL — dual VES/USD right-aligned cell
 // ============================================================================
 
-function NumberCell({ amount, bcvRate, tone, bold }: {
+function NumberCell({ amount, bcvRate, currencyCode, tone, bold }: {
     amount:   number;
     bcvRate:  number;
+    currencyCode: PayrollReferenceCurrencyCode;
     tone?:    "rose";
     bold?:    boolean;
 }) {
@@ -541,7 +548,7 @@ function NumberCell({ amount, bcvRate, tone, bold }: {
             </p>
             {bcvRate > 0 && amount > 0 && (
                 <p className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)] mt-1">
-                    ≈ {formatUsd(amount / bcvRate)}
+                    ≈ {formatReferenceAmount(amount / bcvRate, currencyCode)}
                 </p>
             )}
         </div>
@@ -563,10 +570,11 @@ interface BreakdownLineData {
 }
 
 function BreakdownPanel({
-    result, bcvRate, profitSharingDays, vacationBonusDays,
+    result, bcvRate, currencyCode, profitSharingDays, vacationBonusDays,
 }: {
     result:            LiquidationResult;
     bcvRate:           number;
+    currencyCode:      PayrollReferenceCurrencyCode;
     profitSharingDays: string;
     vacationBonusDays: string;
 }) {
@@ -674,7 +682,7 @@ function BreakdownPanel({
                             Sin acreencias devengadas para este empleado.
                         </p>
                     ) : lines.map((line, i) => (
-                        <BreakdownLine key={`${result.employee.cedula}-${line.label}-${i}`} {...line} bcvRate={bcvRate} />
+                        <BreakdownLine key={`${result.employee.cedula}-${line.label}-${i}`} {...line} bcvRate={bcvRate} currencyCode={currencyCode} />
                     ))}
                 </div>
                 {/* Card de salarios + total */}
@@ -688,7 +696,7 @@ function BreakdownPanel({
                         </p>
                         {bcvRate > 0 && (
                             <p className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)] mt-2 font-medium">
-                                ≈ {formatUsd(result.total / bcvRate)}
+                                ≈ {formatReferenceAmount(result.total / bcvRate, currencyCode)}
                             </p>
                         )}
                         <div className="mt-3.5 pt-3 border-t border-border-light/60 space-y-1.5">
@@ -713,8 +721,8 @@ function BreakdownPanel({
 }
 
 function BreakdownLine({
-    icon: Icon, label, sublabel, formula, chip, amount, tone, bcvRate,
-}: BreakdownLineData & { bcvRate: number }) {
+    icon: Icon, label, sublabel, formula, chip, amount, tone, bcvRate, currencyCode,
+}: BreakdownLineData & { bcvRate: number; currencyCode: PayrollReferenceCurrencyCode }) {
     const iconCls = tone === "rose"
         ? "bg-rose-500/10 border-rose-500/30 text-rose-600"
         : "bg-surface-1 border-border-light text-[var(--text-secondary)]";
@@ -746,7 +754,7 @@ function BreakdownLine({
                 </p>
                 {bcvRate > 0 && (
                     <p className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)] mt-1">
-                        ≈ {formatUsd(amount / bcvRate)}
+                        ≈ {formatReferenceAmount(amount / bcvRate, currencyCode)}
                     </p>
                 )}
             </div>
@@ -782,6 +790,7 @@ export default function LiquidacionesPage() {
     const {
         exchangeRate, setExchangeRate,
         bcvRate, bcvLoading, bcvFetchError, fetchBcvRate,
+        currencyCode, setCurrencyCode, rateDate, setRateDate, usdRate,
     } = useCalculatorBcv();
 
     // ── Filtered batch + results ────────────────────────────────────────────
@@ -796,11 +805,11 @@ export default function LiquidacionesPage() {
             emp, terminationDate, reason,
             parseFloat(profitSharingDays) || 120,
             parseFloat(vacationBonusDays) || 15,
-            bcvRate,
+            usdRate,
             unpaidVacationsAccrued,
             unpaidProfitSharingAccrued,
         )),
-        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued],
+        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, usdRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued],
     );
 
     const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
@@ -931,7 +940,7 @@ export default function LiquidacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : formatBcvRate(bcvRate)}
+                        {bcvLoading ? "..." : `${formatBcvRate(bcvRate)} / ${currencyCode}`}
                     </span>
                     {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>
@@ -1052,6 +1061,10 @@ export default function LiquidacionesPage() {
                                 value={exchangeRate}
                                 onChange={setExchangeRate}
                                 onRefresh={fetchBcvRate}
+                                currencyCode={currencyCode}
+                                onCurrencyChange={setCurrencyCode}
+                                date={rateDate}
+                                onDateChange={setRateDate}
                                 loading={bcvLoading}
                                 error={bcvFetchError}
                             />
@@ -1070,7 +1083,7 @@ export default function LiquidacionesPage() {
                                 {observationsCount > 0 && (
                                     <FooterStat label="Observaciones" value={String(observationsCount)} tone="amber" />
                                 )}
-                                <FooterTotal label="Total Gral." valueBs={totalAmount} bcvRate={bcvRate} />
+                                <FooterTotal label="Total Gral." valueBs={totalAmount} bcvRate={bcvRate} currencyCode={currencyCode} />
                             </>
                         )}
                     </CalculatorFooter>
@@ -1108,12 +1121,14 @@ export default function LiquidacionesPage() {
                                     icon={Wallet}
                                     valueBs={totalPrestaciones}
                                     bcvRate={bcvRate}
+                                    currencyCode={currencyCode}
                                 />
                                 <KpiTile
                                     label="Utilid. y vac."
                                     icon={Receipt}
                                     valueBs={totalFracciones}
                                     bcvRate={bcvRate}
+                                    currencyCode={currencyCode}
                                 />
                                 {showIndem && (
                                     <KpiTile
@@ -1121,10 +1136,11 @@ export default function LiquidacionesPage() {
                                         icon={ShieldAlert}
                                         valueBs={indemnizacionTotal}
                                         bcvRate={bcvRate}
+                                        currencyCode={currencyCode}
                                         tone="rose"
                                     />
                                 )}
-                                <KpiTotalTile valueBs={totalAmount} bcvRate={bcvRate} />
+                                <KpiTotalTile valueBs={totalAmount} bcvRate={bcvRate} currencyCode={currencyCode} />
                             </motion.div>
 
                             {/* ── Distribution band ──────────────────────── */}
@@ -1147,6 +1163,7 @@ export default function LiquidacionesPage() {
                                 <LiquidationsTable
                                     results={liquidationResults}
                                     bcvRate={bcvRate}
+                                    currencyCode={currencyCode}
                                     showIndem={showIndem}
                                     profitSharingDays={profitSharingDays}
                                     vacationBonusDays={vacationBonusDays}

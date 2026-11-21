@@ -409,6 +409,7 @@ export default function VacacionesPage() {
     const {
         exchangeRate, setExchangeRate,
         bcvRate, bcvLoading, bcvFetchError, fetchBcvRate,
+        currencyCode, setCurrencyCode, rateDate, setRateDate, usdRate,
     } = useCalculatorBcv();
 
     // ── Period dates ────────────────────────────────────────────────────────
@@ -432,12 +433,12 @@ export default function VacacionesPage() {
     );
 
     const [salarioSourceKey, setSalarioSourceKey] = useState("");
-    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${usdRate}`;
     if (salarioSourceKey !== currentSalarioKey) {
         setSalarioSourceKey(currentSalarioKey);
         if (selectedEmp) {
             const ves = selectedEmp.moneda === "USD"
-                ? selectedEmp.salarioMensual * bcvRate
+                ? selectedEmp.salarioMensual * usdRate
                 : selectedEmp.salarioMensual;
             setSalarioOverride(ves.toFixed(2));
         } else {
@@ -461,7 +462,7 @@ export default function VacacionesPage() {
 
     const results = useMemo<VacResult[]>(() => {
         return filtered.map(emp => {
-            const ves = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            const ves = emp.moneda === "USD" ? emp.salarioMensual * usdRate : emp.salarioMensual;
             const ing = emp.fechaIngreso ?? "";
 
             if (mode === "completas") {
@@ -479,7 +480,7 @@ export default function VacacionesPage() {
                 return { emp, calc: c };
             }
         });
-    }, [filtered, mode, bcvRate, fechaInicio, fechaEgreso, disfruteOverride, diasDisfruteManual]);
+    }, [filtered, mode, usdRate, fechaInicio, fechaEgreso, disfruteOverride, diasDisfruteManual]);
 
     const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.total ?? 0), 0), [results]);
 
@@ -568,7 +569,7 @@ export default function VacacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : formatBcvRate(bcvRate)}
+                        {bcvLoading ? "..." : `${formatBcvRate(bcvRate)} / ${currencyCode}`}
                     </span>
                     {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>
@@ -660,6 +661,10 @@ export default function VacacionesPage() {
                                 value={exchangeRate}
                                 onChange={setExchangeRate}
                                 onRefresh={fetchBcvRate}
+                                currencyCode={currencyCode}
+                                onCurrencyChange={setCurrencyCode}
+                                date={rateDate}
+                                onDateChange={setRateDate}
                                 loading={bcvLoading}
                                 error={bcvFetchError}
                             />
@@ -794,7 +799,7 @@ export default function VacacionesPage() {
                         {results.length > 0 && (
                             <>
                                 <FooterStat label="Empleados" value={String(results.length)} />
-                                <FooterTotal label="Total Gral. (NETO)" valueBs={totalGral} bcvRate={bcvRate} tone="success" />
+                                <FooterTotal label="Total Gral. (NETO)" valueBs={totalGral} bcvRate={bcvRate} currencyCode={currencyCode} tone="success" />
                             </>
                         )}
                     </CalculatorFooter>
