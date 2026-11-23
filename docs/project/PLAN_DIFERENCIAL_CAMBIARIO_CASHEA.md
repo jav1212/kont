@@ -73,8 +73,7 @@ entrada; la tasa implícita se deriva de él.
      precargan con la cuenta especial `exchange_difference` si existe. La
      asignación se recuerda por empresa en el navegador.
    - Los asientos se guardan como borrador vía `POST /api/accounting/entries`
-     con `source = 'manual'` (la restricción de la tabla no admite otro origen
-     todavía) y `sourceRef = financed-sales:<daily|monthly>:<clave>`.
+     con `source = 'sales'` y `sourceRef = financed-sales:<daily|monthly>:<clave>`.
    - Republicar actualiza los borradores con la misma `sourceRef`; los asientos
      ya publicados (posted) no se tocan; las fechas sin período abierto se
      informan y se omiten.
@@ -82,9 +81,10 @@ entrada; la tasa implícita se deriva de él.
      otro modo, para no registrar los mismos hechos dos veces.
    - Los cobros estimados se excluyen de los asientos salvo que se marque lo
      contrario.
-   - Pendiente para Fase 2: origen propio `sales` en
-     `shared_accounting_entries_source_check` (migración aditiva) y publicación
-     desde el servidor.
+   - El origen `sales` se habilitó con la migración aditiva
+     `20261121180000_accounting_entries_sales_source.sql`; como los demás
+     orígenes de integración, queda exento de la validación de cuentas
+     inactivas que aplica a los asientos manuales.
 
 ### Fase 2 — Libro Cashea persistente (implementado)
 

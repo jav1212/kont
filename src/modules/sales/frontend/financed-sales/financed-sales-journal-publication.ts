@@ -35,8 +35,7 @@ export async function publishFinancedSalesJournal(plan: FinancedSalesPublication
                 periodId: action.periodId,
                 date: entry.date,
                 description: entry.description,
-                // The journal only accepts its existing source kinds; `sourceRef` carries the origin.
-                source: "manual",
+                source: "sales",
                 sourceRef,
             },
             lines: entry.lines.map((line) => {

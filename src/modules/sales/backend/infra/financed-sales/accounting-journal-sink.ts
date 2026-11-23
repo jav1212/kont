@@ -13,8 +13,8 @@ import {
 import type { FinancedSaleJournalEntry } from "@kontave/sales/domain";
 import { getAccountingActions } from "@/src/modules/accounting/backend/infrastructure/accounting-factory";
 
-// The journal source constraint only admits existing kinds; `sourceRef` identifies the ledger.
-const ENTRY_SOURCE = "manual";
+// `sourceRef` tells the ledger apart from the calculator, which shares the `sales` source.
+const ENTRY_SOURCE = "sales";
 
 /** Accounting draft synchronization for the financed-sales ledger. */
 export class AccountingFinancedSalesJournalSink implements FinancedSalesJournalSink {

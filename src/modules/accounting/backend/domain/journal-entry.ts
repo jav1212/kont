@@ -4,7 +4,7 @@
 // source tracks whether the entry originated manually or from an integration.
 
 export type EntryStatus = 'draft' | 'posted';
-export type EntrySource = 'manual' | 'payroll' | 'inventory';
+export type EntrySource = 'manual' | 'payroll' | 'inventory' | 'payables' | 'sales';
 
 export interface JournalEntry {
     id:          string;
