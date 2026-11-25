@@ -6,7 +6,7 @@
 // re-synchronizes the draft journal in Accounting.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeftRight, BookCheck, Check, ClipboardPaste, Landmark, Pencil, RefreshCw, Trash2, TrendingUp, Unlink, Upload, Wallet, X } from "lucide-react";
+import { ArrowLeftRight, BookCheck, Check, ClipboardPaste, FileSpreadsheet, Landmark, Pencil, RefreshCw, Trash2, TrendingUp, Unlink, Upload, Wallet, X } from "lucide-react";
 import { FINANCED_SALE_ACCOUNT_ROLES as ROLES, type FinancedSaleAccountRole } from "@kontave/sales/domain";
 import type { FinancedSalesJournalSyncResult } from "@kontave/sales/application";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -18,7 +18,7 @@ import { usePostingAccounts } from "@/src/modules/accounting/frontend/hooks/use-
 import { fetchJson } from "@/src/shared/frontend/utils/api-fetch";
 import { notify } from "@/src/shared/frontend/notify";
 import { DEFAULT_ROLE_LABELS, ROLE_HINTS, formatVes as fmt, monthLabel } from "@/src/modules/sales/shared/financed-sales-labels";
-import { formatDate, parseAmountInput, parsePastedRows, readFinancedSalesWorkbook } from "./financed-sales-workbook";
+import { downloadFinancedSalesTemplate, formatDate, parseAmountInput, parsePastedRows, readFinancedSalesWorkbook } from "./financed-sales-workbook";
 import { Cell, FieldLabel, INPUT_CLS, Panel, Table } from "./financed-sales-ui";
 import { FinancedSalesTreasuryReconciliation } from "./financed-sales-treasury-reconciliation";
 
@@ -244,6 +244,7 @@ export function FinancedSalesLedgerScreen() {
                                 <BaseButton.Root variant="ghost" size="sm" leftIcon={<ClipboardPaste size={14} strokeWidth={2} />} onPress={() => setPasteTarget("sales")}>Pegar</BaseButton.Root>
                                 <input ref={excelInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => { void importExcel(event.target.files?.[0]); event.target.value = ""; }} />
                                 <BaseButton.Root variant="ghost" size="sm" leftIcon={<Upload size={14} strokeWidth={2} />} onPress={() => excelInput.current?.click()}>Excel</BaseButton.Root>
+                                <BaseButton.Root variant="ghost" size="sm" leftIcon={<FileSpreadsheet size={14} strokeWidth={2} />} onPress={downloadFinancedSalesTemplate}>Plantilla</BaseButton.Root>
                             </div>
                         }>
                             <form onSubmit={(event) => { void submitSale(event); }} className="grid grid-cols-[150px_1fr_auto] items-end gap-2">

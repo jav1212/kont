@@ -32,6 +32,7 @@ import { BcvUsdRateHistory } from "./bcv-usd-rate-history";
 import {
     downloadFinancedSaleCollectionsTemplate,
     downloadFinancedSalesReportWorkbook,
+    downloadFinancedSalesTemplate,
     formatDate,
     readFinancedSaleCollectionsWorkbook,
     readFinancedSalesWorkbook,
@@ -270,9 +271,14 @@ export function FinancedSalesExchangeDifferenceScreen() {
                         <div className="space-y-2">
                             <FieldLabel>Ventas financiadas</FieldLabel>
                             <input ref={salesInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => { void handleSalesFile(event.target.files?.[0]); event.target.value = ""; }} />
-                            <BaseButton.Root variant="secondary" size="sm" fullWidth leftIcon={<Upload size={14} strokeWidth={2} />} onPress={() => salesInput.current?.click()}>
-                                {sales.length ? `${sales.length} ventas · cambiar archivo` : "Importar Excel de ventas"}
-                            </BaseButton.Root>
+                            <div className="flex gap-2">
+                                <BaseButton.Root variant="secondary" size="sm" fullWidth leftIcon={<Upload size={14} strokeWidth={2} />} onPress={() => salesInput.current?.click()}>
+                                    {sales.length ? `${sales.length} ventas · cambiar archivo` : "Importar Excel de ventas"}
+                                </BaseButton.Root>
+                                <BaseButton.Root variant="ghost" size="sm" leftIcon={<FileSpreadsheet size={14} strokeWidth={2} />} onPress={downloadFinancedSalesTemplate}>
+                                    Plantilla
+                                </BaseButton.Root>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <FieldLabel>Cobros de la financiadora (opcional)</FieldLabel>

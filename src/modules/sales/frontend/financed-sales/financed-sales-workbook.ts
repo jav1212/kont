@@ -123,6 +123,25 @@ export async function readFinancedSaleCollectionsWorkbook(file: File): Promise<W
     return { items, warnings };
 }
 
+/**
+ * Downloads a sample financed-sales workbook: one row per day with the date and
+ * the financed sale amount in Bs. Any number of monthly sheets may follow the
+ * same layout; zero-amount days are skipped on import.
+ */
+export function downloadFinancedSalesTemplate(): void {
+    const sheet = XLSX.utils.aoa_to_sheet([
+        ["fecha", "monto venta Bs"],
+        ["01/10/2025", 7455.25],
+        ["02/10/2025", 5120.8],
+        ["03/10/2025", 0],
+        ["04/10/2025", 9830.4],
+    ]);
+    sheet["!cols"] = [{ wch: 14 }, { wch: 16 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Octubre");
+    XLSX.writeFile(workbook, "plantilla-ventas-financiadas.xlsx");
+}
+
 /** Downloads an empty deposits workbook with the expected columns. */
 export function downloadFinancedSaleCollectionsTemplate(): void {
     const sheet = XLSX.utils.aoa_to_sheet([
