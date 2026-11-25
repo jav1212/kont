@@ -7,6 +7,7 @@ export * from "./financed-sale-exchange-difference";
 export * from "./financed-sale-revaluation";
 export * from "./financier-deposit-allocation";
 export * from "./financier-deposit-reconciliation";
+export * from "./foreign-currency-collection";
 export * from "./goods-dispatch";
 export * from "./identifiers";
 export * from "./quantity";

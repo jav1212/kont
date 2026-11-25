@@ -1,22 +1,26 @@
 "use client";
 
-// Page shell for financed sales: the persisted ledger and the spreadsheet calculator.
+// Page shell for exchange differences: the persisted Cashea ledger, the
+// spreadsheet calculator and foreign currency collected at the counter.
 
 import { useState } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { ForeignCurrencyCollectionsScreen } from "../foreign-currency-collections/foreign-currency-collections-screen";
 import { FinancedSalesExchangeDifferenceScreen } from "./financed-sales-exchange-difference-screen";
 import { FinancedSalesLedgerScreen } from "./financed-sales-ledger-screen";
 
 const TABS = [
-    { id: "ledger", label: "Libro Cashea" },
-    { id: "calculator", label: "Calculadora (Excel)" },
+    { id: "ledger", label: "Libro Cashea", subtitle: "Ventas financiadas (Cashea) · cobro diferido a tasa BCV" },
+    { id: "calculator", label: "Calculadora (Excel)", subtitle: "Ventas financiadas (Cashea) · cobro diferido a tasa BCV" },
+    { id: "foreign-currency", label: "Cobros en divisas (IGTF)", subtitle: "Divisas cobradas · valoradas a la tasa BCV del cierre de cada mes" },
 ] as const;
 
 export function FinancedSalesPage() {
     const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("ledger");
+    const current = TABS.find((item) => item.id === tab) ?? TABS[0];
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            <PageHeader title="Diferencial cambiario" subtitle="Ventas financiadas (Cashea) · cobro diferido a tasa BCV">
+            <PageHeader title="Diferencial cambiario" subtitle={current.subtitle}>
                 <div role="tablist" className="inline-flex rounded-lg border border-border-light overflow-hidden">
                     {TABS.map((item, index) => (
                         <button key={item.id} role="tab" type="button" aria-selected={tab === item.id} onClick={() => setTab(item.id)}
@@ -26,7 +30,7 @@ export function FinancedSalesPage() {
                     ))}
                 </div>
             </PageHeader>
-            {tab === "ledger" ? <FinancedSalesLedgerScreen /> : <FinancedSalesExchangeDifferenceScreen />}
+            {tab === "ledger" ? <FinancedSalesLedgerScreen /> : tab === "calculator" ? <FinancedSalesExchangeDifferenceScreen /> : <ForeignCurrencyCollectionsScreen />}
         </div>
     );
 }

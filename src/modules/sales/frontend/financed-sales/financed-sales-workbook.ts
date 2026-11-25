@@ -224,7 +224,7 @@ function num(value: ExactDecimal | string): number {
 }
 
 /** Converts a Date, Excel serial or `dd/mm/yyyy` text cell to `YYYY-MM-DD`. */
-function cellDate(cell: unknown): string | null {
+export function cellDate(cell: unknown): string | null {
     if (cell instanceof Date && !Number.isNaN(cell.getTime())) {
         // SheetJS builds local-midnight dates that can land seconds before midnight; noon avoids a day shift.
         const noon = new Date(cell.getTime() + 12 * 60 * 60 * 1000);
@@ -243,7 +243,8 @@ function isoDate(year: number, month: number, day: number): string | null {
     return value.toISOString().slice(0, 10);
 }
 
-function cellNumber(cell: unknown): number | null {
+/** Reads a numeric cell or Venezuelan-formatted text amount. */
+export function cellNumber(cell: unknown): number | null {
     if (typeof cell === "number") return Number.isFinite(cell) ? cell : null;
     if (typeof cell !== "string") return null;
     const raw = cell.trim();
