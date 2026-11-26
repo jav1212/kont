@@ -17,7 +17,7 @@ import { notify }                           from '@/src/shared/frontend/notify';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS    = { draft: 'Borrador', posted: 'Publicado' } as const;
-const SOURCE_LABELS    = { manual: 'Manual', payroll: 'Nómina', inventory: 'Inventario' } as const;
+const SOURCE_LABELS    = { manual: 'Manual', payroll: 'Nómina', inventory: 'Inventario', payables: 'Cuentas por pagar', sales: 'Ventas' } as const;
 const LINE_TYPE_LABELS = { debit: 'Débito', credit: 'Crédito' } as const;
 
 function fmtAmt(n: number) {

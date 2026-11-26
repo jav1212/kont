@@ -20,7 +20,7 @@ import { APP_SIZES }                 from '@/src/shared/frontend/sizes';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS = { draft: 'Borrador', posted: 'Publicado' } as const;
-const SOURCE_LABELS = { manual: 'Manual', payroll: 'Nómina', inventory: 'Inventario' } as const;
+const SOURCE_LABELS = { manual: 'Manual', payroll: 'Nómina', inventory: 'Inventario', payables: 'Cuentas por pagar', sales: 'Ventas' } as const;
 
 const fieldCls = [
     "h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
