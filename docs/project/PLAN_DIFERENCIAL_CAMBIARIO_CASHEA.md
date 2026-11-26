@@ -85,6 +85,14 @@ entrada; la tasa implícita se deriva de él.
      `20261121180000_accounting_entries_sales_source.sql`; como los demás
      orígenes de integración, queda exento de la validación de cuentas
      inactivas que aplica a los asientos manuales.
+7. Decisión del usuario (2026-11-26): la calculadora funciona fila a fila como
+   «Cobros en divisas». La plantilla trae `fecha venta | dias | fecha cobro |
+   monto financiado | moneda | tasa`; ya no hay «% contado» (el monto es lo
+   financiado) ni importación de depósitos aparte. Una fila con días o fecha
+   de cobro se cobra a la tasa BCV de esa fecha y cuenta como cobro indicado
+   (genera asiento); sin ninguno se estima con «Días hasta el cobro». El Excel
+   diario anterior (fecha y monto en Bs) se sigue aceptando. El caso de uso
+   admite por línea `saleAmountUsd` y `settledOn`.
 
 ### Fase 2 — Libro Cashea persistente (implementado)
 

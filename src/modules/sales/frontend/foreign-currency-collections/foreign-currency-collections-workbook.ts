@@ -28,7 +28,7 @@ export interface IgtfReportHeading {
     period: string | null;
 }
 
-type ForeignCurrencyCollectionsImport = WorkbookImport<ImportedForeignCurrencyCollection> & { heading: IgtfReportHeading };
+export type ForeignCurrencyCollectionsImport = WorkbookImport<ImportedForeignCurrencyCollection> & { heading: IgtfReportHeading };
 
 const IGTF_HEADERS = {
     date: ["fecha"],
@@ -39,10 +39,10 @@ const IGTF_HEADERS = {
 } as const;
 
 const TEMPLATE_HEADERS = {
-    collectedOn: ["fecha venta", "fecha de venta", "fecha cobro", "fecha de cobro"],
+    collectedOn: ["fecha venta", "fecha de venta"],
     days: ["dias", "días", "cantidad de dias", "cantidad de días"],
-    paidOn: ["fecha recibo", "fecha de recibo", "fecha pago", "fecha de pago"],
-    amount: ["monto", "monto cobrado", "entrada", "monto divisas"],
+    paidOn: ["fecha recibo", "fecha de recibo", "fecha pago", "fecha de pago", "fecha cobro", "fecha de cobro"],
+    amount: ["monto", "monto cobrado", "entrada", "monto divisas", "monto financiado"],
     currency: ["moneda"],
     vesPerUsd: ["tasa", "tasa venta", "tasa cobro"],
 } as const;
@@ -54,13 +54,31 @@ const TEMPLATE_HEADERS = {
  * @returns Collections ordered by date, the report heading and warnings.
  */
 export async function readForeignCurrencyCollectionsWorkbook(file: File): Promise<ForeignCurrencyCollectionsImport> {
+    const matrices = await readMatrices(file);
+    return isTemplate(matrices) ? readTemplate(matrices) : readIgtfReport(matrices);
+}
+
+/**
+ * Reads the collections template only, so other calculators can share its
+ * layout and fall back to their own format.
+ * @param file - Workbook chosen by the user (`.xls` or `.xlsx`).
+ * @returns The rows of the template, or `null` when the file has no «fecha venta» header.
+ */
+export async function readForeignCurrencyCollectionsTemplate(file: File): Promise<ForeignCurrencyCollectionsImport | null> {
+    const matrices = await readMatrices(file);
+    return isTemplate(matrices) ? readTemplate(matrices) : null;
+}
+
+async function readMatrices(file: File): Promise<SheetMatrix[]> {
     const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellDates: true });
-    const matrices = workbook.SheetNames.map((name) => ({
+    return workbook.SheetNames.map((name) => ({
         name,
         matrix: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], { header: 1, defval: null, raw: true }),
     }));
-    const isTemplate = matrices.some(({ matrix }) => matrix.some((cells) => headerColumn(texts(cells), TEMPLATE_HEADERS.collectedOn) >= 0));
-    return isTemplate ? readTemplate(matrices) : readIgtfReport(matrices);
+}
+
+function isTemplate(matrices: readonly SheetMatrix[]): boolean {
+    return matrices.some(({ matrix }) => matrix.some((cells) => headerColumn(texts(cells), TEMPLATE_HEADERS.collectedOn) >= 0));
 }
 
 /**

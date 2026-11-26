@@ -4,7 +4,7 @@
 
 import * as XLSX from "xlsx";
 import { decimalToFixed, type ExactDecimal } from "@kontave/monetary/domain";
-import type { FinancedSaleAccountRole, FinancedSaleJournalEntry } from "@kontave/sales/domain";
+import { exchangeDifferencePercentOf, type FinancedSaleAccountRole, type FinancedSaleJournalEntry } from "@kontave/sales/domain";
 import type { FinancedSalesExchangeDifferenceReport } from "@kontave/sales/application";
 
 export interface ImportedFinancedSale {
@@ -14,14 +14,6 @@ export interface ImportedFinancedSale {
     amountVes: string;
     sheet: string;
     row: number;
-}
-
-export interface ImportedFinancedSaleCollection {
-    /** Sale reference (date) the deposit belongs to. */
-    saleReference: string;
-    collectedOn: string;
-    receivedVes: string;
-    vesPerUsd?: string;
 }
 
 export interface WorkbookImport<T> {
@@ -73,56 +65,6 @@ export async function readFinancedSalesWorkbook(file: File): Promise<WorkbookImp
     return { items, warnings };
 }
 
-const COLLECTION_HEADERS = {
-    saleDate: ["fecha venta", "fecha_venta", "venta"],
-    collectedOn: ["fecha cobro", "fecha_cobro", "cobro", "fecha deposito", "fecha depósito"],
-    receivedVes: ["monto cobrado", "monto_cobrado", "monto cobrado bs", "monto_cobrado_bs", "monto", "bs"],
-    vesPerUsd: ["tasa", "tasa cobro", "tasa_cobro"],
-} as const;
-
-/**
- * Reads financier deposits from the first sheet. Requires the columns
- * «fecha venta», «fecha cobro» and «monto cobrado»; «tasa» is optional and marks
- * a partial payment converted at that rate.
- * @param file - Workbook chosen by the user.
- * @returns Deposits plus warnings about invalid rows.
- */
-export async function readFinancedSaleCollectionsWorkbook(file: File): Promise<WorkbookImport<ImportedFinancedSaleCollection>> {
-    const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellDates: true });
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) return { items: [], warnings: ["El archivo no contiene hojas."] };
-    const matrix = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: null, raw: true });
-    const headerIndex = matrix.findIndex((cells) => headerColumn(cells, COLLECTION_HEADERS.collectedOn) >= 0);
-    if (headerIndex < 0) return { items: [], warnings: ["No se encontró la fila de encabezados (fecha venta, fecha cobro, monto cobrado)."] };
-    const header = matrix[headerIndex];
-    const columns = {
-        saleDate: headerColumn(header, COLLECTION_HEADERS.saleDate),
-        collectedOn: headerColumn(header, COLLECTION_HEADERS.collectedOn),
-        receivedVes: headerColumn(header, COLLECTION_HEADERS.receivedVes),
-        vesPerUsd: headerColumn(header, COLLECTION_HEADERS.vesPerUsd),
-    };
-    if (columns.saleDate < 0 || columns.receivedVes < 0) {
-        return { items: [], warnings: ["Faltan las columnas «fecha venta» o «monto cobrado»."] };
-    }
-
-    const items: ImportedFinancedSaleCollection[] = [];
-    const warnings: string[] = [];
-    matrix.slice(headerIndex + 1).forEach((cells, offset) => {
-        if (cells.every((cell) => cell === null || String(cell).trim() === "")) return;
-        const row = headerIndex + offset + 2;
-        const saleDate = cellDate(cells[columns.saleDate]);
-        const collectedOn = cellDate(cells[columns.collectedOn]);
-        const received = cellNumber(cells[columns.receivedVes]);
-        const rate = columns.vesPerUsd >= 0 ? cellNumber(cells[columns.vesPerUsd]) : null;
-        if (!saleDate || !collectedOn || received === null || received <= 0) {
-            warnings.push(`Fila ${row}: fecha de venta, fecha de cobro o monto inválido.`);
-            return;
-        }
-        items.push({ saleReference: saleDate, collectedOn, receivedVes: received.toFixed(2), ...(rate && rate > 0 ? { vesPerUsd: String(rate) } : {}) });
-    });
-    return { items, warnings };
-}
-
 /**
  * Downloads a sample financed-sales workbook: one row per day with the date and
  * the financed sale amount in Bs. Any number of monthly sheets may follow the
@@ -142,16 +84,22 @@ export function downloadFinancedSalesTemplate(): void {
     XLSX.writeFile(workbook, "plantilla-ventas-financiadas.xlsx");
 }
 
-/** Downloads an empty deposits workbook with the expected columns. */
-export function downloadFinancedSaleCollectionsTemplate(): void {
+/**
+ * Downloads the calculator template: one row per financed sale with the sale
+ * date, either the days until the financier pays or the collection date, the
+ * financed amount and its currency. «tasa» optionally overrides the BCV rate of
+ * the sale date.
+ */
+export function downloadFinancedSalesCalculatorTemplate(): void {
     const sheet = XLSX.utils.aoa_to_sheet([
-        ["fecha venta", "fecha cobro", "monto cobrado", "tasa"],
-        ["01/10/2025", "15/10/2025", 3992.47, null],
+        ["fecha venta", "dias", "fecha cobro", "monto financiado", "moneda", "tasa"],
+        ["01/10/2025", 14, null, 2982.1, "Bs", null],
+        ["02/10/2025", null, "15/10/2025", 120.5, "USD", null],
     ]);
-    sheet["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 10 }];
+    sheet["!cols"] = [{ wch: 14 }, { wch: 8 }, { wch: 14 }, { wch: 18 }, { wch: 8 }, { wch: 10 }];
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheet, "Cobros");
-    XLSX.writeFile(workbook, "plantilla-cobros-financiadora.xlsx");
+    XLSX.utils.book_append_sheet(workbook, sheet, "Ventas financiadas");
+    XLSX.writeFile(workbook, "plantilla-calculadora-cashea.xlsx");
 }
 
 export type AccountRoleLabels = Record<FinancedSaleAccountRole, string>;
@@ -173,12 +121,14 @@ export function downloadFinancedSalesReportWorkbook(
     fileName: string,
 ): void {
     const detail: unknown[][] = [[
-        "Venta", "Fecha venta", "Monto venta Bs", "Tasa venta", "Venta USD", "% contado", "Contado Bs",
-        "Financiado Bs", "Financiado USD", "Fecha cobro", "Cobrado Bs", "Tasa implícita", "Diferencial Bs", "Saldo Bs", "Origen cobro", "Observación",
+        "Venta", "Fecha venta", "Monto", "Moneda", "Tasa venta", "Financiado Bs", "Financiado USD",
+        "Fecha cobro", "Cobrado Bs", "Tasa cobro", "Diferencial Bs", "Diferencial %", "Saldo Bs", "Origen cobro", "Observación",
     ]];
     for (const row of report.rows) {
+        const usd = row.line.saleAmountUsd !== undefined;
+        const amount = usd ? row.line.saleAmountUsd : row.line.saleAmountVes;
         if (row.status === "failed") {
-            detail.push([row.line.reference, formatDate(row.line.saleDate), num(row.line.saleAmountVes), null, null, null, null, null, null, null, null, null, null, null, null, row.reason]);
+            detail.push([row.line.reference, formatDate(row.line.saleDate), amount ? num(amount) : null, usd ? "USD" : "Bs", null, null, null, null, null, null, null, null, null, null, row.reason]);
             continue;
         }
         const s = row.settlement;
@@ -188,17 +138,16 @@ export function downloadFinancedSalesReportWorkbook(
             detail.push([
                 s.terms.reference,
                 formatDate(s.terms.saleDate),
-                first ? num(s.terms.saleAmountVes) : null,
+                first && amount ? num(amount) : null,
+                first ? (usd ? "USD" : "Bs") : null,
                 first ? num(s.terms.saleVesPerUsd) : null,
-                first ? num(s.saleAmountUsd) : null,
-                first ? num(s.terms.upfrontPercent) : null,
-                first ? num(s.upfrontVes) : null,
                 first ? num(s.financedVes) : null,
                 first ? num(s.financedUsd) : null,
                 collection ? formatDate(collection.collectedOn) : null,
                 collection ? num(collection.receivedVes) : null,
                 collection ? num(collection.impliedVesPerUsd) : null,
                 collection ? num(collection.exchangeDifference) : null,
+                collection ? num(exchangeDifferencePercentOf(collection.exchangeDifference, collection.carriedVes)) : null,
                 index === collections.length - 1 ? num(s.outstandingCarriedVes) : null,
                 MODE_LABELS[row.collectionMode],
                 row.saleRateSource === "override" ? "Tasa de venta manual" : null,
@@ -206,10 +155,10 @@ export function downloadFinancedSalesReportWorkbook(
         });
     }
 
-    const months: unknown[][] = [["Mes", "Ventas Bs", "Contado Bs", "Financiado Bs", "Cobrado Bs", "Ganancia cambiaria Bs", "Pérdida cambiaria Bs", "Diferencial neto Bs", "Saldo por cobrar Bs"]];
+    const months: unknown[][] = [["Mes", "Financiado Bs", "Cobrado Bs", "Ganancia cambiaria Bs", "Pérdida cambiaria Bs", "Diferencial neto Bs", "Saldo por cobrar Bs"]];
     for (const month of [...report.months, { month: "Total", ...report.totals }]) {
         months.push([
-            month.month, num(month.saleAmountVes), num(month.upfrontVes), num(month.financedVes), num(month.collectedVes),
+            month.month, num(month.financedVes), num(month.collectedVes),
             num(month.realizedGainVes), num(month.realizedLossVes), num(month.realizedGainVes) - num(month.realizedLossVes), num(month.outstandingCarriedVes),
         ]);
     }
@@ -272,10 +221,6 @@ export function cellNumber(cell: unknown): number | null {
     const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
     const value = Number(normalized);
     return Number.isFinite(value) ? value : null;
-}
-
-function headerColumn(cells: unknown[], names: readonly string[]): number {
-    return cells.findIndex((cell) => typeof cell === "string" && names.includes(cell.trim().toLowerCase()));
 }
 
 export function formatDate(iso: string): string {

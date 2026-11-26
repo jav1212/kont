@@ -1,14 +1,16 @@
 "use client";
 
 // Screen: realized exchange difference of sales financed by a third party
-// (Cashea). Imports the daily financed-sales workbook and, optionally, the
-// financier deposits; values each sale at the BCV rate of its date and shows
-// the detail, monthly totals and proposed journal entries.
+// (Cashea). Imports the calculator template (sale date, days or collection
+// date, financed amount and currency) or the legacy daily workbook in Bs,
+// values each sale at the BCV rate of its date and its collection at the BCV
+// rate of the collection date, and shows the detail, monthly totals and
+// proposed journal entries.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, BookCheck, Download, FileSpreadsheet, Landmark, TrendingUp, Upload } from "lucide-react";
 import { decimalToFixed, exactDecimal, type ExactDecimal } from "@kontave/monetary/domain";
-import { salesDate, type FinancedSaleAccountRole, type FinancedSaleCollection } from "@kontave/sales/domain";
+import { exchangeDifferencePercentOf, salesDate, type FinancedSaleAccountRole } from "@kontave/sales/domain";
 import {
     BuildFinancedSalesExchangeDifferenceReport,
     buildFinancedSalesJournal,
@@ -30,25 +32,32 @@ import type { JournalEntry } from "@/src/modules/accounting/backend/domain/journ
 import { notify } from "@/src/shared/frontend/notify";
 import { BcvUsdRateHistory } from "./bcv-usd-rate-history";
 import {
-    downloadFinancedSaleCollectionsTemplate,
+    downloadFinancedSalesCalculatorTemplate,
     downloadFinancedSalesReportWorkbook,
-    downloadFinancedSalesTemplate,
     formatDate,
-    readFinancedSaleCollectionsWorkbook,
     readFinancedSalesWorkbook,
     type AccountRoleLabels,
-    type ImportedFinancedSale,
 } from "./financed-sales-workbook";
+import { readForeignCurrencyCollectionsTemplate } from "../foreign-currency-collections/foreign-currency-collections-workbook";
 import { loadCompanyJournal, publishFinancedSalesJournal } from "./financed-sales-journal-publication";
 import { Cell, EditableCell, FieldLabel, INPUT_CLS, NumberField, Panel, Table } from "./financed-sales-ui";
 import { DEFAULT_ROLE_LABELS, ROLE_HINTS, describeFinancedSalesMonth as describeMonth, formatVes as fmt, monthLabel } from "@/src/modules/sales/shared/financed-sales-labels";
 
 const ROLE_ORDER: readonly FinancedSaleAccountRole[] = ["bank", "financier_receivable", "sales", "exchange_gain", "exchange_loss"];
-const MODE_LABELS = { actual: "Real", estimated: "Estimado", pending: "Pendiente" } as const;
+const MODE_LABELS = { actual: "Fecha indicada", estimated: "Estimado", pending: "Pendiente" } as const;
 
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Caracas" });
 
-type ManualCollection = { collectedOn: string; receivedVes: string };
+/** One imported financed sale; `settledOn` is null when the default term applies. */
+interface CalculatorSale {
+    reference: string;
+    saleDate: string;
+    amount: string;
+    currency: "VES" | "USD";
+    settledOn: string | null;
+    vesPerUsd: string | null;
+}
+
 const accountsStorageKey = (companyId: string) => `kont-financed-sales-accounts:${companyId}`;
 
 export function FinancedSalesExchangeDifferenceScreen() {
@@ -58,13 +67,9 @@ export function FinancedSalesExchangeDifferenceScreen() {
     const { data: periods } = useAccountingPeriods(companyId);
     const rates = useRef(new BcvUsdRateHistory());
     const salesInput = useRef<HTMLInputElement>(null);
-    const collectionsInput = useRef<HTMLInputElement>(null);
 
-    const [sales, setSales] = useState<ImportedFinancedSale[]>([]);
-    const [importedCollections, setImportedCollections] = useState<Record<string, FinancedSaleCollection[]>>({});
-    const [manualCollections, setManualCollections] = useState<Record<string, ManualCollection>>({});
+    const [sales, setSales] = useState<CalculatorSale[]>([]);
     const [rateOverrides, setRateOverrides] = useState<Record<string, string>>({});
-    const [upfrontPercent, setUpfrontPercent] = useState("60");
     const [settlementDays, setSettlementDays] = useState("14");
     const [asOf, setAsOf] = useState(today);
     const [accounts, setAccounts] = useState<RoleAccounts>({});
@@ -76,68 +81,55 @@ export function FinancedSalesExchangeDifferenceScreen() {
     const [loading, setLoading] = useState(false);
 
     const lines = useMemo<FinancedSaleReportLine[]>(() => sales.map((sale) => {
-        const manual = manualCollections[sale.reference];
-        const collections = manual
-            ? [{ collectedOn: salesDate(manual.collectedOn), receivedVes: exactDecimal(manual.receivedVes) }]
-            : importedCollections[sale.reference] ?? [];
-        const override = rateOverrides[sale.reference];
+        const override = rateOverrides[sale.reference] ?? sale.vesPerUsd;
         return {
             reference: sale.reference,
             saleDate: salesDate(sale.saleDate),
-            saleAmountVes: exactDecimal(sale.amountVes),
+            ...(sale.currency === "USD" ? { saleAmountUsd: exactDecimal(sale.amount) } : { saleAmountVes: exactDecimal(sale.amount) }),
+            ...(sale.settledOn ? { settledOn: salesDate(sale.settledOn) } : {}),
             ...(override ? { saleVesPerUsd: exactDecimal(override) } : {}),
-            collections,
         };
-    }), [sales, manualCollections, importedCollections, rateOverrides]);
+    }), [sales, rateOverrides]);
 
     useEffect(() => {
         if (!lines.length) { setReport(null); return; }
-        const percent = validDecimal(upfrontPercent);
         const days = Number(settlementDays);
-        if (!percent || !Number.isInteger(days) || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return;
+        if (!Number.isInteger(days) || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return;
         let cancelled = false;
         setLoading(true);
+        // The template amount is what the financier owes, so nothing is paid upfront.
         new BuildFinancedSalesExchangeDifferenceReport(rates.current)
-            .execute(lines, { upfrontPercent: percent, estimatedSettlementDays: days, asOf: salesDate(asOf) })
+            .execute(lines, { upfrontPercent: exactDecimal("0"), estimatedSettlementDays: days, asOf: salesDate(asOf) })
             .then((result) => { if (!cancelled) setReport(result); })
             .catch((error) => { if (!cancelled) notify.failure(error, "No se pudo calcular el diferencial cambiario."); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [lines, upfrontPercent, settlementDays, asOf]);
+    }, [lines, settlementDays, asOf]);
 
     async function handleSalesFile(file: File | undefined) {
         if (!file) return;
         try {
-            const result = await readFinancedSalesWorkbook(file);
+            // The legacy daily workbook (date and amount in Bs) remains accepted.
+            const template = await readForeignCurrencyCollectionsTemplate(file);
+            const result = template
+                ? {
+                    warnings: template.warnings,
+                    items: template.items.map((item): CalculatorSale => ({
+                        reference: item.reference, saleDate: item.collectedOn, amount: item.amount, currency: item.currency, settledOn: item.paidOn, vesPerUsd: item.vesPerUsd,
+                    })),
+                }
+                : await readFinancedSalesWorkbook(file).then(({ items, warnings }) => ({
+                    warnings,
+                    items: items.map((item): CalculatorSale => ({
+                        reference: item.reference, saleDate: item.saleDate, amount: item.amountVes, currency: "VES", settledOn: null, vesPerUsd: null,
+                    })),
+                }));
             setSales(result.items);
-            setManualCollections({});
             setRateOverrides({});
             result.warnings.forEach((warning) => notify.warning(warning));
             if (result.items.length) notify.success(`${result.items.length} ventas importadas.`);
         } catch (error) {
             notify.failure(error, "No se pudo leer el archivo de ventas.");
-        }
-    }
-
-    async function handleCollectionsFile(file: File | undefined) {
-        if (!file) return;
-        try {
-            const result = await readFinancedSaleCollectionsWorkbook(file);
-            const grouped: Record<string, FinancedSaleCollection[]> = {};
-            for (const item of result.items) {
-                (grouped[item.saleReference] ??= []).push({
-                    collectedOn: salesDate(item.collectedOn),
-                    receivedVes: exactDecimal(item.receivedVes),
-                    ...(item.vesPerUsd ? { vesPerUsd: exactDecimal(item.vesPerUsd) } : {}),
-                });
-            }
-            const unmatched = Object.keys(grouped).filter((reference) => !sales.some((sale) => sale.reference === reference));
-            if (unmatched.length) notify.warning(`${unmatched.length} cobros no coinciden con ninguna fecha de venta importada.`);
-            setImportedCollections(grouped);
-            result.warnings.forEach((warning) => notify.warning(warning));
-            if (result.items.length) notify.success(`${result.items.length} cobros importados.`);
-        } catch (error) {
-            notify.failure(error, "No se pudo leer el archivo de cobros.");
         }
     }
 
@@ -266,69 +258,53 @@ export function FinancedSalesExchangeDifferenceScreen() {
                         </BaseButton.Root>
                     </div>
                 )}
-                <Panel title="Datos y supuestos">
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div className="space-y-2">
+                <Panel title="Datos">
+                    <div className="grid gap-4 md:grid-cols-4">
+                        <div className="space-y-2 md:col-span-2">
                             <FieldLabel>Ventas financiadas</FieldLabel>
                             <input ref={salesInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => { void handleSalesFile(event.target.files?.[0]); event.target.value = ""; }} />
                             <div className="flex gap-2">
                                 <BaseButton.Root variant="secondary" size="sm" fullWidth leftIcon={<Upload size={14} strokeWidth={2} />} onPress={() => salesInput.current?.click()}>
-                                    {sales.length ? `${sales.length} ventas · cambiar archivo` : "Importar Excel de ventas"}
+                                    {sales.length ? `${sales.length} ventas · cambiar archivo` : "Importar Excel"}
                                 </BaseButton.Root>
-                                <BaseButton.Root variant="ghost" size="sm" leftIcon={<FileSpreadsheet size={14} strokeWidth={2} />} onPress={downloadFinancedSalesTemplate}>
+                                <BaseButton.Root variant="ghost" size="sm" leftIcon={<FileSpreadsheet size={14} strokeWidth={2} />} onPress={downloadFinancedSalesCalculatorTemplate}>
                                     Plantilla
                                 </BaseButton.Root>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <FieldLabel>Cobros de la financiadora (opcional)</FieldLabel>
-                            <input ref={collectionsInput} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => { void handleCollectionsFile(event.target.files?.[0]); event.target.value = ""; }} />
-                            <div className="flex gap-2">
-                                <BaseButton.Root variant="secondary" size="sm" fullWidth leftIcon={<Upload size={14} strokeWidth={2} />} onPress={() => collectionsInput.current?.click()} isDisabled={!sales.length}>
-                                    {Object.keys(importedCollections).length ? `${Object.keys(importedCollections).length} fechas con cobro` : "Importar cobros"}
-                                </BaseButton.Root>
-                                <BaseButton.Root variant="ghost" size="sm" leftIcon={<FileSpreadsheet size={14} strokeWidth={2} />} onPress={downloadFinancedSaleCollectionsTemplate}>
-                                    Plantilla
-                                </BaseButton.Root>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <NumberField label="% contado" value={upfrontPercent} onCommit={setUpfrontPercent} />
-                            <NumberField label="Días cobro" value={settlementDays} onCommit={setSettlementDays} />
-                            <div>
-                                <FieldLabel>Corte</FieldLabel>
-                                <input type="date" value={asOf} onChange={(event) => setAsOf(event.target.value)} className={INPUT_CLS} />
-                            </div>
+                        <NumberField label="Días hasta el cobro" value={settlementDays} onCommit={setSettlementDays} />
+                        <div>
+                            <FieldLabel>Corte</FieldLabel>
+                            <input type="date" value={asOf} onChange={(event) => setAsOf(event.target.value)} className={INPUT_CLS} />
                         </div>
                     </div>
                     <p className="mt-4 font-sans text-[12px] leading-snug text-[var(--text-tertiary)]">
-                        Cada venta se valora a la tasa BCV vigente en su fecha. Si una venta no tiene cobro real, se estima su cobro a la tasa BCV de la fecha de venta + {settlementDays || "N"} días;
-                        si esa fecha es posterior al corte, queda pendiente. El diferencial es lo cobrado en Bs menos el saldo de la cuenta por cobrar en Bs históricos.
+                        Cada fila es un monto financiado (en USD o Bs) que se registra a la tasa BCV de la fecha de venta y se cobra a la tasa BCV de la fecha de cobro.
+                        La plantilla indica por fila los días o la fecha de cobro; las filas sin ninguno de los dos se estiman a {settlementDays || "N"} días.
+                        Si el cobro es posterior al corte, queda pendiente. El diferencial es lo cobrado en Bs menos lo registrado.
                     </p>
                 </Panel>
 
                 {!sales.length ? (
                     <div className="rounded-xl border border-dashed border-border-light bg-surface-1 px-5 py-16 text-center font-sans text-[13px] text-[var(--text-tertiary)]">
-                        Importa el Excel de ventas a crédito Cashea (una fila por día, cualquier cantidad de hojas) para calcular el diferencial cambiario.
+                        Descarga la plantilla y llénala con la fecha de venta, los días o la fecha de cobro y el monto financiado con su moneda.
                     </div>
                 ) : !report ? (
                     <div className="px-5 py-12 text-center font-sans text-[13px] text-[var(--text-tertiary)]">{loading ? "Consultando tasas BCV y calculando…" : "Sin datos."}</div>
                 ) : (
                     <>
                         <div className="grid gap-4 md:grid-cols-4">
-                            <StatTile label="Ventas" value={`Bs. ${fmt(report.totals.saleAmountVes)}`} sublabel={`${report.rows.length} días`} icon={Landmark} />
-                            <StatTile label="Financiado" value={`Bs. ${fmt(report.totals.financedVes)}`} sublabel={`Saldo: Bs. ${fmt(report.totals.outstandingCarriedVes)}`} icon={ArrowLeftRight} tone="muted" />
-                            <StatTile label="Cobrado" value={`Bs. ${fmt(report.totals.collectedVes)}`} sublabel={failed ? `${failed} filas con error` : "Cobros reales y estimados"} icon={Download} tone={failed ? "warning" : "default"} />
+                            <StatTile label="Financiado" value={`Bs. ${fmt(report.totals.financedVes)}`} sublabel={`${report.rows.length} ventas`} icon={Landmark} />
+                            <StatTile label="Pendiente" value={`Bs. ${fmt(report.totals.outstandingCarriedVes)}`} sublabel="Cobros posteriores al corte" icon={ArrowLeftRight} tone="muted" />
+                            <StatTile label="Cobrado" value={`Bs. ${fmt(report.totals.collectedVes)}`} sublabel={failed ? `${failed} filas con error` : "Cobros indicados y estimados"} icon={Download} tone={failed ? "warning" : "default"} />
                             <StatTile label="Diferencial neto" value={`Bs. ${fmt(String(net))}`} sublabel={`Pérdidas: Bs. ${fmt(report.totals.realizedLossVes)}`} icon={TrendingUp} tone={net >= 0 ? "success" : "warning"} />
                         </div>
 
                         <Panel title="Resumen mensual" aside={loading ? "Recalculando…" : "El diferencial se reconoce en el mes del cobro"}>
-                            <Table headers={["Mes", "Ventas", "Contado", "Financiado", "Cobrado", "Ganancia", "Pérdida", "Saldo"]}>
+                            <Table headers={["Mes", "Financiado", "Cobrado", "Ganancia", "Pérdida", "Saldo"]}>
                                 {report.months.map((month) => (
                                     <tr key={month.month} className="border-b border-border-light/50 hover:bg-surface-2">
                                         <Cell left>{monthLabel(month.month)}</Cell>
-                                        <Cell>{fmt(month.saleAmountVes)}</Cell>
-                                        <Cell>{fmt(month.upfrontVes)}</Cell>
                                         <Cell>{fmt(month.financedVes)}</Cell>
                                         <Cell>{fmt(month.collectedVes)}</Cell>
                                         <Cell tone="success">{fmt(month.realizedGainVes)}</Cell>
@@ -339,15 +315,17 @@ export function FinancedSalesExchangeDifferenceScreen() {
                             </Table>
                         </Panel>
 
-                        <Panel title="Detalle por venta" aside="Edita fecha y monto cobrado, o la tasa de la venta">
-                            <Table headers={["Fecha venta", "Venta Bs", "Tasa venta", "Contado Bs", "Financiado Bs", "Financiado USD", "Fecha cobro", "Cobrado Bs", "Tasa implícita", "Diferencial Bs", "Origen"]}>
+                        <Panel title="Detalle por venta" aside="Edita la tasa de la venta si el sistema usó otra">
+                            <Table headers={["Fecha venta", "Monto", "Tasa venta", "Financiado Bs", "USD", "Fecha cobro", "Tasa cobro", "Cobrado Bs", "Diferencial Bs", "%", "Origen"]}>
                                 {report.rows.map((row) => {
                                     const reference = row.line.reference;
+                                    const usd = row.line.saleAmountUsd;
+                                    const amount = usd !== undefined ? `$ ${fmt(usd)}` : row.line.saleAmountVes ? `Bs. ${fmt(row.line.saleAmountVes)}` : "—";
                                     if (row.status === "failed") {
                                         return (
                                             <tr key={reference} className="border-b border-border-light/50">
                                                 <Cell left>{formatDate(row.line.saleDate)}</Cell>
-                                                <Cell>{fmt(row.line.saleAmountVes)}</Cell>
+                                                <Cell>{amount}</Cell>
                                                 <td className="px-3 py-1.5"><EditableCell value={rateOverrides[reference] ?? ""} placeholder="Tasa" onCommit={(value) => setRateOverrides((current) => withValue(current, reference, value))} /></td>
                                                 <td colSpan={8} className="px-3 py-1.5 font-sans text-[12px] text-text-warning">{row.reason}</td>
                                             </tr>
@@ -355,43 +333,23 @@ export function FinancedSalesExchangeDifferenceScreen() {
                                     }
                                     const s = row.settlement;
                                     const collection = s.collections[s.collections.length - 1];
-                                    const editable = s.collections.length <= 1;
+                                    const difference = Number(s.exchangeDifference);
+                                    const tone = difference < 0 ? "warning" as const : difference > 0 ? "success" as const : undefined;
                                     return (
                                         <tr key={reference} className="border-b border-border-light/50 hover:bg-surface-2">
                                             <Cell left>{formatDate(s.terms.saleDate)}{reference.includes("#") ? ` (${reference.split("#")[1]})` : ""}</Cell>
-                                            <Cell>{fmt(s.terms.saleAmountVes)}</Cell>
+                                            <Cell>{amount}</Cell>
                                             <td className="px-3 py-1.5"><EditableCell value={rateOverrides[reference] ?? decimalToFixed(s.terms.saleVesPerUsd, 4)} onCommit={(value) => setRateOverrides((current) => withValue(current, reference, value))} /></td>
-                                            <Cell>{fmt(s.upfrontVes)}</Cell>
                                             <Cell>{fmt(s.financedVes)}</Cell>
                                             <Cell>{fmt(s.financedUsd)}</Cell>
-                                            <td className="px-3 py-1.5">
-                                                {editable ? (
-                                                    <input type="date" value={manualCollections[reference]?.collectedOn ?? (row.collectionMode === "pending" ? "" : collection?.collectedOn ?? "")}
-                                                        onChange={(event) => {
-                                                            const collectedOn = event.target.value;
-                                                            setManualCollections((current) => {
-                                                                const receivedVes = current[reference]?.receivedVes ?? collection?.receivedVes ?? s.financedVes;
-                                                                return collectedOn ? { ...current, [reference]: { collectedOn, receivedVes } } : withoutKey(current, reference);
-                                                            });
-                                                        }}
-                                                        className={`${INPUT_CLS} h-8 w-[136px]`} />
-                                                ) : <span className="text-[12px]">{s.collections.length} cobros</span>}
-                                            </td>
-                                            <td className="px-3 py-1.5">
-                                                {editable ? (
-                                                    <EditableCell value={manualCollections[reference]?.receivedVes ?? (row.collectionMode === "pending" ? "" : collection?.receivedVes ?? "")}
-                                                        placeholder="Bs"
-                                                        onCommit={(value) => setManualCollections((current) => {
-                                                            const collectedOn = current[reference]?.collectedOn ?? collection?.collectedOn;
-                                                            return value && collectedOn ? { ...current, [reference]: { collectedOn, receivedVes: value } } : withoutKey(current, reference);
-                                                        })} />
-                                                ) : fmt(s.collections.reduce((total, item) => total + Number(item.receivedVes), 0).toFixed(2))}
-                                            </td>
+                                            <Cell>{collection ? formatDate(collection.collectedOn) : "—"}</Cell>
                                             <Cell>{collection ? fmt(collection.impliedVesPerUsd, 4) : "—"}</Cell>
-                                            <Cell tone={Number(s.exchangeDifference) < 0 ? "warning" : Number(s.exchangeDifference) > 0 ? "success" : undefined}>{s.collections.length ? fmt(s.exchangeDifference) : "—"}</Cell>
+                                            <Cell>{collection ? fmt(collection.receivedVes) : "—"}</Cell>
+                                            <Cell tone={tone}>{collection ? fmt(s.exchangeDifference) : "—"}</Cell>
+                                            <Cell tone={tone}>{collection ? `${fmt(exchangeDifferencePercentOf(s.exchangeDifference, s.financedVes))} %` : "—"}</Cell>
                                             <Cell left>
-                                                <span className={["rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.1em]", manualCollections[reference] || row.collectionMode === "actual" ? "bg-success/10 text-text-success" : row.collectionMode === "estimated" ? "bg-warning/10 text-text-warning" : "bg-surface-2 text-[var(--text-tertiary)]"].join(" ")}>
-                                                    {manualCollections[reference] ? "Manual" : MODE_LABELS[row.collectionMode]}
+                                                <span className={["rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.1em]", row.collectionMode === "actual" ? "bg-success/10 text-text-success" : row.collectionMode === "estimated" ? "bg-warning/10 text-text-warning" : "bg-surface-2 text-[var(--text-tertiary)]"].join(" ")}>
+                                                    {MODE_LABELS[row.collectionMode]}
                                                 </span>
                                             </Cell>
                                         </tr>
@@ -425,7 +383,7 @@ export function FinancedSalesExchangeDifferenceScreen() {
                                 <div className="space-y-1.5 font-sans text-[12px] text-[var(--text-secondary)]">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={includeEstimated} onChange={(event) => setIncludeEstimated(event.target.checked)} />
-                                        Incluir cobros estimados (no recomendado: no son depósitos reales)
+                                        Incluir cobros estimados (filas sin días ni fecha de cobro)
                                     </label>
                                     {plan ? (
                                         <p>
@@ -476,11 +434,9 @@ function validDecimal(value: string): ExactDecimal | null {
 
 function withValue(current: Record<string, string>, key: string, value: string): Record<string, string> {
     const normalized = value.trim().replace(",", ".");
-    if (!normalized || !validDecimal(normalized) || Number(normalized) <= 0) return withoutKey(current, key);
+    if (!normalized || !validDecimal(normalized) || Number(normalized) <= 0) {
+        const { [key]: _removed, ...rest } = current;
+        return rest;
+    }
     return { ...current, [key]: normalized };
-}
-
-function withoutKey<T>(current: Record<string, T>, key: string): Record<string, T> {
-    const { [key]: _removed, ...rest } = current;
-    return rest;
 }

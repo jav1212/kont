@@ -81,3 +81,24 @@ test("wraps rate source failures as an unavailable repository", async () => {
     (error) => error instanceof SalesFailure && error.code === "SALES_REPOSITORY_UNAVAILABLE",
   );
 });
+
+test("settles a dollar sale at the rate of its own collection date as an actual collection", async () => {
+  const calls: Array<[string, string]> = [];
+  const report = await new BuildFinancedSalesExchangeDifferenceReport(history({ "2025-10-01": "200", "2025-10-08": "210", "2025-10-20": "230" }, calls)).execute([
+    { reference: "a", saleDate: salesDate("2025-10-01"), saleAmountUsd: d("100"), settledOn: salesDate("2025-10-08") },
+    { reference: "b", saleDate: salesDate("2025-10-01"), saleAmountVes: d("2000"), settledOn: salesDate("2025-12-01") },
+    { reference: "c", saleDate: salesDate("2025-10-05"), saleAmountUsd: d("10"), settledOn: salesDate("2025-10-04") },
+    { reference: "d", saleDate: salesDate("2025-10-01") },
+  ], { ...policy, upfrontPercent: d("0") });
+  const [dollars, pending, early, missing] = report.rows;
+  assert.ok(dollars?.status === "calculated" && pending?.status === "calculated");
+  assert.equal(dollars.collectionMode, "actual");
+  assert.equal(dollars.settlement.terms.saleAmountVes, "20000");
+  assert.equal(dollars.settlement.financedVes, "20000");
+  assert.equal(dollars.settlement.collections[0]?.collectedOn, "2025-10-08");
+  assert.equal(dollars.settlement.exchangeDifference, "1000");
+  assert.equal(pending.collectionMode, "pending");
+  assert.equal(early?.status, "failed");
+  assert.equal(missing?.status, "failed");
+  assert.deepEqual(calls, [["2025-09-21", "2025-11-30"]], "rates reach the latest collection date up to the cut-off");
+});

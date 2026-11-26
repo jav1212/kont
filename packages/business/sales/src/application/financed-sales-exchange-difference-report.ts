@@ -41,13 +41,22 @@ export interface UsdVesRateHistory {
 export interface FinancedSaleReportLine {
   readonly reference: string;
   readonly saleDate: SalesDate;
-  readonly saleAmountVes: ExactDecimal;
+  /** Sale amount in bolivars; required unless `saleAmountUsd` is given. */
+  readonly saleAmountVes?: ExactDecimal;
+  /** Sale amount in dollars, booked at the sale rate; takes precedence over `saleAmountVes`. */
+  readonly saleAmountUsd?: ExactDecimal;
   /** Overrides the report-wide upfront percentage. */
   readonly upfrontPercent?: ExactDecimal;
   /** Overrides the official rate of the sale date. */
   readonly saleVesPerUsd?: ExactDecimal;
   /** Actual financier deposits; when empty, the report may estimate one. */
   readonly collections?: readonly FinancedSaleCollection[];
+  /**
+   * Date the financier settles the whole balance, at the official rate of that
+   * date. Used when no deposits are given; it replaces the estimated settlement
+   * and counts as an actual collection.
+   */
+  readonly settledOn?: SalesDate;
 }
 
 /** Report-wide assumptions. */
@@ -119,8 +128,8 @@ const RATE_LOOKBACK_DAYS = 10;
 /**
  * Builds the realized exchange-difference report for sales financed by a third
  * party. Each sale is valued at the official rate effective on its date; a sale
- * without deposits is settled at the official rate `estimatedSettlementDays`
- * later, unless that date is after `asOf`.
+ * without deposits is settled at the official rate of its `settledOn` date, or
+ * `estimatedSettlementDays` later as an estimate, unless that date is after `asOf`.
  */
 export class BuildFinancedSalesExchangeDifferenceReport {
   /**
@@ -157,7 +166,8 @@ export class BuildFinancedSalesExchangeDifferenceReport {
     const first = dates[0];
     const last = dates[dates.length - 1];
     if (!first || !last) return () => null;
-    const end = minDate(addDays(last, settlementDays), asOf);
+    const settlements = lines.map((line) => line.settledOn ?? addDays(line.saleDate, settlementDays)).sort();
+    const end = minDate(settlements[settlements.length - 1] ?? last, asOf);
     let points: readonly UsdVesRatePoint[];
     try {
       points = await this.rates.ratesBetween(addDays(first, -RATE_LOOKBACK_DAYS), end < first ? first : end);
@@ -205,10 +215,14 @@ function calculateRow(
   try {
     const saleVesPerUsd = line.saleVesPerUsd ?? rateOn(line.saleDate);
     if (saleVesPerUsd === null) return { status: "failed", line, reason: "No hay tasa oficial para la fecha de la venta." };
+    const saleAmountVes = line.saleAmountUsd === undefined
+      ? line.saleAmountVes
+      : quantizeDecimal(multiplyDecimal(line.saleAmountUsd, saleVesPerUsd), { scale: 2, mode: "half_up" });
+    if (saleAmountVes === undefined) return { status: "failed", line, reason: "Falta el monto de la venta." };
     const terms = {
       reference: line.reference,
       saleDate: line.saleDate,
-      saleAmountVes: line.saleAmountVes,
+      saleAmountVes,
       upfrontPercent: line.upfrontPercent ?? policy.upfrontPercent,
       saleVesPerUsd,
     };
@@ -216,14 +230,15 @@ function calculateRow(
     if (line.collections && line.collections.length > 0) {
       return { status: "calculated", line, settlement: settleFinancedSale(terms, line.collections), saleRateSource, collectionMode: "actual" };
     }
-    const settlementDate = addDays(line.saleDate, policy.estimatedSettlementDays);
+    const settlementDate = line.settledOn ?? addDays(line.saleDate, policy.estimatedSettlementDays);
     const unsettled = settleFinancedSale(terms);
+    if (settlementDate < line.saleDate) return { status: "failed", line, reason: "La fecha de cobro es anterior a la venta." };
     if (settlementDate > asOf) return { status: "calculated", line, settlement: unsettled, saleRateSource, collectionMode: "pending" };
     const settlementRate = rateOn(settlementDate);
-    if (settlementRate === null) return { status: "failed", line, reason: "No hay tasa oficial para la fecha estimada de cobro." };
+    if (settlementRate === null) return { status: "failed", line, reason: "No hay tasa oficial para la fecha de cobro." };
     const receivedVes = quantizeDecimal(multiplyDecimal(unsettled.financedUsd, settlementRate), { scale: 2, mode: "half_up" });
     const settlement = settleFinancedSale(terms, [{ collectedOn: settlementDate, receivedVes }]);
-    return { status: "calculated", line, settlement, saleRateSource, collectionMode: "estimated" };
+    return { status: "calculated", line, settlement, saleRateSource, collectionMode: line.settledOn ? "actual" : "estimated" };
   } catch (error) {
     if (error instanceof SalesFailure) return { status: "failed", line, reason: error.message };
     throw error;
