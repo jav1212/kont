@@ -146,7 +146,7 @@ export function ForeignCurrencyCollectionsScreen() {
                     </div>
                     <p className="mt-4 font-sans text-[12px] leading-snug text-[var(--text-tertiary)]">
                         Las divisas se registran a la tasa BCV de la fecha de venta y se valoran a la tasa BCV de la fecha en que se recibieron o se usaron para pagar.
-                        El diferencial es el valor al recibo menos el registrado y puede ser ganancia o pérdida. La plantilla indica por fila los días o la fecha de recibo y el monto en USD o Bs;
+                        El diferencial es el valor al recibo menos el registrado, puede ser ganancia o pérdida y se agrupa en el mes de pago. La plantilla indica por fila los días o la fecha de recibo y el monto en USD o Bs;
                         las filas sin ninguno de los dos y el informe de IGTF (montos en Bs) usan los días hasta el pago. Un recibo posterior al corte se valora provisionalmente a la tasa del corte.
                     </p>
                     {usesTerm && term === null && <p className="mt-2 font-sans text-[12px] text-text-warning">Indica los días hasta el pago como un número entero.</p>}
@@ -167,7 +167,7 @@ export function ForeignCurrencyCollectionsScreen() {
                             <StatTile label="Diferencial neto" value={`Bs. ${fmt(String(net))}`} sublabel={`${pct(report.totals.exchangeDifferencePercent)} del registrado · Pérdidas: Bs. ${fmt(report.totals.lossVes)}`} icon={TrendingUp} tone={net >= 0 ? "success" : "warning"} />
                         </div>
 
-                        <Panel title="Resumen por mes de venta" aside={loading ? "Recalculando…" : provisional ? "* Incluye recibos posteriores al corte" : "Clic en un mes para ver sus cobros"}>
+                        <Panel title="Resumen por mes de pago" aside={loading ? "Recalculando…" : provisional ? "* Incluye recibos posteriores al corte" : "Clic en un mes para ver sus cobros"}>
                             <Table headers={["Mes", "Cobros", "Registrado Bs", "IGTF", "USD", "Valor al recibo", "Ganancia", "Pérdida", "Neto", "%"]}>
                                 {report.months.map((month) => (
                                     <tr key={month.month} onClick={() => setOpenMonth((current) => current === month.month ? null : month.month)}
@@ -203,7 +203,7 @@ export function ForeignCurrencyCollectionsScreen() {
                             openMonth ? <BaseButton.Root variant="ghost" size="sm" onPress={() => setOpenMonth(null)}>Ver todos los meses</BaseButton.Root> : "Edita la tasa de venta si el sistema usó otra"
                         }>
                             <Table headers={["Fecha venta", "Monto", "Tasa venta", "USD", "Registrado Bs", "Fecha recibo", "Tasa recibo", "Valor al recibo", "Diferencial", "%"]}>
-                                {report.rows.filter((row) => !openMonth || row.line.collectedOn.startsWith(openMonth)).map((row) => {
+                                {report.rows.filter((row) => !openMonth || row.scheduledPaidOn.startsWith(openMonth)).map((row) => {
                                     const reference = row.line.reference;
                                     const amount = `${row.line.currency === "USD" ? "$" : "Bs."} ${fmt(row.line.amount)}`;
                                     const rateCell = (value: string) => (

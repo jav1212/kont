@@ -73,12 +73,13 @@ test("values dollars collected on 01/10 at the rate of the payment seven days la
   assert.equal(usd.valuation.bookedVes, "4761612");
   assert.equal(usd.valuation.exchangeDifference, "238080.6");
   assert.equal(usd.valuation.exchangeDifferencePercent, "5");
-  // Paid in the next month: still reported with the collections of October.
+  // Collected in October but paid in November: reported in the month of payment.
   assert.equal(ves.valuation.paidOn, "2025-11-06");
   assert.equal(ves.valuation.exchangeDifference, "100");
   assert.equal(report.paymentTermDays, 7);
   assert.deepEqual(report.months.map((month) => [month.month, month.days, month.collectedUsd, month.gainVes, month.provisional]), [
-    ["2025-10", 2, "23818.06", "238180.6", false],
+    ["2025-10", 1, "23808.06", "238080.6", false],
+    ["2025-11", 1, "10", "100", false],
   ]);
   assert.equal(report.totals.igtfVes, "66");
   assert.equal(report.totals.exchangeDifferencePercent, "5");

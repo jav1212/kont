@@ -243,7 +243,7 @@ export function downloadForeignCurrencyCollectionsWorkbook(
         ]);
     }
 
-    const months: unknown[][] = [...title, ["Mes de venta", "Cobros", "Base Bs", "IGTF Bs", "USD", "Valor al recibo Bs", "Ganancia Bs", "Pérdida Bs", "Diferencial neto Bs", "Diferencial %", "Observación"]];
+    const months: unknown[][] = [...title, ["Mes de pago", "Cobros", "Base Bs", "IGTF Bs", "USD", "Valor al recibo Bs", "Ganancia Bs", "Pérdida Bs", "Diferencial neto Bs", "Diferencial %", "Observación"]];
     for (const month of report.months) {
         months.push([
             month.month, month.days, num(month.bookedVes), num(month.igtfVes), num(month.collectedUsd),

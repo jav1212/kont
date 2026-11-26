@@ -161,8 +161,10 @@ día en Bs; encabezado repetido por página; ignora títulos, notas y totales).
   y siempre en el informe de IGTF, aplica «Días hasta el pago» (7 por defecto).
 - Monto en USD: registrado = USD × tasa de venta. Monto en Bs (base del IGTF):
   USD = Bs ÷ tasa de venta, redondeado a centavos. La tasa de venta es editable.
-- Diferencial = USD × tasa del recibo − registrado. Los totales se agrupan por
-  mes de venta. Un recibo posterior al corte se valora provisionalmente al corte.
+- Diferencial = USD × tasa del recibo − registrado, también como % del
+  registrado. Decisión del usuario (2026-11-26): los totales se agrupan por mes
+  de pago (cuando se realiza el diferencial). Un recibo posterior al corte se
+  valora provisionalmente al corte y queda en el mes de su fecha de pago.
 - Cálculo en `valueForeignCurrencyCollection` (`@kontave/sales/domain`) y
   `BuildForeignCurrencyCollectionsExchangeDifferenceReport`
   (`@kontave/sales/application`); sin tablas nuevas ni asientos contables.
