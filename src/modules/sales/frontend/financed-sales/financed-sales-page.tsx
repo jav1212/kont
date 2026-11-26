@@ -12,7 +12,7 @@ import { FinancedSalesLedgerScreen } from "./financed-sales-ledger-screen";
 const TABS = [
     { id: "ledger", label: "Libro Cashea", subtitle: "Ventas financiadas (Cashea) · cobro diferido a tasa BCV" },
     { id: "calculator", label: "Calculadora (Excel)", subtitle: "Ventas financiadas (Cashea) · cobro diferido a tasa BCV" },
-    { id: "foreign-currency", label: "Cobros en divisas (IGTF)", subtitle: "Divisas cobradas · valoradas a la tasa BCV del cierre de cada mes" },
+    { id: "foreign-currency", label: "Cobros en divisas", subtitle: "Divisas cobradas · valoradas a la tasa BCV de la fecha de pago" },
 ] as const;
 
 export function FinancedSalesPage() {

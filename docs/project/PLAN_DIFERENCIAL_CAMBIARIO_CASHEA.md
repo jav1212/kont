@@ -146,18 +146,23 @@ en contado + CxC Cashea y guardar el diferencial por abono de CxC de facturas.
    Un movimiento bancario solo puede respaldar un depósito (índice único
    parcial). Migración aditiva `20261121170000_financed_sales_reconciliation.sql`.
 
-### Cobros en divisas (IGTF) — implementado
+### Cobros en divisas — implementado
 
-Pestaña «Cobros en divisas (IGTF)» en Ventas → Diferencial cambiario. Importa el
-«Informe de I.G.T.F. Percibido» del sistema de facturación (una fila por día;
-encabezado repetido por página; ignora títulos, notas y totales).
+Pestaña «Cobros en divisas» en Ventas → Diferencial cambiario. Importa la
+plantilla de cobros (`fecha venta | dias | fecha recibo | monto | moneda | tasa`)
+o el «Informe de I.G.T.F. Percibido» del sistema de facturación (una fila por
+día en Bs; encabezado repetido por página; ignora títulos, notas y totales).
 
-- La base del IGTF es USD cobrados × tasa BCV del día, así que
-  USD = base ÷ tasa BCV del día (redondeado a centavos; la tasa es editable).
-- Decisión del usuario (2026-11-25): los dólares se usan dentro del mes. Cada
-  día se valora a la tasa BCV vigente el último día de su mes y el diferencial
-  (valor al cierre − base) se reconoce en ese mes; no se arrastra saldo. Un mes
-  sin terminar cierra provisionalmente a la fecha de corte.
+- Criterio del contador (2026-11-26): las divisas recibidas se usan para pagar
+  facturas días después; SENIAT reconoce el diferencial entre la tasa BCV de la
+  fecha de venta y la de la fecha de pago (ganancia o pérdida). Reemplaza la
+  valoración al cierre de mes del 2026-11-25.
+- Cada fila indica días o fecha de recibo (manda la fecha); si no trae ninguno,
+  y siempre en el informe de IGTF, aplica «Días hasta el pago» (7 por defecto).
+- Monto en USD: registrado = USD × tasa de venta. Monto en Bs (base del IGTF):
+  USD = Bs ÷ tasa de venta, redondeado a centavos. La tasa de venta es editable.
+- Diferencial = USD × tasa del recibo − registrado. Los totales se agrupan por
+  mes de venta. Un recibo posterior al corte se valora provisionalmente al corte.
 - Cálculo en `valueForeignCurrencyCollection` (`@kontave/sales/domain`) y
   `BuildForeignCurrencyCollectionsExchangeDifferenceReport`
   (`@kontave/sales/application`); sin tablas nuevas ni asientos contables.

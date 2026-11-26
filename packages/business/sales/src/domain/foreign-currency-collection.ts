@@ -12,74 +12,88 @@ import { SalesFailure } from "./sales-failure";
 import { salesDate, type SalesDate } from "./temporal";
 
 /*
- * Foreign currency collected at the counter (the IGTF perception base) is
- * booked in bolivars at the official rate of the collection date. The dollars
- * are spent within the month, so each day's dollars are valued once at the
- * official rate of the month close and the difference is recognized in that
- * month; nothing is carried into the next month.
+ * Foreign currency collected (for example the IGTF perception base) is booked
+ * in bolivars at the official rate of the collection date. The dollars are
+ * later spent paying invoices; SENIAT treats the change of the official rate
+ * between the collection and the payment as an exchange difference, which may
+ * be a gain or a loss.
  */
 
 const ZERO = exactDecimal("0");
 const CENTS = { scale: 2, mode: "half_up" } as const;
 
-/** Foreign currency collected on one day, as booked in bolivars. */
+/** Currency an amount of foreign currency collected was reported in. */
+export type ForeignCurrencyCollectionCurrency = "VES" | "USD";
+
+/** Foreign currency collected on one day. */
 export interface ForeignCurrencyCollection {
   readonly reference: string;
   readonly collectedOn: SalesDate;
-  /** Bolivars booked for the collection: USD collected times the rate of the day. */
-  readonly bookedVes: ExactDecimal;
+  /**
+   * Amount reported for the collection: dollars, or their bolivar equivalent
+   * booked at the rate of the day (the IGTF base).
+   */
+  readonly amount: ExactDecimal;
+  readonly currency: ForeignCurrencyCollectionCurrency;
   /** Official rate the collection was booked at. */
   readonly vesPerUsd: ExactDecimal;
 }
 
-/** Valuation of one day's collection at the month close. */
+/** Valuation of one collection on the date its dollars were paid out. */
 export interface ForeignCurrencyCollectionValuation {
   readonly collection: ForeignCurrencyCollection;
   /** Dollars collected, rounded to cents. */
   readonly collectedUsd: ExactDecimal;
-  readonly closingDate: SalesDate;
-  readonly closingVesPerUsd: ExactDecimal;
-  /** Dollars valued at the closing rate. */
-  readonly closingVes: ExactDecimal;
-  /** `closingVes - bookedVes`; positive is a gain. */
+  /** Bolivars booked at the collection rate, rounded to cents. */
+  readonly bookedVes: ExactDecimal;
+  /** Date the dollars were valued at: the payment, or the report cut-off when that is earlier. */
+  readonly paidOn: SalesDate;
+  readonly paymentVesPerUsd: ExactDecimal;
+  /** Dollars valued at the payment rate. */
+  readonly paymentVes: ExactDecimal;
+  /** `paymentVes - bookedVes`; positive is a gain. */
   readonly exchangeDifference: ExactDecimal;
   readonly direction: ExchangeDifferenceDirection;
 }
 
 /**
- * Values one day's foreign-currency collection at the month-close rate.
- * Dollars are derived from the booked bolivars and rounded to cents, because
- * the booked amount is itself a rounded conversion of whole cents of dollars.
- * @param collection - Collection booked at the rate of its date.
- * @param closingDate - Month close (or report cut-off) the dollars are valued at.
- * @param closingVesPerUsd - Official rate in effect on `closingDate`.
+ * Values one foreign-currency collection at the official rate of the date its
+ * dollars were paid out. A bolivar amount is converted to dollars and rounded
+ * to cents, because it is itself a rounded conversion of whole cents of
+ * dollars; a dollar amount is booked at the collection rate.
+ * @param collection - Collection and the rate of its date.
+ * @param paidOn - Date the dollars were paid out (or the report cut-off).
+ * @param paymentVesPerUsd - Official rate in effect on `paidOn`.
  * @returns The valuation and its exchange difference.
  * @throws {SalesFailure} `SALES_FINANCED_COLLECTION_INVALID` when amounts or rates are not positive,
- * or when the closing date precedes the collection.
+ * or when the payment precedes the collection.
  */
 export function valueForeignCurrencyCollection(
   collection: ForeignCurrencyCollection,
-  closingDate: SalesDate,
-  closingVesPerUsd: ExactDecimal,
+  paidOn: SalesDate,
+  paymentVesPerUsd: ExactDecimal,
 ): ForeignCurrencyCollectionValuation {
   const collectedOn = salesDate(collection.collectedOn);
-  const closing = salesDate(closingDate);
-  const bookedVes = exactDecimal(collection.bookedVes);
+  const payment = salesDate(paidOn);
+  const amount = exactDecimal(collection.amount);
   const rate = exactDecimal(collection.vesPerUsd);
-  const closingRate = exactDecimal(closingVesPerUsd);
-  if (compareDecimal(bookedVes, ZERO) <= 0) throw invalid("Collected amount must be positive.");
-  if (compareDecimal(rate, ZERO) <= 0 || compareDecimal(closingRate, ZERO) <= 0) throw invalid("Exchange rates must be positive.");
-  if (closing < collectedOn) throw invalid("Closing date cannot precede the collection.");
-  const collectedUsd = quantizeDecimal(divideDecimal(bookedVes, rate), CENTS);
-  const closingVes = quantizeDecimal(multiplyDecimal(collectedUsd, closingRate), CENTS);
-  const exchangeDifference = subtractDecimal(closingVes, bookedVes);
+  const paymentRate = exactDecimal(paymentVesPerUsd);
+  if (compareDecimal(amount, ZERO) <= 0) throw invalid("Collected amount must be positive.");
+  if (compareDecimal(rate, ZERO) <= 0 || compareDecimal(paymentRate, ZERO) <= 0) throw invalid("Exchange rates must be positive.");
+  if (payment < collectedOn) throw invalid("Payment date cannot precede the collection.");
+  const inDollars = collection.currency === "USD";
+  const collectedUsd = quantizeDecimal(inDollars ? amount : divideDecimal(amount, rate), CENTS);
+  const bookedVes = inDollars ? quantizeDecimal(multiplyDecimal(collectedUsd, rate), CENTS) : amount;
+  const paymentVes = quantizeDecimal(multiplyDecimal(collectedUsd, paymentRate), CENTS);
+  const exchangeDifference = subtractDecimal(paymentVes, bookedVes);
   const sign = compareDecimal(exchangeDifference, ZERO);
   return Object.freeze({
-    collection: Object.freeze({ ...collection, collectedOn, bookedVes, vesPerUsd: rate }),
+    collection: Object.freeze({ ...collection, collectedOn, amount, vesPerUsd: rate }),
     collectedUsd,
-    closingDate: closing,
-    closingVesPerUsd: closingRate,
-    closingVes,
+    bookedVes,
+    paidOn: payment,
+    paymentVesPerUsd: paymentRate,
+    paymentVes,
     exchangeDifference,
     direction: sign > 0 ? "gain" : sign < 0 ? "loss" : "none",
   });
