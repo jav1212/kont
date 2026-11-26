@@ -30,6 +30,7 @@ test("values a day's bolivar base, rounded to whole cents of dollars, at the pay
   assert.equal(valuation.bookedVes, "181.3");
   assert.equal(valuation.paymentVes, "223.65");
   assert.equal(valuation.exchangeDifference, "42.35");
+  assert.equal(valuation.exchangeDifferencePercent, "23.36");
   assert.equal(valuation.direction, "gain");
 });
 
@@ -42,6 +43,7 @@ test("books a dollar amount at the collection rate", () => {
   assert.equal(valuation.bookedVes, "18050");
   assert.equal(valuation.paymentVes, "17900");
   assert.equal(valuation.exchangeDifference, "-150");
+  assert.equal(valuation.exchangeDifferencePercent, "-0.83");
   assert.equal(valuation.direction, "loss");
 });
 
@@ -70,6 +72,7 @@ test("values dollars collected on 01/10 at the rate of the payment seven days la
   assert.equal(usd.valuation.paidOn, "2025-10-08");
   assert.equal(usd.valuation.bookedVes, "4761612");
   assert.equal(usd.valuation.exchangeDifference, "238080.6");
+  assert.equal(usd.valuation.exchangeDifferencePercent, "5");
   // Paid in the next month: still reported with the collections of October.
   assert.equal(ves.valuation.paidOn, "2025-11-06");
   assert.equal(ves.valuation.exchangeDifference, "100");
@@ -78,6 +81,7 @@ test("values dollars collected on 01/10 at the rate of the payment seven days la
     ["2025-10", 2, "23818.06", "238180.6", false],
   ]);
   assert.equal(report.totals.igtfVes, "66");
+  assert.equal(report.totals.exchangeDifferencePercent, "5");
 });
 
 test("uses a row's own payment date over the term", async () => {

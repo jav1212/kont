@@ -222,13 +222,13 @@ export function downloadForeignCurrencyCollectionsWorkbook(
 ): void {
     const title = [heading.company, heading.period].filter(Boolean).map((text) => [text]);
     const detail: unknown[][] = [...title, [
-        "Fecha venta", "Referencia", "Monto", "Moneda", "IGTF Bs", "Tasa venta", "USD", "Base Bs", "Fecha recibo", "Tasa recibo", "Valor al recibo Bs", "Diferencial Bs", "Observación",
+        "Fecha venta", "Referencia", "Monto", "Moneda", "IGTF Bs", "Tasa venta", "USD", "Base Bs", "Fecha recibo", "Tasa recibo", "Valor al recibo Bs", "Diferencial Bs", "Diferencial %", "Observación",
     ]];
     for (const row of report.rows) {
         const line = row.line;
         const currency = line.currency === "USD" ? "USD" : "Bs";
         if (row.status === "failed") {
-            detail.push([formatDate(line.collectedOn), null, num(line.amount), currency, line.igtfVes ? num(line.igtfVes) : null, null, null, null, null, null, null, null, row.reason]);
+            detail.push([formatDate(line.collectedOn), null, num(line.amount), currency, line.igtfVes ? num(line.igtfVes) : null, null, null, null, null, null, null, null, null, row.reason]);
             continue;
         }
         const v = row.valuation;
@@ -238,21 +238,21 @@ export function downloadForeignCurrencyCollectionsWorkbook(
         ].filter(Boolean).join(" · ");
         detail.push([
             formatDate(line.collectedOn), line.reference.includes("#") ? line.reference : null, num(line.amount), currency, line.igtfVes ? num(line.igtfVes) : null,
-            num(v.collection.vesPerUsd), num(v.collectedUsd), num(v.bookedVes), formatDate(v.paidOn), num(v.paymentVesPerUsd), num(v.paymentVes), num(v.exchangeDifference),
+            num(v.collection.vesPerUsd), num(v.collectedUsd), num(v.bookedVes), formatDate(v.paidOn), num(v.paymentVesPerUsd), num(v.paymentVes), num(v.exchangeDifference), num(v.exchangeDifferencePercent),
             notes || null,
         ]);
     }
 
-    const months: unknown[][] = [...title, ["Mes de venta", "Cobros", "Base Bs", "IGTF Bs", "USD", "Valor al recibo Bs", "Ganancia Bs", "Pérdida Bs", "Diferencial neto Bs", "Observación"]];
+    const months: unknown[][] = [...title, ["Mes de venta", "Cobros", "Base Bs", "IGTF Bs", "USD", "Valor al recibo Bs", "Ganancia Bs", "Pérdida Bs", "Diferencial neto Bs", "Diferencial %", "Observación"]];
     for (const month of report.months) {
         months.push([
             month.month, month.days, num(month.bookedVes), num(month.igtfVes), num(month.collectedUsd),
-            num(month.paymentVes), num(month.gainVes), num(month.lossVes), num(month.gainVes) - num(month.lossVes),
+            num(month.paymentVes), num(month.gainVes), num(month.lossVes), num(month.gainVes) - num(month.lossVes), num(month.exchangeDifferencePercent),
             month.provisional ? "Incluye cobros sin recibir: valorados al corte" : null,
         ]);
     }
     const t = report.totals;
-    months.push(["Total", t.days, num(t.bookedVes), num(t.igtfVes), num(t.collectedUsd), num(t.paymentVes), num(t.gainVes), num(t.lossVes), num(t.gainVes) - num(t.lossVes), null]);
+    months.push(["Total", t.days, num(t.bookedVes), num(t.igtfVes), num(t.collectedUsd), num(t.paymentVes), num(t.gainVes), num(t.lossVes), num(t.gainVes) - num(t.lossVes), num(t.exchangeDifferencePercent), null]);
 
     const workbook = XLSX.utils.book_new();
     appendSheet(workbook, "Resumen mensual", months);

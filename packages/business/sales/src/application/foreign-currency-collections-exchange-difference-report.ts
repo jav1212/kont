@@ -3,10 +3,12 @@ import {
   compareDecimal,
   exactDecimal,
   negateDecimal,
+  subtractDecimal,
   type ExactDecimal,
 } from "@kontave/monetary/domain";
 import {
   SalesFailure,
+  exchangeDifferencePercentOf,
   salesDate,
   valueForeignCurrencyCollection,
   type ForeignCurrencyCollectionCurrency,
@@ -57,6 +59,8 @@ export interface ForeignCurrencyCollectionsMonthTotals {
   readonly paymentVes: ExactDecimal;
   readonly gainVes: ExactDecimal;
   readonly lossVes: ExactDecimal;
+  /** Net exchange difference as a percentage of the bolivars booked for the calculated rows. */
+  readonly exchangeDifferencePercent: ExactDecimal;
 }
 
 /** Complete exchange-difference report of foreign currency collected. */
@@ -199,11 +203,14 @@ function monthTotals(rows: readonly ForeignCurrencyCollectionReportRow[]): reado
     if (compareDecimal(valuation.exchangeDifference, ZERO) > 0) month.gainVes = addDecimal(month.gainVes, valuation.exchangeDifference);
     else month.lossVes = addDecimal(month.lossVes, negateDecimal(valuation.exchangeDifference));
   }
-  return Object.freeze([...months.values()].sort((left, right) => left.month.localeCompare(right.month)).map((item) => Object.freeze(item)));
+  return Object.freeze([...months.values()]
+    .sort((left, right) => left.month.localeCompare(right.month))
+    .map((item) => Object.freeze({ ...item, exchangeDifferencePercent: netPercent(item) })));
 }
 
 function sumTotals(months: readonly ForeignCurrencyCollectionsMonthTotals[]): ForeignCurrencyCollectionsExchangeDifferenceReport["totals"] {
-  return Object.freeze(months.reduce((total, item) => ({
+  const totals = months.reduce((total, item) => ({
+    ...total,
     days: total.days + item.days,
     bookedVes: addDecimal(total.bookedVes, item.bookedVes),
     igtfVes: addDecimal(total.igtfVes, item.igtfVes),
@@ -211,11 +218,21 @@ function sumTotals(months: readonly ForeignCurrencyCollectionsMonthTotals[]): Fo
     paymentVes: addDecimal(total.paymentVes, item.paymentVes),
     gainVes: addDecimal(total.gainVes, item.gainVes),
     lossVes: addDecimal(total.lossVes, item.lossVes),
-  }), emptyTotals()));
+  }), emptyTotals());
+  return Object.freeze({ ...totals, exchangeDifferencePercent: netPercent(totals) });
+}
+
+/**
+ * The booked bolivars of failed rows have no valuation, so the base is the
+ * payment value of the calculated rows minus their net difference.
+ */
+function netPercent(totals: Pick<ForeignCurrencyCollectionsMonthTotals, "paymentVes" | "gainVes" | "lossVes">): ExactDecimal {
+  const net = subtractDecimal(totals.gainVes, totals.lossVes);
+  return exchangeDifferencePercentOf(net, subtractDecimal(totals.paymentVes, net));
 }
 
 function emptyTotals(): ForeignCurrencyCollectionsExchangeDifferenceReport["totals"] {
-  return { days: 0, bookedVes: ZERO, igtfVes: ZERO, collectedUsd: ZERO, paymentVes: ZERO, gainVes: ZERO, lossVes: ZERO };
+  return { days: 0, bookedVes: ZERO, igtfVes: ZERO, collectedUsd: ZERO, paymentVes: ZERO, gainVes: ZERO, lossVes: ZERO, exchangeDifferencePercent: ZERO };
 }
 
 function addDays(date: SalesDate, days: number): SalesDate {

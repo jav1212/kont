@@ -164,11 +164,11 @@ export function ForeignCurrencyCollectionsScreen() {
                             <StatTile label="Registrado" value={`Bs. ${fmt(report.totals.bookedVes)}`} sublabel={`${report.totals.days} cobros`} icon={Landmark} />
                             <StatTile label="IGTF percibido" value={`Bs. ${fmt(report.totals.igtfVes)}`} sublabel="Informativo" icon={Receipt} tone="muted" />
                             <StatTile label="Dólares cobrados" value={`$ ${fmt(report.totals.collectedUsd)}`} sublabel={failed ? `${failed} cobros con error` : `Valor al recibo: Bs. ${fmt(report.totals.paymentVes)}`} icon={DollarSign} tone={failed ? "warning" : "default"} />
-                            <StatTile label="Diferencial neto" value={`Bs. ${fmt(String(net))}`} sublabel={`Pérdidas: Bs. ${fmt(report.totals.lossVes)}`} icon={TrendingUp} tone={net >= 0 ? "success" : "warning"} />
+                            <StatTile label="Diferencial neto" value={`Bs. ${fmt(String(net))}`} sublabel={`${pct(report.totals.exchangeDifferencePercent)} del registrado · Pérdidas: Bs. ${fmt(report.totals.lossVes)}`} icon={TrendingUp} tone={net >= 0 ? "success" : "warning"} />
                         </div>
 
                         <Panel title="Resumen por mes de venta" aside={loading ? "Recalculando…" : provisional ? "* Incluye recibos posteriores al corte" : "Clic en un mes para ver sus cobros"}>
-                            <Table headers={["Mes", "Cobros", "Registrado Bs", "IGTF", "USD", "Valor al recibo", "Ganancia", "Pérdida", "Neto"]}>
+                            <Table headers={["Mes", "Cobros", "Registrado Bs", "IGTF", "USD", "Valor al recibo", "Ganancia", "Pérdida", "Neto", "%"]}>
                                 {report.months.map((month) => (
                                     <tr key={month.month} onClick={() => setOpenMonth((current) => current === month.month ? null : month.month)}
                                         className={["border-b border-border-light/50 cursor-pointer hover:bg-surface-2", openMonth === month.month ? "bg-primary-500/5" : ""].join(" ")}>
@@ -181,6 +181,7 @@ export function ForeignCurrencyCollectionsScreen() {
                                         <Cell tone="success">{fmt(month.gainVes)}</Cell>
                                         <Cell tone="warning">{fmt(month.lossVes)}</Cell>
                                         <Cell>{fmt(String(Number(month.gainVes) - Number(month.lossVes)))}</Cell>
+                                        <Cell>{pct(month.exchangeDifferencePercent)}</Cell>
                                     </tr>
                                 ))}
                                 <tr className="bg-surface-2/50 font-bold">
@@ -193,6 +194,7 @@ export function ForeignCurrencyCollectionsScreen() {
                                     <Cell tone="success">{fmt(report.totals.gainVes)}</Cell>
                                     <Cell tone="warning">{fmt(report.totals.lossVes)}</Cell>
                                     <Cell>{fmt(String(net))}</Cell>
+                                    <Cell>{pct(report.totals.exchangeDifferencePercent)}</Cell>
                                 </tr>
                             </Table>
                         </Panel>
@@ -200,7 +202,7 @@ export function ForeignCurrencyCollectionsScreen() {
                         <Panel title={openMonth ? `Detalle · ${monthLabel(openMonth)}` : "Detalle"} aside={
                             openMonth ? <BaseButton.Root variant="ghost" size="sm" onPress={() => setOpenMonth(null)}>Ver todos los meses</BaseButton.Root> : "Edita la tasa de venta si el sistema usó otra"
                         }>
-                            <Table headers={["Fecha venta", "Monto", "Tasa venta", "USD", "Registrado Bs", "Fecha recibo", "Tasa recibo", "Valor al recibo", "Diferencial"]}>
+                            <Table headers={["Fecha venta", "Monto", "Tasa venta", "USD", "Registrado Bs", "Fecha recibo", "Tasa recibo", "Valor al recibo", "Diferencial", "%"]}>
                                 {report.rows.filter((row) => !openMonth || row.line.collectedOn.startsWith(openMonth)).map((row) => {
                                     const reference = row.line.reference;
                                     const amount = `${row.line.currency === "USD" ? "$" : "Bs."} ${fmt(row.line.amount)}`;
@@ -213,7 +215,7 @@ export function ForeignCurrencyCollectionsScreen() {
                                                 <Cell left>{formatDate(row.line.collectedOn)}</Cell>
                                                 <Cell>{amount}</Cell>
                                                 {rateCell("")}
-                                                <td colSpan={6} className="px-3 py-1.5 font-sans text-[12px] text-text-warning">{row.reason}</td>
+                                                <td colSpan={7} className="px-3 py-1.5 font-sans text-[12px] text-text-warning">{row.reason}</td>
                                             </tr>
                                         );
                                     }
@@ -230,6 +232,7 @@ export function ForeignCurrencyCollectionsScreen() {
                                             <Cell>{fmt(v.paymentVesPerUsd, 4)}</Cell>
                                             <Cell>{fmt(v.paymentVes)}</Cell>
                                             <Cell tone={difference < 0 ? "warning" : difference > 0 ? "success" : undefined}>{fmt(v.exchangeDifference)}</Cell>
+                                            <Cell tone={difference < 0 ? "warning" : difference > 0 ? "success" : undefined}>{pct(v.exchangeDifferencePercent)}</Cell>
                                         </tr>
                                     );
                                 })}
@@ -240,6 +243,10 @@ export function ForeignCurrencyCollectionsScreen() {
             </div>
         </div>
     );
+}
+
+function pct(value: string): string {
+    return `${fmt(value)} %`;
 }
 
 function withRate(current: Record<string, string>, key: string, value: string): Record<string, string> {

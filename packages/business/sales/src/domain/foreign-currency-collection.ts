@@ -20,6 +20,7 @@ import { salesDate, type SalesDate } from "./temporal";
  */
 
 const ZERO = exactDecimal("0");
+const HUNDRED = exactDecimal("100");
 const CENTS = { scale: 2, mode: "half_up" } as const;
 
 /** Currency an amount of foreign currency collected was reported in. */
@@ -53,6 +54,8 @@ export interface ForeignCurrencyCollectionValuation {
   readonly paymentVes: ExactDecimal;
   /** `paymentVes - bookedVes`; positive is a gain. */
   readonly exchangeDifference: ExactDecimal;
+  /** Exchange difference as a percentage of `bookedVes`, rounded to two decimals. */
+  readonly exchangeDifferencePercent: ExactDecimal;
   readonly direction: ExchangeDifferenceDirection;
 }
 
@@ -95,8 +98,20 @@ export function valueForeignCurrencyCollection(
     paymentVesPerUsd: paymentRate,
     paymentVes,
     exchangeDifference,
+    exchangeDifferencePercent: exchangeDifferencePercentOf(exchangeDifference, bookedVes),
     direction: sign > 0 ? "gain" : sign < 0 ? "loss" : "none",
   });
+}
+
+/**
+ * Expresses an exchange difference as a percentage of the bolivars booked.
+ * @param difference - Exchange difference in bolivars.
+ * @param bookedVes - Bolivars booked; a zero base yields zero.
+ * @returns The percentage rounded to two decimals.
+ */
+export function exchangeDifferencePercentOf(difference: ExactDecimal, bookedVes: ExactDecimal): ExactDecimal {
+  if (compareDecimal(bookedVes, ZERO) === 0) return ZERO;
+  return quantizeDecimal(multiplyDecimal(divideDecimal(difference, bookedVes), HUNDRED), CENTS);
 }
 
 /**
